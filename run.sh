@@ -2,30 +2,21 @@
 
 # Usage: ./run.sh <mode> <file>
 # 	mode: scan|tokens|parse|pretty|symbol|typecheck|codegen
-                                
-# Check the command-line arguments are valid
-
-if [ $# -lt 2 ]
-then
-	echo "Missing arguments"
-	echo "Usage: $0 <mode> <file>"
-	echo " + mode: scan|tokens|parse|pretty|symbol|typecheck|codegen"
-	echo " + file: path to file (absolute or relative)"
-	exit 1
-fi
-
-if [[ "|scan|tokens|parse|pretty|symbol|typecheck|codegen|" != *"|$1|"* ]]
-then
-	echo "Unknown mode \"$1\""
-	echo "Usage: $0 <mode> <file>"
-	echo " + mode: scan|tokens|parse|pretty|symbol|typecheck|codegen"
-	echo " + file: path to file (absolute or relative)"
-	exit 1
-
-fi
 
 # Invoke the compiler with the provided arguments: mode ($1) and file ($2)
-#
-# You MUST replace the following command with the command for invoking your compiler
 
-./src/minic "$1" < "$2"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+csstack="/usr/local/pkgs/haskell/stack-1.9.3-linux-x86_64/"
+if [ "${1^^}" == "LOC" ] || [ "${1^^}" == "LOCAL" ]
+then
+    stack exec -- "$DIR"/glc "$1" -f "$2"
+elif [ -d "$csstack" ]
+then
+    PATH=$csstack:$PATH
+    STACK_ROOT=/mnt/local
+    export STACK_ROOT
+    STACK_ROOT=/mnt/local $csstack --allow-different-user exec -- "$DIR"/glc "$1" -f "$2"
+else
+    echo "Newer version of Stack (1.9.3) not found, please you any of the cs-x computers at Trottier or any other computer with Stack 1.9.3, as the default version on other computers is too old."
+    exit 1
+fi
