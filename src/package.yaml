@@ -20,12 +20,14 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- optparse-applicative
+- array
 
 library:
   source-dirs: src
 
 executables:
-  glc-exe:
+  glc:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
