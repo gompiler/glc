@@ -1,27 +1,28 @@
 
 # Table of Contents
 
-1.  [<span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span>](#org8bb85af)
-    1.  [Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell](#orgb6e6da3)
-        1.  [Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)](#org20fe821)
-        2.  [Discussion of Project Name](#org104d858)
+1.  [<span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span>](#org9172461)
+    1.  [Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell](#org541516e)
+        1.  [Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)](#orge5fb78f)
+        2.  [Miscellaneous Implementation Comparisons](#org47e2799)
+        3.  [Discussion of Project Name](#org02ff211)
 
 This document is for jotting down quick notes of our meetings an
 discussions and is not the design document (although many parts of
 here will formally be included in said document).
 
 
-<a id="org8bb85af"></a>
+<a id="org9172461"></a>
 
 # <span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span>
 
 
-<a id="orgb6e6da3"></a>
+<a id="org541516e"></a>
 
 ## Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell
 
 
-<a id="org20fe821"></a>
+<a id="orge5fb78f"></a>
 
 ### Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)
 
@@ -38,7 +39,16 @@ here will formally be included in said document).
         are familiar with the toolsets/style
 
 
-<a id="org104d858"></a>
+<a id="org47e2799"></a>
+
+### Miscellaneous Implementation Comparisons
+
+-   For command line parsing, we will use `Optparse.applicative`
+-   The symbol table will be implemented using a mutable hashtable
+    (rather than immutable)
+
+
+<a id="org02ff211"></a>
 
 ### Discussion of Project Name
 

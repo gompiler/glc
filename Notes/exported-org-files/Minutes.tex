@@ -1,4 +1,4 @@
-% Created 2019-02-11 Mon 15:28
+% Created 2019-02-11 Mon 15:46
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -32,11 +32,11 @@ This document is for jotting down quick notes of our meetings an
 discussions and is not the design document (although many parts of
 here will formally be included in said document).
 \section{\textit{<2019-02-11 Mon>}}
-\label{sec:org784dcfd}
+\label{sec:orgb85eef1}
 \subsection{Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell}
-\label{sec:org09a3bac}
+\label{sec:orgf2049b8}
 \subsubsection{Compared Parsing Methods (Megaparsec vs Alex \(\to\) Happy)}
-\label{sec:org5c27e6b}
+\label{sec:orgda91efb}
 \begin{itemize}
 \item Alex/Happy is much more similar to Flex/Bison
 \begin{itemize}
@@ -58,8 +58,15 @@ which can be obtained from Alex if using the linepos or monadic wrapper
 are familiar with the toolsets/style
 \end{itemize}
 \end{itemize}
+\subsubsection{Miscellaneous Implementation Comparisons}
+\label{sec:orgf3a9dc3}
+\begin{itemize}
+\item For command line parsing, we will use \texttt{Optparse.applicative}
+\item The symbol table will be implemented using a mutable hashtable
+(rather than immutable)
+\end{itemize}
 \subsubsection{Discussion of Project Name}
-\label{sec:org0bc3839}
+\label{sec:orgdad2c16}
 \begin{itemize}
 \item Settled on \texttt{glc} as package/executable name
 \item Project name is either Gophiler, Gompiler or Gopiler

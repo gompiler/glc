@@ -16,6 +16,10 @@ here will formally be included in said document).
 - Simplest approach would be to use Alex/Happy
   - Mainly have David and Julian work on scanning & parsing since they
     are familiar with the toolsets/style
+*** Miscellaneous Implementation Comparisons
+- For command line parsing, we will use ~Optparse.applicative~
+- The symbol table will be implemented using a mutable hashtable
+  (rather than immutable)
 *** Discussion of Project Name
 - Settled on ~glc~ as package/executable name
 - Project name is either Gophiler, Gompiler or Gopiler

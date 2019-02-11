@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2019-02-11 Mon 15:28 -->
+<!-- 2019-02-11 Mon 15:46 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Meeting Minutes and Discussion Notes</title>
@@ -246,12 +246,13 @@ for the JavaScript code in this tag.
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org59f96c7">1. <span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span></a>
+<li><a href="#org2da2e69">1. <span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span></a>
 <ul>
-<li><a href="#orgafd47c9">1.1. Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell</a>
+<li><a href="#orgaae7407">1.1. Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell</a>
 <ul>
-<li><a href="#orgf682f61">1.1.1. Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)</a></li>
-<li><a href="#org96c149c">1.1.2. Discussion of Project Name</a></li>
+<li><a href="#orge1b0600">1.1.1. Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)</a></li>
+<li><a href="#orga23f7ca">1.1.2. Miscellaneous Implementation Comparisons</a></li>
+<li><a href="#orgc2601fc">1.1.3. Discussion of Project Name</a></li>
 </ul>
 </li>
 </ul>
@@ -264,16 +265,16 @@ This document is for jotting down quick notes of our meetings an
 discussions and is not the design document (although many parts of
 here will formally be included in said document).
 </p>
-<div id="outline-container-org59f96c7" class="outline-2">
-<h2 id="org59f96c7"><span class="section-number-2">1</span> <span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span></h2>
+<div id="outline-container-org2da2e69" class="outline-2">
+<h2 id="org2da2e69"><span class="section-number-2">1</span> <span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span></h2>
 <div class="outline-text-2" id="text-1">
 </div>
-<div id="outline-container-orgafd47c9" class="outline-3">
-<h3 id="orgafd47c9"><span class="section-number-3">1.1</span> Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell</h3>
+<div id="outline-container-orgaae7407" class="outline-3">
+<h3 id="orgaae7407"><span class="section-number-3">1.1</span> Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell</h3>
 <div class="outline-text-3" id="text-1-1">
 </div>
-<div id="outline-container-orgf682f61" class="outline-4">
-<h4 id="orgf682f61"><span class="section-number-4">1.1.1</span> Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)</h4>
+<div id="outline-container-orge1b0600" class="outline-4">
+<h4 id="orge1b0600"><span class="section-number-4">1.1.1</span> Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)</h4>
 <div class="outline-text-4" id="text-1-1-1">
 <ul class="org-ul">
 <li>Alex/Happy is much more similar to Flex/Bison
@@ -298,9 +299,19 @@ are familiar with the toolsets/style</li>
 </ul>
 </div>
 </div>
-<div id="outline-container-org96c149c" class="outline-4">
-<h4 id="org96c149c"><span class="section-number-4">1.1.2</span> Discussion of Project Name</h4>
+<div id="outline-container-orga23f7ca" class="outline-4">
+<h4 id="orga23f7ca"><span class="section-number-4">1.1.2</span> Miscellaneous Implementation Comparisons</h4>
 <div class="outline-text-4" id="text-1-1-2">
+<ul class="org-ul">
+<li>For command line parsing, we will use <code>Optparse.applicative</code></li>
+<li>The symbol table will be implemented using a mutable hashtable
+(rather than immutable)</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orgc2601fc" class="outline-4">
+<h4 id="orgc2601fc"><span class="section-number-4">1.1.3</span> Discussion of Project Name</h4>
+<div class="outline-text-4" id="text-1-1-3">
 <ul class="org-ul">
 <li>Settled on <code>glc</code> as package/executable name</li>
 <li>Project name is either Gophiler, Gompiler or Gopiler
@@ -314,7 +325,7 @@ are familiar with the toolsets/style</li>
 </div>
 </div>
 <div id="postamble" class="status">
-<p class="date">Created: 2019-02-11 Mon 15:28</p>
+<p class="date">Created: 2019-02-11 Mon 15:46</p>
 <p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
