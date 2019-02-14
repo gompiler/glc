@@ -1,28 +1,30 @@
 
 # Table of Contents
 
-1.  [<span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span>](#org9172461)
-    1.  [Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell](#org541516e)
-        1.  [Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)](#orge5fb78f)
-        2.  [Miscellaneous Implementation Comparisons](#org47e2799)
-        3.  [Discussion of Project Name](#org02ff211)
+1.  [<span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span>](#orgfc2dab7)
+    1.  [Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell](#org0c61aba)
+        1.  [Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)](#org876ae3e)
+        2.  [Miscellaneous Implementation Comparisons](#org85020cb)
+        3.  [Discussion of Project Name](#orge856ffe)
+2.  [<span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-13 Wed&gt;</span></span>](#org9b69460)
+    1.  [Start of Scanner](#org15ca803)
 
 This document is for jotting down quick notes of our meetings an
 discussions and is not the design document (although many parts of
 here will formally be included in said document).
 
 
-<a id="org9172461"></a>
+<a id="orgfc2dab7"></a>
 
 # <span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-11 Mon&gt;</span></span>
 
 
-<a id="org541516e"></a>
+<a id="org0c61aba"></a>
 
 ## Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell
 
 
-<a id="orge5fb78f"></a>
+<a id="org876ae3e"></a>
 
 ### Compared Parsing Methods (Megaparsec vs Alex &rarr; Happy)
 
@@ -39,7 +41,7 @@ here will formally be included in said document).
         are familiar with the toolsets/style
 
 
-<a id="org47e2799"></a>
+<a id="org85020cb"></a>
 
 ### Miscellaneous Implementation Comparisons
 
@@ -48,11 +50,34 @@ here will formally be included in said document).
     (rather than immutable)
 
 
-<a id="org02ff211"></a>
+<a id="orge856ffe"></a>
 
 ### Discussion of Project Name
 
 -   Settled on `glc` as package/executable name
 -   Project name is either Gophiler, Gompiler or Gopiler
     -   Settled on Gompiler
+
+
+<a id="org9b69460"></a>
+
+# <span class="timestamp-wrapper"><span class="timestamp">&lt;2019-02-13 Wed&gt;</span></span>
+
+
+<a id="org15ca803"></a>
+
+## Start of Scanner
+
+-   Discussed how we wanted the token type to be represented
+    -   Split into multiple categories or just one type with each token?
+        -   Categories would be:
+            -   Keywords
+            -   Operators
+            -   Literals
+            -   Identifiers
+            -   Semicolons
+        -   Decided there is no point in separating tokens as we won't see
+            them after we parse anyway
+-   Started implementing Scanner in Alex (Julian)
+    -   Scanning branch
 

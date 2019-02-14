@@ -1,4 +1,4 @@
-% Created 2019-02-11 Mon 15:46
+% Created 2019-02-13 Wed 19:50
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -32,11 +32,11 @@ This document is for jotting down quick notes of our meetings an
 discussions and is not the design document (although many parts of
 here will formally be included in said document).
 \section{\textit{<2019-02-11 Mon>}}
-\label{sec:orgb85eef1}
+\label{sec:orgb90db55}
 \subsection{Comparison of Allan and Julian's Methods of Writing a Compiler in Haskell}
-\label{sec:orgf2049b8}
+\label{sec:org3c287fb}
 \subsubsection{Compared Parsing Methods (Megaparsec vs Alex \(\to\) Happy)}
-\label{sec:orgda91efb}
+\label{sec:orgd73319a}
 \begin{itemize}
 \item Alex/Happy is much more similar to Flex/Bison
 \begin{itemize}
@@ -59,19 +59,45 @@ are familiar with the toolsets/style
 \end{itemize}
 \end{itemize}
 \subsubsection{Miscellaneous Implementation Comparisons}
-\label{sec:orgf3a9dc3}
+\label{sec:org80c913b}
 \begin{itemize}
 \item For command line parsing, we will use \texttt{Optparse.applicative}
 \item The symbol table will be implemented using a mutable hashtable
 (rather than immutable)
 \end{itemize}
 \subsubsection{Discussion of Project Name}
-\label{sec:orgdad2c16}
+\label{sec:org2fc3b68}
 \begin{itemize}
 \item Settled on \texttt{glc} as package/executable name
 \item Project name is either Gophiler, Gompiler or Gopiler
 \begin{itemize}
 \item Settled on Gompiler
+\end{itemize}
+\end{itemize}
+\section{\textit{<2019-02-13 Wed>}}
+\label{sec:orga5a5d99}
+\subsection{Start of Scanner}
+\label{sec:org62150bc}
+\begin{itemize}
+\item Discussed how we wanted the token type to be represented
+\begin{itemize}
+\item Split into multiple categories or just one type with each token?
+\begin{itemize}
+\item Categories would be:
+\begin{itemize}
+\item Keywords
+\item Operators
+\item Literals
+\item Identifiers
+\item Semicolons
+\end{itemize}
+\item Decided there is no point in separating tokens as we won't see
+them after we parse anyway
+\end{itemize}
+\end{itemize}
+\item Started implementing Scanner in Alex (Julian)
+\begin{itemize}
+\item Scanning branch
 \end{itemize}
 \end{itemize}
 \end{document}

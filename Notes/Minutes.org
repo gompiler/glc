@@ -24,3 +24,17 @@ here will formally be included in said document).
 - Settled on ~glc~ as package/executable name
 - Project name is either Gophiler, Gompiler or Gopiler
   - Settled on Gompiler
+* <2019-02-13 Wed>
+** Start of Scanner
+- Discussed how we wanted the token type to be represented
+  - Split into multiple categories or just one type with each token?
+    - Categories would be:
+      - Keywords
+      - Operators
+      - Literals
+      - Identifiers
+      - Semicolons
+    - Decided there is no point in separating tokens as we won't see
+      them after we parse anyway
+- Started implementing Scanner in Alex (Julian)
+  - Scanning branch

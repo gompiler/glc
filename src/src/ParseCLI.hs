@@ -75,7 +75,6 @@ codegenParser = info (CI Codegen <$> parseFile)
                <> progDesc "Generates equivalent C code in an output file and outputs OK."
                <> header "codegen - generate C code from a source file")
 
-
 -- Combine all mode parsers into one
 cmdParser :: ParserInfo CmdI
 cmdParser = info
