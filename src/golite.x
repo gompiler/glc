@@ -217,13 +217,13 @@ tokM f (p, _, _, s) len = return (Token p (f (take len s)))
 
 -- | Feed function to tokM
 tok :: Monad m => InnerToken -> (AlexPosn, b, c, [a]) -> Int -> m Token
-tok x = tokM (\s -> x)
+tok x = tokM $ const x
 
 -- | Char
 tokCInp :: Monad m => (t -> InnerToken) -> (AlexPosn, b, c, [t]) -> Int -> m Token
-tokCInp x = tokM (\s -> x $ head s)
+tokCInp x = tokM $ x . head
 
 tokRInp :: (Monad m, Read t) => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
 -- | tokInp but pass s through read (for things that aren't strings)
-tokRInp x = tokM (\s -> x (read s))
+tokRInp x = tokM $ x . read
 }

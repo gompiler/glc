@@ -12,16 +12,43 @@ import System.IO
 -- Also makes the tokens look like the expected tTYPE format
 prettify :: T.InnerToken -> String
 prettify t = case t of
+  T.TBreak         -> "tBREAK"
+  T.TChan          -> "tCHAN"
+  T.TConst         -> "tCONST"
+  T.TContinue      -> "tCONTINUE"
+  T.TDefault       -> "tDEFAULT"
+  T.TDefer         -> "tDEFER"
+  T.TElse          -> "tELSE"
+  T.TFallthrough   -> "tFALLTHROUGH"
+  T.TFor           -> "tFOR"
+  T.TFunc          -> "tFUNC"
+  T.TGo            -> "tGO"
+  T.TGoto          -> "tGOTO"
+  T.TIf            -> "tIF"
+  T.TImport        -> "tIMPORT"
+  T.TInterface     -> "tINTERFACE"
+  T.TMap           -> "tMAP"
+  T.TPackage       -> "tPACKAGE"
+  T.TRange         -> "tRANGE"
+  T.TReturn        -> "tRETURN"
+  T.TSelect        -> "tSELECT"
+  T.TStruct        -> "tSTRUCT"
+  T.TSwitch        -> "tSWITCH"
+  T.TComma         -> "tCOMMA"
+  T.TDot           -> "tDOT"
   T.TColon         -> "tCOLON"
   T.TSemicolon     -> "tSEMICOLON"
-  T.TLParen        -> "tLEFTPAREN"
-  T.TRParen        -> "tRIGHTPAREN"
-  T.TLBrace        -> "tLEFTBRACE"
-  T.TRBrace        -> "tRIGHTBRACE"
+  T.TLParen        -> "tLPAREN"
+  T.TRParen        -> "tRPAREN"
+  T.TLSquareB      -> "tLBRACKET"
+  T.TRSquareB      -> "tRBRACKET"
+  T.TLBrace        -> "tLBRACE"
+  T.TRBrace        -> "tRBRACE"
   T.TPlus          -> "tPLUS"
   T.TMinus         -> "tMINUS"
   T.TTimes         -> "tTIMES"
   T.TDiv           -> "tDIV"
+  T.TMod           -> "tREM"
   T.TAssn          -> "tASSIGN"
   T.TGt            -> "tGREATER"
   T.TLt            -> "tLESS"
@@ -32,21 +59,41 @@ prettify t = case t of
   T.TLEq           -> "tLESSEQUALS"
   T.TAnd           -> "tAND"
   T.TOr            -> "tOR"
+  T.TLAnd          -> "tBWAND"
+  T.TLOr           -> "tBWOR"
+  T.TLXor          -> "tBWXOR"
+  T.TLeftS         -> "tLSHIFT"
+  T.TRightS        -> "tRSHIFT"
+  T.TLAndNot       -> "tBWANDNOT"
+  T.TIncA          -> "tPLUSASSIGN"
+  T.TDIncA         -> "tMINUSASSIGN"
+  T.TMultA         -> "tTIMESASSIGN"
+  T.TDivA          -> "tDIVASSIGN"
+  T.TModA          -> "tREMASSIGN"
+  T.TLAndA         -> "tBWANDASSIGN"
+  T.TLOrA          -> "tBWORASSIGN"
+  T.TLXorA         -> "tBWXORASSIGN"
+  T.TLeftSA        -> "tLSHIFTASSIGN"
+  T.TRightSA       -> "tRSHIFTASSIGN"
+  T.TLAndNotA      -> "tBWANDNOTASSIGN"
+  T.TRecv          -> "tARROW"
+  T.TDeclA         -> "tDEFINE"
+  T.TLdots         -> "tELLIPSIS"
   T.TVar           -> "tVAR"
-  T.TIf            -> "tIF"
-  T.TElse          -> "tELSE"
-  T.TPrint         -> "tPRINT"
   (T.TIntVal i)    -> "tINTVAL(" ++ show i ++ ")"
   (T.TFloatVal f)  -> "tFLOATVAL(" ++ show f ++ ")"
+  (T.TRuneVal c)   -> "tRUNEVAL(" ++ show c ++ ")"
   (T.TStringVal s) -> "tSTRINGVAL(" ++ s ++ ")"
-  (T.TIdent s)     -> "tIDENT(" ++ s ++ ")"
+  (T.TIdent s)     -> "tIDENTIFIER(" ++ s ++ ")"
   T.TEOF           -> error "TEOF should not be converted into a string"
+  T.TNewLine       -> error "TNewLine should not be converted into a string"
 
 -- |prettyPrint calls prettify on a list of tokens and then prints each one one a new line
 prettyPrint :: [T.InnerToken] -> IO ()
-prettyPrint tList = mapM_ (putStrLn . prettify) tList
+prettyPrint = mapM_ (putStrLn . prettify)
 
 -- | Custom definition of alexMonadScan to modify the error message with more info
+alexMonadScan :: T.Alex T.Token
 alexMonadScan = do
   inp__ <- T.alexGetInput
   sc <- T.alexGetStartCode
@@ -75,13 +122,11 @@ putExit err = do hPutStrLn stderr err
 
 -- | Print result of scan, i.e. tokens or error
 scanP :: String -> IO ()
-scanP s = either putExit (\tl -> (putStrLn $ show $ reverse tl) >> exitSuccess) (scan s)
-                            -- Pretty print tokens once implemented
-                            -- prettyPrint $ reverse tl >>
+scanP s = either putExit (\tl -> prettyPrint (reverse tl) >> exitSuccess) (scan s)
 
 -- | Check for error, if none will print OK
 scanC :: String -> IO ()
-scanC s = either putExit (\tl -> putStrLn "OK" >> exitSuccess) (scan s)
+scanC s = either putExit (const $ putStrLn "OK" >> exitSuccess) (scan s)
 
 -- | Monad types/functions to allow the scanner to interface with the parser
 type P a = T.Alex a
@@ -94,7 +139,7 @@ returnP = return
 
 -- | showError will be passed to happyError and will define behavior on parser errors
 showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
-showError (l, c, s) = T.alexError ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
+showError (l, c, _) = T.alexError ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
 
 getPos :: T.Alex T.AlexPosn
 getPos = T.Alex (\s -> Right (s, T.alex_pos s))
