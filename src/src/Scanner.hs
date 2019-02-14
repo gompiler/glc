@@ -61,7 +61,6 @@ alexMonadScan = do
         action (T.ignorePendingBytes inp__) len
 
 -- | scan, the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
--- Note that it is possible here to get a T.TInvalidI in the T.InnerToken list, so it must be accounted for in other functions that use scan's output
 scan :: String -> Either String [T.InnerToken]
 scan s = T.runAlex s $ do let loop tokl =
                                 do (T.Token _ tok) <- alexMonadScan;
