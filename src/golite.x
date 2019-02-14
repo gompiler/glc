@@ -109,7 +109,7 @@ tokens :-
     cap                                 { tok TCap }
     $digit+                             { tokRInp TIntVal }
     $digit*\.$digit+                    { tokRInp TFloatVal }
-    $lower [$alpha $digit \_]*          { tokM TIdent }
+    $alpha [$alpha $digit \_]*          { tokM TIdent }
     <0> \' @string \'                   { tokCInp TRuneVal }
     <0> \" @string* \"                  { tokM TStringVal }
     <0> \` @string* \`                  { tokM TRStringVal }
