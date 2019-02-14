@@ -6,59 +6,113 @@ module Tokens where
 
 -- Macro helper definitions
 $digit = 0-9
-$alpha = [a-zA-z]
+$upper = [A-z]
+$lower = [a-z \_]
+$alpha = [$upper $lower]
 
 $charesc = [abfnrtv\\\'\"]
 $symbol = [\!\#\$\%\^\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\(\)\,\;\[\]\`\{\}]
 $graphic   = [$alpha $symbol $digit \:\"\']
 
+-- Control characters to the right of ^
+$ctrl = [$upper \@\[\\\]\^\_]
+-- Special ascii characters
+@special = \^ $ctrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK | BEL | BS | TAB | LF | VT | FF | CR | SO | SI | DLE | DC1 | DC2 | DC4 | NAK | SYN | ETB | CAN | EM | SUB | ESC | FS | GS | RS | US | SP | DEL
+
 @escape = \\ ($charesc)
 
-@string = $graphic # [\"\\] | " " | @escape
+@string = $graphic # [\"\\] | " " | @escape | @special
 
 tokens :-
 
     -- ignore whitespace
+    \n                                  { tok TNewLine }
     $white+                             ;
     "//".*                              ;
-    ":"                                 { tok TColon }
-    ";"                                 { tok TSemicolon }
-    "("                                 { tok TLParen }
-    ")"                                 { tok TRParen }
-    "{"                                 { tok TLBrace }
-    "}"                                 { tok TRBrace }
+    "//*".*"//*"                        ;
     "+"                                 { tok TPlus }
     "-"                                 { tok TMinus }
     "*"                                 { tok TTimes }
     "/"                                 { tok TDiv }
-    "="                                 { tok TAsgn }
+    "%"                                 { tok TMod }
+    "&"                                 { tok TLAnd }
+    "|"                                 { tok TLOr }
+    "^"                                 { tok TLXor }
+    ":"                                 { tok TColon }
+    ";"                                 { tok TSemicolon }
+    "("                                 { tok TLParen }
+    ")"                                 { tok TRParen }
+    "["                                 { tok TLSquareB }
+    "]"                                 { tok TRSquareB }
+    "{"                                 { tok TLBrace }
+    "}"                                 { tok TRBrace }
+    "="                                 { tok TAssn }
+    ","                                 { tok TComma }
+    "."                                 { tok TDot }
     ">"                                 { tok TGt }
     "<"                                 { tok TLt }
     "!"                                 { tok TNot }
-    "=="                                { tok TEq }
-    "!="                                { tok TNEq }
-    ">="                                { tok TGEq }
-    "<="                                { tok TLEq }
+    "<<"                                { tok TLeftS }
+    ">>"                                { tok TRightS }
+    "&^"                                { tok TLAndNot }
+    "+="                                { tok TIncA }
+    "-="                                { tok TDIncA }
+    "*="                                { tok TMultA }
+    "/="                                { tok TDivA }
+    "%="                                { tok TModA }
+    "&="                                { tok TLAndA }
+    "|="                                { tok TLOrA }
+    "^="                                { tok TLXorA }
     "&&"                                { tok TAnd }
     "||"                                { tok TOr }
-    var                                 { tok TVar }
-    float                               { tok TFloat }
-    int                                 { tok TInt }
-    string                              { tok TString }
-    boolean                             { tok TBool }
-    if                                  { tok TIf }
+    "<-"                                { tok TRecv }
+    "++"                                { tok TInc }
+    "--"                                { tok TDInc }
+    "=="                                { tok TEq }
+    "!="                                { tok TNEq }
+    "<="                                { tok TLEq }
+    ">="                                { tok TGEq }
+    ":="                                { tok TDeclA }
+    "<<="                               { tok TLeftSA }
+    ">>="                               { tok TRightSA }
+    "&^="                               { tok TLAndNotA }
+    "..."                               { tok TLdots }
+    break                               { tok TBreak }
+    case                                { tok TCase }
+    chan                                { tok TChan }
+    const                               { tok TConst }
+    continue                            { tok TContinue }
+    default                             { tok TDefault }
+    defer                               { tok TDefer }
     else                                { tok TElse }
-    while                               { tok TWhile }
-    read                                { tok TRead }
+    fallthrough                         { tok TFallthrough }
+    for                                 { tok TFor }
+    func                                { tok TFunc }
+    go                                  { tok TGo }
+    goto                                { tok TGoto }
+    if                                  { tok TIf }
+    import                              { tok TImport }
+    interface                           { tok TInterface }
+    map                                 { tok TMap }
+    package                             { tok TPackage }
+    range                               { tok TRange }
+    return                              { tok TReturn }
+    select                              { tok TSelect }
+    struct                              { tok TStruct }
+    switch                              { tok TSwitch }
+    type                                { tok TType }
+    var                                 { tok TVar }
     print                               { tok TPrint }
-    true                                { tok TTrue }
-    false                               { tok TFalse }
-    0 | 1-9$digit*                      { tokRInp TIntVal }
-    00* | 0$digit+                      { tok TInvalidI }
-    000*\.$digit* | 0$digit+\.$digit*   { tok TInvalidF }
-    $digit+\.$digit+                    { tokRInp TFloatVal }
-    $alpha [$alpha $digit \_]*          { tokInp TIdent }
-    <0> \" @string* \"                  { tokInp TStringVal }
+    println                             { tok TPrintln }
+    append                              { tok TAppend }
+    len                                 { tok TLen }
+    cap                                 { tok TCap }
+    $digit+                             { tokRInp TIntVal }
+    $digit*\.$digit+                    { tokRInp TFloatVal }
+    $lower [$alpha $digit \_]*          { tokM TIdent }
+    <0> \' @string \'                   { tokCInp TRuneVal }
+    <0> \" @string* \"                  { tokM TStringVal }
+    <0> \` @string* \`                  { tokM TRStringVal }
 
 {
 data Token = Token AlexPosn InnerToken
@@ -100,23 +154,23 @@ data InnerToken = TBreak
                 | TTimes
                 | TDiv
                 | TMod
-                | TLAnd
-                | TLOr
-                | TLXor
-                | TLeftS
-                | TRightS
-                | TLAndNot
-                | TIncAssn
-                | TDIncAssn
-                | TMultAssn
-                | TDivAssn
-                | TModAssn
-                | TLAndAssn
-                | TLOrAssn
-                | TLXorAssn
-                | TLeftSAssn
-                | TRightSAssn
-                | TLAndNotAssn
+                | TLAnd     -- &
+                | TLOr      -- |
+                | TLXor     -- ^
+                | TLeftS    -- <<
+                | TRightS   -- >>
+                | TLAndNot  -- &^
+                | TIncA     -- +=
+                | TDIncA    -- -=
+                | TMultA    -- *=
+                | TDivA     -- /=
+                | TModA     -- %=
+                | TLAndA    -- &=
+                | TLOrA     -- |= 
+                | TLXorA    -- ^=
+                | TLeftSA   -- <<=
+                | TRightSA  -- >>=
+                | TLAndNotA -- &^=
                 | TAnd
                 | TOr
                 | TRecv
@@ -125,18 +179,17 @@ data InnerToken = TBreak
                 | TEq
                 | TLt
                 | TGt
-                | TAssn
+                | TAssn     -- =
                 | TNot
                 | TNEq
                 | TLEq
                 | TGEq
-                | TDeclAssn
-                | TLdots
+                | TDeclA    -- :=
+                | TLdots    -- ...
                 | TLParen
                 | TRParen
                 | TLSquareB
                 | TRSquareB
-                | TRBrace
                 | TLBrace
                 | TRBrace
                 | TComma
@@ -147,24 +200,30 @@ data InnerToken = TBreak
                 | TRuneVal Char
                 | TFloatVal Float
                 | TStringVal String
-                | TRStringVal String
+                | TRStringVal String -- Raw String
                 | TIdent String
+                | TNewLine -- For post-processing semicolon insertion
                 | TEOF
                 deriving (Eq, Show)
-
+                
+alexEOF :: Alex Token
 alexEOF = do
         (p, _, _, _) <- alexGetInput
         return (Token p TEOF)
 
 -- | tokM is a monad wrapper, this deals with consumming strings from the input string and wrappin tokens in a monad
+tokM :: Monad m => ([a] -> InnerToken) -> (AlexPosn, b, c, [a]) -> Int -> m Token
 tokM f (p, _, _, s) len = return (Token p (f (take len s)))
 
 -- | Feed function to tokM
+tok :: Monad m => InnerToken -> (AlexPosn, b, c, [a]) -> Int -> m Token
 tok x = tokM (\s -> x)
 
--- | tok but keep the String value received by matching regex
-tokInp x = tokM (\s -> x s)
+-- | Char
+tokCInp :: Monad m => (t -> InnerToken) -> (AlexPosn, b, c, [t]) -> Int -> m Token
+tokCInp x = tokM (\s -> x $ head s)
 
+tokRInp :: (Monad m, Read t) => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
 -- | tokInp but pass s through read (for things that aren't strings)
 tokRInp x = tokM (\s -> x (read s))
 }

@@ -1,6 +1,7 @@
 module Main where
 
 import ParseCLI
+import Scanner
 import qualified Options.Applicative as Op
 
 main :: IO ()
@@ -10,8 +11,8 @@ main = do
     -- Special case, match on file only
     Codegen -> putStrLn "codegen not yet implemented"
     _ -> inpToIOStr inp >>= case cmd of
-                              Scan      -> \s -> putStrLn "scan not yet implemented"
-                              Tokens    -> \s -> putStrLn "tokens not yet implemented"
+                              Scan      -> scanC
+                              Tokens    -> scanP
                               Parse     -> \s -> putStrLn "parse not yet implemented"
                               Pretty    -> \s -> putStrLn "pretty not yet implemented"
                               Symbol    -> \s -> putStrLn "symbol not yet implemented"
