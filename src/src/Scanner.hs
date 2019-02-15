@@ -1,92 +1,110 @@
-module Scanner (P, thenP, returnP, showError, getPos, happyError, lexer, scanP, scanC, putExit, prettify, T.Token(..), T.InnerToken(..), T.AlexPosn(..), T.alexError, T.runAlex, T.Alex) where
+module Scanner
+  ( P
+  , thenP
+  , returnP
+  , showError
+  , getPos
+  , happyError
+  , lexer
+  , scanP
+  , scanC
+  , putExit
+  , prettify
+  , T.Token(..)
+  , T.InnerToken(..)
+  , T.AlexPosn(..)
+  , T.alexError
+  , T.runAlex
+  , T.Alex
+  ) where
+
+import           System.Exit
+import           System.IO
 
 -- Helper functions for scanning using tokens and also pass relevant things to parser
-
-import qualified Tokens as T
-import System.Exit
-import System.IO
+import qualified Tokens      as T
 
 -- TODO: Finish implementing prettify
-
 -- |prettify, takes a token and turn it into a string representing said token
 -- Also makes the tokens look like the expected tTYPE format
 prettify :: T.InnerToken -> String
-prettify t = case t of
-  T.TBreak         -> "tBREAK"
-  T.TChan          -> "tCHAN"
-  T.TConst         -> "tCONST"
-  T.TContinue      -> "tCONTINUE"
-  T.TDefault       -> "tDEFAULT"
-  T.TDefer         -> "tDEFER"
-  T.TElse          -> "tELSE"
-  T.TFallthrough   -> "tFALLTHROUGH"
-  T.TFor           -> "tFOR"
-  T.TFunc          -> "tFUNC"
-  T.TGo            -> "tGO"
-  T.TGoto          -> "tGOTO"
-  T.TIf            -> "tIF"
-  T.TImport        -> "tIMPORT"
-  T.TInterface     -> "tINTERFACE"
-  T.TMap           -> "tMAP"
-  T.TPackage       -> "tPACKAGE"
-  T.TRange         -> "tRANGE"
-  T.TReturn        -> "tRETURN"
-  T.TSelect        -> "tSELECT"
-  T.TStruct        -> "tSTRUCT"
-  T.TSwitch        -> "tSWITCH"
-  T.TComma         -> "tCOMMA"
-  T.TDot           -> "tDOT"
-  T.TColon         -> "tCOLON"
-  T.TSemicolon     -> "tSEMICOLON"
-  T.TLParen        -> "tLPAREN"
-  T.TRParen        -> "tRPAREN"
-  T.TLSquareB      -> "tLBRACKET"
-  T.TRSquareB      -> "tRBRACKET"
-  T.TLBrace        -> "tLBRACE"
-  T.TRBrace        -> "tRBRACE"
-  T.TPlus          -> "tPLUS"
-  T.TMinus         -> "tMINUS"
-  T.TTimes         -> "tTIMES"
-  T.TDiv           -> "tDIV"
-  T.TMod           -> "tREM"
-  T.TAssn          -> "tASSIGN"
-  T.TGt            -> "tGREATER"
-  T.TLt            -> "tLESS"
-  T.TNot           -> "tBANG"
-  T.TEq            -> "tEQUALS"
-  T.TNEq           -> "tNOTEQUALS"
-  T.TGEq           -> "tGREATEREQUALS"
-  T.TLEq           -> "tLESSEQUALS"
-  T.TAnd           -> "tAND"
-  T.TOr            -> "tOR"
-  T.TLAnd          -> "tBWAND"
-  T.TLOr           -> "tBWOR"
-  T.TLXor          -> "tBWXOR"
-  T.TLeftS         -> "tLSHIFT"
-  T.TRightS        -> "tRSHIFT"
-  T.TLAndNot       -> "tBWANDNOT"
-  T.TIncA          -> "tPLUSASSIGN"
-  T.TDIncA         -> "tMINUSASSIGN"
-  T.TMultA         -> "tTIMESASSIGN"
-  T.TDivA          -> "tDIVASSIGN"
-  T.TModA          -> "tREMASSIGN"
-  T.TLAndA         -> "tBWANDASSIGN"
-  T.TLOrA          -> "tBWORASSIGN"
-  T.TLXorA         -> "tBWXORASSIGN"
-  T.TLeftSA        -> "tLSHIFTASSIGN"
-  T.TRightSA       -> "tRSHIFTASSIGN"
-  T.TLAndNotA      -> "tBWANDNOTASSIGN"
-  T.TRecv          -> "tARROW"
-  T.TDeclA         -> "tDEFINE"
-  T.TLdots         -> "tELLIPSIS"
-  T.TVar           -> "tVAR"
-  (T.TIntVal i)    -> "tINTVAL(" ++ show i ++ ")"
-  (T.TFloatVal f)  -> "tFLOATVAL(" ++ show f ++ ")"
-  (T.TRuneVal c)   -> "tRUNEVAL(" ++ show c ++ ")"
-  (T.TStringVal s) -> "tSTRINGVAL(" ++ s ++ ")"
-  (T.TIdent s)     -> "tIDENTIFIER(" ++ s ++ ")"
-  T.TEOF           -> error "TEOF should not be converted into a string"
-  T.TNewLine       -> error "TNewLine should not be converted into a string"
+prettify t =
+  case t of
+    T.TBreak -> "tBREAK"
+    T.TChan -> "tCHAN"
+    T.TConst -> "tCONST"
+    T.TContinue -> "tCONTINUE"
+    T.TDefault -> "tDEFAULT"
+    T.TDefer -> "tDEFER"
+    T.TElse -> "tELSE"
+    T.TFallthrough -> "tFALLTHROUGH"
+    T.TFor -> "tFOR"
+    T.TFunc -> "tFUNC"
+    T.TGo -> "tGO"
+    T.TGoto -> "tGOTO"
+    T.TIf -> "tIF"
+    T.TImport -> "tIMPORT"
+    T.TInterface -> "tINTERFACE"
+    T.TMap -> "tMAP"
+    T.TPackage -> "tPACKAGE"
+    T.TRange -> "tRANGE"
+    T.TReturn -> "tRETURN"
+    T.TSelect -> "tSELECT"
+    T.TStruct -> "tSTRUCT"
+    T.TSwitch -> "tSWITCH"
+    T.TComma -> "tCOMMA"
+    T.TDot -> "tDOT"
+    T.TColon -> "tCOLON"
+    T.TSemicolon -> "tSEMICOLON"
+    T.TLParen -> "tLPAREN"
+    T.TRParen -> "tRPAREN"
+    T.TLSquareB -> "tLBRACKET"
+    T.TRSquareB -> "tRBRACKET"
+    T.TLBrace -> "tLBRACE"
+    T.TRBrace -> "tRBRACE"
+    T.TPlus -> "tPLUS"
+    T.TMinus -> "tMINUS"
+    T.TTimes -> "tTIMES"
+    T.TDiv -> "tDIV"
+    T.TMod -> "tREM"
+    T.TAssn -> "tASSIGN"
+    T.TGt -> "tGREATER"
+    T.TLt -> "tLESS"
+    T.TNot -> "tBANG"
+    T.TEq -> "tEQUALS"
+    T.TNEq -> "tNOTEQUALS"
+    T.TGEq -> "tGREATEREQUALS"
+    T.TLEq -> "tLESSEQUALS"
+    T.TAnd -> "tAND"
+    T.TOr -> "tOR"
+    T.TLAnd -> "tBWAND"
+    T.TLOr -> "tBWOR"
+    T.TLXor -> "tBWXOR"
+    T.TLeftS -> "tLSHIFT"
+    T.TRightS -> "tRSHIFT"
+    T.TLAndNot -> "tBWANDNOT"
+    T.TIncA -> "tPLUSASSIGN"
+    T.TDIncA -> "tMINUSASSIGN"
+    T.TMultA -> "tTIMESASSIGN"
+    T.TDivA -> "tDIVASSIGN"
+    T.TModA -> "tREMASSIGN"
+    T.TLAndA -> "tBWANDASSIGN"
+    T.TLOrA -> "tBWORASSIGN"
+    T.TLXorA -> "tBWXORASSIGN"
+    T.TLeftSA -> "tLSHIFTASSIGN"
+    T.TRightSA -> "tRSHIFTASSIGN"
+    T.TLAndNotA -> "tBWANDNOTASSIGN"
+    T.TRecv -> "tARROW"
+    T.TDeclA -> "tDEFINE"
+    T.TLdots -> "tELLIPSIS"
+    T.TVar -> "tVAR"
+    (T.TIntVal i) -> "tINTVAL(" ++ show i ++ ")"
+    (T.TFloatVal f) -> "tFLOATVAL(" ++ show f ++ ")"
+    (T.TRuneVal c) -> "tRUNEVAL(" ++ show c ++ ")"
+    (T.TStringVal s) -> "tSTRINGVAL(" ++ s ++ ")"
+    (T.TIdent s) -> "tIDENTIFIER(" ++ s ++ ")"
+    T.TEOF -> error "TEOF should not be converted into a string"
+    T.TNewLine -> error "TNewLine should not be converted into a string"
 
 -- |prettyPrint calls prettify on a list of tokens and then prints each one one a new line
 prettyPrint :: [T.InnerToken] -> IO ()
@@ -99,26 +117,33 @@ alexMonadScan = do
   sc <- T.alexGetStartCode
   case T.alexScan inp__ sc of
     T.AlexEOF -> T.alexEOF
-    T.AlexError (T.AlexPn _ line column,prev,_,s) -> T.alexError $ "Error: lexical error at line " ++ show line ++ ", column " ++ show column ++ ". Previous character: " ++ show prev ++ ", current string: " ++ s
-    T.AlexSkip  inp__' _len -> do
-        T.alexSetInput inp__'
-        alexMonadScan
+    T.AlexError (T.AlexPn _ line column, prev, _, s) ->
+      T.alexError $
+      "Error: lexical error at line " ++
+      show line ++ ", column " ++ show column ++ ". Previous character: " ++ show prev ++ ", current string: " ++ s
+    T.AlexSkip inp__' _len -> do
+      T.alexSetInput inp__'
+      alexMonadScan
     T.AlexToken inp__' len action -> do
-        T.alexSetInput inp__'
-        action (T.ignorePendingBytes inp__) len
+      T.alexSetInput inp__'
+      action (T.ignorePendingBytes inp__) len
 
 -- | scan, the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
 scan :: String -> Either String [T.InnerToken]
-scan s = T.runAlex s $ do let loop tokl =
-                                do (T.Token _ tok) <- alexMonadScan;
-                                     if tok == T.TEOF then return tokl
-                                     else loop (tok:tokl)
-                          loop []
+scan s =
+  T.runAlex s $ do
+    let loop tokl = do
+          (T.Token _ tok) <- alexMonadScan
+          if tok == T.TEOF
+            then return tokl
+            else loop (tok : tokl)
+    loop []
 
 -- | putExit: function to output to stderr and exit with return code 1
 putExit :: String -> IO ()
-putExit err = do hPutStrLn stderr err
-                 exitFailure
+putExit err = do
+  hPutStrLn stderr err
+  exitFailure
 
 -- | Print result of scan, i.e. tokens or error
 scanP :: String -> IO ()
