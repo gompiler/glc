@@ -10,14 +10,14 @@ clean:
 	stack clean --allow-different-user --full
 
 .PHONY: build
-build: src/Tokens.hs src/Parser.hs
+build: src/Tokens.hs #src/Parser.hs
 	stack --allow-different-user build
 
 src/Tokens.hs: golite.x
-	alex $< -o $@
+	alex $< -g -o $@
 
-src/Parser.hs: golite.ly
-	happy $< -o $@
+src/Parser.hs: golite.y
+	happy $< -agc -o $@
 
 glc: build
 	@rm -f glc
