@@ -16,11 +16,10 @@ before_install:
 install:
 # Build dependencies
 - cd src
-- pwd
 - stack --no-terminal --install-ghc test --only-dependencies
 script:
 - cd src
-- pwd
-- stack --no-terminal test --haddock --no-haddock-deps
+- stack test
+# - stack --no-terminal test --haddock --no-haddock-deps
 notifications:
   email: false
