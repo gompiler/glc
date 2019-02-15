@@ -20,7 +20,6 @@ module Scanner
 
 import           System.Exit
 import           System.IO
-
 -- Helper functions for scanning using tokens and also pass relevant things to parser
 import qualified Tokens      as T
 

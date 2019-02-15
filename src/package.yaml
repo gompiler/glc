@@ -24,7 +24,7 @@ dependencies:
 - array
 
 library:
-  source-dirs: src
+  source-dirs: [src, src/cli, src/scanner]
 
 executables:
   glc:
