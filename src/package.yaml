@@ -2,9 +2,9 @@ name:                glc
 version:             0.1.0.0
 github:              "githubuser/glc"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2019 Author name here"
+author:              "Gompiler contributors"
+#maintainer:          "example@example.com"
+copyright:           "2019 Gompiler contributors"
 
 extra-source-files:
 - README.md
