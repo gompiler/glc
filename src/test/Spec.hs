@@ -1,2 +1,7 @@
-main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+import           Test.HUnit
+
+tests :: [Test]
+tests = []
+
+main :: IO Counts
+main = runTestTT $ test tests
