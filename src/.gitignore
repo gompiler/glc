@@ -1,3 +1,16 @@
 .stack-work/
 glc.cabal
 *~
+
+# IntelliJ
+*.iml
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+
+# Mac
+.DS_Store
