@@ -1,19 +1,22 @@
 module Main where
 
-import ParseCLI
-import Scanner
 import qualified Options.Applicative as Op
+import           ParseCLI
+import           Scanner
 
 main :: IO ()
 main = do
   CI cmd inp <- Op.customExecParser (Op.prefs Op.showHelpOnEmpty) cmdParser
-  case cmd of
+  case cmd
     -- Special case, match on file only
+        of
     Codegen -> putStrLn "codegen not yet implemented"
-    _ -> inpToIOStr inp >>= case cmd of
-                              Scan      -> scanC
-                              Tokens    -> scanP
-                              Parse     -> \s -> putStrLn "parse not yet implemented"
-                              Pretty    -> \s -> putStrLn "pretty not yet implemented"
-                              Symbol    -> \s -> putStrLn "symbol not yet implemented"
-                              Typecheck -> \s -> putStrLn "typecheck not yet implemented"
+    _ ->
+      inpToIOStr inp >>=
+      case cmd of
+        Scan      -> scanC
+        Tokens    -> scanP
+        Parse     -> const $ putStrLn "parse not yet implemented"
+        Pretty    -> const $ putStrLn "pretty not yet implemented"
+        Symbol    -> const $ putStrLn "symbol not yet implemented"
+        Typecheck -> const $ putStrLn "typecheck not yet implemented"
