@@ -14,3 +14,5 @@ glc.cabal
 
 # Mac
 .DS_Store
+
+out/

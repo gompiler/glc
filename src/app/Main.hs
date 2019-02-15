@@ -2,6 +2,7 @@ module Main where
 
 import qualified Options.Applicative as Op
 import           ParseCLI
+import           Scanner
 
 main :: IO ()
 main = do
@@ -13,9 +14,9 @@ main = do
     _ ->
       inpToIOStr inp >>=
       case cmd of
-        Scan      -> \s -> putStrLn "scan not yet implemented"
-        Tokens    -> \s -> putStrLn "tokens not yet implemented"
-        Parse     -> \s -> putStrLn "parse not yet implemented"
-        Pretty    -> \s -> putStrLn "pretty not yet implemented"
-        Symbol    -> \s -> putStrLn "symbol not yet implemented"
-        Typecheck -> \s -> putStrLn "typecheck not yet implemented"
+        Scan      -> scanC
+        Tokens    -> scanP
+        Parse     -> const $ putStrLn "parse not yet implemented"
+        Pretty    -> const $ putStrLn "pretty not yet implemented"
+        Symbol    -> const $ putStrLn "symbol not yet implemented"
+        Typecheck -> const $ putStrLn "typecheck not yet implemented"
