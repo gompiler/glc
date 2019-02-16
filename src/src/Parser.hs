@@ -37,7 +37,7 @@ data ImportSpec =
 -- | See https://golang.org/ref/spec#VarDecl
 -- TODO, I don't really like this format
 data VarDecl =
-  VarDecl Identifier
+  VarDecl (NonEmpty Identifier)
           (Either (Type, Maybe Expr) Expr)
 
 data VarDecl'
@@ -46,7 +46,7 @@ data VarDecl'
 
 -- | See https://golang.org/ref/spec#ConstDecl
 data ConstDecl =
-  ConstDecl Identifier
+  ConstDecl (NonEmpty Identifier)
             (Maybe Type)
             Expr
 
@@ -55,11 +55,10 @@ data ConstDecl'
   | ConstDecl'' [ConstDecl]
 
 -- | See https://golang.org/ref/spec#TypeDecl
+-- Golite does not support type alias
 data TypeDecl
   = TypeDef Identifier
             Type
-  | AliasDecl Identifier
-              Type
 
 -- | See https://golang.org/ref/spec#FunctionDecl
 -- If no stmt, func is implemented externally
@@ -67,8 +66,6 @@ data FuncDecl =
   FuncDecl Identifier
            Signature
            (Maybe FuncBody)
-
-type FuncBody = Stmt
 
 data ParameterDecl =
   ParameterDecl [Identifier]
@@ -96,11 +93,14 @@ data MethodDecl =
              (Maybe FuncBody)
 
 --data TopDeclaration = ConstDecl | TypeDecl | VarDecl | FuncDecl | MethodDecl
+-- Just a test; not necessary
 data Scope
   = UniverseScope
   | PackageScope
   | FuncScope
   | StmtScope
+
+type FuncBody = Stmt
 
 data Stmt
   = BlockStmt [Stmt]
@@ -114,28 +114,57 @@ data Stmt
 -- * Integer must parse all valid int types
 -- * Floats must support exponents
 data Expr
-  = IntConst IntType
+  = IntConst IntType'
              Integer -- note that this is not Int, which is limited to 2^29 - 1
   | FloatConst Float
   | RuneConst Char
-  | StringConst StringType
+  | StringConst StringType'
                 String
   | Var Identifier -- todo look at predeclared identifiers? https://golang.org/ref/spec#Predeclared_identifiers
 
-data IntType
+data IntType'
   = Decimal
   | Octal
   | Hexadecimal
 
-data StringType
+data StringType'
   = Interpreted
   | Raw
 
 data Type
-  = Integer IntType
-  | Float
-  | Rune
-  | String StringType
+  = IntType IntType'
+  | FloatType
+  | RuneType
+  | StringType StringType'
+  | CustomType TypeName
+  -- Note that expr must evaluate to int const
+  | ArrayType (Maybe Expr)
+              Type
+  | SliceType Type
+  | StructType [FieldDecl]
+  | PointerType Type
+  | FuncType Signature
+--  | InterfaceType (Either (Identifier, Signature) TypeName)
+--  | MapType Type Type
+
+
+-- TODO; this should be expr of type StringType
+newtype StringLiteral =
+  StringLiteral ()
+
+data FieldDecl
+  = FieldDecl (NonEmpty Identifier)
+              Type
+              (Maybe StringLiteral)
+  | EmbeddedField TypeName
+                  (Maybe StringLiteral)
+
+type PackageName = String
+
+data TypeName
+  = TypeId Identifier
+  | QualiiedTypeId PackageName
+                   Identifier
 
 data Infix' =
   Infix'
