@@ -27,6 +27,7 @@ dependencies:
 - hashtables
 - containers
 - HUnit
+- hspec
 
 library:
   source-dirs: [src, src/generated]
