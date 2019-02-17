@@ -1,15 +1,23 @@
-{-# LANGUAGE DataKinds      #-}
-{-# LANGUAGE GADTs          #-}
-{-# LANGUAGE KindSignatures #-}
+--{-# LANGUAGE ConstraintKinds #-}
+--{-# LANGUAGE DataKinds       #-}
+--{-# LANGUAGE GADTs           #-}
+--{-# LANGUAGE PolyKinds       #-}
+--{-# LANGUAGE TypeFamilies    #-}
+--{-# LANGUAGE TypeOperators   #-}
 
 module Parser where
 
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
+import           GHC.Exts           (Constraint)
+import           GHC.TypeLits
 
 -- note that I do not classify blank identifiers as a separate type
 -- because we can easily pattern match it already
 type Identifier = String
+
+-- Identifier + optional package name (qualified identifier)
+type Identifier' = (Maybe PackageName, Identifier)
 
 type IfStmt = (Expr, Stmt)
 
@@ -20,7 +28,7 @@ data Program = Program
   { package   :: String
   , imports   :: [ImportSpec]
   -- I'm looking into datakinds. I don't want to declare a new type for topdecl and then link all the constructors again
-  , topLevels :: [TODO]
+  , topLevels :: [TopDecl]
   }
 
 -- | Identifier here can either be:
@@ -34,38 +42,31 @@ data ImportSpec =
 
 ----------------------------------------------------------------------
 -- Declarations
--- | See https://golang.org/ref/spec#VarDecl
--- TODO, I don't really like this format
-data VarDecl =
-  VarDecl (NonEmpty Identifier)
-          (Either (Type, Maybe Expr) Expr)
+-- | See https://golang.org/ref/spec#Declarations_and_scope
+data TopDecl
+  = TopDecl Decl
+  | TopFuncDecl Identifier
+                Signature
+                (Maybe FuncBody)
 
-data VarDecl'
-  = VarDecl' VarDecl
-  | VarDecl'' [VarDecl]
-
--- | See https://golang.org/ref/spec#ConstDecl
-data ConstDecl =
-  ConstDecl (NonEmpty Identifier)
-            (Maybe Type)
-            Expr
-
-data ConstDecl'
-  = ConstDecl' ConstDecl
-  | ConstDecl'' [ConstDecl]
-
--- | See https://golang.org/ref/spec#TypeDecl
 -- Golite does not support type alias
-data TypeDecl
-  = TypeDef Identifier
+data Decl
+  -- | See https://golang.org/ref/spec#VarDecl
+  = VarDecl [VarDecl']
+  | ConstDecl [ConstDecl']
+  -- | See https://golang.org/ref/spec#TypeDecl
+  | TypeDef Identifier
             Type
 
--- | See https://golang.org/ref/spec#FunctionDecl
--- If no stmt, func is implemented externally
-data FuncDecl =
-  FuncDecl Identifier
-           Signature
-           (Maybe FuncBody)
+data VarDecl' =
+  VarDecl' (NonEmpty Identifier)
+           (Either (Type, Maybe Expr) Expr)
+
+-- | See https://golang.org/ref/spec#ConstDecl
+data ConstDecl' =
+  ConstDecl' (NonEmpty Identifier)
+             (Maybe Type)
+             Expr
 
 data ParameterDecl =
   ParameterDecl [Identifier]
@@ -136,7 +137,7 @@ data Type
   | FloatType
   | RuneType
   | StringType StringType'
-  | CustomType TypeName
+  | CustomType Identifier'
   -- Note that expr must evaluate to int const
   | ArrayType (Maybe Expr)
               Type
@@ -144,10 +145,9 @@ data Type
   | StructType [FieldDecl]
   | PointerType Type
   | FuncType Signature
+
 --  | InterfaceType (Either (Identifier, Signature) TypeName)
 --  | MapType Type Type
-
-
 -- TODO; this should be expr of type StringType
 newtype StringLiteral =
   StringLiteral ()
@@ -156,15 +156,10 @@ data FieldDecl
   = FieldDecl (NonEmpty Identifier)
               Type
               (Maybe StringLiteral)
-  | EmbeddedField TypeName
+  | EmbeddedField Identifier'
                   (Maybe StringLiteral)
 
 type PackageName = String
-
-data TypeName
-  = TypeId Identifier
-  | QualiiedTypeId PackageName
-                   Identifier
 
 data Infix' =
   Infix'
