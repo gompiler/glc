@@ -30,7 +30,6 @@ data Program = Program
   , topLevels :: [TopDecl]
   }
 
-
 ----------------------------------------------------------------------
 -- Declarations
 -- | See https://golang.org/ref/spec#Declarations_and_scope
@@ -133,7 +132,7 @@ data Type
   | StringType StringType'
   | CustomType Identifier'
   -- Note that expr must evaluate to int const
-  | ArrayType (Maybe Expr)
+  | ArrayType Expr
               Type
   | SliceType Type
   | StructType [FieldDecl]
