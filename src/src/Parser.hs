@@ -52,7 +52,6 @@ data TopDecl
 data Decl
   -- | See https://golang.org/ref/spec#VarDecl
   = VarDecl [VarDecl']
-  | ConstDecl [ConstDecl']
   -- | See https://golang.org/ref/spec#TypeDecl
   | TypeDef [TypeDef']
 
@@ -61,10 +60,11 @@ data VarDecl' =
            (Either (Type, Maybe Expr) Expr)
 
 -- | See https://golang.org/ref/spec#ConstDecl
-data ConstDecl' =
-  ConstDecl' (NonEmpty Identifier)
-             (Maybe Type)
-             Expr
+-- Not supported in golite; kept for reference
+--data ConstDecl' =
+--  ConstDecl' (NonEmpty Identifier)
+--             (Maybe Type)
+--             Expr
 
 data TypeDef' =
   TypeDef' Identifier
