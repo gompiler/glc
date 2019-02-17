@@ -107,6 +107,7 @@ data Stmt
 -- | Notes on parser todo:
 -- * Integer must parse all valid int types
 -- * Floats must support exponents
+-- Note that this is largely WIP; golite will probably have a separated structure
 data Expr
   = IntConst IntType'
              Integer -- note that this is not Int, which is limited to 2^29 - 1
