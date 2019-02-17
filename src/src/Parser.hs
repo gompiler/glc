@@ -24,20 +24,12 @@ newtype TODO =
   TODO String -- temp
 
 -- | See https://golang.org/ref/spec#Source_file_organization
+-- Imports not supported in golite
 data Program = Program
   { package   :: String
-  , imports   :: [ImportSpec]
   , topLevels :: [TopDecl]
   }
 
--- | Identifier here can either be:
--- * blank - same name as package
--- * '.' - imports all packages in folder without qualifier
--- * '_' - ignored; imported solely for side-effects (initialization)
--- * some string - qualified name
-data ImportSpec =
-  ImportSpec (Maybe Identifier)
-             String
 
 ----------------------------------------------------------------------
 -- Declarations
@@ -58,13 +50,6 @@ data Decl
 data VarDecl' =
   VarDecl' (NonEmpty Identifier)
            (Either (Type, Maybe Expr) Expr)
-
--- | See https://golang.org/ref/spec#ConstDecl
--- Not supported in golite; kept for reference
---data ConstDecl' =
---  ConstDecl' (NonEmpty Identifier)
---             (Maybe Type)
---             Expr
 
 data TypeDef' =
   TypeDef' Identifier
