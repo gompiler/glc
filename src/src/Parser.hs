@@ -4,7 +4,6 @@
 --{-# LANGUAGE PolyKinds       #-}
 --{-# LANGUAGE TypeFamilies    #-}
 --{-# LANGUAGE TypeOperators   #-}
-
 module Parser where
 
 import           Data.List.NonEmpty (NonEmpty (..))
@@ -21,7 +20,8 @@ type Identifier' = (Maybe PackageName, Identifier)
 
 type IfStmt = (Expr, Stmt)
 
-newtype TODO = TODO String -- temp
+newtype TODO =
+  TODO String -- temp
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 data Program = Program
@@ -54,8 +54,7 @@ data Decl
   = VarDecl [VarDecl']
   | ConstDecl [ConstDecl']
   -- | See https://golang.org/ref/spec#TypeDecl
-  | TypeDef Identifier
-            Type
+  | TypeDef [TypeDef']
 
 data VarDecl' =
   VarDecl' (NonEmpty Identifier)
@@ -67,9 +66,12 @@ data ConstDecl' =
              (Maybe Type)
              Expr
 
+data TypeDef' =
+  TypeDef' Identifier
+           Type
+
 ----------------------------------------------------------------------
 -- Func components
-
 data ParameterDecl =
   ParameterDecl [Identifier]
                 Type
@@ -95,10 +97,8 @@ data MethodDecl =
              Signature
              (Maybe FuncBody)
 
-
 ----------------------------------------------------------------------
 -- Func body/statements
-
 -- Just a test; not necessary
 data Scope
   = UniverseScope
@@ -120,7 +120,6 @@ data Stmt
 
 ----------------------------------------------------------------------
 -- Expressions
-
 -- | Notes on parser todo:
 -- * Integer must parse all valid int types
 -- * Floats must support exponents
