@@ -21,13 +21,12 @@ type Identifier' = (Maybe PackageName, Identifier)
 
 type IfStmt = (Expr, Stmt)
 
-type TODO = () -- temp
+newtype TODO = TODO String -- temp
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 data Program = Program
   { package   :: String
   , imports   :: [ImportSpec]
-  -- I'm looking into datakinds. I don't want to declare a new type for topdecl and then link all the constructors again
   , topLevels :: [TopDecl]
   }
 
@@ -68,6 +67,9 @@ data ConstDecl' =
              (Maybe Type)
              Expr
 
+----------------------------------------------------------------------
+-- Func components
+
 data ParameterDecl =
   ParameterDecl [Identifier]
                 Type
@@ -93,7 +95,10 @@ data MethodDecl =
              Signature
              (Maybe FuncBody)
 
---data TopDeclaration = ConstDecl | TypeDecl | VarDecl | FuncDecl | MethodDecl
+
+----------------------------------------------------------------------
+-- Func body/statements
+
 -- Just a test; not necessary
 data Scope
   = UniverseScope
@@ -101,8 +106,10 @@ data Scope
   | FuncScope
   | StmtScope
 
+-- WIP
 type FuncBody = Stmt
 
+-- WIP: taken from assignment
 data Stmt
   = BlockStmt [Stmt]
   | If IfStmt
@@ -110,6 +117,9 @@ data Stmt
   | While Expr
           Stmt
   | Blank
+
+----------------------------------------------------------------------
+-- Expressions
 
 -- | Notes on parser todo:
 -- * Integer must parse all valid int types
@@ -149,8 +159,7 @@ data Type
 --  | InterfaceType (Either (Identifier, Signature) TypeName)
 --  | MapType Type Type
 -- TODO; this should be expr of type StringType
-newtype StringLiteral =
-  StringLiteral ()
+type StringLiteral = TODO
 
 data FieldDecl
   = FieldDecl (NonEmpty Identifier)
