@@ -4,7 +4,7 @@
 --{-# LANGUAGE PolyKinds       #-}
 --{-# LANGUAGE TypeFamilies    #-}
 --{-# LANGUAGE TypeOperators   #-}
-module Parser where
+module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
