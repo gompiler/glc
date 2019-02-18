@@ -14,6 +14,10 @@ $charesc = [abfnrtv\\\'\"]
 $symbol = [\!\#\$\%\^\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\(\)\,\;\[\]\`\{\}]
 $graphic   = [$alpha $symbol $digit \:\"\']
 
+$octal = 0-7
+$hex = [$digit A-F a-f]
+$nl = [\n \r]
+
 -- Control characters to the right of ^
 $ctrl = [$upper \@\[\\\]\^\_]
 -- Special ascii characters
@@ -26,7 +30,7 @@ $ctrl = [$upper \@\[\\\]\^\_]
 tokens :-
 
     -- ignore whitespace
-    \n                                  { tok TNewLine }
+    $nl                                 { tok TNewLine }
     $white+                             ;
     "//".*                              ;
     "//*".*"//*"                        ;
@@ -107,7 +111,9 @@ tokens :-
     append                              { tok TAppend }
     len                                 { tok TLen }
     cap                                 { tok TCap }
-    $digit+                             { tokRInp TIntVal }
+    0$octal+                            { tokM TOctVal }
+    0[xX]$hex+                          { tokM THexVal }
+    $digit+                             { tokM TDecVal }
     $digit*\.$digit+                    { tokRInp TFloatVal }
     $alpha [$alpha $digit \_]*          { tokM TIdent }
     <0> \' @string \'                   { tokCInp TRuneVal }
@@ -196,7 +202,9 @@ data InnerToken = TBreak
                 | TDot
                 | TColon
                 | TSemicolon
-                | TIntVal Int
+                | TDecVal String
+                | TOctVal String
+                | THexVal String
                 | TRuneVal Char
                 | TFloatVal Float
                 | TStringVal String
@@ -221,7 +229,8 @@ tok x = tokM $ const x
 
 -- | Char
 tokCInp :: Monad m => (t -> InnerToken) -> (AlexPosn, b, c, [t]) -> Int -> m Token
-tokCInp x = tokM $ x . head
+-- Input will *always* be of length 3 as we only feed '@string' to this, where @string is one character corresponding to the string macro
+tokCInp x = tokM $ x . (\s -> s!!1) -- Take index 1 of the string that should be 'C' where C is a char
 
 tokRInp :: (Monad m, Read t) => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
 -- | tokInp but pass s through read (for things that aren't strings)
