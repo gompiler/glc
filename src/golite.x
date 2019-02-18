@@ -30,11 +30,11 @@ $ctrl = [$upper \@\[\\\]\^\_]
 tokens :-
 
     -- ignore whitespace
-    $nl                                 { tok TNewLine }
+    <nl> $nl                           { andBegin (tok TSemicolon) 0 }
     $white+                             ;
     "//".*                              ;
     "//*".*"//*"                        ;
-    "+"                                 { tok TPlus }
+    "+"                                 { andBegin (tok TPlus) 0 }
     "-"                                 { tok TMinus }
     "*"                                 { tok TTimes }
     "/"                                 { tok TDiv }
@@ -70,7 +70,7 @@ tokens :-
     "&&"                                { tok TAnd }
     "||"                                { tok TOr }
     "<-"                                { tok TRecv }
-    "++"                                { tok TInc }
+    "++"                                { andBegin (tok TInc) nl }
     "--"                                { tok TDInc }
     "=="                                { tok TEq }
     "!="                                { tok TNEq }
@@ -210,7 +210,6 @@ data InnerToken = TBreak
                 | TStringVal String
                 | TRStringVal String -- Raw String
                 | TIdent String
-                | TNewLine -- For post-processing semicolon insertion
                 | TEOF
                 deriving (Eq, Show)
                 

@@ -115,7 +115,6 @@ prettify t =
     T.TInc -> "tINC"
     T.TDInc -> "tDEC"
     T.TEOF -> error "TEOF should not be converted into a string"
-    T.TNewLine -> error "TNewLine should not be converted into a string"
 
 -- |prettyPrint calls prettify on a list of tokens and then prints each one one a new line
 prettyPrint :: [T.InnerToken] -> IO ()
