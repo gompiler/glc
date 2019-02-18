@@ -1079,7 +1079,7 @@ tok x = tokM $ const x
 -- | Char
 tokCInp :: Monad m => (t -> InnerToken) -> (AlexPosn, b, c, [t]) -> Int -> m Token
 -- Input will *always* be of length 3 as we only feed '@string' to this, where @string is one character corresponding to the string macro
-tokCInp x = tokM $ x . (\s -> s!!1) -- Take index 1 of the string that should be 'C' where C is a char
+tokCInp x = tokM $ x . (!!1) -- Take index 1 of the string that should be 'C' where C is a char
 
 tokRInp :: (Monad m, Read t) => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
 -- | tokInp but pass s through read (for things that aren't strings)
