@@ -104,7 +104,7 @@ expectScanT =
                -- ("\"teststring\"", Right([TStringVal "\"teststring\"", TSemicolon])),
                -- ("`teststring`", Right([TRStringVal "`teststring`, TSemicolon])),
   , ("1.23", Right ([TFloatVal 1.23, TSemicolon]))
-  , ("help", Right ([TIdent "help"]))
+  , ("help", Right ([TIdent "help", TSemicolon]))
   , ("case", Right ([TCase]))
   , ("print", Right ([TPrint]))
   , ("println", Right ([TPrintln]))
@@ -120,6 +120,9 @@ expectScanT =
   , ("", Right ([]))
   , ("\n", Right ([]))
   , ("\r", Right ([]))
+  , ("// This is a comment", Right ([]))
+  , ("//* Block comment //*", Right ([]))
+  , ("a //* Block \n //*", Right ([TIdent "a", TSemicolon]))
                -- This will have to change if we change error printing
   , ( "''"
     , Left
