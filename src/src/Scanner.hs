@@ -6,6 +6,7 @@ module Scanner
   , getPos
   , happyError
   , lexer
+  , scanT
   , scanP
   , scanC
   , putExit
@@ -137,6 +138,9 @@ scan s =
             then return tokl
             else loop (tok : tokl)
     loop []
+
+scanT :: String -> Either String [T.InnerToken]
+scanT s = either (Left . id) (Right . reverse) (scan s)
 
 -- | putExit: function to output to stderr and exit with return code 1
 putExit :: String -> IO ()
