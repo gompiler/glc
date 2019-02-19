@@ -114,6 +114,9 @@ data SimpleStmt
   | ShortDeclare (NonEmpty Identifier)
                  (NonEmpty Expr)
 
+blank :: Stmt
+blank = SimpleStmt EmptyStmt
+
 -- | See https://golang.org/ref/spec#Statement
 -- & See https://golang.org/ref/spec#Block
 -- Note that Golang specs makes a distinction of blocks and statements,
@@ -121,8 +124,6 @@ data SimpleStmt
 -- However, at the AST level, this distinction no longer exists
 data Stmt
   = BlockStmt [Stmt]
-  -- Shorthand to 'SimpleStmt EmptyStmt'
-  | Blank
   | SimpleStmt SimpleStmt
   -- | See https://golang.org/ref/spec#If_statements
   -- Note that the simple stmt is optional;
