@@ -64,12 +64,11 @@ data ParameterDecl =
 newtype Parameters =
   Parameters [ParameterDecl]
 
-newtype Result =
-  Result (Either Parameters Type)
-
+-- Golite does not support multiple return values or named values;
+-- No result type needed
 data Signature =
   Signature Parameters
-            (Maybe Result)
+            (Maybe Type)
 
 type Receiver = Parameters
 
