@@ -200,12 +200,16 @@ data BinaryOp
   | GEQ -- >=
 
 -- | See https://golang.org/ref/spec#add_op
--- & See https://golang.org/ref/spec#add_op
+-- & See https://golang.org/ref/spec#mul_op
+-- We make no distinction between addop and mulop
+-- As they are separated in the specs purely to show the order of operations
 data ArithmOp
+  --- Add Ops
   = Add -- +
   | Subtract -- -
   | BitOr -- |
   | BitXor -- ^
+  --- Mul Ops
   | Multiply -- *
   | Divide -- /
   | Remainder -- %
