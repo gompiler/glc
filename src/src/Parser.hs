@@ -60,11 +60,9 @@ data ParameterDecl =
   ParameterDecl [Identifier]
                 Type
 
--- Bool refers to variadic type, which may be applied to thee last parameter only
--- Note that in the specs, it is defined within ParameterDecl, but it makes sense here for the AST
-data Parameters =
+-- Variadic parameters aren't supported in golite
+newtype Parameters =
   Parameters [ParameterDecl]
-             Bool
 
 newtype Result =
   Result (Either Parameters Type)
