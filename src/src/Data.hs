@@ -98,7 +98,6 @@ type FuncBody = Stmt
 
 -- | See https://golang.org/ref/spec#SimpleStmt
 data SimpleStmt
-  -- TODO see if this is necessary; it may be that all simplestmts are optional
   = EmptyStmt
   -- | See https://golang.org/ref/spec#Expression_statements
   | ExprStmt TODO
@@ -122,7 +121,7 @@ data SimpleStmt
 -- However, at the AST level, this distinction no longer exists
 data Stmt
   = BlockStmt [Stmt]
-  -- TODO custom empty stmt
+  -- Shorthand to 'SimpleStmt EmptyStmt'
   | Blank
   | SimpleStmt SimpleStmt
   -- | See https://golang.org/ref/spec#If_statements
