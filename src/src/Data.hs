@@ -42,7 +42,8 @@ data Decl
 -- | See https://golang.org/ref/spec#VarDecl
 -- A single declaration line can declare one or more identifiers
 -- There is an optional type, as well as an optional list of expressions.
--- The expression list should match the length of the identifier list
+-- The expression list should match the length of the identifier list,
+-- though we make no guarantees at this AST stage
 -- Should a type be specified, the expression list is optional
 data VarDecl' =
   VarDecl' (NonEmpty Identifier)
@@ -179,7 +180,6 @@ data ForClause
 
 ----------------------------------------------------------------------
 --Expressions
-
 -- | TODO WIP
 -- | See https://golang.org/ref/spec#Expression
 -- Note that we don't care about parentheses here;
