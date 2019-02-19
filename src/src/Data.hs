@@ -42,13 +42,21 @@ data TopDecl
 -- Golite does not support type alias
 data Decl
   -- | See https://golang.org/ref/spec#VarDecl
+  -- If only on entry exists, it is treated as a single line declaration
+  -- Otherwise, it is treated as var ( ... )
   = VarDecl [VarDecl']
   -- | See https://golang.org/ref/spec#TypeDecl
+  -- Same spec as VarDecl
   | TypeDef [TypeDef']
 
+-- | See https://golang.org/ref/spec#VarDecl
+-- A single declaration line can declare one or more identifiers
+-- There is an optional type, as well as an optional list of expressions.
+-- The expression list should match the length of the identifier list
+-- Should a type be specified, the expression list is optional
 data VarDecl' =
   VarDecl' (NonEmpty Identifier)
-           (Either (Type, Maybe Expr) Expr)
+           (Either (Type, [Expr]) (NonEmpty Expr))
 
 data TypeDef' =
   TypeDef' Identifier
