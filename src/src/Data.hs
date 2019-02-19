@@ -1,9 +1,3 @@
---{-# LANGUAGE ConstraintKinds #-}
---{-# LANGUAGE DataKinds       #-}
---{-# LANGUAGE GADTs           #-}
---{-# LANGUAGE PolyKinds       #-}
---{-# LANGUAGE TypeFamilies    #-}
---{-# LANGUAGE TypeOperators   #-}
 module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
