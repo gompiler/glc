@@ -35,9 +35,7 @@ data Program = Program
 -- | See https://golang.org/ref/spec#Declarations_and_scope
 data TopDecl
   = TopDecl Decl
-  | TopFuncDecl Identifier
-                Signature
-                (Maybe FuncBody)
+  | TopFuncDecl FuncDecl
 
 -- Golite does not support type alias
 data Decl
@@ -63,6 +61,20 @@ data TypeDef' =
            Type
 
 ----------------------------------------------------------------------
+-- | See https://golang.org/ref/spec#Function_declarations
+-- Eg func f(a int, b int, c string, d int)
+-- Eg func f(a, b int, c string) string
+-- Not supported:
+-- * Arbitrary return value count
+-- * Named return values
+-- * Optional body
+-- * Unnamed input parameters
+-- * Variadic parameters
+data FuncDecl =
+  FuncDecl Identifier
+           Signature
+           FuncBody
+
 -- Func components
 data ParameterDecl =
   ParameterDecl [Identifier]
@@ -74,17 +86,10 @@ newtype Parameters =
 
 -- Golite does not support multiple return values or named values;
 -- No result type needed
+-- TODO see if we want this or if we want to merge this into FuncDecl
 data Signature =
   Signature Parameters
             (Maybe Type)
-
-type Receiver = Parameters
-
--- | See https://golang.org/ref/spec#Method_declarations
-data MethodDecl =
-  MethodDecl Receiver
-             Signature
-             (Maybe FuncBody)
 
 ----------------------------------------------------------------------
 -- Func body/statements
