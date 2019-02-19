@@ -125,8 +125,13 @@ data Stmt
   | Blank
   | SimpleStmt SimpleStmt
   -- | See https://golang.org/ref/spec#If_statements
-  -- We have made
-  | If IfStmt
+  -- Note that the simple stmt is optional;
+  -- however, we already have a representation for an 'empty' simple stmt
+  -- Note that the last entry is an optional block or if statement
+  -- however, this all falls into our stmt category
+  | If SimpleStmt
+       Expr
+       Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
   -- Golite does not support type switches
   -- Note that there should be at most one default
@@ -151,16 +156,6 @@ data Stmt
 
 newtype Label =
   Label Identifier
-
--- | See https://golang.org/ref/spec#IfStmt
--- Note that the simple stmt is optional;
--- however, we already have a representation for an 'empty' simple stmt
--- Note that the last entry is an optional block or if statement
--- however, this all falls into our stmt category
-data IfStmt =
-  IfStmt SimpleStmt
-         Expr
-         Stmt
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
 data SwitchCase
