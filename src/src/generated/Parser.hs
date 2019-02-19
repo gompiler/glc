@@ -84,7 +84,7 @@ happyReduce_1 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Ha
 #endif
 happyReduce_1 = happySpecReduce_0  0# happyReduction_1
 happyReduction_1  =  happyIn4
-		 (Blank
+		 (blank
 	)
 
 happyNewToken action sts stk

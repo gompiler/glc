@@ -112,7 +112,7 @@ import System.IO
     ident                               { Token _ (TIdent _) }
 
 %%
-Stmt : { Blank }
+Stmt : { blank }
 {
 
 -- Extract posn only
