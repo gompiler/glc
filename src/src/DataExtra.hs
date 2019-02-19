@@ -1,6 +1,6 @@
-module ParseExtra where
+module DataExtra where
 
-import Parser
+import Data
 import Data.List.NonEmpty (NonEmpty)
 
 -- Collection of golang models that aren't supported in golite
