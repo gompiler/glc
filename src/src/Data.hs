@@ -18,8 +18,6 @@ type Identifier = String
 -- Identifier + optional package name (qualified identifier)
 type Identifier' = (Maybe PackageName, Identifier)
 
-type IfStmt = (Expr, Stmt)
-
 newtype TODO =
   TODO String -- temp
 
@@ -103,29 +101,144 @@ data Scope
 -- WIP
 type FuncBody = Stmt
 
--- WIP: taken from assignment
+-- | See https://golang.org/ref/spec#SimpleStmt
+data SimpleStmt
+  -- TODO see if this is necessary; it may be that all simplestmts are optional
+  = EmptyStmt
+  -- | See https://golang.org/ref/spec#Expression_statements
+  | ExprStmt TODO
+  -- | See https://golang.org/ref/spec#IncDecStmt
+  -- TODO check if we want to split these or add a new field for inc and dec
+  | Increment Expr
+  | Decrement Expr
+  -- | See https://golang.org/ref/spec#Assignments
+  -- TODO confirm that expression lists should be equal
+  | Assign AssignOp
+           (NonEmpty Expr)
+           (NonEmpty Expr)
+  -- | See https://golang.org/ref/spec#ShortVarDecl
+  | ShortDeclare (NonEmpty Identifier)
+                 (NonEmpty Expr)
+
+-- | See https://golang.org/ref/spec#Statement
+-- & See https://golang.org/ref/spec#Block
+-- Note that Golang specs makes a distinction of blocks and statements,
+-- where blocks are wrapped with braces
+-- However, at the AST level, this distinction no longer exists
 data Stmt
   = BlockStmt [Stmt]
-  | If IfStmt
-       (Maybe IfStmt)
-  | While Expr
-          Stmt
+  -- TODO custom empty stmt
   | Blank
+  | SimpleStmt SimpleStmt
+  -- | See https://golang.org/ref/spec#If_statements
+  -- We have made
+  | If IfStmt
+  -- | See https://golang.org/ref/spec#Switch_statements
+  -- Golite does not support type switches
+  -- Note that there should be at most one default
+  -- The next AST model can make that distinction
+  | Switch [SwitchCase]
+  -- | See https://golang.org/ref/spec#For_statements
+  | For ForClause
+        Stmt
+  -- | See https://golang.org/ref/spec#Break_statements
+  | Break (Maybe Label)
+  -- | See https://golang.org/ref/spec#Continue_statements
+  | Continue (Maybe Label)
+  -- | See https://golang.org/ref/spec#Declaration
+  | Declare Decl
+  -- Golite exclusive
+  | Print [Expr]
+  -- Golite exclusive
+  | Println [Expr]
+  -- | See https://golang.org/ref/spec#Return_statements
+  -- In golite, at most one expr can be returned
+  | Return (Maybe Expr)
+
+newtype Label =
+  Label Identifier
+
+-- | See https://golang.org/ref/spec#IfStmt
+-- Note that the simple stmt is optional;
+-- however, we already have a representation for an 'empty' simple stmt
+-- Note that the last entry is an optional block or if statement
+-- however, this all falls into our stmt category
+data IfStmt =
+  IfStmt SimpleStmt
+         Expr
+         Stmt
+
+-- | See https://golang.org/ref/spec#ExprSwitchStmt
+data SwitchCase
+  = Case (NonEmpty Expr)
+         Stmt
+  | Default Stmt
+
+-- | See https://golang.org/ref/spec#For_statements
+-- Golite does not support range statement
+data ForClause
+  = ForInfinite -- blank clause
+  | ForCond Expr
+  | ForClause SimpleStmt
+              Expr
+              SimpleStmt
 
 ----------------------------------------------------------------------
--- Expressions
--- | Notes on parser todo:
--- * Integer must parse all valid int types
--- * Floats must support exponents
--- Note that this is largely WIP; golite will probably have a separated structure
+--Expressions
+
+-- | TODO WIP
+-- | See https://golang.org/ref/spec#Expression
+-- Note that we don't care about parentheses here;
+-- We can infer them from the AST
 data Expr
-  = IntConst IntType'
-             Integer -- note that this is not Int, which is limited to 2^29 - 1
-  | FloatConst Float
-  | RuneConst Char
-  | StringConst StringType'
-                String
-  | Var Identifier -- todo look at predeclared identifiers? https://golang.org/ref/spec#Predeclared_identifiers
+  = Unary UnaryOp
+          Expr
+  | Binary BinaryOp
+           Expr
+           Expr
+
+-- | See https://golang.org/ref/spec#binary_op
+-- & See https://golang.org/ref/spec#rel_op
+data BinaryOp
+  = Or -- ||
+  | And -- &&
+  | Arithm ArithmOp
+  | EQ -- ==
+  | NEQ -- !=
+  | LT -- <
+  | LEQ -- <=
+  | GT -- >
+  | GEQ -- >=
+
+-- | See https://golang.org/ref/spec#add_op
+-- & See https://golang.org/ref/spec#add_op
+data ArithmOp
+  = Add -- +
+  | Subtract -- -
+  | BitOr -- |
+  | BitXor -- ^
+  | Multiply -- *
+  | Divide -- /
+  | Remainder -- %
+  | ShiftL -- <<
+  | ShiftR -- >>
+  | BitAnd -- &
+  | BitClear -- &^
+
+-- | See https://golang.org/ref/spec#unary_op
+-- Receive (<-) not implemented; no channel support
+data UnaryOp
+  = Pos -- +
+  | Neg -- -
+  | Not -- !
+  | BitComplement -- ^
+  | Pointer -- *
+  | Address -- &
+
+-- | See https://golang.org/ref/spec#assign_op
+-- Symbol is the arithm op followed by '='
+newtype AssignOp =
+  AssignOp (Maybe ArithmOp)
 
 data IntType'
   = Decimal
