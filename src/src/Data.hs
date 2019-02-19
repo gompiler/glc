@@ -136,16 +136,21 @@ data StringType'
   = Interpreted
   | Raw
 
+-- | See https://golang.org/ref/spec#Types
+-- TODO check if we support custom types? Looks like no aliasing
 data Type
   = IntType IntType'
   | FloatType
+  | BoolType
   | RuneType
   | StringType StringType'
-  | CustomType Identifier'
+  -- | See https://golang.org/ref/spec#Array_types
   -- Note that expr must evaluate to int const
   | ArrayType Expr
               Type
+  -- | See https://golang.org/ref/spec#Slice_types
   | SliceType Type
+  -- | See https://golang.org/ref/spec#Struct_types
   | StructType [FieldDecl]
   | PointerType Type
   | FuncType Signature
