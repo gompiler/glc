@@ -1022,7 +1022,7 @@ data InnerToken = TBreak
                 | TDivA     -- /=
                 | TModA     -- %=
                 | TLAndA    -- &=
-                | TLOrA     -- |= 
+                | TLOrA     -- |=
                 | TLXorA    -- ^=
                 | TLeftSA   -- <<=
                 | TRightSA  -- >>=
@@ -1062,13 +1062,13 @@ data InnerToken = TBreak
                 | TIdent String
                 | TEOF
                 deriving (Eq, Show)
-                
+
 alexEOF :: Alex Token
 alexEOF = do
         (p, _, _, _) <- alexGetInput
         return (Token p TEOF)
 
--- | tokM is a monad wrapper, this deals with consumming strings from the input string and wrappin tokens in a monad
+-- | tokM is a monad wrapper, this deals with consumming strings from the input string and wrapping tokens in a monad
 tokM :: Monad m => ([a] -> InnerToken) -> (AlexPosn, b, c, [a]) -> Int -> m Token
 tokM f (p, _, _, s) len = return (Token p (f (take len s)))
 
@@ -1077,103 +1077,133 @@ tok :: Monad m => InnerToken -> (AlexPosn, b, c, [a]) -> Int -> m Token
 tok x = tokM $ const x
 
 -- | Char
-tokCInp :: Monad m => (t -> InnerToken) -> (AlexPosn, b, c, [t]) -> Int -> m Token
+-- tokCInp :: Monad m => (t -> InnerToken) -> (AlexPosn, b, c, [t]) -> Int -> m Token
 -- Input will *always* be of length 3 as we only feed '@string' to this, where @string is one character corresponding to the string macro
-tokCInp x = tokM $ x . (!!1) -- Take index 1 of the string that should be 'C' where C is a char
+tokCInp x = andBegin (tokM $ x . (!!1)) (getTokenState $ x ' ') -- Take index 1 of the string that should be 'C' where C is a char
 
-tokRInp :: (Monad m, Read t) => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
+-- tokRInp :: (Monad m, Read t) => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
 -- | tokInp but pass s through read (for things that aren't strings)
-tokRInp x = tokM $ x . read
+tokRInp x = andBegin (tokM $ x . read) (getTokenState $ x 0.0)
+
+nlTokens  = [TInc, TDInc, TRParen, TRBrace, TBreak, TContinue, TReturn]
+nlSTokens = [TOctVal, THexVal, TDecVal, TIdent, TStringVal, TRStringVal]
+
+-- TODO: TRStringVal, TRuneVal, TFloatVal, TIdent, TDecVal, THexVal, TOctVal, others...
+
+-- | Gets token state for semicolon insertion (either 0 or nl)
+getTokenState :: InnerToken -> Int
+getTokenState t
+  | t `elem` nlTokens  = nl
+  | otherwise =
+      case t of
+        TIdent _        -> nl
+        TDecVal _       -> nl
+        TOctVal _       -> nl
+        THexVal _       -> nl
+        TRuneVal _      -> nl
+        TFloatVal _     -> nl
+        TStringVal _    -> nl
+        TRStringVal _   -> nl
+        _               -> 0
+
+-- | Wrapper for andBegin/tok
+-- TODO: TYPE SIGNATURE
+tokS x = andBegin (tokM $ const x) (getTokenState x)
+
+-- | Same thing, but for tokM
+-- TODO: TYPE SIGNATURE
+tokSM x = andBegin (tokM x) (getTokenState $ x)
+
 
 
 nl :: Int
 nl = 1
-alex_action_0 =  andBegin (tok TSemicolon) 0 
-alex_action_4 =  andBegin (tok TPlus) 0 
-alex_action_5 =  tok TMinus 
-alex_action_6 =  tok TTimes 
-alex_action_7 =  tok TDiv 
-alex_action_8 =  tok TMod 
-alex_action_9 =  tok TLAnd 
-alex_action_10 =  tok TLOr 
-alex_action_11 =  tok TLXor 
-alex_action_12 =  tok TColon 
-alex_action_13 =  tok TSemicolon 
-alex_action_14 =  tok TLParen 
-alex_action_15 =  tok TRParen 
-alex_action_16 =  tok TLSquareB 
-alex_action_17 =  tok TRSquareB 
-alex_action_18 =  tok TLBrace 
-alex_action_19 =  tok TRBrace 
-alex_action_20 =  tok TAssn 
-alex_action_21 =  tok TComma 
-alex_action_22 =  tok TDot 
-alex_action_23 =  tok TGt 
-alex_action_24 =  tok TLt 
-alex_action_25 =  tok TNot 
-alex_action_26 =  tok TLeftS 
-alex_action_27 =  tok TRightS 
-alex_action_28 =  tok TLAndNot 
-alex_action_29 =  tok TIncA 
-alex_action_30 =  tok TDIncA 
-alex_action_31 =  tok TMultA 
-alex_action_32 =  tok TDivA 
-alex_action_33 =  tok TModA 
-alex_action_34 =  tok TLAndA 
-alex_action_35 =  tok TLOrA 
-alex_action_36 =  tok TLXorA 
-alex_action_37 =  tok TAnd 
-alex_action_38 =  tok TOr 
-alex_action_39 =  tok TRecv 
-alex_action_40 =  andBegin (tok TInc) nl 
-alex_action_41 =  tok TDInc 
-alex_action_42 =  tok TEq 
-alex_action_43 =  tok TNEq 
-alex_action_44 =  tok TLEq 
-alex_action_45 =  tok TGEq 
-alex_action_46 =  tok TDeclA 
-alex_action_47 =  tok TLeftSA 
-alex_action_48 =  tok TRightSA 
-alex_action_49 =  tok TLAndNotA 
-alex_action_50 =  tok TLdots 
-alex_action_51 =  tok TBreak 
-alex_action_52 =  tok TCase 
-alex_action_53 =  tok TChan 
-alex_action_54 =  tok TConst 
-alex_action_55 =  tok TContinue 
-alex_action_56 =  tok TDefault 
-alex_action_57 =  tok TDefer 
-alex_action_58 =  tok TElse 
-alex_action_59 =  tok TFallthrough 
-alex_action_60 =  tok TFor 
-alex_action_61 =  tok TFunc 
-alex_action_62 =  tok TGo 
-alex_action_63 =  tok TGoto 
-alex_action_64 =  tok TIf 
-alex_action_65 =  tok TImport 
-alex_action_66 =  tok TInterface 
-alex_action_67 =  tok TMap 
-alex_action_68 =  tok TPackage 
-alex_action_69 =  tok TRange 
-alex_action_70 =  tok TReturn 
-alex_action_71 =  tok TSelect 
-alex_action_72 =  tok TStruct 
-alex_action_73 =  tok TSwitch 
-alex_action_74 =  tok TType 
-alex_action_75 =  tok TVar 
-alex_action_76 =  tok TPrint 
-alex_action_77 =  tok TPrintln 
-alex_action_78 =  tok TAppend 
-alex_action_79 =  tok TLen 
-alex_action_80 =  tok TCap 
-alex_action_81 =  tokM TOctVal 
-alex_action_82 =  tokM THexVal 
-alex_action_83 =  tokM TDecVal 
+alex_action_0 =  tokS TSemicolon 
+alex_action_4 =  tokS TPlus 
+alex_action_5 =  tokS TMinus 
+alex_action_6 =  tokS TTimes 
+alex_action_7 =  tokS TDiv 
+alex_action_8 =  tokS TMod 
+alex_action_9 =  tokS TLAnd 
+alex_action_10 =  tokS TLOr 
+alex_action_11 =  tokS TLXor 
+alex_action_12 =  tokS TColon 
+alex_action_13 =  tokS TSemicolon 
+alex_action_14 =  tokS TLParen 
+alex_action_15 =  tokS TRParen 
+alex_action_16 =  tokS TLSquareB 
+alex_action_17 =  tokS TRSquareB 
+alex_action_18 =  tokS TLBrace 
+alex_action_19 =  tokS TRBrace 
+alex_action_20 =  tokS TAssn 
+alex_action_21 =  tokS TComma 
+alex_action_22 =  tokS TDot 
+alex_action_23 =  tokS TGt 
+alex_action_24 =  tokS TLt 
+alex_action_25 =  tokS TNot 
+alex_action_26 =  tokS TLeftS 
+alex_action_27 =  tokS TRightS 
+alex_action_28 =  tokS TLAndNot 
+alex_action_29 =  tokS TIncA 
+alex_action_30 =  tokS TDIncA 
+alex_action_31 =  tokS TMultA 
+alex_action_32 =  tokS TDivA 
+alex_action_33 =  tokS TModA 
+alex_action_34 =  tokS TLAndA 
+alex_action_35 =  tokS TLOrA 
+alex_action_36 =  tokS TLXorA 
+alex_action_37 =  tokS TAnd 
+alex_action_38 =  tokS TOr 
+alex_action_39 =  tokS TRecv 
+alex_action_40 =  tokS TInc 
+alex_action_41 =  tokS TDInc 
+alex_action_42 =  tokS TEq 
+alex_action_43 =  tokS TNEq 
+alex_action_44 =  tokS TLEq 
+alex_action_45 =  tokS TGEq 
+alex_action_46 =  tokS TDeclA 
+alex_action_47 =  tokS TLeftSA 
+alex_action_48 =  tokS TRightSA 
+alex_action_49 =  tokS TLAndNotA 
+alex_action_50 =  tokS TLdots 
+alex_action_51 =  tokS TBreak 
+alex_action_52 =  tokS TCase 
+alex_action_53 =  tokS TChan 
+alex_action_54 =  tokS TConst 
+alex_action_55 =  tokS TContinue 
+alex_action_56 =  tokS TDefault 
+alex_action_57 =  tokS TDefer 
+alex_action_58 =  tokS TElse 
+alex_action_59 =  tokS TFallthrough 
+alex_action_60 =  tokS TFor 
+alex_action_61 =  tokS TFunc 
+alex_action_62 =  tokS TGo 
+alex_action_63 =  tokS TGoto 
+alex_action_64 =  tokS TIf 
+alex_action_65 =  tokS TImport 
+alex_action_66 =  tokS TInterface 
+alex_action_67 =  tokS TMap 
+alex_action_68 =  tokS TPackage 
+alex_action_69 =  tokS TRange 
+alex_action_70 =  tokS TReturn 
+alex_action_71 =  tokS TSelect 
+alex_action_72 =  tokS TStruct 
+alex_action_73 =  tokS TSwitch 
+alex_action_74 =  tokS TType 
+alex_action_75 =  tokS TVar 
+alex_action_76 =  tokS TPrint 
+alex_action_77 =  tokS TPrintln 
+alex_action_78 =  tokS TAppend 
+alex_action_79 =  tokS TLen 
+alex_action_80 =  tokS TCap 
+alex_action_81 =  tokSM TOctVal 
+alex_action_82 =  tokSM THexVal 
+alex_action_83 =  tokSM TDecVal 
 alex_action_84 =  tokRInp TFloatVal 
-alex_action_85 =  tokM TIdent 
+alex_action_85 =  tokSM TIdent 
 alex_action_86 =  tokCInp TRuneVal 
-alex_action_87 =  tokM TStringVal 
-alex_action_88 =  tokM TRStringVal 
+alex_action_87 =  tokSM TStringVal 
+alex_action_88 =  tokSM TRStringVal 
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- -----------------------------------------------------------------------------
 -- ALEX TEMPLATE
