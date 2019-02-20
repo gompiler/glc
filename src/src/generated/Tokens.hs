@@ -1086,9 +1086,6 @@ tokCInp x = andBegin (tokM $ x . (!!1)) (getTokenState $ x ' ') -- Take index 1 
 tokRInp x = andBegin (tokM $ x . read) (getTokenState $ x 0.0)
 
 nlTokens  = [TInc, TDInc, TRParen, TRBrace, TBreak, TContinue, TReturn]
-nlSTokens = [TOctVal, THexVal, TDecVal, TIdent, TStringVal, TRStringVal]
-
--- TODO: TRStringVal, TRuneVal, TFloatVal, TIdent, TDecVal, THexVal, TOctVal, others...
 
 -- | Gets token state for semicolon insertion (either 0 or nl)
 getTokenState :: InnerToken -> Int
@@ -1112,8 +1109,7 @@ tokS x = andBegin (tokM $ const x) (getTokenState x)
 
 -- | Same thing, but for tokM
 -- TODO: TYPE SIGNATURE
-tokSM x = andBegin (tokM x) (getTokenState $ x)
-
+tokSM x = andBegin (tokM x) (getTokenState $ x "")
 
 
 nl :: Int
