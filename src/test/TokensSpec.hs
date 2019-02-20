@@ -116,7 +116,7 @@ expectScanT =
   , ("++;", Right ([TInc, TSemicolon]))
   , ("--", Right ([TDInc, TSemicolon]))
   , ("--;", Right ([TDInc, TSemicolon]))
-  , ("'a'", Right ([TRuneVal 'a']))
+  , ("'a'", Right ([TRuneVal 'a', TSemicolon]))
   , ("", Right ([]))
   , ("\n", Right ([]))
   , ("\r", Right ([]))
