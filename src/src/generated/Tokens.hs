@@ -1091,25 +1091,15 @@ nlTokens  = [TInc, TDInc, TRParen, TRBrace, TBreak, TContinue, TReturn]
 getTokenState :: InnerToken -> Int
 getTokenState t
   | t `elem` nlTokens  = nl
-  | otherwise =
-      case t of
-        TIdent _        -> nl
-        TDecVal _       -> nl
-        TOctVal _       -> nl
-        THexVal _       -> nl
-        TRuneVal _      -> nl
-        TFloatVal _     -> nl
-        TStringVal _    -> nl
-        TRStringVal _   -> nl
-        _               -> 0
+  | otherwise = 0
 
 -- | Wrapper for andBegin/tok
--- TODO: TYPE SIGNATURE
+tokS :: InnerToken -> AlexAction Token
 tokS x = andBegin (tokM $ const x) (getTokenState x)
 
 -- | Same thing, but for tokM
--- TODO: TYPE SIGNATURE
-tokSM x = andBegin (tokM x) (getTokenState $ x "")
+tokSM :: ([Char] -> InnerToken) -> AlexAction Token
+tokSM x = andBegin (tokM x) nl -- All literal values can take optional semicolons
 
 
 nl :: Int
