@@ -1077,13 +1077,14 @@ tok :: Monad m => InnerToken -> (AlexPosn, b, c, [a]) -> Int -> m Token
 tok x = tokM $ const x
 
 -- | Char
--- tokCInp :: Monad m => (t -> InnerToken) -> (AlexPosn, b, c, [t]) -> Int -> m Token
+-- tokCInp :: Monad m => (Char -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
 -- Input will *always* be of length 3 as we only feed '@string' to this, where @string is one character corresponding to the string macro
-tokCInp x = andBegin (tokM $ x . (!!1)) (getTokenState $ x ' ') -- Take index 1 of the string that should be 'C' where C is a char
+tokCInp x = andBegin (tokM $ x . (!!1)) nl -- Take index 1 of the string that should be 'C' where C is a char
+                                           -- All literal vals can take optional semicolons, hence the nl
 
 -- tokRInp :: (Monad m, Read t) => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
 -- | tokInp but pass s through read (for things that aren't strings)
-tokRInp x = andBegin (tokM $ x . read) (getTokenState $ x 0.0)
+tokRInp x = andBegin (tokM $ x . read) nl -- Lit val
 
 nlTokens  = [TInc, TDInc, TRParen, TRBrace, TBreak, TContinue, TReturn]
 
