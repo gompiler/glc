@@ -9,6 +9,11 @@ allL: glc
 clean:
 	stack clean --allow-different-user --full
 
+.PHONY: cleangen
+cleangen:
+	@rm -f src/generated/Tokens.hs
+	@rm -f src/generated/Parser.hs
+
 .PHONY: build
 build: src/generated/Tokens.hs #src/generated/Parser.hs
 	stack --allow-different-user build

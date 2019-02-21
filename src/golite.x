@@ -116,9 +116,9 @@ tokens :-
     $digit+                             { tokSM TDecVal }
     $digit*\.$digit+                    { tokRInp TFloatVal }
     $alpha [$alpha $digit \_]*          { tokSM TIdent }
-    <0> \' @string \'                   { tokCInp TRuneVal }
-    <0> \" @string* \"                  { tokSM TStringVal }
-    <0> \` @string* \`                  { tokSM TRStringVal }
+    \' @string \'                       { tokCInp TRuneVal }
+    \" @string* \"                      { tokSM TStringVal }
+    \` @string* \`                      { tokSM TRStringVal }
 
 {
 data Token = Token AlexPosn InnerToken
