@@ -21,10 +21,10 @@ module Scanner
 
 import           System.Exit
 import           System.IO
+
 -- Helper functions for scanning using tokens and also pass relevant things to parser
 import qualified Tokens      as T
 
--- TODO: Finish implementing prettify
 -- |prettify, takes a token and turn it into a string representing said token
 -- Also makes the tokens look like the expected tTYPE format
 prettify :: T.InnerToken -> String
@@ -98,13 +98,24 @@ prettify t =
     T.TDeclA -> "tDEFINE"
     T.TLdots -> "tELLIPSIS"
     T.TVar -> "tVAR"
-    (T.TIntVal i) -> "tINTVAL(" ++ show i ++ ")"
+    (T.TDecVal s) -> "tINTVAL(" ++ s ++ ")"
+    (T.TOctVal s) -> "tINTVAL(" ++ s ++ ")"
+    (T.THexVal s) -> "tINTVAL(" ++ s ++ ")"
     (T.TFloatVal f) -> "tFLOATVAL(" ++ show f ++ ")"
     (T.TRuneVal c) -> "tRUNEVAL(" ++ show c ++ ")"
     (T.TStringVal s) -> "tSTRINGVAL(" ++ s ++ ")"
+    (T.TRStringVal s) -> "tSTRINGVAL(" ++ s ++ ")"
     (T.TIdent s) -> "tIDENTIFIER(" ++ s ++ ")"
+    T.TCase -> "tCASE"
+    T.TPrint -> "tPRINT"
+    T.TPrintln -> "tPRINTLN"
+    T.TType -> "tTYPE"
+    T.TAppend -> "tAPPEND"
+    T.TLen -> "tLEN"
+    T.TCap -> "tCAP"
+    T.TInc -> "tINC"
+    T.TDInc -> "tDEC"
     T.TEOF -> error "TEOF should not be converted into a string"
-    T.TNewLine -> error "TNewLine should not be converted into a string"
 
 -- |prettyPrint calls prettify on a list of tokens and then prints each one one a new line
 prettyPrint :: [T.InnerToken] -> IO ()
@@ -120,7 +131,10 @@ alexMonadScan = do
     T.AlexError (T.AlexPn _ line column, prev, _, s) ->
       T.alexError $
       "Error: lexical error at line " ++
-      show line ++ ", column " ++ show column ++ ". Previous character: " ++ show prev ++ ", current string: " ++ s
+      show line ++
+      ", column " ++
+      show column ++
+      ". Previous character: " ++ show prev ++ ", current string: " ++ s
     T.AlexSkip inp__' _len -> do
       T.alexSetInput inp__'
       alexMonadScan
@@ -150,7 +164,8 @@ putExit err = do
 
 -- | Print result of scan, i.e. tokens or error
 scanP :: String -> IO ()
-scanP s = either putExit (\tl -> prettyPrint (reverse tl) >> exitSuccess) (scan s)
+scanP s =
+  either putExit (\tl -> prettyPrint (reverse tl) >> exitSuccess) (scan s)
 
 -- | Check for error, if none will print OK
 scanC :: String -> IO ()
@@ -167,7 +182,9 @@ returnP = return
 
 -- | showError will be passed to happyError and will define behavior on parser errors
 showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
-showError (l, c, _) = T.alexError ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
+showError (l, c, _) =
+  T.alexError
+    ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
 
 getPos :: T.Alex T.AlexPosn
 getPos = T.Alex (\s -> Right (s, T.alex_pos s))
