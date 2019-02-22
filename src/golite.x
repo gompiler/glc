@@ -6,7 +6,7 @@ module Tokens where
 
 -- Macro helper definitions
 $digit = 0-9
-$upper = [A-z]
+$upper = [A-Z]
 $lower = [a-z \_]
 $alpha = [$upper $lower]
 
@@ -115,7 +115,7 @@ tokens :-
     0[xX]$hex+                          { tokSM THexVal }
     $digit+                             { tokSM TDecVal }
     $digit*\.$digit+                    { tokRInp TFloatVal }
-    $alpha [$alpha $digit \_]*          { tokSM TIdent }
+    $alpha [$alpha $digit]*             { tokSM TIdent }
     \' @string \'                       { tokCInp TRuneVal }
     \" @string* \"                      { tokSM TStringVal }
     \` @string* \`                      { tokSM TRStringVal }
