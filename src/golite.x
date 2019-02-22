@@ -30,8 +30,8 @@ $ctrl = [$upper \@\[\\\]\^\_]
 tokens :-
 
     -- ignore whitespace
-    <nl> $white* $nl                    { tokS TSemicolon }
-    $white+                             ;
+    <nl> $nl                            { tokS TSemicolon }
+    $white                              ;
     "//".*                              ;
     "//*".*"//*"                        ;
     "+"                                 { tokS TPlus }
