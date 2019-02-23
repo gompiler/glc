@@ -1,5 +1,6 @@
 {
 module Tokens where
+import Data.Char (chr)
 }
 
 %wrapper "monad"
@@ -27,13 +28,16 @@ $ctrl = [$upper \@\[\\\]\^\_]
 
 @string = $graphic # [\"\\] | " " | @escape | @special
 
+@comment = "/*"
+
 tokens :-
 
     -- ignore whitespace
     <nl> $nl                            { tokS TSemicolon }
+    --<nl> @comment                       { blockCommentSemi }
     $white                              ;
     "//".*                              ;
-    "//*".*"//*"                        ;
+    <0> @comment                        { blockComment }
     "+"                                 { tokS TPlus }
     "-"                                 { tokS TMinus }
     "*"                                 { tokS TTimes }
@@ -218,21 +222,40 @@ alexEOF = do
         (p, _, _, _) <- alexGetInput
         return (Token p TEOF)
 
+blockComment :: AlexInput -> Int -> Alex Token
+blockComment _ _ = do
+                 inp <- alexGetInput
+                 checkBlk inp False
+
+blockCommentSemi :: AlexInput -> Int -> Alex Token
+blockCommentSemi _ _ = do
+                 inp <- alexGetInput
+                 checkBlk inp True
+
+checkBlk :: AlexInput -> Bool -> Alex Token
+checkBlk inp semi = maybe (alexError "block error") (\(c, inp) -> case chr (fromIntegral c) of
+                                                               '*'  -> maybe (alexError "block error") (\(c', inp') -> case chr (fromIntegral c') of
+                                                                                                                        '/' -> do alexSetInput inp'; alexMonadScan
+                                                                                                                        _   -> checkBlk inp' semi) (alexGetByte inp)
+                                                               --'\n' -> if semi then ... add a semicolon somehow
+                                                               _    -> checkBlk inp semi
+                                               ) (alexGetByte inp)
+
 -- | tokM is a monad wrapper, this deals with consumming strings from the input string and wrapping tokens in a monad
-tokM :: Monad m => ([a] -> InnerToken) -> (AlexPosn, b, c, [a]) -> Int -> m Token
+tokM :: ([a] -> InnerToken) -> (AlexPosn, b, c, [a]) -> Int -> Alex Token
 tokM f (p, _, _, s) len = return (Token p (f (take len s)))
 
 -- | Feed function to tokM
-tok :: Monad m => InnerToken -> (AlexPosn, b, c, [a]) -> Int -> m Token
+tok :: InnerToken -> (AlexPosn, b, c, [a]) -> Int -> Alex Token
 tok x = tokM $ const x
 
 -- | Char
--- tokCInp :: Monad m => (Char -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
+-- tokCInp :: (Char -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
 -- Input will *always* be of length 3 as we only feed '@string' to this, where @string is one character corresponding to the string macro
 tokCInp x = andBegin (tokM $ x . (!!1)) nl -- Take index 1 of the string that should be 'C' where C is a char
                                            -- All literal vals can take optional semicolons, hence the nl
 
--- tokRInp :: (Monad m, Read t) => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
+-- tokRInp :: Read t => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
 -- | tokInp but pass s through read (for things that aren't strings)
 tokRInp x = andBegin (tokM $ x . read) nl -- Lit val
 
@@ -249,6 +272,6 @@ tokS :: InnerToken -> AlexAction Token
 tokS x = andBegin (tokM $ const x) (getTokenState x)
 
 -- | Same thing, but for tokM
-tokSM :: ([Char] -> InnerToken) -> AlexAction Token
+tokSM :: (String -> InnerToken) -> AlexAction Token
 tokSM x = andBegin (tokM x) nl -- All literal values can take optional semicolons
 }

@@ -4,15 +4,16 @@ module TokensSpec
 
 import           Scanner
 import           Test.Hspec
+import LongStrings
 
 spec :: Spec
-spec = describe "scan" $ do specWithScanT (";", Right ([TSemicolon]))
-                            -- mapM_ specWithScanT expectScanT
+spec = describe "scanT" $ do specWithScanT (";", Right ([TSemicolon]))
+                             mapM_ specWithScanT expectScanT
 
 -- | Generate a SpecWith using the scan function
 specWithScanT :: (String, Either String [InnerToken]) -> SpecWith ()
 specWithScanT (input, output) =
-  it ("returns " ++ show output ++ " when given `" ++ input ++ "`") $
+  it ("given \n" ++ input ++ "\nreturns " ++ show output) $
   scanT input `shouldBe` output
 
 expectScanT :: [(String, Either String [InnerToken])]
@@ -28,7 +29,8 @@ expectScanT =
   , ("break \n;", Right [TBreak, TSemicolon, TSemicolon])
   , ("chan", Right [TChan])
   , ("const", Right [TConst])
-  , ("continue", Right [TContinue, TSemicolon])
+  , ("continue", Right [TContinue])
+  , ("continue\n", Right [TContinue, TSemicolon])
   , ("continue;", Right [TContinue, TSemicolon])
   , ("default", Right [TDefault])
   , ("defer", Right [TDefer])
@@ -107,7 +109,7 @@ expectScanT =
   , ("12947631951", Right [TDecVal "12947631951"])
   , ("12947631951\n", Right [TDecVal "12947631951", TSemicolon])
   , ("12947631951;\n", Right [TDecVal "12947631951", TSemicolon])
-  , ("003777", Right [TOctVal "003777", TSemicolon])
+  , ("003777", Right [TOctVal "003777"])
   , ("0xCAFEBABE", Right [THexVal "0xCAFEBABE"])
   , ("0XCAFEBABE", Right [THexVal "0XCAFEBABE"])
   , ("0xcAFEbABE", Right [THexVal "0xcAFEbABE"])
@@ -129,8 +131,10 @@ expectScanT =
   , ("0XcAFEbABE;\n", Right [THexVal "0XcAFEbABE", TSemicolon])
   , ("0Xcafebabe;\n", Right [THexVal "0Xcafebabe", TSemicolon])
   , ("\"teststring\"", Right [TStringVal "\"teststring\""])
-  , ("\"teststring\n\"", Right [TStringVal "\"teststring\"", TSemicolon])
-  , ("\"teststring;\n\"", Right [TStringVal "\"teststring\"", TSemicolon])
+  , ("\"teststring\\n\"", Right [TStringVal "\"teststring\\n\""])
+  , ("\"teststring\"\n", Right [TStringVal "\"teststring\"", TSemicolon])
+  , ("\"teststring\\n\"\n", Right [TStringVal "\"teststring\\n\"", TSemicolon])
+  , ("\"teststring\"\n", Right [TStringVal "\"teststring\"", TSemicolon])
   , ("`teststring`", Right [TRStringVal "`teststring`"])
   , ("`teststring`\n", Right [TRStringVal "`teststring`", TSemicolon])
   , ("`teststring`;\n", Right [TRStringVal "`teststring`", TSemicolon])
@@ -160,9 +164,8 @@ expectScanT =
   , ("\n", Right [])
   , ("\r", Right [])
   , ("// This is a comment", Right [])
-  , ("//* Block comment //*", Right [])
-  -- This isn't inserting a newline, to fix
-  -- , ("a //* Block \n //*", Right ([TIdent "a", TSemicolon]))
+  , ("/* Block comment */", Right [])
+  -- , ("a /* Block \n */", Right ([TIdent "a", TSemicolon]))
                -- This will have to change if we change error printing
   , ( "''"
     , Left
@@ -171,9 +174,9 @@ expectScanT =
   , ("break varname;", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break varname\n", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break varname;\n", Right [TBreak, TIdent "varname", TSemicolon])
-  -- Does not insert semicolon if whitespace is included
-  -- , ("break varname \n", Right ([TBreak, TIdent "varname", TSemicolon]))
+  , ("break varname \n", Right ([TBreak, TIdent "varname", TSemicolon]))
   , ("break +\n", Right [TBreak, TPlus])
+  , (lscantest 0, Right [])
   ]
 -- expectScanP :: [(String, String, Either String [InnerToken])]
 -- expectScanP = [("Prints tBREAK tSEMICOLON when given `break`")]

@@ -2,26 +2,26 @@
 
 module LongStrings where
 
-import           Data.Text         (Text)
+import           Data.Text         (Text, unpack)
 import           NeatInterpolation
 
 lscantest :: Int -> String
 lscantest index =
-  show $
+  unpack $
   (!!)
     [ [text|
-       //* Long block comment
-       here's another line
-       and another
-       *//
+           /* Long block comment
+           here's another line
+           and another
+           */
        |]
     , [text|
-              // Short comments
-              // More
-              |]
+           // Short comments
+           // More
+           |]
     , [text|
-                break //* Multiline to simulate
-                a new line*//
-                |]
+           break /* Multiline to simulate
+           a new line*/
+           |]
     ]
     index
