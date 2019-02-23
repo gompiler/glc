@@ -233,13 +233,26 @@ blockCommentSemi _ _ = do
                  checkBlk inp True
 
 checkBlk :: AlexInput -> Bool -> Alex Token
-checkBlk inp semi = maybe (alexError "block error") (\(c, inp) -> case chr (fromIntegral c) of
-                                                               '*'  -> maybe (alexError "block error") (\(c', inp') -> case chr (fromIntegral c') of
-                                                                                                                        '/' -> do alexSetInput inp'; alexMonadScan
-                                                                                                                        _   -> checkBlk inp' semi) (alexGetByte inp)
-                                                               --'\n' -> if semi then ... add a semicolon somehow
-                                                               _    -> checkBlk inp semi
-                                               ) (alexGetByte inp)
+checkBlk inp semi =
+  maybe
+    (alexError "block error")
+    (\(c, inp) ->
+       case chr (fromIntegral c) of
+         '*' ->
+           maybe
+             (alexError "block error")
+             (\(c', inp') ->
+                case chr (fromIntegral c') of
+                  '/' -> do
+                    alexSetInput inp'
+                    if semi
+                      then return (Token (AlexPn 0 0 0) TSemicolon)
+                      else alexMonadScan
+                  _ -> checkBlk inp' semi)
+             (alexGetByte inp)
+         '\n' -> checkBlk inp True
+         _ -> checkBlk inp semi)
+    (alexGetByte inp)
 
 -- | tokM is a monad wrapper, this deals with consumming strings from the input string and wrapping tokens in a monad
 tokM :: ([a] -> InnerToken) -> (AlexPosn, b, c, [a]) -> Int -> Alex Token

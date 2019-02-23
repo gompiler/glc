@@ -1,20 +1,23 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module TokensSpec
   ( spec
   ) where
 
+import           Data.Text         (Text, unpack)
+import           NeatInterpolation
 import           Scanner
 import           Test.Hspec
-import LongStrings
 
 spec :: Spec
-spec = describe "scanT" $ do specWithScanT (";", Right ([TSemicolon]))
-                             mapM_ specWithScanT expectScanT
+spec =
+  describe "scanT" $ do
+    specWithScanT (";", Right ([TSemicolon]))
+    mapM_ specWithScanT expectScanT
 
 -- | Generate a SpecWith using the scan function
 specWithScanT :: (String, Either String [InnerToken]) -> SpecWith ()
-specWithScanT (input, output) =
-  it ("given \n" ++ input ++ "\nreturns " ++ show output) $
-  scanT input `shouldBe` output
+specWithScanT (input, output) = it ("given \n" ++ input ++ "\nreturns " ++ show output) $ scanT input `shouldBe` output
 
 expectScanT :: [(String, Either String [InnerToken])]
 expectScanT =
@@ -167,16 +170,38 @@ expectScanT =
   , ("/* Block comment */", Right [])
   -- , ("a /* Block \n */", Right ([TIdent "a", TSemicolon]))
                -- This will have to change if we change error printing
-  , ( "''"
-    , Left
-        "Error: lexical error at line 1, column 3. Previous character: '\\\'', current string: ")
+  , ("''", Left "Error: lexical error at line 1, column 3. Previous character: '\\\'', current string: ")
   , ("var", Right [TVar])
   , ("break varname;", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break varname\n", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break varname;\n", Right [TBreak, TIdent "varname", TSemicolon])
-  , ("break varname \n", Right ([TBreak, TIdent "varname", TSemicolon]))
+  , ("break varname \n", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break +\n", Right [TBreak, TPlus])
-  , (lscantest 0, Right [])
+  , ( unpack
+        [text|
+          /* Long block comment
+          here's another line
+          and another
+          */
+        |]
+    , Right [TSemicolon])
+  , ( unpack
+        [text|
+          /* Long block comment no new line */
+        |]
+    , Right [])
+  , ( unpack
+        [text|
+          // Short comments
+          // More
+        |]
+    , Right [])
+  , ( unpack
+        [text|
+          break /* Multiline to simulate
+          a new line */
+        |]
+    , Right [TSemicolon])
   ]
 -- expectScanP :: [(String, String, Either String [InnerToken])]
 -- expectScanP = [("Prints tBREAK tSEMICOLON when given `break`")]
