@@ -1,6 +1,5 @@
 {
 module Tokens where
-import Data.Char (chr)
 }
 
 %wrapper "monad"
@@ -34,10 +33,9 @@ tokens :-
 
     -- ignore whitespace
     <nl> $nl                            { tokS TSemicolon }
-    --<nl> @comment                       { blockCommentSemi }
     $white                              ;
     "//".*                              ;
-    <0> @comment                        { blockComment }
+    @comment                            { blockComment }
     "+"                                 { tokS TPlus }
     "-"                                 { tokS TMinus }
     "*"                                 { tokS TTimes }
@@ -225,34 +223,32 @@ alexEOF = do
 blockComment :: AlexInput -> Int -> Alex Token
 blockComment _ _ = do
                  inp <- alexGetInput
-                 checkBlk inp False
+                 checkBlk inp inp False
 
-blockCommentSemi :: AlexInput -> Int -> Alex Token
-blockCommentSemi _ _ = do
-                 inp <- alexGetInput
-                 checkBlk inp True
-
-checkBlk :: AlexInput -> Bool -> Alex Token
-checkBlk inp semi =
+checkBlk :: AlexInput
+         -> AlexInput -- ^ Where the comment started so we can get position to associate with semicolon insertion
+         -> Bool -> Alex Token
+checkBlk inp beg@(pos, _, _, _) semi =
   maybe
-    (alexError "block error")
-    (\(c, inp) ->
-       case chr (fromIntegral c) of
-         '*' ->
-           maybe
-             (alexError "block error")
-             (\(c', inp') ->
-                case chr (fromIntegral c') of
-                  '/' -> do
-                    alexSetInput inp'
-                    if semi
-                      then return (Token (AlexPn 0 0 0) TSemicolon)
-                      else alexMonadScan
-                  _ -> checkBlk inp' semi)
-             (alexGetByte inp)
-         '\n' -> checkBlk inp True
-         _ -> checkBlk inp semi)
-    (alexGetByte inp)
+    (alexError "block error") matchEnd (alexGetByte inp)
+  where
+  bToC b = (toEnum (fromIntegral b) :: Char)
+  matchEnd (b, inp) = case bToC b of
+                        '*'  ->
+                            maybe
+                                (alexError "block error")
+                                matchEnd2 (alexGetByte inp)
+                        '\n' -> checkBlk inp beg True
+                        _    -> checkBlk inp beg semi
+  matchEnd2 (b, inp) = case bToC b of
+                         '/' -> do
+                             alexSetInput inp
+                             sc <- alexGetStartCode
+                             if semi && (sc == nl)
+                                then alexSetStartCode 0 >>
+                                     return (Token pos TSemicolon)
+                                else alexMonadScan
+                         _   -> checkBlk inp beg semi
 
 -- | tokM is a monad wrapper, this deals with consumming strings from the input string and wrapping tokens in a monad
 tokM :: ([a] -> InnerToken) -> (AlexPosn, b, c, [a]) -> Int -> Alex Token

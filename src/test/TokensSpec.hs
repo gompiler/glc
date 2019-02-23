@@ -184,7 +184,7 @@ expectScanT =
           and another
           */
         |]
-    , Right [TSemicolon])
+    , Right [])
   , ( unpack
         [text|
           /* Long block comment no new line */
@@ -201,7 +201,7 @@ expectScanT =
           break /* Multiline to simulate
           a new line */
         |]
-    , Right [TSemicolon])
+    , Right [TBreak, TSemicolon])
   ]
 -- expectScanP :: [(String, String, Either String [InnerToken])]
 -- expectScanP = [("Prints tBREAK tSEMICOLON when given `break`")]
