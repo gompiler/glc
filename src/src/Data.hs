@@ -142,9 +142,11 @@ data Stmt
   | For ForClause
         Stmt
   -- | See https://golang.org/ref/spec#Break_statements
-  | Break (Maybe Label)
+  -- Labels are not supported in Golite
+  | Break
   -- | See https://golang.org/ref/spec#Continue_statements
-  | Continue (Maybe Label)
+  -- Labels are not supported in Golite
+  | Continue
   -- | See https://golang.org/ref/spec#Declaration
   | Declare Decl
   -- Golite exclusive
@@ -192,7 +194,8 @@ data Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
-  | AppendExpr Expr Expr
+  | AppendExpr Expr
+               Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports strings, arrays, and slices
@@ -201,7 +204,8 @@ data Expr
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports arrays and slices
   | CapExpr Expr
-  | Conversion Type Expr
+  | Conversion Type
+               Expr
 
 -- | See https://golang.org/ref/spec#Literal
 -- TODO do we want to store string and type?
