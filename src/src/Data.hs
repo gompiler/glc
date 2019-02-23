@@ -299,10 +299,11 @@ data Type
   | PointerType Type
   | FuncType Signature
 
---  | InterfaceType (Either (Identifier, Signature) TypeName)
---  | MapType Type Type
--- TODO; this should be expr of type StringType
-type StringLiteral = TODO
+-- | See https://golang.org/ref/spec#string_lit
+-- TODO check if we want to use a data kind and reuse the StringLit constructor within Literals
+data StringLiteral =
+  StringLiteral StringType'
+                String
 
 data FieldDecl
   = FieldDecl (NonEmpty Identifier)
