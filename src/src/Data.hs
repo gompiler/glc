@@ -175,16 +175,50 @@ data ForClause
 
 ----------------------------------------------------------------------
 --Expressions
--- | TODO WIP
 -- | See https://golang.org/ref/spec#Expression
 -- Note that we don't care about parentheses here;
 -- We can infer them from the AST
+-- TODO support slices? index?
 data Expr
   = Unary UnaryOp
           Expr
-  | Binary BinaryOp
+  | Binary Expr
+           BinaryOp
            Expr
-           Expr
+  -- | See https://golang.org/ref/spec#Operands
+  | Lit Literal
+  -- | See https://golang.org/ref/spec#OperandName
+  | Var Identifier'
+  -- | Golite spec
+  -- See https://golang.org/ref/spec#Appending_and_copying_slices
+  -- First expr should be a slice
+  | AppendExpr Expr Expr
+  -- | Golite spec
+  -- See https://golang.org/ref/spec#Length_and_capacity
+  -- Supports strings, arrays, and slices
+  | LenExpr Expr
+  -- | Golite spec
+  -- See https://golang.org/ref/spec#Length_and_capacity
+  -- Supports arrays and slices
+  | CapExpr Expr
+  | Conversion Type Expr
+
+-- | See https://golang.org/ref/spec#Literal
+-- TODO do we want to store string and type?
+-- Type can be inferred from string
+-- If we want to keep erroneous states invalid,
+-- we might want just string, or store as int and reformat on pretty print
+-- TODO support other literals?
+data Literal
+  = IntLit IntType'
+           String
+  | FloatLit Float
+  | RuneLit Char
+  | StringLit StringType'
+              String
+  -- | See https://golang.org/ref/spec#FunctionLit
+  | FuncLit Signature
+            FuncBody
 
 -- | See https://golang.org/ref/spec#binary_op
 -- & See https://golang.org/ref/spec#rel_op
@@ -274,9 +308,3 @@ data FieldDecl
                   (Maybe StringLiteral)
 
 type PackageName = String
-
-data Infix' =
-  Infix'
-
-data Prefix' =
-  Prefix'
