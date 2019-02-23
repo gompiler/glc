@@ -1078,7 +1078,7 @@ tokCInp x = andBegin (tokM $ x . (!!1)) nl -- Take index 1 of the string that sh
 -- | tokInp but pass s through read (for things that aren't strings)
 tokRInp x = andBegin (tokM $ x . read) nl -- Lit val
 
-nlTokens  = [TInc, TDInc, TRParen, TRBrace, TBreak, TContinue, TReturn]
+nlTokens  = [TInc, TDInc, TRParen, TRSquareB, TRBrace, TBreak, TContinue, TFallthrough, TReturn]
 
 -- | Gets token state for semicolon insertion (either 0 or nl)
 getTokenState :: InnerToken -> Int
