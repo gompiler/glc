@@ -276,16 +276,10 @@ data StringType'
   | Raw
 
 -- | See https://golang.org/ref/spec#Types
--- TODO check if we support custom types? Looks like no aliasing
 data Type
-  = IntType IntType'
-  | FloatType
-  | BoolType
-  | RuneType
-  | StringType StringType'
   -- | See https://golang.org/ref/spec#Array_types
   -- Note that expr must evaluate to int const
-  | ArrayType Expr
+  = ArrayType Expr
               Type
   -- | See https://golang.org/ref/spec#Slice_types
   | SliceType Type
