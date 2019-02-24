@@ -293,6 +293,7 @@ data Type
   | StructType [FieldDecl]
   | PointerType Type
   | FuncType Signature
+  | Type Identifier
 
 -- | See https://golang.org/ref/spec#string_lit
 -- TODO check if we want to use a data kind and reuse the StringLit constructor within Literals
