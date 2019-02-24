@@ -9,9 +9,6 @@ import           GHC.TypeLits
 -- because we can easily pattern match it already
 type Identifier = String
 
--- Identifier + optional package name (qualified identifier)
-type Identifier' = (Maybe PackageName, Identifier)
-
 newtype TODO =
   TODO String -- temp
 
@@ -190,7 +187,7 @@ data Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var Identifier'
+  | Var Identifier
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
@@ -307,7 +304,7 @@ data FieldDecl
   = FieldDecl (NonEmpty Identifier)
               Type
               (Maybe StringLiteral)
-  | EmbeddedField Identifier'
+  | EmbeddedField Identifier
                   (Maybe StringLiteral)
 
 type PackageName = String
