@@ -25,8 +25,6 @@ import System.IO
 %nonassoc POS {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
 %nonassoc NEG {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
 %nonassoc COM {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
-%nonassoc PTR {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
-%nonassoc ADR {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
 
 %token
     '+'                                 { Token _ TPlus }
@@ -186,8 +184,6 @@ Expr       : '+' Expr %prec POS                     { Unary Pos $2 }
            | '-' Expr %prec NEG                     { Unary Neg $2 }
            | '!' Expr                               { Unary Not $2 }
            | '^' Expr %prec COM                     { Unary BitComplement $2 }
-           | '*' Expr %prec PTR                     { Unary Pointer $2 }
-           | '&' Expr %prec ADR                     { Unary Address $2 }
            | Expr "||" Expr                         { Binary $1 Or $3 }
            | Expr "&&" Expr                         { Binary $1 And $3 }
            | Expr "==" Expr                         { Binary $1 EQ $3 }
