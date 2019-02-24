@@ -15,6 +15,7 @@ import System.IO
 %errorhandlertype explist
 %error { parseError }
 
+%nonassoc ',' {- Lowest precedence, for arrays and expression lists. -}
 %left "||"
 %left "&&"
 %left "==" "!=" '<' "<=" '>' ">="
