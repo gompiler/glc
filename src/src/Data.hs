@@ -65,9 +65,11 @@ data FuncDecl =
            Signature
            FuncBody
 
+-- | See https://golang.org/ref/spec#ParameterDecl
 -- Func components
+-- Golite does not support unnamed parameters
 data ParameterDecl =
-  ParameterDecl [Identifier]
+  ParameterDecl (NonEmpty Identifier)
                 Type
 
 -- Variadic parameters aren't supported in golite
