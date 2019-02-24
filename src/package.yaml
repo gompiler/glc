@@ -27,6 +27,8 @@ dependencies:
 - hashtables
 - containers
 - hspec
+- text
+- neat-interpolation
 
 library:
   source-dirs: [src, src/generated]
