@@ -175,7 +175,7 @@ AssignOp   : '+'                                    { AssignOp (Just Add) }
            | '*'                                    { AssignOp (Just Multiply) }
            | {- empty -}                            { AssignOp (Nothing) }
 
-IfStmt     : if OptSpStmt Expr BlockStmt Elses      { If $2 $3 $4 $5 } {- TODO: ELSES -}
+IfStmt     : if OptSpStmt Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
 Elses      : else IfStmt                            { $2 }
            | else BlockStmt                         { $2 }
            | {- empty -}                            { blank }
