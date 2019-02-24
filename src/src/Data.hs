@@ -130,8 +130,8 @@ data Stmt
   -- however, we already have a representation for an 'empty' simple stmt
   -- Note that the last entry is an optional block or if statement
   -- however, this all falls into our stmt category
-  | If SimpleStmt
-       Expr
+  | If (SimpleStmt, Expr)
+       Stmt
        Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
   -- Golite does not support type switches
@@ -257,14 +257,12 @@ data ArithmOp
   | BitClear -- &^
 
 -- | See https://golang.org/ref/spec#unary_op
--- Receive (<-) not implemented; no channel support
+-- Golite only supports the four ops below
 data UnaryOp
   = Pos -- +
   | Neg -- -
   | Not -- !
   | BitComplement -- ^
-  | Pointer -- *
-  | Address -- &
 
 -- | See https://golang.org/ref/spec#assign_op
 -- Symbol is the arithm op followed by '='
