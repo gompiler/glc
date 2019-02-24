@@ -132,7 +132,7 @@ TopDecls   : TopDecls TopDecl                       { $2 : $1 }
 TopDecl    : Decl                                   { TopDecl $1 }
            | FuncDecl                               { TopFuncDecl $1 }
 
-Idents     : Idents ident                           { (getIdent $2) : $1 } {- TODO -}
+Idents     : Idents ',' ident                       { (getIdent $2) : $1 } {- TODO -}
            | {- empty -}                            { [] }
 
 {- need errors for figuring out if a type was present and if so whether an expression was passed -}
@@ -145,17 +145,17 @@ InnerDecls : InnerDecls InnerDecl                   { $2 : $1 }
            | {- empty -}                            { [] }
 
 {- TODO: TYPES OF RETURN... NEED OVERRIDING AND STUFF -}
-DeclBody   : type                                   { Left (BoolType, []) }
-           | type '=' ExprList                      { Left (BoolType, $3) }
+DeclBody   : ident                                  { Left (Type (getIdent $1), []) }
+           | ident '=' ExprList                     { Left (Type (getIdent $1), $3) }
            | '=' ExprList                           { Right (nonEmpty $2) }
 
 {- TODO: OPTIONAL/COMPLEX FUNC TYPE -}
 FuncDecl   : func ident Signature BlockStmt         { FuncDecl (getIdent $2) $3 $4 } {- TODO: PACKAGE NAME? -}
 
 Signature  : '(' Params ')' Result                  { Signature (Parameters $2) $4 }
-Params     : Params Idents ident                    { (ParameterDecl $2 $ getIdent $3) : $1 }
+Params     : Params Idents ident                    { (ParameterDecl (nonEmpty $2) (Type $ getIdent $3)) : $1 }
            | {- empty -}                            { [] }
-Result     : ident                                  { Just $ getIdent $1 }
+Result     : ident                                  { Just (Type $ getIdent $1) }
            | {- empty -}                            { Nothing }
 
 Stmt       : BlockStmt ';'                          { $1 }
