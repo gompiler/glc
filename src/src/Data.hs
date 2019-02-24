@@ -21,11 +21,12 @@ data Program = Program
 
 ----------------------------------------------------------------------
 -- Declarations
--- | See https://golang.org/ref/spec#Declarations_and_scope
+-- | See https://golang.org/ref/spec#TopLevelDecl
 data TopDecl
   = TopDecl Decl
   | TopFuncDecl FuncDecl
 
+-- | See https://golang.org/ref/spec#Declaration
 -- Golite does not support type alias
 data Decl
   -- | See https://golang.org/ref/spec#VarDecl
@@ -46,6 +47,7 @@ data VarDecl' =
   VarDecl' (NonEmpty Identifier)
            (Either (Type, [Expr]) (NonEmpty Expr))
 
+-- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =
   TypeDef' Identifier
            Type
@@ -72,13 +74,14 @@ data ParameterDecl =
   ParameterDecl (NonEmpty Identifier)
                 Type
 
+-- | See https://golang.org/ref/spec#Parameters
 -- Variadic parameters aren't supported in golite
 newtype Parameters =
   Parameters [ParameterDecl]
 
+-- | See https://golang.org/ref/spec#Signature
 -- Golite does not support multiple return values or named values;
 -- No result type needed
--- TODO see if we want this or if we want to merge this into FuncDecl
 data Signature =
   Signature Parameters
             (Maybe Type)
@@ -92,7 +95,6 @@ data Scope
   | FuncScope
   | StmtScope
 
--- WIP
 type FuncBody = Stmt
 
 -- | See https://golang.org/ref/spec#SimpleStmt
@@ -113,6 +115,7 @@ data SimpleStmt
   | ShortDeclare (NonEmpty Identifier)
                  (NonEmpty Expr)
 
+-- | Shortcut for a blank stmt
 blank :: Stmt
 blank = SimpleStmt EmptyStmt
 
