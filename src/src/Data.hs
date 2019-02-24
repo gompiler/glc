@@ -257,14 +257,12 @@ data ArithmOp
   | BitClear -- &^
 
 -- | See https://golang.org/ref/spec#unary_op
--- Receive (<-) not implemented; no channel support
+-- Golite only supports the four ops below
 data UnaryOp
   = Pos -- +
   | Neg -- -
   | Not -- !
   | BitComplement -- ^
-  | Pointer -- *
-  | Address -- &
 
 -- | See https://golang.org/ref/spec#assign_op
 -- Symbol is the arithm op followed by '='
