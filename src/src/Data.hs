@@ -130,8 +130,8 @@ data Stmt
   -- however, we already have a representation for an 'empty' simple stmt
   -- Note that the last entry is an optional block or if statement
   -- however, this all falls into our stmt category
-  | If SimpleStmt
-       Expr
+  | If (SimpleStmt, Expr)
+       Stmt
        Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
   -- Golite does not support type switches
