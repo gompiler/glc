@@ -26,7 +26,6 @@ dependencies:
 - parser-combinators
 - hashtables
 - containers
-- HUnit
 - hspec
 
 library:
