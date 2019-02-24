@@ -21,10 +21,7 @@ import System.IO
 %left '+' '-' '|' '^'
 %left '*' '/' '%' "<<" ">>" '&' "&^"
 {- TODO: IMPORTANCE RANKINGS FOR THESE -}
-%nonassoc '!' {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
-%nonassoc POS {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
-%nonassoc NEG {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
-%nonassoc COM {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
+%nonassoc '!' POS NEG COM {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
 
 %token
     '+'                                 { Token _ TPlus }
