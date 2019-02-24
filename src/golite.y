@@ -155,7 +155,7 @@ FuncDecl   : func ident Signature BlockStmt         { FuncDecl (getIdent $2) $3 
 Signature  : '(' Params ')' Result                  { Signature (Parameters $2) $4 }
 Params     : Params Idents ident                    { (ParameterDecl $2 (Nothing, (getIdent $3))) : $1 }
            | {- empty -}                            { [] }
-Result     : type                                   { Just $1 }
+Result     : ident                                  { Just $ getIdent $1 }
            | {- empty -}                            { Nothing }
 
 Stmt       : BlockStmt ';'                          { $1 }
