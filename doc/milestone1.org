@@ -3,73 +3,77 @@ This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 * Scanner
 ** One pass scanning for semicolon insertion
-Because our scanner is encompassed completely by ~alexMonadScan~ and
-is interwoven with our parser with the ~lexer~ function in
-~Scanner.hs~ (all information is kept in a state monad and the
-parser can request each token one at a time and do things lazily),
-it was not feasible to do a second pass of the resulting tokens as
-we don't get them in list form before passing them to the
-parser. Our chosen solution was to use start codes in Alex and have
-special rules for certain states, i.e. if the last token we scanned
-was something that can take an optional semicolon, we'd enter the
-$nl$ state and encountering a newline in said state would scan the
-newline to a semicolon, otherwise scanning anything else (that isn't
-whitespace/ignored), would return to the default state ($0$), where
-newlines are just ignored. This seems to be a nice/elegant solution
-as we don't have to traverse the whole list or get any context of
-any sort, other than the start code which is a feature built in to
-Alex.
+   Because our scanner is encompassed completely by ~alexMonadScan~
+   and is interwoven with our parser with the ~lexer~ function in
+   ~Scanner.hs~ (all information is kept in a state monad and the
+   parser can request each token one at a time and do things lazily),
+   it was not feasible to do a second pass of the resulting tokens as
+   we don't get them in list form before passing them to the
+   parser. Our chosen solution was to use start codes in Alex and have
+   special rules for certain states, i.e. if the last token we scanned
+   was something that can take an optional semicolon, we'd enter the
+   $nl$ state and encountering a newline in said state would scan the
+   newline to a semicolon, otherwise scanning anything else (that
+   isn't whitespace/ignored), would return to the default state ($0$),
+   where newlines are just ignored. This seems to be a nice/elegant
+   solution as we don't have to traverse the whole list or get any
+   context of any sort, other than the start code which is a feature
+   built in to Alex.
 ** Block comment support
-Alex seems to parse regexes one line at a time. The rule ~/* .* */~
-did not work for multiline block comments, so ~checkBlk~ was
-implemented to iterate through the scanner's input and ignore
-everything until we close the block comment. Additionally, this made
-the task of outputting an error on unclosed blocks much easier (as
-otherwise entering this new comment state would just run off to EOF
-and not emit an error).
+   Alex seems to parse regexes one line at a time. The rule ~/* .* */~
+   did not work for multiline block comments, so ~checkBlk~ was
+   implemented to iterate through the scanner's input and ignore
+   everything until we close the block comment. Additionally, this
+   made the task of outputting an error on unclosed blocks much easier
+   (as otherwise entering this new comment state would just run off to
+   EOF and not emit an error).
 
-In addition, we had to account for semicolon insertion with block
-comments, which we were able to do by adding a new case in ~checkBlk~
-that would set a semicolon flag to true if it encountered any new line
-in the characters inside the block comment and then we were able to
-insert a semicolon if the start code was $nl$, which was conveniently
-available for us.
+   In addition, we had to account for semicolon insertion with block
+   comments, which we were able to do by adding a new case in
+   ~checkBlk~ that would set a semicolon flag to true if it
+   encountered any new line in the characters inside the block comment
+   and then we were able to insert a semicolon if the start code was
+   $nl$, which was conveniently available for us.
 * Parser
-** AST decisions
-The AST is largely a one to one mapping of the Golang specs, with
-parts we don't support removed and additional parts for Golite added.
+** AST
+   The AST is largely a one to one mapping of the Golang specs, with
+   parts we don't support removed and additional parts for Golite added.
 
-In some cases, there are minor deviations from the CFG.
+   In some cases, there are minor deviations from the CFG.
+*** Accurate Type Representation
+    We model our ast as accurately as possible, such that impossible
+    states are forbidden. We lack any checks for compatible types at
+    this stage, but we can match the definition for 'exactly one', 'one
+    or more', and 'zero or one'. In cases like identifiers, a [[https://golang.org/ref/spec#IdentifierList][list]] is
+    one or more (haskell ~NonEmpty~), yet many locations make it
+    optional. While a direct translation would be ~Maybe (NonEmpty a)~,
+    we choose to make it ~[a]~ as it makes more sense.
+*** Simplified Data Type Categories
+    Some splits, such as ~add_op~ and ~mul_op~ are distinguished
+    purely to demonstrate precedence. They are in fact only used once,
+    so we decide to merge them directly in our ~ArithmOp~
+    model. Several other instances exist.
 
-- We model our ast as accurately as possible, such that impossible
-  states are forbidden. We lack any checks for compatible types at
-  this stage, but we can match the definition for 'exactly one', 'one
-  or more', and 'zero or one'. In cases like identifiers, a [[https://golang.org/ref/spec#IdentifierList][list]] is
-  one or more (haskell ~NonEmpty~), yet many locations make it
-  optional. While a direct translation would be ~Maybe (NonEmpty a)~,
-  we choose to make it ~[a]~ as it makes more sense.
-- Some splits, such as ~add_op~ and ~mul_op~ are distinguished purely
-  to demonstrate precedence. They are in fact only used once, so we
-  decide to merge them directly in our ~ArithmOp~ model. Several other
-  instances exist.
-- Given we created an AST vs a CST, we can further compact parts of
-  the grammar. For instance, and if clause in the spec leads to an
-  ~IfStmt~ grammar, whose ~else~ body is either a block (with
-  surrounding braces) or another if statement (no surrounding
-  braces). However, in our case, we don't need to model the braces, so
-  we can treat the else body exclusively as ~Stmt~ vs ~Either Block
-  IfStmt~
-- By design, our types for ~int~ and ~string~ specify whether they are
-  hex/octal/dec or raw/interpreted respectively. We kept this
-  information so that our pretty print would accurately represent the
-  input, even though we can convert them all to a single type (eg dec
-  and interpreted)
-- For var and type declaration, we make no distinction between single
-  declaration (exactly one) and block declaration (0 or more). Unlike
-  types, which produce different formats, we decide to enforce all
-  declarations of one var to be single declaration. In other words,
-  ~var ( a = 2 )~ would become ~var a = 2~. Note that we cannot
-  further simplify group declarations ~var ( a, b = 2, 3)~, as there
-  is no guarantee at this stage that the number of identifiers matches
-  the number of values. This would have to be checked at a later stage
-
+    Given we created an AST vs a CST, we can further compact parts of
+    the grammar. For instance, and if clause in the spec leads to an
+    ~IfStmt~ grammar, whose ~else~ body is either a block (with
+    surrounding braces) or another if statement (no surrounding
+    braces). However, in our case, we don't need to model the braces,
+    so we can treat the else body exclusively as ~Stmt~ vs ~Either
+    Block IfStmt~
+*** Format Preservation
+    By design, our types for ~int~ and ~string~ specify whether they
+    are hex/octal/dec or raw/interpreted respectively. We kept this
+    information so that our pretty print would accurately represent
+    the input, even though we can convert them all to a single type
+    (eg dec and interpreted)
+*** Structure Simplification
+    For var and type declaration, we make no distinction between
+    single declaration (exactly one) and block declaration (0 or
+    more). Unlike types, which produce different formats, we decide to
+    enforce all declarations of one var to be single declaration. In
+    other words, ~var ( a = 2 )~ would become ~var a = 2~. Note that
+    we cannot further simplify group declarations ~var ( a, b = 2,
+    3)~, as there is no guarantee at this stage that the number of
+    identifiers matches the number of values. This would have to be
+    checked at a later stage

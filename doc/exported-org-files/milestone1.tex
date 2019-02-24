@@ -1,4 +1,4 @@
-% Created 2019-02-24 Sun 00:32
+% Created 2019-02-24 Sun 01:00
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -31,11 +31,11 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 \section{Scanner}
-\label{sec:orgb78fc2f}
+\label{sec:org33fc9de}
 \subsection{One pass scanning for semicolon insertion}
-\label{sec:orgc62b700}
-Because our scanner is encompassed completely by \texttt{alexMonadScan} and
-is interwoven with our parser with the \texttt{lexer} function in
+\label{sec:orgc5764a2}
+Because our scanner is encompassed completely by \texttt{alexMonadScan}
+and is interwoven with our parser with the \texttt{lexer} function in
 \texttt{Scanner.hs} (all information is kept in a state monad and the
 parser can request each token one at a time and do things lazily),
 it was not feasible to do a second pass of the resulting tokens as
@@ -44,68 +44,75 @@ parser. Our chosen solution was to use start codes in Alex and have
 special rules for certain states, i.e. if the last token we scanned
 was something that can take an optional semicolon, we'd enter the
 \(nl\) state and encountering a newline in said state would scan the
-newline to a semicolon, otherwise scanning anything else (that isn't
-whitespace/ignored), would return to the default state (\(0\)), where
-newlines are just ignored. This seems to be a nice/elegant solution
-as we don't have to traverse the whole list or get any context of
-any sort, other than the start code which is a feature built in to
-Alex.
+newline to a semicolon, otherwise scanning anything else (that
+isn't whitespace/ignored), would return to the default state (\(0\)),
+where newlines are just ignored. This seems to be a nice/elegant
+solution as we don't have to traverse the whole list or get any
+context of any sort, other than the start code which is a feature
+built in to Alex.
 \subsection{Block comment support}
-\label{sec:org1e423c7}
+\label{sec:orgafbb635}
 Alex seems to parse regexes one line at a time. The rule \texttt{/* .* */}
 did not work for multiline block comments, so \texttt{checkBlk} was
 implemented to iterate through the scanner's input and ignore
-everything until we close the block comment. Additionally, this made
-the task of outputting an error on unclosed blocks much easier (as
-otherwise entering this new comment state would just run off to EOF
-and not emit an error).
+everything until we close the block comment. Additionally, this
+made the task of outputting an error on unclosed blocks much easier
+(as otherwise entering this new comment state would just run off to
+EOF and not emit an error).
 
 In addition, we had to account for semicolon insertion with block
-comments, which we were able to do by adding a new case in \texttt{checkBlk}
-that would set a semicolon flag to true if it encountered any new line
-in the characters inside the block comment and then we were able to
-insert a semicolon if the start code was \(nl\), which was conveniently
-available for us.
+comments, which we were able to do by adding a new case in
+\texttt{checkBlk} that would set a semicolon flag to true if it
+encountered any new line in the characters inside the block comment
+and then we were able to insert a semicolon if the start code was
+\(nl\), which was conveniently available for us.
 \section{Parser}
-\label{sec:orgba0bb92}
-\subsection{AST decisions}
-\label{sec:org4787625}
+\label{sec:orgbc2e7ad}
+\subsection{AST}
+\label{sec:orgb539d01}
 The AST is largely a one to one mapping of the Golang specs, with
 parts we don't support removed and additional parts for Golite added.
 
 In some cases, there are minor deviations from the CFG.
-
-\begin{itemize}
-\item We model our ast as accurately as possible, such that impossible
+\subsubsection{Accurate Type Representation}
+\label{sec:org6de96ff}
+We model our ast as accurately as possible, such that impossible
 states are forbidden. We lack any checks for compatible types at
 this stage, but we can match the definition for 'exactly one', 'one
 or more', and 'zero or one'. In cases like identifiers, a \href{https://golang.org/ref/spec\#IdentifierList}{list} is
 one or more (haskell \texttt{NonEmpty}), yet many locations make it
 optional. While a direct translation would be \texttt{Maybe (NonEmpty a)},
 we choose to make it \texttt{[a]} as it makes more sense.
-\item Some splits, such as \texttt{add\_op} and \texttt{mul\_op} are distinguished purely
-to demonstrate precedence. They are in fact only used once, so we
-decide to merge them directly in our \texttt{ArithmOp} model. Several other
-instances exist.
-\item Given we created an AST vs a CST, we can further compact parts of
+\subsubsection{Simplified Data Type Categories}
+\label{sec:org3918547}
+Some splits, such as \texttt{add\_op} and \texttt{mul\_op} are distinguished
+purely to demonstrate precedence. They are in fact only used once,
+so we decide to merge them directly in our \texttt{ArithmOp}
+model. Several other instances exist.
+
+Given we created an AST vs a CST, we can further compact parts of
 the grammar. For instance, and if clause in the spec leads to an
 \texttt{IfStmt} grammar, whose \texttt{else} body is either a block (with
 surrounding braces) or another if statement (no surrounding
-braces). However, in our case, we don't need to model the braces, so
-we can treat the else body exclusively as \texttt{Stmt} vs \texttt{Either Block
-  IfStmt}
-\item By design, our types for \texttt{int} and \texttt{string} specify whether they are
-hex/octal/dec or raw/interpreted respectively. We kept this
-information so that our pretty print would accurately represent the
-input, even though we can convert them all to a single type (eg dec
-and interpreted)
-\item For var and type declaration, we make no distinction between single
-declaration (exactly one) and block declaration (0 or more). Unlike
-types, which produce different formats, we decide to enforce all
-declarations of one var to be single declaration. In other words,
-\texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note that we cannot
-further simplify group declarations \texttt{var ( a, b = 2, 3)}, as there
-is no guarantee at this stage that the number of identifiers matches
-the number of values. This would have to be checked at a later stage
-\end{itemize}
+braces). However, in our case, we don't need to model the braces,
+so we can treat the else body exclusively as \texttt{Stmt} vs \texttt{Either
+    Block IfStmt}
+\subsubsection{Format Preservation}
+\label{sec:org022b5b8}
+By design, our types for \texttt{int} and \texttt{string} specify whether they
+are hex/octal/dec or raw/interpreted respectively. We kept this
+information so that our pretty print would accurately represent
+the input, even though we can convert them all to a single type
+(eg dec and interpreted)
+\subsubsection{Structure Simplification}
+\label{sec:org4ab467d}
+For var and type declaration, we make no distinction between
+single declaration (exactly one) and block declaration (0 or
+more). Unlike types, which produce different formats, we decide to
+enforce all declarations of one var to be single declaration. In
+other words, \texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note that
+we cannot further simplify group declarations \texttt{var ( a, b = 2,
+    3)}, as there is no guarantee at this stage that the number of
+identifiers matches the number of values. This would have to be
+checked at a later stage
 \end{document}
