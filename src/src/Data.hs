@@ -15,7 +15,7 @@ newtype TODO =
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
 data Program = Program
-  { package   :: PackageName
+  { package   :: String
   , topLevels :: [TopDecl]
   }
 
@@ -303,5 +303,3 @@ data FieldDecl
               (Maybe StringLiteral)
   | EmbeddedField Identifier
                   (Maybe StringLiteral)
-
-type PackageName = String
