@@ -18,7 +18,7 @@ newtype TODO =
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
 data Program = Program
-  { package   :: String
+  { package   :: PackageName
   , topLevels :: [TopDecl]
   }
 
