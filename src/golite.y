@@ -188,11 +188,11 @@ Expr       : '+' Expr %prec POS                     { Unary Pos $2 }
            | '^' Expr %prec COM                     { Unary BitComplement $2 }
            | Expr "||" Expr                         { Binary $1 Or $3 }
            | Expr "&&" Expr                         { Binary $1 And $3 }
-           | Expr "==" Expr                         { Binary $1 EQ $3 }
+           | Expr "==" Expr                         { Binary $1 Data.EQ $3 }
            | Expr "!=" Expr                         { Binary $1 NEQ $3 }
-           | Expr '<' Expr                          { Binary $1 LT $3 }
+           | Expr '<' Expr                          { Binary $1 Data.LT $3 }
            | Expr "<=" Expr                         { Binary $1 LEQ $3 }
-           | Expr '>' Expr                          { Binary $1 GT $3 }
+           | Expr '>' Expr                          { Binary $1 Data.GT $3 }
            | Expr ">=" Expr                         { Binary $1 GEQ $3 }
            | Expr '+' Expr                          { Binary $1 (Arithm Add) $3 }
            | Expr '-' Expr                          { Binary $1 (Arithm Subtract) $3 }
