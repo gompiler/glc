@@ -159,9 +159,6 @@ data Stmt
   -- In golite, at most one expr can be returned
   | Return (Maybe Expr)
 
-newtype Label =
-  Label Identifier
-
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
 data SwitchCase
   = Case (NonEmpty Expr)
