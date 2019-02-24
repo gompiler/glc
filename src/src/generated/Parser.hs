@@ -1445,9 +1445,7 @@ nonEmpty :: [a] -> NonEmpty a
 nonEmpty l = NonEmpty.fromList l
 
 getIdent :: Token -> Identifier
-getIdent t = case t of
-  Token _ (TIdent id) -> id
-  _ -> ""
+getIdent (Token _ (TIdent id)) = id
 
 getInnerString :: Token -> String
 getInnerString t = case t of
@@ -1460,12 +1458,10 @@ getInnerString t = case t of
   Token _ (TIdent val) -> val
 
 getInnerFloat :: Token -> Float
-getInnerFloat t = case t of
-  Token _ (TFloatVal val) -> val
+getInnerFloat (Token _ (TFloatVal val)) = val
 
 getInnerChar :: Token -> Char
-getInnerChar t = case t of
-  Token _ (TRuneVal val) -> val
+getInnerChar (Token _ (TRuneVal val)) = val
 
 -- Main parse function
 parse :: String -> Either String Program
