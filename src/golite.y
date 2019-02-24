@@ -101,18 +101,123 @@ import System.IO
     append                              { Token _ TAppend }
     len                                 { Token _ TLen }
     cap                                 { Token _ TCap }
-    -- Uncomment these once we incorporate changes from scanner-fixes
-    -- decv                                { Token _ (TDecVal _) }
-    -- octv                                { Token _ (TOctVal _) }
-    -- hexv                                { Token _ (THexVal _) }
+    decv                                { Token _ (TDecVal _) }
+    octv                                { Token _ (TOctVal _) }
+    hexv                                { Token _ (THexVal _) }
     fv                                  { Token _ (TFloatVal _) }
     rv                                  { Token _ (TRuneVal _) }
     sv                                  { Token _ (TStringVal _) }
-    -- rsv                                 { Token _ (TRStringVal _) }
+    rsv                                 { Token _ (TRStringVal _) }
     ident                               { Token _ (TIdent _) }
 
 %%
-Stmt : { blank }
+
+{- TODO: TYPEDEFS -}
+{- TODO: EXPRESSION STATEMENTS -}
+{- TODO: FUNCTION TYPES -}
+{- TODO: FOR LOOPS -}
+{- TODO: SWITCH/CASE -}
+{- TODO: LABELS -}
+{- TODO: TYPECASTS -}
+
+{- WHY DOES PACKAGE USE STRING AND NOT PACKAGENAME? -}
+Program    : package TopDecls                       { Program {package=$1, topLevels=$2} }
+TopDecls   : TopDecl TopDecls                       { $1 : $2 }
+           | {- empty -}                            { [] }
+
+TopDecl    : Decl                                   { TopDecl $1 }
+           | FuncDecl                               { TopFuncDecl $1 }
+
+Idents     : ident Idents                           { $1 : $2 }
+           | {- empty -}                            { [] }
+
+{- need errors for figuring out if a type was present and if so whether an expression was passed -}
+Decl       : var InnerDecl ';'                      { $2 }
+           | var '(' InnerDecls ')' ';'             { $3 }
+
+InnerDecl  : Idents DeclBody ';'                    { VarDecl' $1 $3 }
+InnerDecls : InnerDecl InnerDecls                   { $1 : $2 }
+           | {- empty -}                            { [] }
+
+{- TODO: TYPES OF RETURN... -}
+DeclBody   : type                                   { (tokenTypeToASTType($1), []) }
+           | type '=' ExprList                      { (tokenTypeToASTType($1), $3) }
+           | '=' ExprList                           { (ExprList) }
+
+{- TODO: OPTIONAL/COMPLEX FUNC TYPE -}
+FuncDecl   : func ident '('  ')' type BlockStmt     { FuncDecl %2 TODO %7 }
+
+Stmt       : BlockStmt                              { $1 }
+           | SimpleStmt                             { $1 }
+           | IfStmt                                 { $1 }
+           | break                                  { Break }
+           | continue                               { Continue }
+           | Decl                                   { Declare $1 }
+
+Stmts      : Stmt Stmts                             { $1 : $2 }
+           | {- empty -}                            { [] }
+
+BlockStmt  : '{' Stmts '}'                          { $2 }
+
+SimpleStmt : {- empty -}                            { EmptyStmt }
+           | ident "++"                             { Increment $1 }
+           | ident "--"                             { Decrement $1 }
+           | ExprList AssignOp '=' ExprList         { Assign $2 $1 $4 }
+        {- | TODO: SHORT DECL -}
+
+AssignOp   : '+'                                    { AssignOp (Just Add) }
+           | '*'                                    { AssignOp (Just Multiply) }
+           | {- empty -}                            { AssignOp (Nothing) }
+
+IfStmt     : if SimpleStmt ';' Expr BlockStmt Elses { If $2 $4 $5 $6 } {- TODO: ELSES -}
+           | if Expr BlockStmt Elses                { If blank $2 $3 $4 } {- TODO: ELSES -}
+Elses      : else IfStmt                            { $2 }
+           | else BlockStmt                         { $2}
+           | {- empty -}                            { blank }
+
+Expr       : UnaryOp Expr                           { Unar $1 $2 }
+           | Expr BinaryOp Expr                     { Binary $1 $2 $3 }
+           | decv                                   { Lit (IntLit Decimal $1) }
+           | octv                                   { Lit (IntLit Octal $1) }
+           | hexv                                   { Lit (IntLit Hexadecimal $1) }
+           | fv                                     { Lit (FloatLit $1) } {- TODO: TYPES -}
+           | rv                                     { Lit (RuneLit $1) } {- TODO: TYPES -}
+           | sv                                     { Lit (StringLit Interpreted $1) }
+           | rsv                                    { Lit (StringLit Raw $1) }
+           | append '(' Expr ',' Expr ')'           { AppendExpr $3 $5 }
+           | len '(' Expr ')'                       { LenExpr $3 }
+           | cap '(' Expr ')'                       { CapExpr $3 }
+
+ExprList   : Expr ',' ExprList                      { $1 : $3 }
+           | {- empty -}                            { [] }
+
+UnaryOp    : '+'                                    { Pos }
+           | '-'                                    { Neg }
+           | '!'                                    { Not }
+           | '^'                                    { BitComplement }
+           | '*'                                    { Pointer }
+           | '&'                                    { Address }
+
+BinaryOp   : "||"                                   { Or }
+           | "&&"                                   { And }
+           | "=="                                   { EQ }
+           | "!="                                   { NEQ }
+           | '<'                                    { LT }
+           | "<="                                   { LEQ }
+           | '>'                                    { GT }
+           | ">="                                   { GEQ }
+           | '+'                                    { Arithm Add }
+           | '-'                                    { Arithm Subtract }
+           | '*'                                    { Arithm Multiply }
+           | '/'                                    { Arithm Divide }
+           | '%'                                    { Arithm Remainder }
+           | '|'                                    { Arithm BitOr }
+           | '^'                                    { Arithm BitXor }
+           | '&'                                    { Arithm BitAnd }
+           | "&^"                                   { Arithm BitClear }
+           | "<<"                                   { Arithm ShiftL }
+           | ">>"                                   { Arithm ShiftR }
+
 {
 
 -- Extract posn only
@@ -121,7 +226,7 @@ ptokl t = case t of
 
 -- parseError function for better error messages
 parseError :: (Token, [String]) -> Alex a
-parseError (Token (AlexPn _ l c) t, strs) =                                                 -- Megaparsec error reporting here
-  alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ " at line " ++ show l ++ " column " ++ show c ++ ", expecting " ++ show strs) 
+parseError (Token (AlexPn _ l c) t, strs) =                                           -- Megaparsec error reporting here
+  alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ " at line " ++ show l ++ " column " ++ show c ++ ", expecting " ++ show strs)
 
 }
