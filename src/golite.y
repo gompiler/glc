@@ -153,7 +153,7 @@ DeclBody   : type                                   { Left (BoolType, []) }
 FuncDecl   : func ident Signature BlockStmt         { FuncDecl (getIdent $2) $3 $4 } {- TODO: PACKAGE NAME? -}
 
 Signature  : '(' Params ')' Result                  { Signature (Parameters $2) $4 }
-Params     : Params Idents ident                    { (ParameterDecl $2 (Nothing, (getIdent $3))) : $1 }
+Params     : Params Idents ident                    { (ParameterDecl $2 $ getIdent $3) : $1 }
            | {- empty -}                            { [] }
 Result     : ident                                  { Just $ getIdent $1 }
            | {- empty -}                            { Nothing }
@@ -171,8 +171,8 @@ Stmts      : Stmts Stmt                             { $2 : $1 }
 
 BlockStmt  : '{' Stmts '}'                          { BlockStmt $2 }
 
-SimpleStmt : ident "++"                             { Increment $ Var (Nothing, (getIdent $1)) } {- TODO -}
-           | ident "--"                             { Decrement $ Var (Nothing, (getIdent $1)) } {- TODO -}
+SimpleStmt : ident "++"                             { Increment $ Var (getIdent $1) } {- TODO -}
+           | ident "--"                             { Decrement $ Var (getIdent $1) } {- TODO -}
            | ExprList "+=" ExprList ';'             { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
            | ExprList "-=" ExprList ';'             { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
            | ExprList "|=" ExprList ';'             { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }

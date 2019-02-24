@@ -487,7 +487,7 @@ happyReduction_18 happy_x_3
 	case happyOut7 happy_x_2 of { happy_var_2 -> 
 	case happyOutTok happy_x_3 of { happy_var_3 -> 
 	happyIn14
-		 ((ParameterDecl happy_var_2 (Nothing, (getIdent happy_var_3))) : happy_var_1
+		 ((ParameterDecl happy_var_2 $ getIdent happy_var_3) : happy_var_1
 	)}}}
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -629,7 +629,7 @@ happyReduction_32 happy_x_2
 	happy_x_1
 	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
 	happyIn19
-		 (Increment $ Var (Nothing, (getIdent happy_var_1))
+		 (Increment $ Var (getIdent happy_var_1)
 	)}
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -640,7 +640,7 @@ happyReduction_33 happy_x_2
 	happy_x_1
 	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
 	happyIn19
-		 (Decrement $ Var (Nothing, (getIdent happy_var_1))
+		 (Decrement $ Var (getIdent happy_var_1)
 	)}
 
 #if __GLASGOW_HASKELL__ >= 710
