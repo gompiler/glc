@@ -148,7 +148,8 @@ DeclBody   : type                                   { (tokenTypeToASTType($1), [
 FuncDecl   : func ident '('  ')' type BlockStmt     { FuncDecl %2 TODO %7 }
 
 Stmt       : BlockStmt ';'                          { $1 }
-           | SimpleStmt                             { $1 }
+           | ';'                                    { EmptyStmt }
+           | SimpleStmt ';'                         { $1 }
            | IfStmt ';'                             { $1 }
            | break ';'                              { Break }
            | continue ';'                           { Continue }
@@ -159,20 +160,24 @@ Stmts      : Stmts Stmt                             { $2 : $1 }
 
 BlockStmt  : '{' Stmts '}'                          { $2 }
 
-SimpleStmt : {- empty -} ';'                        { EmptyStmt }
-           | ident "++" ';'                         { Increment $1 }
-           | ident "--" ';'                         { Decrement $1 }
-           | ExprList AssignOp '=' ExprList ';'     { Assign $2 $1 $4 }
+SimpleStmt : ident "++"                             { Increment $1 }
+           | ident "--"                             { Decrement $1 }
+           | ExprList "+=" ExprList ';'             { Assign (AssignOp $ Just Add) $1 $4 }
+           | ExprList "-=" ExprList ';'             { Assign (AssignOp $ Just Subtract) $1 $4 }
+           | ExprList "|=" ExprList ';'             { Assign (AssignOp $ Just BitOr) $1 $4 }
+           | ExprList "^=" ExprList ';'             { Assign (AssignOp $ Just BitXor) $1 $4 }
+           | ExprList "*=" ExprList ';'             { Assign (AssignOp $ Just Multiply) $1 $4 }
+           | ExprList "/=" ExprList ';'             { Assign (AssignOp $ Just Divide) $1 $4 }
+           | ExprList "%=" ExprList ';'             { Assign (AssignOp $ Just Remainder) $1 $4 }
+           | ExprList "<<=" ExprList ';'            { Assign (AssignOp $ Just ShiftL) $1 $4 }
+           | ExprList ">>=" ExprList ';'            { Assign (AssignOp $ Just ShiftR) $1 $4 }
+           | ExprList "&=" ExprList ';'             { Assign (AssignOp $ Just BitAnd) $1 $4 }
+           | ExprList "&^=" ExprList ';'            { Assign (AssignOp $ Just BitClear) $1 $4 }
+           | ExprList '=' ExprList ';'              { Assign (AssignOp Nothing) $2 $1 $4 }
         {- | TODO: SHORT DECL -}
 
-OptSpStmt  : SimpleStmt { $1 }
-           | {- empty -} { EmptyStmt }
-
-AssignOp   : '+'                                    { AssignOp (Just Add) }
-           | '*'                                    { AssignOp (Just Multiply) }
-           | {- empty -}                            { AssignOp (Nothing) }
-
-IfStmt     : if OptSpStmt Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
+IfStmt     : if SimpleStmt ';' Expr BlockStmt Elses { If ($2, $3) $4 $5 }
+           | if Expr BlockStmt Elses                { If (blank, $2) $3 $4 }
 Elses      : else IfStmt                            { $2 }
            | else BlockStmt                         { $2 }
            | {- empty -}                            { blank }
@@ -211,8 +216,8 @@ Expr       : '+' Expr %prec POS                     { Unary Pos $2 }
            | len '(' Expr ')'                       { LenExpr $3 }
            | cap '(' Expr ')'                       { CapExpr $3 }
 
-ExprList   : ExprList ',' Expr                       { $3 : $1 }
-           | {- empty -}                            { [] }
+ExprList   : ExprList ',' Expr                      { $3 : $1 }
+           | Expr                                   { [$1] }
 
 {
 
