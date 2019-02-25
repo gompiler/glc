@@ -134,7 +134,8 @@ import qualified Data.List.NonEmpty as NonEmpty
 
 {- WHY DOES PACKAGE USE STRING AND NOT PACKAGENAME? -}
 Program     : package ident TopDecls                  { Program {package=getIdent($2), topLevels=$3} }
-TopDecls    : TopDecls TopDecl                        { $2 : $1 }
+TopDecls    : TopDeclsR                               { reverse $1 }
+TopDeclsR   : TopDeclsR TopDecl                       { $2 : $1 }
             | {- empty -}                             { [] }
 
 TopDecl     : Decl                                    { TopDecl $1 }
@@ -171,7 +172,7 @@ Result      : ident                                   { Just (Type $ getIdent $1
 
 Stmt        : BlockStmt ';'                           { $1 }
             | ';'                                     { SimpleStmt EmptyStmt }
-            | SimpleStmt ';'                          { SimpleStmt $1 }
+            | SimpleStmt                              { SimpleStmt $1 }
             | IfStmt ';'                              { $1 }
             | break ';'                               { Break }
             | continue ';'                            { Continue }
@@ -181,25 +182,27 @@ Stmts       : StmtsR                                  { reverse $1 }
 StmtsR      : StmtsR Stmt                             { $2 : $1 }
             | {- empty -}                             { [] }
 
+{- No semicolon, since we can't have semicolons in the middle of if/else statements -}
 BlockStmt   : '{' Stmts '}'                           { BlockStmt $2 }
 
-SimpleStmt  : ident "++"                              { Increment $ Var (getIdent $1) } {- TODO -}
-            | ident "--"                              { Decrement $ Var (getIdent $1) } {- TODO -}
-            | ExprList "+=" ExprList                  { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "-=" ExprList                  { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "|=" ExprList                  { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "^=" ExprList                  { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "*=" ExprList                  { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "/=" ExprList                  { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "%=" ExprList                  { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "<<=" ExprList                 { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList ">>=" ExprList                 { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "&=" ExprList                  { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "&^=" ExprList                 { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList '=' ExprList                   { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
+{- Keep EmptyStmt out and explicitly refer to it when we want it to reduce the chances of bad behaviour -}
+SimpleStmt  : ident "++" ';'                          { Increment $ Var (getIdent $1) } {- TODO -}
+            | ident "--" ';'                          { Decrement $ Var (getIdent $1) } {- TODO -}
+            | ExprList "+=" ExprList ';'              { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "-=" ExprList ';'              { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "|=" ExprList ';'              { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "^=" ExprList ';'              { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "*=" ExprList ';'              { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "/=" ExprList ';'              { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "%=" ExprList ';'              { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "<<=" ExprList ';'             { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList ">>=" ExprList ';'             { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "&=" ExprList ';'              { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "&^=" ExprList ';'             { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList '=' ExprList ';'               { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
          {- | TODO: SHORT DECL -}
 
-IfStmt      : if SimpleStmt ';' Expr BlockStmt Elses  { If ($2, $4) $5 $6 }
+IfStmt      : if SimpleStmt Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
             | if Expr BlockStmt Elses                 { If (EmptyStmt, $2) $3 $4 }
 Elses       : else IfStmt                             { $2 }
             | else BlockStmt                          { $2 }
