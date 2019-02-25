@@ -182,18 +182,18 @@ BlockStmt  : '{' Stmts '}'                          { BlockStmt $2 }
 
 SimpleStmt : ident "++"                             { Increment $ Var (getIdent $1) } {- TODO -}
            | ident "--"                             { Decrement $ Var (getIdent $1) } {- TODO -}
-           | ExprList "+=" ExprList ';'             { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "-=" ExprList ';'             { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "|=" ExprList ';'             { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "^=" ExprList ';'             { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "*=" ExprList ';'             { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "/=" ExprList ';'             { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "%=" ExprList ';'             { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "<<=" ExprList ';'            { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList ">>=" ExprList ';'            { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "&=" ExprList ';'             { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "&^=" ExprList ';'            { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList '=' ExprList ';'              { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "+=" ExprList                 { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "-=" ExprList                 { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "|=" ExprList                 { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "^=" ExprList                 { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "*=" ExprList                 { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "/=" ExprList                 { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "%=" ExprList                 { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "<<=" ExprList                { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList ">>=" ExprList                { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "&=" ExprList                 { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList "&^=" ExprList                { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
+           | ExprList '=' ExprList                  { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
         {- | TODO: SHORT DECL -}
 
 IfStmt     : if SimpleStmt ';' Expr BlockStmt Elses { If ($2, $4) $5 $6 }
