@@ -133,111 +133,115 @@ import qualified Data.List.NonEmpty as NonEmpty
 {- TODO: TYPECASTS -}
 
 {- WHY DOES PACKAGE USE STRING AND NOT PACKAGENAME? -}
-Program    : package ident TopDecls                 { Program {package=getIdent($2), topLevels=$3} }
-TopDecls   : TopDecls TopDecl                       { $2 : $1 }
-           | {- empty -}                            { [] }
+Program     : package ident TopDecls                  { Program {package=getIdent($2), topLevels=$3} }
+TopDecls    : TopDecls TopDecl                        { $2 : $1 }
+            | {- empty -}                             { [] }
 
-TopDecl    : Decl                                   { TopDecl $1 }
-           | FuncDecl                               { TopFuncDecl $1 }
+TopDecl     : Decl                                    { TopDecl $1 }
+            | FuncDecl                                { TopFuncDecl $1 }
 
-Idents     : IdentsR                                { reverse $1 }
-IdentsR    : IdentsR ',' ident                      { (getIdent $3) : $1 } {- TODO -}
-           | ident                                  { [getIdent $1] }
+Idents      : IdentsR                                 { reverse $1 }
+IdentsR     : IdentsR ',' ident                       { (getIdent $3) : $1 } {- TODO -}
+            | ident                                   { [getIdent $1] }
 
 {- need errors for figuring out if a type was present and if so whether an expression was passed -}
 {- TODO: LIST OF DECLARATIONS...? -}
-Decl       : var InnerDecl ';'                      { VarDecl [$2] }
-           | var '(' InnerDecls ')' ';'             { VarDecl $3 }
+Decl        : var InnerDecl ';'                       { VarDecl [$2] }
+            | var '(' InnerDecls ')' ';'              { VarDecl $3 }
 
-InnerDecl  : Idents DeclBody ';'                    { VarDecl' (nonEmpty $1) $2 }
-InnerDecls : InnerDecls InnerDecl                   { $2 : $1 }
-           | {- empty -}                            { [] }
+InnerDecl   : Idents DeclBody ';'                     { VarDecl' (nonEmpty $1) $2 }
+InnerDecls  : InnerDeclsR                             { reverse $1 }
+InnerDeclsR : InnerDeclsR InnerDecl                   { $2 : $1 }
+            | {- empty -}                             { [] }
 
 {- TODO: TYPES OF RETURN... NEED OVERRIDING AND STUFF -}
-DeclBody   : ident                                  { Left (Type (getIdent $1), []) }
-           | ident '=' ExprList                     { Left (Type (getIdent $1), $3) }
-           | '=' ExprList                           { Right (nonEmpty $2) }
+DeclBody    : ident                                   { Left (Type (getIdent $1), []) }
+            | ident '=' ExprList                      { Left (Type (getIdent $1), $3) }
+            | '=' ExprList                            { Right (nonEmpty $2) }
 
 {- TODO: OPTIONAL/COMPLEX FUNC TYPE -}
-FuncDecl   : func ident Signature BlockStmt         { FuncDecl (getIdent $2) $3 $4 } {- TODO: PACKAGE NAME? -}
+FuncDecl    : func ident Signature BlockStmt          { FuncDecl (getIdent $2) $3 $4 } {- TODO: PACKAGE NAME? -}
 
-Signature  : '(' Params ')' Result                  { Signature (Parameters $2) $4 }
-Params     : Params Idents ident                    { (ParameterDecl (nonEmpty $2) (Type $ getIdent $3)) : $1 }
-           | {- empty -}                            { [] }
-Result     : ident                                  { Just (Type $ getIdent $1) }
-           | {- empty -}                            { Nothing }
+Signature   : '(' Params ')' Result                   { Signature (Parameters $2) $4 }
+Params      : ParamsR                                 { reverse $1 }
+ParamsR     : ParamsR Idents ident                    { (ParameterDecl (nonEmpty $2) (Type $ getIdent $3)) : $1 }
+            | {- empty -}                             { [] }
+Result      : ident                                   { Just (Type $ getIdent $1) }
+            | {- empty -}                             { Nothing }
 
-Stmt       : BlockStmt ';'                          { $1 }
-           | ';'                                    { SimpleStmt EmptyStmt }
-           | SimpleStmt ';'                         { SimpleStmt $1 }
-           | IfStmt ';'                             { $1 }
-           | break ';'                              { Break }
-           | continue ';'                           { Continue }
-           | Decl ';'                               { Declare $1 }
+Stmt        : BlockStmt ';'                           { $1 }
+            | ';'                                     { SimpleStmt EmptyStmt }
+            | SimpleStmt ';'                          { SimpleStmt $1 }
+            | IfStmt ';'                              { $1 }
+            | break ';'                               { Break }
+            | continue ';'                            { Continue }
+            | Decl ';'                                { Declare $1 }
 
-Stmts      : Stmts Stmt                             { $2 : $1 }
-           | {- empty -}                            { [] }
+Stmts       : StmtsR                                  { reverse $1 }
+StmtsR      : StmtsR Stmt                             { $2 : $1 }
+            | {- empty -}                             { [] }
 
-BlockStmt  : '{' Stmts '}'                          { BlockStmt $2 }
+BlockStmt   : '{' Stmts '}'                           { BlockStmt $2 }
 
-SimpleStmt : ident "++"                             { Increment $ Var (getIdent $1) } {- TODO -}
-           | ident "--"                             { Decrement $ Var (getIdent $1) } {- TODO -}
-           | ExprList "+=" ExprList                 { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "-=" ExprList                 { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "|=" ExprList                 { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "^=" ExprList                 { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "*=" ExprList                 { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "/=" ExprList                 { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "%=" ExprList                 { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "<<=" ExprList                { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList ">>=" ExprList                { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "&=" ExprList                 { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList "&^=" ExprList                { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
-           | ExprList '=' ExprList                  { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
-        {- | TODO: SHORT DECL -}
+SimpleStmt  : ident "++"                              { Increment $ Var (getIdent $1) } {- TODO -}
+            | ident "--"                              { Decrement $ Var (getIdent $1) } {- TODO -}
+            | ExprList "+=" ExprList                  { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "-=" ExprList                  { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "|=" ExprList                  { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "^=" ExprList                  { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "*=" ExprList                  { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "/=" ExprList                  { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "%=" ExprList                  { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "<<=" ExprList                 { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList ">>=" ExprList                 { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "&=" ExprList                  { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList "&^=" ExprList                 { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
+            | ExprList '=' ExprList                   { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
+         {- | TODO: SHORT DECL -}
 
-IfStmt     : if SimpleStmt ';' Expr BlockStmt Elses { If ($2, $4) $5 $6 }
-           | if Expr BlockStmt Elses                { If (EmptyStmt, $2) $3 $4 }
-Elses      : else IfStmt                            { $2 }
-           | else BlockStmt                         { $2 }
-           | {- empty -}                            { blank }
+IfStmt      : if SimpleStmt ';' Expr BlockStmt Elses  { If ($2, $4) $5 $6 }
+            | if Expr BlockStmt Elses                 { If (EmptyStmt, $2) $3 $4 }
+Elses       : else IfStmt                             { $2 }
+            | else BlockStmt                          { $2 }
+            | {- empty -}                             { blank }
 
-Expr       : '+' Expr %prec POS                     { Unary Pos $2 }
-           | '-' Expr %prec NEG                     { Unary Neg $2 }
-           | '!' Expr                               { Unary Not $2 }
-           | '^' Expr %prec COM                     { Unary BitComplement $2 }
-           | Expr "||" Expr                         { Binary $1 Or $3 }
-           | Expr "&&" Expr                         { Binary $1 And $3 }
-           | Expr "==" Expr                         { Binary $1 Data.EQ $3 }
-           | Expr "!=" Expr                         { Binary $1 NEQ $3 }
-           | Expr '<' Expr                          { Binary $1 Data.LT $3 }
-           | Expr "<=" Expr                         { Binary $1 LEQ $3 }
-           | Expr '>' Expr                          { Binary $1 Data.GT $3 }
-           | Expr ">=" Expr                         { Binary $1 GEQ $3 }
-           | Expr '+' Expr                          { Binary $1 (Arithm Add) $3 }
-           | Expr '-' Expr                          { Binary $1 (Arithm Subtract) $3 }
-           | Expr '*' Expr                          { Binary $1 (Arithm Multiply) $3 }
-           | Expr '/' Expr                          { Binary $1 (Arithm Divide) $3 }
-           | Expr '%' Expr                          { Binary $1 (Arithm Remainder) $3 }
-           | Expr '|' Expr                          { Binary $1 (Arithm BitOr) $3 }
-           | Expr '^' Expr                          { Binary $1 (Arithm BitXor) $3 }
-           | Expr '&' Expr                          { Binary $1 (Arithm BitAnd) $3 }
-           | Expr "&^" Expr                         { Binary $1 (Arithm BitClear) $3 }
-           | Expr "<<" Expr                         { Binary $1 (Arithm ShiftL) $3 }
-           | Expr ">>" Expr                         { Binary $1 (Arithm ShiftR) $3 }
-           | decv                                   { Lit (IntLit Decimal $ getInnerString $1) } {- TODO: TYPES/ERRORS -}
-           | octv                                   { Lit (IntLit Octal $ getInnerString $1) } {- TODO: TYPES/ERRORS -}
-           | hexv                                   { Lit (IntLit Hexadecimal $ getInnerString $1) } {- TODO: TYPES/ERRORS -}
-           | fv                                     { Lit (FloatLit $ getInnerFloat $1) } {- TODO: TYPES/ERRORS -}
-           | rv                                     { Lit (RuneLit $ getInnerChar $1) } {- TODO: TYPES/ERRORS -}
-           | sv                                     { Lit (StringLit Interpreted $ getInnerString $1) }
-           | rsv                                    { Lit (StringLit Raw $ getInnerString $1) }
-           | append '(' Expr ',' Expr ')'           { AppendExpr $3 $5 }
-           | len '(' Expr ')'                       { LenExpr $3 }
-           | cap '(' Expr ')'                       { CapExpr $3 }
+Expr        : '+' Expr %prec POS                      { Unary Pos $2 }
+            | '-' Expr %prec NEG                      { Unary Neg $2 }
+            | '!' Expr                                { Unary Not $2 }
+            | '^' Expr %prec COM                      { Unary BitComplement $2 }
+            | Expr "||" Expr                          { Binary $1 Or $3 }
+            | Expr "&&" Expr                          { Binary $1 And $3 }
+            | Expr "==" Expr                          { Binary $1 Data.EQ $3 }
+            | Expr "!=" Expr                          { Binary $1 NEQ $3 }
+            | Expr '<' Expr                           { Binary $1 Data.LT $3 }
+            | Expr "<=" Expr                          { Binary $1 LEQ $3 }
+            | Expr '>' Expr                           { Binary $1 Data.GT $3 }
+            | Expr ">=" Expr                          { Binary $1 GEQ $3 }
+            | Expr '+' Expr                           { Binary $1 (Arithm Add) $3 }
+            | Expr '-' Expr                           { Binary $1 (Arithm Subtract) $3 }
+            | Expr '*' Expr                           { Binary $1 (Arithm Multiply) $3 }
+            | Expr '/' Expr                           { Binary $1 (Arithm Divide) $3 }
+            | Expr '%' Expr                           { Binary $1 (Arithm Remainder) $3 }
+            | Expr '|' Expr                           { Binary $1 (Arithm BitOr) $3 }
+            | Expr '^' Expr                           { Binary $1 (Arithm BitXor) $3 }
+            | Expr '&' Expr                           { Binary $1 (Arithm BitAnd) $3 }
+            | Expr "&^" Expr                          { Binary $1 (Arithm BitClear) $3 }
+            | Expr "<<" Expr                          { Binary $1 (Arithm ShiftL) $3 }
+            | Expr ">>" Expr                          { Binary $1 (Arithm ShiftR) $3 }
+            | decv                                    { Lit (IntLit Decimal $ getInnerString $1) }
+            | octv                                    { Lit (IntLit Octal $ getInnerString $1) }
+            | hexv                                    { Lit (IntLit Hexadecimal $ getInnerString $1) }
+            | fv                                      { Lit (FloatLit $ getInnerFloat $1) }
+            | rv                                      { Lit (RuneLit $ getInnerChar $1) }
+            | sv                                      { Lit (StringLit Interpreted $ getInnerString $1) }
+            | rsv                                     { Lit (StringLit Raw $ getInnerString $1) }
+            | append '(' Expr ',' Expr ')'            { AppendExpr $3 $5 }
+            | len '(' Expr ')'                        { LenExpr $3 }
+            | cap '(' Expr ')'                        { CapExpr $3 }
 
-ExprList   : ExprList ',' Expr                      { $3 : $1 }
-           | Expr                                   { [$1] }
+ExprList    : ExprListR                               { reverse $1 }
+ExprListR   : ExprListR ',' Expr                      { $3 : $1 }
+            | Expr                                    { [$1] }
 
 {
 
