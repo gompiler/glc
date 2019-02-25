@@ -176,6 +176,10 @@ Stmt        : BlockStmt ';'                           { $1 }
             | break ';'                               { Break }
             | continue ';'                            { Continue }
             | Decl ';'                                { Declare $1 }
+            | print '(' ExprList ')' ';'              { Print $3 }
+            | println '(' ExprList ')' ';'            { Println $3 }
+            | return Expr ';'                         { Return $ Just $2 }
+            | return ';'                              { Return Nothing }
 
 Stmts       : StmtsR                                  { reverse $1 }
 StmtsR      : StmtsR Stmt                             { $2 : $1 }
