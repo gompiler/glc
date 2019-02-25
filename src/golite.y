@@ -23,7 +23,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 %error { parseError }
 
 -- Other partial parsers for testing
-%partial hparseId IdentsR
+%partial hparseId Idents
 %partial hparseE Expr
 
 {- Spec: https://golang.org/ref/spec#Operator_precedence -}
