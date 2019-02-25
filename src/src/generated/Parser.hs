@@ -208,11 +208,6 @@ happySeq = happyDontSeq
 -- Extract posn only
 ptokl t = case t of
           Token pos _ -> pos
-
--- parseError function for better error messages
-parseError :: (Token, [String]) -> Alex a
-parseError (Token (AlexPn _ l c) t, strs) =                                                 -- Megaparsec error reporting here
-  alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ " at line " ++ show l ++ " column " ++ show c ++ ", expecting " ++ show strs)
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}

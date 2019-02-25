@@ -2,9 +2,8 @@ module Scanner
   ( P
   , thenP
   , returnP
-  , showError
+  , parseError
   , getPos
-  , happyError
   , lexer
   , scanT
   , scanP
@@ -15,7 +14,7 @@ module Scanner
   , T.InnerToken(..)
   , T.AlexPosn(..)
   , T.alexError
-  , T.runAlex
+  , runAlex
   , T.Alex
   ) where
 
@@ -24,7 +23,8 @@ import           System.IO
 
 -- Helper functions for scanning using tokens and also pass relevant things to parser
 import qualified Tokens      as T
-
+import ErrorBundle
+  
 -- |prettify, takes a token and turn it into a string representing said token
 -- Also makes the tokens look like the expected tTYPE format
 prettify :: T.InnerToken -> String
@@ -128,13 +128,10 @@ alexMonadScan = do
   sc <- T.alexGetStartCode
   case T.alexScan inp__ sc of
     T.AlexEOF -> T.alexEOF
-    T.AlexError (T.AlexPn _ line column, prev, _, s) ->
-      T.alexError $
-      "Error: lexical error at line " ++
-      show line ++
-      ", column " ++
-      show column ++
-      ". Previous character: " ++ show prev ++ ", current string: " ++ s
+    T.AlexError (T.AlexPn o line column, _, _, _) ->
+      do T.AlexUserState inp <- T.alexGetUserState
+         T.alexError $ 
+           "Error: lexical error at " ++ errorPos o inp
     T.AlexSkip inp__' _len -> do
       T.alexSetInput inp__'
       alexMonadScan
@@ -151,8 +148,8 @@ runAlex input__ (T.Alex f)
                          T.alex_bytes = [],
                          
                          T.alex_ust = T.AlexUserState input__,
-
-                         T.alex_scd = 0}) of Left msg -> Left msg
+                                                                    -- Theoretically if we got the offset here we could just append the errorBundle here
+                         T.alex_scd = 0}) of Left msg -> Left $ msg -- ++ errorPos 0 input__
                                              Right ( _, a ) -> Right a
 
 -- | scan, the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
@@ -193,20 +190,13 @@ thenP = (>>=)
 returnP :: a -> P a
 returnP = return
 
--- | showError will be passed to happyError and will define behavior on parser errors
-showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
-showError (l, c, _) = do
-  T.AlexUserState inp <- T.alexGetUserState
-  T.alexError
-    ("Error: parsing error at line " ++ show l ++ " column " ++ show c ++ " in " ++ inp)
+-- parseError function for better error messages
+parseError :: (T.Token, [String]) -> T.Alex a
+parseError (T.Token (T.AlexPn _ l c) t, strs) =                                                 -- Megaparsec error reporting here
+  T.alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ " at line " ++ show l ++ " column " ++ show c ++ ", expecting " ++ show strs) 
 
 getPos :: T.Alex T.AlexPosn
 getPos = T.Alex (\s -> Right (s, T.alex_pos s))
-
-happyError :: P a
-happyError = do
-  (T.AlexPn _ l c) <- getPos
-  showError (l, c, Nothing)
 
 lexer :: (T.Token -> P a) -> P a
 lexer s = alexMonadScan >>= s
