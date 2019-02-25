@@ -141,16 +141,29 @@ alexMonadScan = do
       T.alexSetInput inp__'
       action (T.ignorePendingBytes inp__) len
 
+-- | Overload runAlex to make our own 
+runAlex :: String -> T.Alex a -> Either String a
+runAlex input__ (T.Alex f)
+  = case f (T.AlexState {T.alex_pos = T.alexStartPos,
+                         T.alex_inp = input__,
+                         T.alex_chr = '\n',
+                         T.alex_bytes = [],
+                         
+                         T.alex_ust = T.AlexUserState input__,
+
+                         T.alex_scd = 0}) of Left msg -> Left msg
+                                             Right ( _, a ) -> Right a
+
 -- | scan, the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
 scan :: String -> Either String [T.InnerToken]
 scan s =
-  T.runAlex s $ do
-    let loop tokl = do
-          (T.Token _ tok) <- alexMonadScan
-          if tok == T.TEOF
-            then return tokl
-            else loop (tok : tokl)
-    loop []
+  runAlex s $ do
+  let loop tokl = do
+        (T.Token _ tok) <- alexMonadScan
+        if tok == T.TEOF
+          then return tokl
+          else loop (tok : tokl)
+  loop []
 
 -- | putExit: function to output to stderr and exit with return code 1
 putExit :: String -> IO ()
@@ -178,9 +191,10 @@ returnP = return
 
 -- | showError will be passed to happyError and will define behavior on parser errors
 showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
-showError (l, c, _) =
+showError (l, c, _) = do
+  T.AlexUserState inp <- T.alexGetUserState
   T.alexError
-    ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
+    ("Error: parsing error at line " ++ show l ++ " column " ++ show c ++ " in " ++ inp)
 
 getPos :: T.Alex T.AlexPosn
 getPos = T.Alex (\s -> Right (s, T.alex_pos s))

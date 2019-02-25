@@ -2,7 +2,7 @@
 module Tokens where
 }
 
-%wrapper "monad"
+%wrapper "monadUserState"
 
 -- Macro helper definitions
 $digit = 0-9
@@ -212,6 +212,12 @@ data InnerToken = TBreak
                 | TIdent String
                 | TEOF
                 deriving (Eq, Show)
+
+-- | Custom state for storing input we are scanning
+data AlexUserState = AlexUserState String
+
+-- | Dummy constructor, change when we overload runAlex in Scanner.hs
+alexInitUserState = AlexUserState ""
 
 alexEOF :: Alex Token
 alexEOF = do

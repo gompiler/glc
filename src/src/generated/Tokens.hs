@@ -193,7 +193,7 @@ data AlexState = AlexState {
         alex_bytes :: [Byte],
         alex_scd :: !Int        -- the current startcode
 
-
+      , alex_ust :: AlexUserState -- AlexUserState will be defined in the user program
 
     }
 
@@ -206,7 +206,7 @@ runAlex input__ (Alex f)
                         alex_chr = '\n',
                         alex_bytes = [],
 
-
+                        alex_ust = alexInitUserState,
 
                         alex_scd = 0}) of Left msg -> Left msg
                                           Right ( _, a ) -> Right a
@@ -252,11 +252,11 @@ alexSetStartCode :: Int -> Alex ()
 alexSetStartCode sc = Alex $ \s -> Right (s{alex_scd=sc}, ())
 
 
+alexGetUserState :: Alex AlexUserState
+alexGetUserState = Alex $ \s@AlexState{alex_ust=ust} -> Right (s,ust)
 
-
-
-
-
+alexSetUserState :: AlexUserState -> Alex ()
+alexSetUserState ss = Alex $ \s -> Right (s{alex_ust=ss}, ())
 
 
 alexMonadScan = do
@@ -1062,6 +1062,12 @@ data InnerToken = TBreak
                 | TIdent String
                 | TEOF
                 deriving (Eq, Show)
+
+-- | Custom state for storing input we are scanning
+data AlexUserState = AlexUserState String
+
+-- | Dummy constructor, change when we overload runAlex in Scanner.hs
+alexInitUserState = AlexUserState ""
 
 alexEOF :: Alex Token
 alexEOF = do
