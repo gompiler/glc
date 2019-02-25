@@ -171,7 +171,6 @@ Result      : ident                                   { Just (Type $ getIdent $1
             | {- empty -}                             { Nothing }
 
 Stmt        : BlockStmt ';'                           { $1 }
-            | ';'                                     { SimpleStmt EmptyStmt }
             | SimpleStmt                              { SimpleStmt $1 }
             | IfStmt ';'                              { $1 }
             | break ';'                               { Break }
@@ -185,8 +184,8 @@ StmtsR      : StmtsR Stmt                             { $2 : $1 }
 {- No semicolon, since we can't have semicolons in the middle of if/else statements -}
 BlockStmt   : '{' Stmts '}'                           { BlockStmt $2 }
 
-{- Keep EmptyStmt out and explicitly refer to it when we want it to reduce the chances of bad behaviour -}
-SimpleStmt  : ident "++" ';'                          { Increment $ Var (getIdent $1) } {- TODO -}
+SimpleStmt  : ';'                                     { EmptyStmt }
+            | ident "++" ';'                          { Increment $ Var (getIdent $1) } {- TODO -}
             | ident "--" ';'                          { Decrement $ Var (getIdent $1) } {- TODO -}
             | ExprList "+=" ExprList ';'              { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
             | ExprList "-=" ExprList ';'              { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
