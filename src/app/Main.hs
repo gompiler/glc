@@ -3,6 +3,7 @@ module Main where
 import qualified Options.Applicative as Op
 import           ParseCLI
 import           Scanner
+import Parser
 
 main :: IO ()
 main = do

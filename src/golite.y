@@ -1,5 +1,9 @@
 {module Parser ( putExit
-                , AlexPosn(..))
+                , AlexPosn(..)
+                , runAlex
+                , hparse
+                , hparseId
+                , hparseE)
 where
 import Scanner
 import Data
@@ -17,6 +21,10 @@ import qualified Data.List.NonEmpty as NonEmpty
 %lexer { lexer } { Token _ TEOF }
 %errorhandlertype explist
 %error { parseError }
+
+-- Other partial parsers for testing
+%partial hparseId IdentsR
+%partial hparseE Expr
 
 {- Spec: https://golang.org/ref/spec#Operator_precedence -}
 %nonassoc ',' {- Lowest precedence, for arrays and expression lists. TODO: DO WE NEED THIS? -}
@@ -132,8 +140,9 @@ TopDecls   : TopDecls TopDecl                       { $2 : $1 }
 TopDecl    : Decl                                   { TopDecl $1 }
            | FuncDecl                               { TopFuncDecl $1 }
 
-Idents     : Idents ',' ident                       { (getIdent $2) : $1 } {- TODO -}
-           | {- empty -}                            { [] }
+Idents     : IdentsR                                { reverse $1 }
+IdentsR    : IdentsR ',' ident                      { (getIdent $3) : $1 } {- TODO -}
+           | ident                                  { [getIdent $1] }
 
 {- need errors for figuring out if a type was present and if so whether an expression was passed -}
 {- TODO: LIST OF DECLARATIONS...? -}
@@ -258,7 +267,7 @@ getInnerChar (Token _ (TRuneVal val)) = val
 
 -- Main parse function
 parse :: String -> Either String Program
-parse s = Scanner.runAlex s $ hparse
+parse s = runAlex s $ hparse
 
 -- Extract posn only
 ptokl t = case t of

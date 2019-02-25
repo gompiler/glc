@@ -4,6 +4,7 @@ module TokensSpec
   ( spec
   ) where
 
+import CommonTest
 import           Data.Text         (Text, unpack)
 import           NeatInterpolation
 import           Scanner
@@ -17,7 +18,7 @@ spec =
 
 -- | Generate a SpecWith using the scan function
 specWithScanT :: (String, Either String [InnerToken]) -> SpecWith ()
-specWithScanT (input, output) = it ("given \n" ++ input ++ "\nreturns " ++ show output) $ scanT input `shouldBe` output
+specWithScanT (inp, out) = it (expectStr inp $ show out) $ scanT inp `shouldBe` out
 
 expectScanT :: [(String, Either String [InnerToken])]
 expectScanT =
@@ -168,7 +169,7 @@ expectScanT =
   , ("\r", Right [])
   , ("// This is a comment", Right [])
   , ("/* Block comment */", Right [])
-  -- , ("a /* Block \n */", Right ([TIdent "a", TSemicolon]))
+  , ("a /* Block \n */", Right ([TIdent "a", TSemicolon]))
                -- This will have to change if we change error printing
   , ("''", Left "Error: lexical error at line 1, column 3. Previous character: '\\\'', current string: ")
   , ("var", Right [TVar])
@@ -177,6 +178,12 @@ expectScanT =
   , ("break varname;\n", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break varname \n", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break +\n", Right [TBreak, TPlus])
+  , ("testid", Right [TIdent "testid"])
+  , ("identttt", Right[TIdent "identttt"])
+  , ("_", Right[TIdent "_"])
+  , ("a, b, dddd", Right[TIdent "a", TComma, TIdent "b", TComma, TIdent "dddd"])
+  , ("weirdsp, _   ,aacing", Right[TIdent "weirdsp", TComma, TIdent "_", TComma, TIdent "aacing"])
+  , ("weirdsp, _   \n,aacing", Right[TIdent "weirdsp", TComma, TIdent "_", TSemicolon, TComma, TIdent "aacing"])
   , ( unpack
         [text|
           /* Long block comment
