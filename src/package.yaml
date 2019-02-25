@@ -26,8 +26,9 @@ dependencies:
 - parser-combinators
 - hashtables
 - containers
-- HUnit
 - hspec
+- text
+- neat-interpolation
 
 library:
   source-dirs: [src, src/generated]

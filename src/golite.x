@@ -6,7 +6,7 @@ module Tokens where
 
 -- Macro helper definitions
 $digit = 0-9
-$upper = [A-z]
+$upper = [A-Z]
 $lower = [a-z \_]
 $alpha = [$upper $lower]
 
@@ -27,13 +27,15 @@ $ctrl = [$upper \@\[\\\]\^\_]
 
 @string = $graphic # [\"\\] | " " | @escape | @special
 
+@comment = "/*"
+
 tokens :-
 
     -- ignore whitespace
     <nl> $nl                            { tokS TSemicolon }
-    $white+                             ;
+    $white                              ;
     "//".*                              ;
-    "//*".*"//*"                        ;
+    @comment                            { blockComment }
     "+"                                 { tokS TPlus }
     "-"                                 { tokS TMinus }
     "*"                                 { tokS TTimes }
@@ -115,7 +117,7 @@ tokens :-
     0[xX]$hex+                          { tokSM THexVal }
     $digit+                             { tokSM TDecVal }
     $digit*\.$digit+                    { tokRInp TFloatVal }
-    $alpha [$alpha $digit \_]*          { tokSM TIdent }
+    $alpha [$alpha $digit]*             { tokSM TIdent }
     \' @string \'                       { tokCInp TRuneVal }
     \" @string* \"                      { tokSM TStringVal }
     \` @string* \`                      { tokSM TRStringVal }
@@ -224,25 +226,55 @@ alexEOF = do
         (p, _, _, _) <- alexGetInput
         return (Token p TEOF)
 
+blockComment :: AlexInput -> Int -> Alex Token
+blockComment _ _ = do
+                 inp <- alexGetInput
+                 checkBlk inp inp False
+
+checkBlk :: AlexInput
+         -> AlexInput -- ^ Where the comment started so we can get position to associate with semicolon insertion
+         -> Bool -> Alex Token
+checkBlk inp beg@(pos, _, _, _) semi =
+  maybe
+    (alexError "block error") matchEnd (alexGetByte inp)
+  where
+  bToC b = (toEnum (fromIntegral b) :: Char)
+  matchEnd (b, inp) = case bToC b of
+                        '*'  ->
+                            maybe
+                                (alexError "block error")
+                                matchEnd2 (alexGetByte inp)
+                        '\n' -> checkBlk inp beg True
+                        _    -> checkBlk inp beg semi
+  matchEnd2 (b, inp) = case bToC b of
+                         '/' -> do
+                             alexSetInput inp
+                             sc <- alexGetStartCode
+                             if semi && (sc == nl)
+                                then alexSetStartCode 0 >>
+                                     return (Token pos TSemicolon)
+                                else alexMonadScan
+                         _   -> checkBlk inp beg semi
+
 -- | tokM is a monad wrapper, this deals with consumming strings from the input string and wrapping tokens in a monad
-tokM :: Monad m => ([a] -> InnerToken) -> (AlexPosn, b, c, [a]) -> Int -> m Token
+tokM :: ([a] -> InnerToken) -> (AlexPosn, b, c, [a]) -> Int -> Alex Token
 tokM f (p, _, _, s) len = return (Token p (f (take len s)))
 
 -- | Feed function to tokM
-tok :: Monad m => InnerToken -> (AlexPosn, b, c, [a]) -> Int -> m Token
+tok :: InnerToken -> (AlexPosn, b, c, [a]) -> Int -> Alex Token
 tok x = tokM $ const x
 
 -- | Char
--- tokCInp :: Monad m => (Char -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
+-- tokCInp :: (Char -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
 -- Input will *always* be of length 3 as we only feed '@string' to this, where @string is one character corresponding to the string macro
 tokCInp x = andBegin (tokM $ x . (!!1)) nl -- Take index 1 of the string that should be 'C' where C is a char
                                            -- All literal vals can take optional semicolons, hence the nl
 
--- tokRInp :: (Monad m, Read t) => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> m Token
+-- tokRInp :: Read t => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
 -- | tokInp but pass s through read (for things that aren't strings)
 tokRInp x = andBegin (tokM $ x . read) nl -- Lit val
 
-nlTokens  = [TInc, TDInc, TRParen, TRBrace, TBreak, TContinue, TReturn]
+nlTokens  = [TInc, TDInc, TRParen, TRSquareB, TRBrace, TBreak, TContinue, TFallthrough, TReturn]
 
 -- | Gets token state for semicolon insertion (either 0 or nl)
 getTokenState :: InnerToken -> Int
@@ -255,6 +287,6 @@ tokS :: InnerToken -> AlexAction Token
 tokS x = andBegin (tokM $ const x) (getTokenState x)
 
 -- | Same thing, but for tokM
-tokSM :: ([Char] -> InnerToken) -> AlexAction Token
+tokSM :: (String -> InnerToken) -> AlexAction Token
 tokSM x = andBegin (tokM x) nl -- All literal values can take optional semicolons
 }
