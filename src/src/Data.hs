@@ -11,21 +11,24 @@ type Identifier = String
 
 newtype TODO =
   TODO String -- temp
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
 data Program = Program
-  { package   :: PackageName
+  { package   :: String
   , topLevels :: [TopDecl]
-  }
+  } deriving (Show, Eq)
 
 ----------------------------------------------------------------------
 -- Declarations
--- | See https://golang.org/ref/spec#Declarations_and_scope
+-- | See https://golang.org/ref/spec#TopLevelDecl
 data TopDecl
   = TopDecl Decl
   | TopFuncDecl FuncDecl
+  deriving (Show, Eq)
 
+-- | See https://golang.org/ref/spec#Declaration
 -- Golite does not support type alias
 data Decl
   -- | See https://golang.org/ref/spec#VarDecl
@@ -35,6 +38,7 @@ data Decl
   -- | See https://golang.org/ref/spec#TypeDecl
   -- Same spec as VarDecl
   | TypeDef [TypeDef']
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#VarDecl
 -- A single declaration line can declare one or more identifiers
@@ -45,10 +49,13 @@ data Decl
 data VarDecl' =
   VarDecl' (NonEmpty Identifier)
            (Either (Type, [Expr]) (NonEmpty Expr))
+  deriving (Show, Eq)
 
+-- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =
   TypeDef' Identifier
            Type
+  deriving (Show, Eq)
 
 ----------------------------------------------------------------------
 -- | See https://golang.org/ref/spec#Function_declarations
@@ -64,6 +71,7 @@ data FuncDecl =
   FuncDecl Identifier
            Signature
            FuncBody
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#ParameterDecl
 -- Func components
@@ -71,17 +79,21 @@ data FuncDecl =
 data ParameterDecl =
   ParameterDecl (NonEmpty Identifier)
                 Type
+  deriving (Show, Eq)
 
+-- | See https://golang.org/ref/spec#Parameters
 -- Variadic parameters aren't supported in golite
 newtype Parameters =
   Parameters [ParameterDecl]
+  deriving (Show, Eq)
 
+-- | See https://golang.org/ref/spec#Signature
 -- Golite does not support multiple return values or named values;
 -- No result type needed
--- TODO see if we want this or if we want to merge this into FuncDecl
 data Signature =
   Signature Parameters
             (Maybe Type)
+  deriving (Show, Eq)
 
 ----------------------------------------------------------------------
 -- Func body/statements
@@ -91,8 +103,8 @@ data Scope
   | PackageScope
   | FuncScope
   | StmtScope
+  deriving (Show, Eq)
 
--- WIP
 type FuncBody = Stmt
 
 -- | See https://golang.org/ref/spec#SimpleStmt
@@ -112,7 +124,9 @@ data SimpleStmt
   -- | See https://golang.org/ref/spec#ShortVarDecl
   | ShortDeclare (NonEmpty Identifier)
                  (NonEmpty Expr)
+  deriving (Show, Eq)
 
+-- | Shortcut for a blank stmt
 blank :: Stmt
 blank = SimpleStmt EmptyStmt
 
@@ -155,15 +169,14 @@ data Stmt
   -- | See https://golang.org/ref/spec#Return_statements
   -- In golite, at most one expr can be returned
   | Return (Maybe Expr)
-
-newtype Label =
-  Label Identifier
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
 data SwitchCase
   = Case (NonEmpty Expr)
          Stmt
   | Default Stmt
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#For_statements
 -- Golite does not support range statement
@@ -173,6 +186,7 @@ data ForClause
   | ForClause SimpleStmt
               Expr
               SimpleStmt
+  deriving (Show, Eq)
 
 ----------------------------------------------------------------------
 --Expressions
@@ -205,6 +219,7 @@ data Expr
   | CapExpr Expr
   | Conversion Type
                Expr
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Literal
 -- TODO do we want to store string and type?
@@ -222,6 +237,7 @@ data Literal
   -- | See https://golang.org/ref/spec#FunctionLit
   | FuncLit Signature
             FuncBody
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#binary_op
 -- & See https://golang.org/ref/spec#rel_op
@@ -235,6 +251,7 @@ data BinaryOp
   | LEQ -- <=
   | GT -- >
   | GEQ -- >=
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#add_op
 -- & See https://golang.org/ref/spec#mul_op
@@ -254,6 +271,7 @@ data ArithmOp
   | ShiftR -- >>
   | BitAnd -- &
   | BitClear -- &^
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#unary_op
 -- Golite only supports the four ops below
@@ -262,20 +280,24 @@ data UnaryOp
   | Neg -- -
   | Not -- !
   | BitComplement -- ^
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#assign_op
 -- Symbol is the arithm op followed by '='
 newtype AssignOp =
   AssignOp (Maybe ArithmOp)
+  deriving (Show, Eq)
 
 data IntType'
   = Decimal
   | Octal
   | Hexadecimal
+  deriving (Show, Eq)
 
 data StringType'
   = Interpreted
   | Raw
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Types
 data Type
@@ -290,12 +312,14 @@ data Type
   | PointerType Type
   | FuncType Signature
   | Type Identifier
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#string_lit
 -- TODO check if we want to use a data kind and reuse the StringLit constructor within Literals
 data StringLiteral =
   StringLiteral StringType'
                 String
+  deriving (Show, Eq)
 
 data FieldDecl
   = FieldDecl (NonEmpty Identifier)
@@ -303,5 +327,4 @@ data FieldDecl
               (Maybe StringLiteral)
   | EmbeddedField Identifier
                   (Maybe StringLiteral)
-
-type PackageName = String
+  deriving (Show, Eq)
