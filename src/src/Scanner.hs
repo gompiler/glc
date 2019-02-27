@@ -10,7 +10,6 @@ module Scanner
   , scanP
   , scanC
   , putExit
-  , prettify
   , T.Token(..)
   , T.InnerToken(..)
   , T.AlexPosn(..)
