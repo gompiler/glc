@@ -75,6 +75,9 @@ instance Prettify Signature where
 --instance Prettify Scope
 instance Prettify SimpleStmt where
   prettify' EmptyStmt = []
+  prettify' (ExprStmt e) = prettify' e
+  prettify' (Increment _ e) = ["(" ++ prettify e ++ ")++"]
+  prettify' (Decrement _ e) = ["(" ++ prettify e ++ ")--"]
 
 instance Prettify Stmt
 
