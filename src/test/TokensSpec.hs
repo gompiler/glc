@@ -197,7 +197,6 @@ expectScanT =
   , ("'\\t'", Right [TRuneVal '\t'])
   , ("'\\v'", Right [TRuneVal '\v'])
   , ("'\\\\'", Right [TRuneVal '\\'])
->>>>>>> scanner-fixes
   , ( unpack
         [text|
           /* Long block comment
