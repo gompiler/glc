@@ -118,7 +118,7 @@ tokens :-
     0$octal+                            { tokSM TOctVal }
     0[xX]$hex+                          { tokSM THexVal }
     $digit+                             { tokSM TDecVal }
-    $digit*\.$digit*                    { tokRInp TFloatVal }
+    $digit*\.$digit*                    { tokFInp TFloatVal }
     $alpha [$alpha $digit]*             { tokSM TIdent }
     \' @char \'                         { tokCInp TRuneVal }
     \" @string* \"                      { tokSM TStringVal }
@@ -276,9 +276,13 @@ tokCInp x = andBegin (tokM $ x . \s -> case s!!1 of
                                             c -> c) nl -- Take index 1 of the string that should be 'C' where C is a char or escape character
                                            -- All literal vals can take optional semicolons, hence the nl
 
--- tokRInp :: Read t => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
--- | tokInp but pass s through read (for things that aren't strings)
-tokRInp x = andBegin (tokM $ x . read) nl -- Lit val
+-- tokFInp :: (String -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
+-- | Floats
+tokFInp x = andBegin (tokM $ x . read . (\s -> case (break (== '.') s) of -- Separate by String by . and check if any side is empty
+                                                 (n, '.':[]) -> s ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
+                                                 ([], '.':n) -> '0' : s -- Prepend 0 because .1 is not a valid Float
+                                                 (_, _)      -> s
+                                                 )) nl -- Lit val
 
 nlTokens  = [TInc, TDInc, TRParen, TRSquareB, TRBrace, TBreak, TContinue, TFallthrough, TReturn]
 

@@ -1109,9 +1109,13 @@ tokCInp x = andBegin (tokM $ x . \s -> case s!!1 of
                                             c -> c) nl -- Take index 1 of the string that should be 'C' where C is a char or escape character
                                            -- All literal vals can take optional semicolons, hence the nl
 
--- tokRInp :: Read t => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
--- | tokInp but pass s through read (for things that aren't strings)
-tokRInp x = andBegin (tokM $ x . read) nl -- Lit val
+-- tokFInp :: (String -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
+-- | Floats
+tokFInp x = andBegin (tokM $ x . read . (\s -> case (break (== '.') s) of -- Separate by String by . and check if any side is empty
+                                                 (n, '.':[]) -> s ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
+                                                 ([], '.':n) -> '0' : s -- Prepend 0 because .1 is not a valid Float
+                                                 (_, _)      -> s
+                                                 )) nl -- Lit val
 
 nlTokens  = [TInc, TDInc, TRParen, TRSquareB, TRBrace, TBreak, TContinue, TFallthrough, TReturn]
 
@@ -1214,7 +1218,7 @@ alex_action_80 =  tokS TCap
 alex_action_81 =  tokSM TOctVal 
 alex_action_82 =  tokSM THexVal 
 alex_action_83 =  tokSM TDecVal 
-alex_action_84 =  tokRInp TFloatVal 
+alex_action_84 =  tokFInp TFloatVal 
 alex_action_85 =  tokSM TIdent 
 alex_action_86 =  tokCInp TRuneVal 
 alex_action_87 =  tokSM TStringVal 
