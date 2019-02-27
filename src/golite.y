@@ -174,7 +174,7 @@ TopDeclsR   : TopDeclsR TopDecl                       { $2 : $1 }
 TopDecl     : Decl                                    { TopDecl $1 }
             | FuncDecl                                { TopFuncDecl $1 }
 
-Idents      : IdentsR                                 { reverse $1 }
+Idents      : IdentsR                                 { (nonEmpty . reverse) $1 }
 IdentsR     : IdentsR ',' ident                       { (getIdent $3) : $1 } {- TODO -}
             | ident                                   { [getIdent $1] }
 
@@ -182,8 +182,11 @@ IdentsR     : IdentsR ',' ident                       { (getIdent $3) : $1 } {- 
 {- TODO: LIST OF DECLARATIONS...? -}
 Decl        : var InnerDecl ';'                       { VarDecl [$2] }
             | var '(' InnerDecls ')' ';'              { VarDecl $3 }
+            | type ident ident ';'                    { TypeDef [TypeDef' (getIdent $2) (Type $ getIdent $3)] }
+            | type ident Struct ';'                   { TypeDef [TypeDef' (getIdent $2) (StructType $3)] }
+            | type '(' TypeDefs ')' ';'               { TypeDef $3 }
 
-InnerDecl   : Idents DeclBody ';'                     { VarDecl' (nonEmpty $1) $2 }
+InnerDecl   : Idents DeclBody ';'                     { VarDecl' $1 $2 }
 InnerDecls  : InnerDeclsR                             { reverse $1 }
 InnerDeclsR : InnerDeclsR InnerDecl                   { $2 : $1 }
             | {- empty -}                             { [] }
@@ -193,12 +196,24 @@ DeclBody    : ident                                   { Left (Type (getIdent $1)
             | ident '=' ExprList                      { Left (Type (getIdent $1), $3) }
             | '=' ExprList                            { Right (nonEmpty $2) }
 
+TypeDefs    : TypeDefsR                               { reverse $1 }
+TypeDefsR   : TypeDefsR ident ident ';'               { (TypeDef' (getIdent $2) (Type $ getIdent $3)) : $1 }
+            | TypeDefsR ident Struct ';'              { (TypeDef' (getIdent $2) (StructType $3)) : $1}
+            | {- empty -}                             { [] }
+
+Struct      : struct '{' FieldDecls '}'               { $3 }
+
+FieldDecls  : FieldDeclsR                             { reverse $1 }
+FieldDeclsR : FieldDeclsR Idents ident ';'            { (FieldDecl $2 (Type (getIdent $3))) : $1 }
+            | FieldDeclsR Idents Struct ';'           { (FieldDecl $2 (StructType $3)) : $1 }
+            | {- empty -}                             { [] }
+
 {- TODO: OPTIONAL/COMPLEX FUNC TYPE -}
 FuncDecl    : func ident Signature BlockStmt          { FuncDecl (getIdent $2) $3 $4 } {- TODO: PACKAGE NAME? -}
 
 Signature   : '(' Params ')' Result                   { Signature (Parameters $2) $4 }
 Params      : ParamsR                                 { reverse $1 }
-ParamsR     : ParamsR Idents ident                    { (ParameterDecl (nonEmpty $2) (Type $ getIdent $3)) : $1 }
+ParamsR     : ParamsR Idents ident                    { (ParameterDecl $2 (Type $ getIdent $3)) : $1 }
             | {- empty -}                             { [] }
 Result      : ident                                   { Just (Type $ getIdent $1) }
             | {- empty -}                             { Nothing }
