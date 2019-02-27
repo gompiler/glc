@@ -13,12 +13,8 @@ import           Test.Hspec
 spec :: Spec
 spec =
   describe "scanT" $ do
-    specWithScanT (";", Right ([TSemicolon]))
-    mapM_ specWithScanT expectScanT
-
--- | Generate a SpecWith using the scan function
-specWithScanT :: (String, Either String [InnerToken]) -> SpecWith ()
-specWithScanT (inp, out) = it (expectStr inp $ show out) $ scanT inp `shouldBe` out
+    specWithG scanT  (";", Right ([TSemicolon]))
+    mapM_ (specWithG scanT) expectScanT
 
 expectScanT :: [(String, Either String [InnerToken])]
 expectScanT =

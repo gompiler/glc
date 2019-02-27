@@ -6,6 +6,7 @@ import           Test.Hspec
 import CommonTest
 import Parser
 import Data
+import Scanner
 
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
@@ -16,11 +17,11 @@ import qualified Data.List.NonEmpty as NonEmpty
 spec :: Spec
 spec = do
   describe "parseId" $ do
-    mapM_ specWithId expectId
-    mapM_ specWithE expectE
+    mapM_ (specWithG $ scanToP pId) expectId
+    mapM_ (specWithG $ scanToP pE) expectE
 
-specWithId :: (String, Either String (NonEmpty Identifier)) -> SpecWith ()
-specWithId (inp, out) = it (expectStr inp $ show out) $ runAlex inp pId `shouldBe` out
+scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
+scanToP f s = runAlex s f
 
 expectId :: [(String, Either String (NonEmpty Identifier))]
 expectId =
@@ -31,10 +32,7 @@ expectId =
   , ("_, _,_", Right (NonEmpty.fromList ["_", "_", "_"]))
   , ("weirdsp, _   ,aacing", Right (NonEmpty.fromList [ "weirdsp", "_", "aacing"]))
   ]
-
-specWithE :: (String, Either String Expr) -> SpecWith ()
-specWithE (inp, out) = it (expectStr inp $ show out) $ runAlex inp pE `shouldBe` out
-
+  
 expectE :: [(String, Either String Expr)]
 expectE =
   [ ("01249148", Right $ Lit $ IntLit Decimal "01249148")
