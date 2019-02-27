@@ -222,8 +222,10 @@ Stmt        : BlockStmt ';'                           { $1 }
             | SimpleStmt                              { SimpleStmt $1 }
             | IfStmt ';'                              { $1 }
             | ForStmt ';'                             { $1 }
+            | SwitchStmt ';'                          { $1 }
             | break ';'                               { Break }
             | continue ';'                            { Continue }
+         {- | fallthrough ';'                         {  } TODO -}
             | Decl ';'                                { Declare $1 }
             | print '(' ExprList ')' ';'              { Print $3 }
             | println '(' ExprList ')' ';'            { Println $3 }
@@ -260,9 +262,19 @@ Elses       : else IfStmt                             { $2 }
             | else BlockStmt                          { $2 }
             | {- empty -}                             { blank }
 
-ForStmt     : for BlockStmt                       { For ForInfinite $2 }
-            | for Expr BlockStmt                  { For (ForCond $2) $3 }
+ForStmt     : for BlockStmt                           { For ForInfinite $2 }
+            | for Expr BlockStmt                      { For (ForCond $2) $3 }
             | for SimpleStmt Expr ';' SimpleStmt BlockStmt { For (ForClause $2 $3 $5) $6 } {- TODO: ALIGNMENT -}
+
+SwitchStmt  : switch SimpleStmt Expr '{' SwitchBody '}' { Switch $2 (Just $3) $5 } {- TODO: NEED EXPR / SIMPLE STMT, ALIGNMENT -}
+            | switch SimpleStmt '{' SwitchBody '}'    { Switch $2 Nothing $4 }
+            | switch Expr '{' SwitchBody '}'          { Switch EmptyStmt (Just $2) $4 }
+            | switch '{' SwitchBody '}'               { Switch EmptyStmt Nothing $3 }
+
+SwitchBody  : SwitchBodyR                             { reverse $1 }
+SwitchBodyR : SwitchBodyR case ExprList ':' Stmts     { (Case (nonEmpty $3) (BlockStmt $5)) : $1 }
+            | SwitchBodyR default Stmts               { (Default $ BlockStmt $3) : $1 }
+            | {- empty -}                             { [] }
 
 Expr        : '+' Expr %prec POS                      { Unary Pos $2 }
             | '-' Expr %prec NEG                      { Unary Neg $2 }
