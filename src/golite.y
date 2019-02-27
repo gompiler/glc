@@ -175,12 +175,15 @@ Idents      : IdentsR                                 { (nonEmpty . reverse) $1 
 IdentsR     : IdentsR ',' ident                       { (getIdent $3) : $1 } {- TODO -}
             | ident                                   { [getIdent $1] }
 
+Type        : ident                                   { Type $ getIdent $1 }
+            | '[' Expr ']' Type                       { ArrayType $2 $4 }
+            | Struct                                  { StructType $1 }
+
 {- need errors for figuring out if a type was present and if so whether an expression was passed -}
 {- TODO: LIST OF DECLARATIONS...? -}
 Decl        : var InnerDecl ';'                       { VarDecl [$2] }
             | var '(' InnerDecls ')' ';'              { VarDecl $3 }
-            | type ident ident ';'                    { TypeDef [TypeDef' (getIdent $2) (Type $ getIdent $3)] }
-            | type ident Struct ';'                   { TypeDef [TypeDef' (getIdent $2) (StructType $3)] }
+            | type ident Type ';'                     { TypeDef [TypeDef' (getIdent $2) $3] }
             | type '(' TypeDefs ')' ';'               { TypeDef $3 }
 
 InnerDecl   : Idents DeclBody ';'                     { VarDecl' $1 $2 }
@@ -189,13 +192,12 @@ InnerDeclsR : InnerDeclsR InnerDecl                   { $2 : $1 }
             | {- empty -}                             { [] }
 
 {- TODO: TYPES OF RETURN... NEED OVERRIDING AND STUFF -}
-DeclBody    : ident                                   { Left (Type (getIdent $1), []) }
-            | ident '=' ExprList                      { Left (Type (getIdent $1), $3) } {- TODO: NON EMPTY? -}
+DeclBody    : Type                                    { Left ($1, []) }
+            | Type '=' ExprList                       { Left ($1, $3) } {- TODO: NON EMPTY? -}
             | '=' ExprList                            { Right (nonEmpty $2) }
 
 TypeDefs    : TypeDefsR                               { reverse $1 }
-TypeDefsR   : TypeDefsR ident ident ';'               { (TypeDef' (getIdent $2) (Type $ getIdent $3)) : $1 }
-            | TypeDefsR ident Struct ';'              { (TypeDef' (getIdent $2) (StructType $3)) : $1}
+TypeDefsR   : TypeDefsR ident Type ';'                { (TypeDef' (getIdent $2) $3) : $1 }
             | {- empty -}                             { [] }
 
 Struct      : struct '{' FieldDecls '}'               { $3 }
@@ -306,6 +308,8 @@ Expr        : '+' Expr %prec POS                      { Unary Pos $2 }
             | append '(' Expr ',' Expr ')'            { AppendExpr $3 $5 }
             | len '(' Expr ')'                        { LenExpr $3 }
             | cap '(' Expr ')'                        { CapExpr $3 }
+         {- | ident                                   { Var (getIdent $1) } HOW TO DO WITHOUT CONFLICTS? -}
+            {- TODO: HOW TO DO ARRAY ACCESS -}
 
 ExprList    : ExprListR                               { reverse $1 }
 ExprListR   : ExprListR ',' Expr                      { $3 : $1 }
