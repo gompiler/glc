@@ -324,7 +324,5 @@ data StringLiteral =
 data FieldDecl
   = FieldDecl (NonEmpty Identifier)
               Type
-              (Maybe StringLiteral)
   | EmbeddedField Identifier
-                  (Maybe StringLiteral)
   deriving (Show, Eq)
