@@ -9,6 +9,7 @@ module Scanner
   , scanT
   , scanP
   , scanC
+  , prettify
   , putExit
   , T.Token(..)
   , T.InnerToken(..)
@@ -130,10 +131,7 @@ alexMonadScan = do
     T.AlexError (T.AlexPn _ line column, prev, _, s) ->
       T.alexError $
       "Error: lexical error at line " ++
-      show line ++
-      ", column " ++
-      show column ++
-      ". Previous character: " ++ show prev ++ ", current string: " ++ s
+      show line ++ ", column " ++ show column ++ ". Previous character: " ++ show prev ++ ", current string: " ++ s
     T.AlexSkip inp__' _len -> do
       T.alexSetInput inp__'
       alexMonadScan
@@ -163,8 +161,7 @@ putExit err = do
 
 -- | Print result of scan, i.e. tokens or error
 scanP :: String -> IO ()
-scanP s =
-  either putExit (\tl -> prettyPrint (reverse tl) >> exitSuccess) (scan s)
+scanP s = either putExit (\tl -> prettyPrint (reverse tl) >> exitSuccess) (scan s)
 
 -- | Check for error, if none will print OK
 scanC :: String -> IO ()
@@ -181,9 +178,7 @@ returnP = return
 
 -- | showError will be passed to happyError and will define behavior on parser errors
 showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
-showError (l, c, _) =
-  T.alexError
-    ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
+showError (l, c, _) = T.alexError ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
 
 getPos :: T.Alex T.AlexPosn
 getPos = T.Alex (\s -> Right (s, T.alex_pos s))

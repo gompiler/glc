@@ -13,6 +13,8 @@ data Identifier =
              String
   deriving (Show, Eq)
 
+type Identifiers = NonEmpty Identifier
+
 newtype TODO =
   TODO String -- temp
   deriving (Show, Eq)
@@ -51,7 +53,7 @@ data Decl
 -- though we make no guarantees at this AST stage
 -- Should a type be specified, the expression list is optional
 data VarDecl' =
-  VarDecl' (NonEmpty Identifier)
+  VarDecl' Identifiers
            (Either (Type', [Expr]) (NonEmpty Expr))
   deriving (Show, Eq)
 
@@ -81,7 +83,7 @@ data FuncDecl =
 -- Func components
 -- Golite does not support unnamed parameters
 data ParameterDecl =
-  ParameterDecl (NonEmpty Identifier)
+  ParameterDecl Identifiers
                 Type'
   deriving (Show, Eq)
 
@@ -129,7 +131,7 @@ data SimpleStmt
            (NonEmpty Expr)
            (NonEmpty Expr)
   -- | See https://golang.org/ref/spec#ShortVarDecl
-  | ShortDeclare (NonEmpty Identifier)
+  | ShortDeclare Identifiers
                  (NonEmpty Expr)
   deriving (Show, Eq)
 
@@ -338,7 +340,7 @@ data StringLiteral =
   deriving (Show, Eq)
 
 data FieldDecl
-  = FieldDecl (NonEmpty Identifier)
+  = FieldDecl Identifiers
               Type'
   | EmbeddedField Identifier
   deriving (Show, Eq)
