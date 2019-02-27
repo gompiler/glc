@@ -6,9 +6,25 @@
 module Parser ( putExit
                 , AlexPosn(..)
                 , runAlex
-                , hparse
-                , hparseId
-                , hparseE)
+                , pId
+                , pTDecl
+                , pTDecls
+                , pDec
+                , pDecB
+                , pFDec
+                , pSig
+                , pIDecl
+                , pPar
+                , pRes
+                , pStmt
+                , pStmts
+                , pBStmt
+                , pSStmt
+                , pIf
+                , pElses
+                , pEl
+                , pE
+                , hparse)
 where
 import Scanner
 import Data
@@ -25,227 +41,211 @@ import Control.Monad (ap)
 
 -- parser produced by Happy Version 1.19.9
 
-newtype HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 = HappyAbsSyn HappyAny
+newtype HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47 = HappyAbsSyn HappyAny
 #if __GLASGOW_HASKELL__ >= 607
 type HappyAny = Happy_GHC_Exts.Any
 #else
 type HappyAny = forall a . a
 #endif
-happyIn6 :: t6 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn6 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn6 #-}
-happyOut6 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t6
-happyOut6 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut6 #-}
-happyIn7 :: t7 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn7 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn7 #-}
-happyOut7 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t7
-happyOut7 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut7 #-}
-happyIn8 :: t8 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn8 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn8 #-}
-happyOut8 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t8
-happyOut8 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut8 #-}
-happyIn9 :: t9 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn9 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn9 #-}
-happyOut9 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t9
-happyOut9 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut9 #-}
-happyIn10 :: t10 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn10 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn10 #-}
-happyOut10 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t10
-happyOut10 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut10 #-}
-happyIn11 :: t11 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn11 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn11 #-}
-happyOut11 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t11
-happyOut11 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut11 #-}
-happyIn12 :: t12 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn12 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn12 #-}
-happyOut12 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t12
-happyOut12 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut12 #-}
-happyIn13 :: t13 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn13 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn13 #-}
-happyOut13 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t13
-happyOut13 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut13 #-}
-happyIn14 :: t14 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn14 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn14 #-}
-happyOut14 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t14
-happyOut14 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut14 #-}
-happyIn15 :: t15 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn15 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn15 #-}
-happyOut15 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t15
-happyOut15 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut15 #-}
-happyIn16 :: t16 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn16 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn16 #-}
-happyOut16 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t16
-happyOut16 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut16 #-}
-happyIn17 :: t17 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn17 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn17 #-}
-happyOut17 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t17
-happyOut17 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut17 #-}
-happyIn18 :: t18 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn18 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn18 #-}
-happyOut18 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t18
-happyOut18 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut18 #-}
-happyIn19 :: t19 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn19 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn19 #-}
-happyOut19 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t19
-happyOut19 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut19 #-}
-happyIn20 :: t20 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn20 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn20 #-}
-happyOut20 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t20
-happyOut20 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut20 #-}
-happyIn21 :: t21 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
-happyIn21 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyIn21 #-}
-happyOut21 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t21
-happyOut21 x = Happy_GHC_Exts.unsafeCoerce# x
-{-# INLINE happyOut21 #-}
-happyIn22 :: t22 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn22 :: t22 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn22 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn22 #-}
-happyOut22 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t22
+happyOut22 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t22
 happyOut22 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut22 #-}
-happyIn23 :: t23 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn23 :: t23 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn23 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn23 #-}
-happyOut23 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t23
+happyOut23 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t23
 happyOut23 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut23 #-}
-happyIn24 :: t24 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn24 :: t24 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn24 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn24 #-}
-happyOut24 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t24
+happyOut24 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t24
 happyOut24 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut24 #-}
-happyIn25 :: t25 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn25 :: t25 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn25 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn25 #-}
-happyOut25 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t25
+happyOut25 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t25
 happyOut25 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut25 #-}
-happyIn26 :: t26 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn26 :: t26 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn26 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn26 #-}
-happyOut26 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t26
+happyOut26 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t26
 happyOut26 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut26 #-}
-happyIn27 :: t27 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn27 :: t27 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn27 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn27 #-}
-happyOut27 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t27
+happyOut27 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t27
 happyOut27 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut27 #-}
-happyIn28 :: t28 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn28 :: t28 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn28 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn28 #-}
-happyOut28 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t28
+happyOut28 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t28
 happyOut28 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut28 #-}
-happyIn29 :: t29 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn29 :: t29 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn29 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn29 #-}
-happyOut29 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t29
+happyOut29 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t29
 happyOut29 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut29 #-}
-happyIn30 :: t30 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn30 :: t30 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn30 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn30 #-}
-happyOut30 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t30
+happyOut30 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t30
 happyOut30 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut30 #-}
-happyIn31 :: t31 -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn31 :: t31 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyIn31 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyIn31 #-}
-happyOut31 :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> t31
+happyOut31 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t31
 happyOut31 x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOut31 #-}
-happyInTok :: (Token) -> (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31)
+happyIn32 :: t32 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn32 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn32 #-}
+happyOut32 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t32
+happyOut32 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut32 #-}
+happyIn33 :: t33 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn33 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn33 #-}
+happyOut33 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t33
+happyOut33 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut33 #-}
+happyIn34 :: t34 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn34 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn34 #-}
+happyOut34 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t34
+happyOut34 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut34 #-}
+happyIn35 :: t35 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn35 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn35 #-}
+happyOut35 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t35
+happyOut35 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut35 #-}
+happyIn36 :: t36 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn36 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn36 #-}
+happyOut36 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t36
+happyOut36 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut36 #-}
+happyIn37 :: t37 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn37 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn37 #-}
+happyOut37 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t37
+happyOut37 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut37 #-}
+happyIn38 :: t38 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn38 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn38 #-}
+happyOut38 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t38
+happyOut38 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut38 #-}
+happyIn39 :: t39 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn39 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn39 #-}
+happyOut39 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t39
+happyOut39 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut39 #-}
+happyIn40 :: t40 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn40 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn40 #-}
+happyOut40 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t40
+happyOut40 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut40 #-}
+happyIn41 :: t41 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn41 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn41 #-}
+happyOut41 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t41
+happyOut41 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut41 #-}
+happyIn42 :: t42 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn42 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn42 #-}
+happyOut42 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t42
+happyOut42 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut42 #-}
+happyIn43 :: t43 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn43 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn43 #-}
+happyOut43 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t43
+happyOut43 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut43 #-}
+happyIn44 :: t44 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn44 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn44 #-}
+happyOut44 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t44
+happyOut44 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut44 #-}
+happyIn45 :: t45 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn45 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn45 #-}
+happyOut45 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t45
+happyOut45 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut45 #-}
+happyIn46 :: t46 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn46 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn46 #-}
+happyOut46 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t46
+happyOut46 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut46 #-}
+happyIn47 :: t47 -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
+happyIn47 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyIn47 #-}
+happyOut47 :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> t47
+happyOut47 x = Happy_GHC_Exts.unsafeCoerce# x
+{-# INLINE happyOut47 #-}
+happyInTok :: (Token) -> (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47)
 happyInTok x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyInTok #-}
-happyOutTok :: (HappyAbsSyn t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 t16 t17 t18 t19 t20 t21 t22 t23 t24 t25 t26 t27 t28 t29 t30 t31) -> (Token)
+happyOutTok :: (HappyAbsSyn t22 t23 t24 t25 t26 t27 t28 t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 t42 t43 t44 t45 t46 t47) -> (Token)
 happyOutTok x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOutTok #-}
 
 
 happyExpList :: HappyAddr
-happyExpList = HappyA# "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\xff\x00\xd8\x01\xc6\x03\x00\x00\x00\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x18\x04\x00\x01\x00\x00\x00\x00\x00\xe0\x7f\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x18\x04\x00\x01\x00\x00\x00\x00\x00\xe0\x7f\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x80\x00\x00\x00\x00\x00\xe0\x1f\x00\x38\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfc\x03\x00\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x7f\x00\xe0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x0f\x00\x1c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfe\x01\xb0\x03\x84\x07\x00\x00\x00\x00\x00\x00\x00\x00\xc0\x3f\x00\x76\x00\xf0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfc\x03\x00\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x7f\x00\xe0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc0\x03\x00\x1c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x78\x00\x80\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1e\x00\xe0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x0f\xa0\x1d\x60\x3c\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfe\x11\xb0\x03\x8c\x07\x00\x00\x00\x00\x00\x00\x00\x00\xc0\x3f\x02\x76\x80\xf1\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x8f\x80\x1d\x60\x3c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\xf8\x07\xc0\x0e\x30\x1e\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0c\x0a\x81\x00\x00\x00\x22\x40\x10\xfe\x7f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\x00\xd8\x01\xc6\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\xc0\x3f\x00\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x06\x05\x40\x00\x00\x00\x00\x00\x00\xf8\x3f\x00\x00\x00\xc0\xa0\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\xf8\x17\xc0\x0e\x30\x1e\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\xfc\x03\x61\x07\x18\x0f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x18\x04\x00\x01\x00\x00\x00\x00\x00\xe0\x7f\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x18\x04\x00\x01\x00\x00\x00\x00\x00\xe0\x7f\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\xe0\x1f\x08\x3b\xc0\x78\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
+happyExpList = HappyA# "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\xc0\xa0\x10\x08\x00\x00\x20\x02\x04\xe1\xff\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x60\x50\x00\x04\x00\x00\x00\x00\x00\x80\xff\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\xff\x00\xd8\x01\xc6\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf8\x07\xc0\x0e\x30\x1e\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x06\x05\x40\x00\x00\x00\x00\x00\x00\xf8\x3f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\xf0\x0f\xc0\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x06\x85\x40\x00\x00\x00\x11\x20\x08\xff\x3f\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x06\x05\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x2f\x80\x1d\x60\x3c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x18\x04\x00\x01\x00\x00\x00\x00\x00\xe0\x7f\x00\x00\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x18\x04\x00\x01\x00\x00\x00\x00\x00\xe0\x7f\x00\x00\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x00\x00\xf0\x0f\x84\x1d\x60\x3c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x18\x04\x00\x01\x00\x00\x00\x00\x00\xe0\x7f\x00\x00\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x18\x04\x00\x01\x00\x00\x00\x00\x00\xe0\x7f\x00\x00\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\x18\x04\x00\x01\x00\x00\x00\x00\x00\xe0\x7f\x00\x00\x00\x00\x00\x00\x83\x00\x20\x00\x00\x00\x00\x00\x00\xfc\x0f\x00\x00\x00\x00\x00\x60\x10\x00\x04\x00\x00\x00\x00\x00\x80\xff\x01\x00\x00\x00\x00\x00\x0c\x02\x80\x00\x00\x00\x00\x00\x00\xf0\x3f\x00\x00\x00\x00\x00\x80\x41\x00\x10\x00\x00\x00\x00\x00\x00\xfe\x07\x00\x00\x00\x00\x00\x30\x08\x00\x02\x00\x00\x00\x00\x00\xc0\xff\x00\x00\x00\x00\x00\x00\x06\x01\x40\x00\x00\x00\x00\x00\x00\xf8\x1f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x0f\xa0\x1d\x60\x3c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfe\x11\xb0\x03\x8c\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc0\x3f\x02\x76\x80\xf1\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf8\x07\x00\x0e\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\x00\xc0\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xe0\x1f\x00\x38\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfc\x03\x00\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x7f\x00\xec\x00\xe1\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x0f\x80\x1d\x00\x3c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\x00\xc0\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xe0\x1f\x00\x38\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1e\x00\xe0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x3c\x00\xc0\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x07\x00\x38\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfc\x03\x60\x07\x18\x0f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf0\x0f\x84\x1d\x60\x3c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x20\x00\x00\x00\x00\x00\x00\x00\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc0\x20\x00\x08\x00\x00\x00\x00\x00\x00\xff\x03\x00\x00\x00\x00\x00\xf8\x47\xc0\x0e\x30\x1e\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
 
 {-# NOINLINE happyExpListPerState #-}
 happyExpListPerState st =
     token_strs_expected
-  where token_strs = ["error","%dummy","%start_hparse","%start_hparseId","%start_hparseE","Program","TopDecls","TopDeclsR","TopDecl","Idents","IdentsR","Decl","InnerDecl","InnerDecls","InnerDeclsR","DeclBody","FuncDecl","Signature","Params","ParamsR","Result","Stmt","Stmts","StmtsR","BlockStmt","SimpleStmt","IfStmt","Elses","Expr","ExprList","ExprListR","'+'","'-'","'*'","'/'","'%'","'&'","'|'","'^'","':'","';'","'('","')'","'['","']'","'{'","'}'","'='","','","'.'","'>'","'<'","'!'","\"<<\"","\">>\"","\"&^\"","\"+=\"","\"-=\"","\"*=\"","\"/=\"","\"%=\"","\"&=\"","\"|=\"","\"^=\"","\"&&\"","\"||\"","\"<-\"","\"++\"","\"--\"","\"==\"","\"!=\"","\"<=\"","\">=\"","\":=\"","\"<<=\"","\">>=\"","\"&^=\"","\"...\"","break","case","chan","const","continue","default","defer","else","fallthrough","for","func","go","goto","if","import","interface","map","package","range","return","select","struct","switch","type","var","print","println","append","len","cap","decv","octv","hexv","fv","rv","sv","rsv","ident","%eof"]
-        bit_start = st * 117
-        bit_end = (st + 1) * 117
+  where token_strs = ["error","%dummy","%start_hparse","%start_pId","%start_pTDecl","%start_pTDecls","%start_pDec","%start_pDecB","%start_pFDec","%start_pSig","%start_pIDecl","%start_pPar","%start_pRes","%start_pStmt","%start_pStmts","%start_pBStmt","%start_pSStmt","%start_pIf","%start_pElses","%start_pEl","%start_pE","Program","TopDecls","TopDeclsR","TopDecl","Idents","IdentsR","Decl","InnerDecl","InnerDecls","InnerDeclsR","DeclBody","FuncDecl","Signature","Params","ParamsR","Result","Stmt","Stmts","StmtsR","BlockStmt","SimpleStmt","IfStmt","Elses","Expr","ExprList","ExprListR","'+'","'-'","'*'","'/'","'%'","'&'","'|'","'^'","':'","';'","'('","')'","'['","']'","'{'","'}'","'='","','","'.'","'>'","'<'","'!'","\"<<\"","\">>\"","\"&^\"","\"+=\"","\"-=\"","\"*=\"","\"/=\"","\"%=\"","\"&=\"","\"|=\"","\"^=\"","\"&&\"","\"||\"","\"<-\"","\"++\"","\"--\"","\"==\"","\"!=\"","\"<=\"","\">=\"","\":=\"","\"<<=\"","\">>=\"","\"&^=\"","\"...\"","break","case","chan","const","continue","default","defer","else","fallthrough","for","func","go","goto","if","import","interface","map","package","range","return","select","struct","switch","type","var","print","println","append","len","cap","decv","octv","hexv","fv","rv","sv","rsv","ident","%eof"]
+        bit_start = st * 133
+        bit_end = (st + 1) * 133
         read_bit = readArrayBit happyExpList
         bits = map read_bit [bit_start..bit_end - 1]
-        bits_indexed = zip bits [0..116]
+        bits_indexed = zip bits [0..132]
         token_strs_expected = concatMap f bits_indexed
         f (False, _) = []
         f (True, nr) = [token_strs !! nr]
 
 happyActOffsets :: HappyAddr
-happyActOffsets = HappyA# "\xd4\xff\xb7\xff\x22\x00\xdb\xff\xc9\xff\x79\x00\x22\x00\x22\x00\x22\x00\x22\x00\x15\x00\x1c\x00\x1e\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x3b\x00\x5a\x00\x00\x00\xe7\xff\x33\x00\x22\x00\x22\x00\x22\x00\x00\x00\x00\x00\x00\x00\x00\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x00\x00\x00\x00\xcb\xff\xab\x01\xab\x01\xab\x01\xab\x01\x63\x01\x7c\x01\x00\x00\x00\x00\x00\x00\xab\x01\xab\x01\x86\x00\x86\x00\x00\x00\x00\x00\x00\x00\x00\x00\x86\x00\x86\x00\x92\x00\xab\x00\xc4\x00\x00\x00\x00\x00\x00\x00\x22\x00\x00\x00\x00\x00\x00\x00\x3a\x00\x23\x00\xf0\xff\x6d\x00\x00\x00\x9a\x00\xdd\x00\x00\x00\x99\x00\x00\x00\xaa\x00\x63\x00\x00\x00\xb3\x00\x22\x00\xad\x00\x22\x00\x4a\x01\x00\x00\xaf\x00\x00\x00\x00\x00\xc5\x00\xca\x00\x7c\x00\x00\x00\x00\x00\xc7\x00\x01\x00\x85\x00\x93\x00\x00\x00\x22\x00\x00\x00\x4a\x01\x00\x00\x00\x00\x00\x00\xe5\x00\x00\x00\xe6\x00\x00\x00\xe9\x00\x7d\x01\x00\x00\xf3\x00\xf4\x00\x0c\x00\x17\x00\xdf\x00\x05\x01\xec\xff\x00\x00\x13\x01\x1d\x01\x22\x00\x22\x00\x07\x01\x00\x00\x22\x00\x31\x01\x00\x00\x00\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x00\x00\x00\x00\x00\x00\x1e\x01\x3a\x01\x3d\x01\x52\x01\x53\x01\x56\x01\x64\x01\x65\x01\x66\x01\x6b\x01\x6c\x01\x6f\x01\x4f\x01\x31\x01\x00\x00\x7b\x01\x83\x01\x00\x00\x00\x00\x7e\x01\x7f\x01\x5b\x01\x00\x00\xf5\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
+happyActOffsets = HappyA# "\xd0\xff\xb7\xff\xcb\xff\x00\x00\xdf\xff\xf0\xff\xef\xff\x37\x00\xe8\xff\x00\x00\x3a\x00\x01\x00\x00\x00\x5d\x00\x0c\x00\x6f\x00\x40\x00\x22\x00\x22\x00\x78\x00\x8b\x00\x79\x00\x22\x00\x22\x00\x22\x00\x22\x00\xd8\x00\xee\x00\xf1\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x74\x01\x0a\x01\xfa\x00\x15\x01\xf5\xff\x15\x01\x0c\x00\x15\x01\xa7\x01\x00\x00\xf6\xff\x15\x01\x00\x00\x15\x01\x01\x00\x19\x01\x2e\x01\x2f\x01\x00\x00\x4b\x01\x4e\x01\x5c\x01\x17\x00\x23\x00\x1a\x01\x2d\x01\x6d\x01\x00\x00\x6d\x01\x13\x01\xf0\xff\x5f\x01\x6e\x01\x00\x00\x6e\x01\x00\x00\x6e\x01\x31\x01\x87\x01\x22\x00\x79\x01\x98\x01\x98\x01\xcb\xff\x98\x01\x00\x00\x00\x00\x98\x01\x43\x01\x00\x00\x22\x00\x00\x00\x8f\x01\x93\x01\x5d\x01\x96\x01\x5e\x01\x22\x00\x22\x00\x99\x01\x00\x00\xa3\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xa0\x01\xaf\x01\xb2\x01\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\xcd\x00\x00\x00\x00\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x22\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xe6\x00\xff\x00\x18\x01\x81\x00\x81\x00\x81\x00\x81\x00\x8d\x01\xa6\x01\x00\x00\x00\x00\x00\x00\x81\x00\x81\x00\xab\x00\xab\x00\x00\x00\x00\x00\x00\x00\x00\x00\xab\x00\xab\x00\x74\x01\x7a\x01\x42\x01\xb6\x01\xbf\x01\xc0\x01\xc1\x01\xc7\x01\xc8\x01\xce\x01\xd2\x01\xd6\x01\xd8\x01\xd9\x01\xdd\x01\x00\x00\x00\x00\x00\x00\x00\x00\xdf\x01\x97\x01\x00\x00\xe1\x01\xe2\x01\x00\x00\x00\x00\x00\x00\x9a\x01\xe3\x01\x00\x00\x00\x00\x00\x00\xe6\x01\xe7\x01\x00\x00\xe9\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xbd\x01\x00\x00\x00\x00\x00\x00\x22\x00\x5b\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
 
 happyGotoOffsets :: HappyAddr
-happyGotoOffsets = HappyA# "\x96\x01\x27\x00\x88\x01\x00\x00\x00\x00\x00\x00\x89\x01\x8a\x01\x8b\x01\x90\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x91\x01\x9d\x01\x9e\x01\x00\x00\x00\x00\x00\x00\x00\x00\x9f\x01\xa0\x01\xa1\x01\xa2\x01\xa3\x01\xa5\x01\xa6\x01\xa7\x01\xa8\x01\xa9\x01\xaa\x01\xaf\x01\xb0\x01\xb4\x01\xb8\x01\xb9\x01\xba\x01\xbb\x01\xbc\x01\x2e\x00\x00\x00\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xbd\x01\x00\x00\x00\x00\x00\x00\x00\x00\x16\x00\xcb\x01\x00\x00\x2b\x00\xca\x01\x00\x00\x00\x00\xc4\x01\x29\x00\x00\x00\x21\x00\x00\x00\x00\x00\x2f\x00\x00\x00\x6b\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x35\x00\x00\x00\x31\x00\x00\x00\xb5\x01\x00\x00\xc9\x01\x00\x00\xc2\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x28\x00\xc3\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x6e\x00\xe0\x00\x00\x00\x00\x00\xc5\x01\xc8\x01\x00\x00\x00\x00\xe3\x00\xea\x00\xfb\x00\xfe\x00\x01\x01\x0a\x01\x0d\x01\x14\x01\x23\x01\x26\x01\x2a\x01\x3e\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc7\x01\xcc\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xcd\x01\x00\x00\xf3\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
+happyGotoOffsets = HappyA# "\xf5\x01\x27\x00\x04\x00\x2e\x00\xf0\x01\xed\x01\xee\x01\xec\x01\x19\x00\x26\x00\xeb\x01\xc6\x01\x29\x00\xe8\x01\x28\x00\xea\x01\xef\x01\x73\x00\xe5\x01\x00\x00\x00\x00\x00\x00\xf1\x01\xf2\x01\xf3\x01\xf4\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf3\xff\x00\x00\x2f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x85\x00\x00\x00\xd1\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf6\x01\x21\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xb1\x00\xf7\x01\x00\x00\x00\x00\x00\x00\x00\x00\xb3\x00\x00\x00\x00\x00\x00\x00\x7c\x00\x00\x00\x00\x00\x00\x00\x0f\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x86\x00\x00\x00\xf8\x01\x00\x00\x00\x00\x00\x00\x00\x00\x9b\x00\xa6\x00\x00\x00\x09\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xb0\x00\xbf\x00\xc2\x00\xc6\x00\xda\x00\x1b\x01\x1e\x01\x25\x01\x34\x01\x37\x01\x3b\x01\x68\x01\xf9\x01\xfb\x01\x00\x00\x00\x00\xfa\x01\xfc\x01\xfd\x01\xfe\x01\xff\x01\x00\x02\x01\x02\x02\x02\x03\x02\x04\x02\x05\x02\x06\x02\x07\x02\x08\x02\x09\x02\x0a\x02\x0b\x02\x0c\x02\x0d\x02\x0e\x02\x0f\x02\x10\x02\x11\x02\x00\x00\x00\x00\x00\x00\x00\x00\x29\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x13\x02\x17\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x32\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x1c\x02\x19\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x18\x02\x00\x00\x00\x00\x00\x00\x16\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
 
 happyAdjustOffset :: Happy_GHC_Exts.Int# -> Happy_GHC_Exts.Int#
 happyAdjustOffset off = off
 
 happyDefActions :: HappyAddr
-happyDefActions = HappyA# "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xaa\xff\xa9\xff\xa8\xff\xa7\xff\xa6\xff\xa5\xff\xa4\xff\x00\x00\xf6\xff\xf4\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xbf\xff\xbe\xff\xc0\xff\xc1\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xf9\xff\xfc\xff\xfb\xff\xb6\xff\xb8\xff\xba\xff\xbb\xff\xbd\xff\xbc\xff\xad\xff\xab\xff\xac\xff\xb9\xff\xb7\xff\xaf\xff\xb0\xff\xae\xff\xb1\xff\xb2\xff\xb3\xff\xb4\xff\xb5\xff\x00\x00\x00\x00\x00\x00\xf5\xff\xa1\xff\xa2\xff\x00\x00\xfa\xff\xf8\xff\xf7\xff\x00\x00\x00\x00\x00\x00\x00\x00\xee\xff\x00\x00\x00\x00\xa3\xff\x00\x00\xe6\xff\x00\x00\xf0\xff\xf3\xff\x00\x00\x00\x00\xed\xff\x00\x00\x9e\xff\xeb\xff\xa0\xff\xf1\xff\xef\xff\x00\x00\x00\x00\xe8\xff\xea\xff\xd7\xff\x00\x00\xd9\xff\x00\x00\xe4\xff\xf2\xff\x00\x00\xec\xff\x9f\xff\xe9\xff\xe5\xff\xe7\xff\x00\x00\xd8\xff\x00\x00\xe2\xff\x00\x00\x00\x00\xd5\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd6\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xda\xff\x00\x00\x9e\xff\xdf\xff\xe0\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xe1\xff\xe3\xff\xde\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc2\xff\x00\x00\xdb\xff\x00\x00\x00\x00\xd3\xff\xd4\xff\x00\x00\x00\x00\xc2\xff\xc5\xff\x00\x00\xc7\xff\xd2\xff\xd1\xff\xce\xff\xcd\xff\xcc\xff\xc9\xff\xd0\xff\xcf\xff\xcb\xff\xca\xff\xc8\xff\xc3\xff\xc4\xff\xc6\xff\xdd\xff\xdc\xff"#
+happyDefActions = HappyA# "\x00\x00\x00\x00\x00\x00\xe9\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd6\xff\xd4\xff\x00\x00\xc7\xff\x00\x00\x00\x00\x00\x00\xb2\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x9a\xff\x99\xff\x98\xff\x97\xff\x96\xff\x95\xff\x94\xff\x8e\xff\x00\x00\x90\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc5\xff\x00\x00\x00\x00\xc7\xff\x00\x00\xc9\xff\x00\x00\x00\x00\x00\x00\xd2\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd5\xff\x00\x00\xd8\xff\x00\x00\xe6\xff\x00\x00\xe4\xff\x00\x00\xd6\xff\x00\x00\x00\x00\x00\x00\x00\x00\xdd\xff\x00\x00\x00\x00\xeb\xff\x00\x00\xe8\xff\xe7\xff\x00\x00\x00\x00\xea\xff\x00\x00\xdb\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xde\xff\x00\x00\xca\xff\xcf\xff\xd0\xff\xd1\xff\xd3\xff\xce\xff\xc8\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x8e\xff\xb3\xff\xb4\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xaf\xff\xae\xff\xb0\xff\xb1\xff\xe9\xff\xec\xff\x00\x00\x00\x00\x00\x00\xa6\xff\xa8\xff\xaa\xff\xab\xff\xad\xff\xac\xff\x9d\xff\x9b\xff\x9c\xff\xa9\xff\xa7\xff\x9f\xff\xa0\xff\x9e\xff\xa1\xff\xa2\xff\xa3\xff\xa4\xff\xa5\xff\x8f\xff\xb2\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc3\xff\xc4\xff\xc6\xff\xcb\xff\x00\x00\xe0\xff\xe3\xff\x00\x00\x00\x00\xd7\xff\xe1\xff\xe5\xff\xd4\xff\x00\x00\xdc\xff\xda\xff\xd9\xff\x00\x00\x00\x00\xdf\xff\x00\x00\xb7\xff\xc2\xff\xc1\xff\xbe\xff\xbd\xff\xbc\xff\xb9\xff\xc0\xff\xbf\xff\xbb\xff\xba\xff\xb8\xff\xb2\xff\xb5\xff\x91\xff\x92\xff\x00\x00\x00\x00\xb6\xff\xe2\xff\xcd\xff\xcc\xff\x93\xff"#
 
 happyCheck :: HappyAddr
-happyCheck = HappyA# "\xff\xff\x11\x00\x01\x00\x02\x00\x0f\x00\x3a\x00\x13\x00\x03\x00\x15\x00\x08\x00\x06\x00\x0a\x00\x55\x00\x01\x00\x02\x00\x0b\x00\x0f\x00\x25\x00\x26\x00\x48\x00\x08\x00\x41\x00\x0a\x00\x16\x00\x01\x00\x02\x00\x04\x00\x05\x00\x41\x00\x07\x00\x55\x00\x08\x00\x0b\x00\x0a\x00\x16\x00\x01\x00\x02\x00\x04\x00\x05\x00\x0b\x00\x07\x00\x0b\x00\x08\x00\x04\x00\x05\x00\x16\x00\x0b\x00\x01\x00\x02\x00\x30\x00\x3d\x00\x08\x00\x09\x00\x34\x00\x0d\x00\x0e\x00\x16\x00\x04\x00\x05\x00\x00\x00\x14\x00\x56\x00\x3d\x00\x17\x00\x18\x00\x19\x00\x11\x00\x12\x00\x43\x00\x55\x00\x17\x00\x18\x00\x19\x00\x48\x00\x49\x00\x4a\x00\x4b\x00\x4c\x00\x4d\x00\x4e\x00\x4f\x00\x50\x00\x51\x00\x52\x00\x53\x00\x54\x00\x55\x00\x4b\x00\x4c\x00\x4d\x00\x4e\x00\x4f\x00\x50\x00\x51\x00\x52\x00\x53\x00\x54\x00\x55\x00\x4b\x00\x4c\x00\x4d\x00\x4e\x00\x4f\x00\x50\x00\x51\x00\x52\x00\x53\x00\x54\x00\x12\x00\x4b\x00\x4c\x00\x4d\x00\x4e\x00\x4f\x00\x50\x00\x51\x00\x52\x00\x53\x00\x54\x00\x0a\x00\x55\x00\x00\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x55\x00\x03\x00\x04\x00\x05\x00\x06\x00\x14\x00\x15\x00\x55\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x17\x00\x18\x00\x19\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x12\x00\x0b\x00\x14\x00\x15\x00\x0f\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x0c\x00\x0c\x00\x55\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x0a\x00\x11\x00\x14\x00\x15\x00\x12\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x0a\x00\x0c\x00\x55\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x0c\x00\x10\x00\x14\x00\x15\x00\x55\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x55\x00\x0c\x00\x0b\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x0a\x00\x0a\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x0a\x00\x0a\x00\x22\x00\x23\x00\x17\x00\x18\x00\x19\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x0b\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x0a\x00\x0a\x00\x22\x00\x23\x00\x17\x00\x18\x00\x19\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x0f\x00\x17\x00\x18\x00\x19\x00\x0a\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x17\x00\x18\x00\x19\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x0a\x00\x0a\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x0a\x00\x0a\x00\x0a\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x0a\x00\x0a\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x37\x00\x0c\x00\x0a\x00\x0a\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x11\x00\x0c\x00\x14\x00\x15\x00\x37\x00\x17\x00\x18\x00\x19\x00\x00\x00\x1a\x00\x1b\x00\x1c\x00\x1d\x00\x1e\x00\x1f\x00\x20\x00\x21\x00\x17\x00\x17\x00\x17\x00\x17\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x17\x00\x17\x00\x2c\x00\x2d\x00\x2e\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x06\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x18\x00\x19\x00\x10\x00\x17\x00\x17\x00\x13\x00\x14\x00\x15\x00\x17\x00\x17\x00\x18\x00\x19\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x0a\x00\x0c\x00\x13\x00\x0f\x00\x17\x00\x17\x00\x13\x00\x17\x00\x16\x00\xff\xff\x13\x00\xff\xff\xff\xff\xff\xff\x16\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"#
+happyCheck = HappyA# "\xff\xff\x11\x00\x01\x00\x02\x00\x0f\x00\x3a\x00\x13\x00\x03\x00\x15\x00\x08\x00\x06\x00\x0a\x00\x55\x00\x01\x00\x02\x00\x0b\x00\x0f\x00\x41\x00\x03\x00\x48\x00\x08\x00\x06\x00\x0a\x00\x16\x00\x01\x00\x02\x00\x0b\x00\x25\x00\x26\x00\x04\x00\x05\x00\x08\x00\x07\x00\x0a\x00\x16\x00\x01\x00\x02\x00\x04\x00\x05\x00\x48\x00\x07\x00\x3a\x00\x08\x00\x04\x00\x05\x00\x16\x00\x0b\x00\x01\x00\x02\x00\x30\x00\x3d\x00\x0d\x00\x0e\x00\x34\x00\x04\x00\x05\x00\x16\x00\x07\x00\x11\x00\x12\x00\x14\x00\x55\x00\x3d\x00\x17\x00\x18\x00\x19\x00\x0b\x00\x14\x00\x43\x00\x55\x00\x17\x00\x18\x00\x19\x00\x48\x00\x49\x00\x4a\x00\x4b\x00\x4c\x00\x4d\x00\x4e\x00\x4f\x00\x50\x00\x51\x00\x52\x00\x53\x00\x54\x00\x55\x00\x4b\x00\x4c\x00\x4d\x00\x4e\x00\x4f\x00\x50\x00\x51\x00\x52\x00\x53\x00\x54\x00\x55\x00\x4b\x00\x4c\x00\x4d\x00\x4e\x00\x4f\x00\x50\x00\x51\x00\x52\x00\x53\x00\x54\x00\x0f\x00\x4b\x00\x4c\x00\x4d\x00\x4e\x00\x4f\x00\x50\x00\x51\x00\x52\x00\x53\x00\x54\x00\x37\x00\x55\x00\x00\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x17\x00\x18\x00\x19\x00\x14\x00\x15\x00\x55\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x11\x00\x12\x00\x17\x00\x18\x00\x19\x00\x22\x00\x23\x00\x17\x00\x18\x00\x19\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x3d\x00\x0a\x00\x03\x00\x04\x00\x05\x00\x06\x00\x17\x00\x18\x00\x19\x00\x04\x00\x05\x00\x14\x00\x15\x00\x41\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x0d\x00\x0e\x00\x17\x00\x18\x00\x19\x00\x22\x00\x23\x00\x17\x00\x18\x00\x19\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x0f\x00\x17\x00\x18\x00\x19\x00\x55\x00\x14\x00\x15\x00\x0b\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x17\x00\x18\x00\x19\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x12\x00\x0b\x00\x14\x00\x15\x00\x0b\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x00\x00\x0c\x00\x12\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x08\x00\x09\x00\x14\x00\x15\x00\x00\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x0a\x00\x0c\x00\x0b\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x01\x00\x02\x00\x14\x00\x15\x00\x00\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x0b\x00\x0a\x00\x22\x00\x23\x00\x17\x00\x18\x00\x19\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x17\x00\x18\x00\x19\x00\x17\x00\x18\x00\x19\x00\x0f\x00\x17\x00\x18\x00\x19\x00\x0a\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x0a\x00\x0c\x00\x55\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x00\x00\x00\x00\x14\x00\x15\x00\x12\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x17\x00\x18\x00\x19\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x55\x00\x00\x00\x14\x00\x15\x00\x11\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x23\x00\x00\x00\x56\x00\x0b\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x0c\x00\x0a\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x01\x00\x02\x00\x03\x00\x04\x00\x05\x00\x06\x00\x07\x00\x08\x00\x22\x00\x10\x00\x37\x00\x55\x00\x55\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x11\x00\x0a\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x0a\x00\x1a\x00\x1b\x00\x1c\x00\x1d\x00\x1e\x00\x1f\x00\x20\x00\x21\x00\x0a\x00\x0a\x00\x0a\x00\x06\x00\x27\x00\x28\x00\x29\x00\x2a\x00\x0a\x00\x0a\x00\x2c\x00\x2d\x00\x2e\x00\x10\x00\x06\x00\x0a\x00\x13\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x0a\x00\x10\x00\x0a\x00\x0a\x00\x13\x00\x14\x00\x15\x00\x0a\x00\x17\x00\x18\x00\x19\x00\x0c\x00\x55\x00\x0c\x00\x0c\x00\x55\x00\x0a\x00\x0a\x00\x0f\x00\x0a\x00\x37\x00\x00\x00\x06\x00\x0a\x00\x0c\x00\x0b\x00\x0f\x00\x13\x00\x17\x00\xff\xff\xff\xff\x15\x00\xff\xff\x0a\x00\xff\xff\xff\xff\x0c\x00\x16\x00\xff\xff\xff\xff\x17\x00\x17\x00\x17\x00\x17\x00\xff\xff\x17\x00\x13\x00\xff\xff\x17\x00\x17\x00\xff\xff\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x17\x00\x16\x00\x13\x00\x0f\x00\x13\x00\x17\x00\x16\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"#
 
 happyTable :: HappyAddr
-happyTable = HappyA# "\x00\x00\x62\x00\x07\x00\x08\x00\x6e\x00\x54\x00\xc5\x00\x50\x00\xc6\x00\x09\x00\x51\x00\x80\x00\x17\x00\x07\x00\x08\x00\x52\x00\x6e\x00\x89\x00\x8a\x00\x55\x00\x09\x00\x05\x00\x80\x00\x0a\x00\x07\x00\x08\x00\x55\x00\x15\x00\x05\x00\x56\x00\x34\x00\x09\x00\x1c\x00\x8e\x00\x0a\x00\x07\x00\x08\x00\x55\x00\x15\x00\x1b\x00\x68\x00\x1a\x00\x09\x00\x14\x00\x15\x00\x0a\x00\x58\x00\x34\x00\x35\x00\x81\x00\x83\x00\x5d\x00\x5e\x00\x82\x00\x6a\x00\x6b\x00\x0a\x00\x70\x00\x15\x00\xff\xff\x8e\x00\xff\xff\x83\x00\x8f\x00\x7e\x00\x66\x00\x6e\x00\x6f\x00\x84\x00\x63\x00\x64\x00\x65\x00\x66\x00\x55\x00\x85\x00\x86\x00\x0b\x00\x0c\x00\x0d\x00\x0e\x00\x0f\x00\x10\x00\x11\x00\x12\x00\x13\x00\x14\x00\x87\x00\x0b\x00\x0c\x00\x0d\x00\x0e\x00\x0f\x00\x10\x00\x11\x00\x12\x00\x13\x00\x14\x00\x87\x00\x0b\x00\x0c\x00\x0d\x00\x0e\x00\x0f\x00\x10\x00\x11\x00\x12\x00\x13\x00\x14\x00\x19\x00\x0b\x00\x0c\x00\x0d\x00\x0e\x00\x0f\x00\x10\x00\x11\x00\x12\x00\x13\x00\x14\x00\x60\x00\x17\x00\xff\xff\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x64\x00\x74\x00\x66\x00\x64\x00\xb1\x00\x66\x00\x4d\x00\x23\x00\x24\x00\x25\x00\x26\x00\x29\x00\x2a\x00\x59\x00\x2b\x00\x2c\x00\x2d\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x2e\x00\x2f\x00\x2b\x00\x2c\x00\x2d\x00\x30\x00\x31\x00\x32\x00\x33\x00\x50\x00\x5d\x00\x29\x00\x2a\x00\x6e\x00\x2b\x00\x2c\x00\x2d\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x2e\x00\x2f\x00\x6a\x00\x4f\x00\x17\x00\x30\x00\x31\x00\x32\x00\x33\x00\x68\x00\x64\x00\x29\x00\x2a\x00\x74\x00\x2b\x00\x2c\x00\x2d\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x2e\x00\x2f\x00\x73\x00\x4e\x00\x17\x00\x30\x00\x31\x00\x32\x00\x33\x00\x72\x00\x88\x00\x29\x00\x2a\x00\x79\x00\x2b\x00\x2c\x00\x2d\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x2e\x00\x2f\x00\x78\x00\x5b\x00\x8c\x00\x30\x00\x31\x00\x32\x00\x33\x00\xa1\x00\xa0\x00\x29\x00\x2a\x00\x9f\x00\x2b\x00\x2c\x00\x2d\x00\x64\x00\xb0\x00\x66\x00\x64\x00\xac\x00\x66\x00\x92\x00\x91\x00\x2e\x00\x2f\x00\x64\x00\xab\x00\x66\x00\x30\x00\x31\x00\x32\x00\x33\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x8b\x00\xb0\x00\x64\x00\xaa\x00\x66\x00\x64\x00\xa9\x00\x66\x00\x64\x00\xa8\x00\x66\x00\x29\x00\x2a\x00\xb4\x00\x2b\x00\x2c\x00\x2d\x00\x64\x00\xa7\x00\x66\x00\x64\x00\xa6\x00\x66\x00\xb3\x00\xc5\x00\x2e\x00\x2f\x00\x64\x00\xa5\x00\x66\x00\x30\x00\x31\x00\x32\x00\x33\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x64\x00\xa4\x00\x66\x00\x64\x00\xa3\x00\x66\x00\x6e\x00\x64\x00\xa2\x00\x66\x00\xc4\x00\x29\x00\x2a\x00\xc3\x00\x2b\x00\x2c\x00\x2d\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x2e\x00\x2f\x00\x64\x00\xa1\x00\x66\x00\x30\x00\x31\x00\x32\x00\x33\x00\xc2\x00\xc1\x00\x29\x00\x2a\x00\xc0\x00\x2b\x00\x2c\x00\x2d\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x2e\x00\x2f\x00\xbf\x00\xbe\x00\xbd\x00\x30\x00\x31\x00\x32\x00\x33\x00\xbc\x00\xbb\x00\x29\x00\x2a\x00\xba\x00\x2b\x00\x2c\x00\x2d\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x2e\x00\xb9\x00\xb6\x00\xca\x00\xc9\x00\x30\x00\x31\x00\x32\x00\x33\x00\x93\x00\xb5\x00\x29\x00\x2a\x00\xb9\x00\x2b\x00\x2c\x00\x2d\x00\x17\x00\x94\x00\x95\x00\x96\x00\x97\x00\x98\x00\x99\x00\x9a\x00\x9b\x00\x05\x00\x1f\x00\x1e\x00\x1d\x00\x30\x00\x31\x00\x32\x00\x33\x00\x1c\x00\x4b\x00\x9c\x00\x9d\x00\x9e\x00\x21\x00\x22\x00\x23\x00\x24\x00\x25\x00\x26\x00\x27\x00\x28\x00\x4a\x00\x49\x00\x48\x00\x47\x00\x46\x00\x45\x00\x44\x00\x79\x00\x43\x00\x42\x00\x41\x00\x40\x00\x3f\x00\x3e\x00\x2b\x00\x2c\x00\x2d\x00\x7a\x00\x3d\x00\x3c\x00\x7b\x00\x7c\x00\x7d\x00\x3b\x00\x64\x00\x7e\x00\x66\x00\x3a\x00\x39\x00\x38\x00\x37\x00\x36\x00\x59\x00\x60\x00\x5b\x00\x6c\x00\x76\x00\x75\x00\x8c\x00\xad\x00\xae\x00\xb7\x00\x00\x00\xb6\x00\x00\x00\x00\x00\x00\x00\xc7\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
+happyTable = HappyA# "\x00\x00\x4c\x00\x17\x00\x18\x00\x31\x00\x4a\x00\x7a\x00\x50\x00\x7b\x00\x19\x00\x51\x00\x2e\x00\x46\x00\x17\x00\x18\x00\x52\x00\x31\x00\x15\x00\x55\x00\x3c\x00\x19\x00\x51\x00\x2e\x00\x1a\x00\x17\x00\x18\x00\x52\x00\x6b\x00\x6c\x00\x42\x00\x43\x00\x19\x00\x44\x00\x63\x00\x1a\x00\x17\x00\x18\x00\x42\x00\x43\x00\x3c\x00\x5f\x00\x4a\x00\x19\x00\x53\x00\x43\x00\x1a\x00\x61\x00\x4e\x00\x4f\x00\x39\x00\x2b\x00\x40\x00\x41\x00\x3a\x00\x42\x00\x43\x00\x1a\x00\xd1\x00\x31\x00\x32\x00\x2b\x00\x46\x00\x2b\x00\x24\x00\x2c\x00\x26\x00\x48\x00\x78\x00\x3b\x00\x4d\x00\x79\x00\x2c\x00\x26\x00\x3c\x00\x3d\x00\x3e\x00\x1b\x00\x1c\x00\x1d\x00\x1e\x00\x1f\x00\x20\x00\x21\x00\x22\x00\x23\x00\x24\x00\x2f\x00\x1b\x00\x1c\x00\x1d\x00\x1e\x00\x1f\x00\x20\x00\x21\x00\x22\x00\x23\x00\x24\x00\x2f\x00\x1b\x00\x1c\x00\x1d\x00\x1e\x00\x1f\x00\x20\x00\x21\x00\x22\x00\x23\x00\x24\x00\x31\x00\x1b\x00\x1c\x00\x1d\x00\x1e\x00\x1f\x00\x20\x00\x21\x00\x22\x00\x23\x00\x24\x00\x29\x00\x46\x00\xff\xff\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x24\x00\x25\x00\x26\x00\x86\x00\x87\x00\x40\x00\x88\x00\x89\x00\x8a\x00\x24\x00\x57\x00\x26\x00\x69\x00\x32\x00\x88\x00\x89\x00\x8a\x00\x8b\x00\x8c\x00\x24\x00\xcc\x00\x26\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x2b\x00\xc2\x00\x80\x00\x81\x00\x82\x00\x83\x00\x24\x00\xc6\x00\x26\x00\x5c\x00\x43\x00\x86\x00\x87\x00\x15\x00\x88\x00\x89\x00\x8a\x00\x24\x00\xc5\x00\x26\x00\x59\x00\x41\x00\x88\x00\x89\x00\x8a\x00\x8b\x00\x8c\x00\x24\x00\xbd\x00\x26\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x24\x00\xbc\x00\x26\x00\x24\x00\xbb\x00\x26\x00\x31\x00\x24\x00\xba\x00\x26\x00\x98\x00\x86\x00\x87\x00\x93\x00\x88\x00\x89\x00\x8a\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x8b\x00\x8c\x00\x24\x00\xb9\x00\x26\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\xe4\x00\x92\x00\x86\x00\x87\x00\x91\x00\x88\x00\x89\x00\x8a\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x8b\x00\x8c\x00\xff\xff\xe3\x00\x7d\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\xc2\x00\xc3\x00\x86\x00\x87\x00\xff\xff\x88\x00\x89\x00\x8a\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x8b\x00\x8c\x00\x68\x00\xe2\x00\x5f\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\x98\x00\x4f\x00\x86\x00\x87\x00\xff\xff\x88\x00\x89\x00\x8a\x00\x24\x00\xb8\x00\x26\x00\x24\x00\xb7\x00\x26\x00\x5e\x00\x67\x00\x8b\x00\x8c\x00\x24\x00\xb6\x00\x26\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x24\x00\xb5\x00\x26\x00\x24\x00\xb4\x00\x26\x00\x31\x00\x24\x00\xb3\x00\x26\x00\x66\x00\x86\x00\x87\x00\x65\x00\x88\x00\x89\x00\x8a\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x8b\x00\x8c\x00\x64\x00\xea\x00\x46\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\xff\xff\xff\xff\x86\x00\x87\x00\x5b\x00\x88\x00\x89\x00\x8a\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x8b\x00\x8c\x00\x24\x00\xb2\x00\x26\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\x59\x00\xff\xff\x86\x00\x87\x00\x57\x00\x88\x00\x89\x00\x8a\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x8b\x00\x8c\x00\xff\xff\xff\xff\x48\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\xcb\x00\xc9\x00\x86\x00\x87\x00\xc5\x00\x88\x00\x89\x00\x8a\x00\x7e\x00\x7f\x00\x80\x00\x81\x00\x82\x00\x83\x00\x84\x00\x85\x00\x8b\x00\xc1\x00\x29\x00\xca\x00\xc8\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\x6d\x00\xc0\x00\x86\x00\x87\x00\xbf\x00\x88\x00\x89\x00\x8a\x00\xdf\x00\x6e\x00\x6f\x00\x70\x00\x71\x00\x72\x00\x73\x00\x74\x00\x75\x00\xde\x00\xdd\x00\xdc\x00\x33\x00\x8d\x00\x8e\x00\x8f\x00\x90\x00\xdb\x00\xda\x00\x76\x00\x77\x00\x78\x00\x34\x00\x33\x00\xd9\x00\x35\x00\x36\x00\x37\x00\xd8\x00\x24\x00\x2c\x00\x26\x00\xd7\x00\x68\x00\xd6\x00\xd5\x00\x35\x00\x36\x00\x37\x00\xd4\x00\x24\x00\x2c\x00\x26\x00\xd3\x00\x46\x00\xd1\x00\xd0\x00\x40\x00\xe9\x00\xe8\x00\x31\x00\xe7\x00\x29\x00\x54\x00\x4d\x00\x4a\x00\x46\x00\x48\x00\x3e\x00\x2f\x00\x15\x00\x00\x00\x00\x00\x29\x00\x00\x00\x5b\x00\x00\x00\x00\x00\xcb\x00\x27\x00\x00\x00\x00\x00\x96\x00\x95\x00\x94\x00\x93\x00\x00\x00\x61\x00\xb0\x00\x00\x00\xb1\x00\xaf\x00\x00\x00\xae\x00\xad\x00\xac\x00\xab\x00\xaa\x00\xa9\x00\xa8\x00\xa7\x00\xa6\x00\xa5\x00\xa4\x00\xa3\x00\xa2\x00\xa1\x00\xa0\x00\x9f\x00\x9e\x00\x9d\x00\x9c\x00\x9b\x00\x9a\x00\x99\x00\xe0\x00\xdf\x00\xce\x00\xcd\x00\xe4\x00\xe5\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
 
-happyReduceArr = Happy_Data_Array.array (3, 97) [
-	(3 , happyReduce_3),
-	(4 , happyReduce_4),
-	(5 , happyReduce_5),
-	(6 , happyReduce_6),
-	(7 , happyReduce_7),
-	(8 , happyReduce_8),
-	(9 , happyReduce_9),
-	(10 , happyReduce_10),
-	(11 , happyReduce_11),
-	(12 , happyReduce_12),
-	(13 , happyReduce_13),
-	(14 , happyReduce_14),
-	(15 , happyReduce_15),
-	(16 , happyReduce_16),
-	(17 , happyReduce_17),
-	(18 , happyReduce_18),
+happyReduceArr = Happy_Data_Array.array (19, 113) [
 	(19 , happyReduce_19),
 	(20 , happyReduce_20),
 	(21 , happyReduce_21),
@@ -324,1163 +324,1179 @@ happyReduceArr = Happy_Data_Array.array (3, 97) [
 	(94 , happyReduce_94),
 	(95 , happyReduce_95),
 	(96 , happyReduce_96),
-	(97 , happyReduce_97)
+	(97 , happyReduce_97),
+	(98 , happyReduce_98),
+	(99 , happyReduce_99),
+	(100 , happyReduce_100),
+	(101 , happyReduce_101),
+	(102 , happyReduce_102),
+	(103 , happyReduce_103),
+	(104 , happyReduce_104),
+	(105 , happyReduce_105),
+	(106 , happyReduce_106),
+	(107 , happyReduce_107),
+	(108 , happyReduce_108),
+	(109 , happyReduce_109),
+	(110 , happyReduce_110),
+	(111 , happyReduce_111),
+	(112 , happyReduce_112),
+	(113 , happyReduce_113)
 	]
 
 happy_n_terms = 87 :: Int
 happy_n_nonterms = 26 :: Int
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_3 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_19 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_3 = happySpecReduce_3  0# happyReduction_3
-happyReduction_3 happy_x_3
+happyReduce_19 = happySpecReduce_3  0# happyReduction_19
+happyReduction_19 happy_x_3
 	happy_x_2
 	happy_x_1
 	 =  case happyOutTok happy_x_2 of { happy_var_2 -> 
-	case happyOut7 happy_x_3 of { happy_var_3 -> 
-	happyIn6
+	case happyOut23 happy_x_3 of { happy_var_3 -> 
+	happyIn22
 		 (Program {package=getIdent(happy_var_2), topLevels=happy_var_3}
 	)}}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_4 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_20 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_4 = happySpecReduce_1  1# happyReduction_4
-happyReduction_4 happy_x_1
-	 =  case happyOut8 happy_x_1 of { happy_var_1 -> 
-	happyIn7
-		 (reverse happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_5 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_5 = happySpecReduce_2  2# happyReduction_5
-happyReduction_5 happy_x_2
-	happy_x_1
-	 =  case happyOut8 happy_x_1 of { happy_var_1 -> 
-	case happyOut9 happy_x_2 of { happy_var_2 -> 
-	happyIn8
-		 (happy_var_2 : happy_var_1
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_6 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_6 = happySpecReduce_0  2# happyReduction_6
-happyReduction_6  =  happyIn8
-		 ([]
-	)
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_7 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_7 = happySpecReduce_1  3# happyReduction_7
-happyReduction_7 happy_x_1
-	 =  case happyOut12 happy_x_1 of { happy_var_1 -> 
-	happyIn9
-		 (TopDecl happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_8 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_8 = happySpecReduce_1  3# happyReduction_8
-happyReduction_8 happy_x_1
-	 =  case happyOut17 happy_x_1 of { happy_var_1 -> 
-	happyIn9
-		 (TopFuncDecl happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_9 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_9 = happySpecReduce_1  4# happyReduction_9
-happyReduction_9 happy_x_1
-	 =  case happyOut11 happy_x_1 of { happy_var_1 -> 
-	happyIn10
-		 (reverse happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_10 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_10 = happySpecReduce_3  5# happyReduction_10
-happyReduction_10 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut11 happy_x_1 of { happy_var_1 -> 
-	case happyOutTok happy_x_3 of { happy_var_3 -> 
-	happyIn11
-		 ((getIdent happy_var_3) : happy_var_1
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_11 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_11 = happySpecReduce_1  5# happyReduction_11
-happyReduction_11 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn11
-		 ([getIdent happy_var_1]
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_12 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_12 = happySpecReduce_3  6# happyReduction_12
-happyReduction_12 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut13 happy_x_2 of { happy_var_2 -> 
-	happyIn12
-		 (VarDecl [happy_var_2]
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_13 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_13 = happyReduce 5# 6# happyReduction_13
-happyReduction_13 (happy_x_5 `HappyStk`
-	happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut14 happy_x_3 of { happy_var_3 -> 
-	happyIn12
-		 (VarDecl happy_var_3
-	) `HappyStk` happyRest}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_14 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_14 = happySpecReduce_3  7# happyReduction_14
-happyReduction_14 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut10 happy_x_1 of { happy_var_1 -> 
-	case happyOut16 happy_x_2 of { happy_var_2 -> 
-	happyIn13
-		 (VarDecl' (nonEmpty happy_var_1) happy_var_2
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_15 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_15 = happySpecReduce_1  8# happyReduction_15
-happyReduction_15 happy_x_1
-	 =  case happyOut15 happy_x_1 of { happy_var_1 -> 
-	happyIn14
-		 (reverse happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_16 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_16 = happySpecReduce_2  9# happyReduction_16
-happyReduction_16 happy_x_2
-	happy_x_1
-	 =  case happyOut15 happy_x_1 of { happy_var_1 -> 
-	case happyOut13 happy_x_2 of { happy_var_2 -> 
-	happyIn15
-		 (happy_var_2 : happy_var_1
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_17 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_17 = happySpecReduce_0  9# happyReduction_17
-happyReduction_17  =  happyIn15
-		 ([]
-	)
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_18 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_18 = happySpecReduce_1  10# happyReduction_18
-happyReduction_18 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn16
-		 (Left (Type (getIdent happy_var_1), [])
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_19 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_19 = happySpecReduce_3  10# happyReduction_19
-happyReduction_19 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn16
-		 (Left (Type (getIdent happy_var_1), happy_var_3)
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_20 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_20 = happySpecReduce_2  10# happyReduction_20
-happyReduction_20 happy_x_2
-	happy_x_1
-	 =  case happyOut30 happy_x_2 of { happy_var_2 -> 
-	happyIn16
-		 (Right (nonEmpty happy_var_2)
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_21 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_21 = happyReduce 4# 11# happyReduction_21
-happyReduction_21 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOutTok happy_x_2 of { happy_var_2 -> 
-	case happyOut18 happy_x_3 of { happy_var_3 -> 
-	case happyOut25 happy_x_4 of { happy_var_4 -> 
-	happyIn17
-		 (FuncDecl (getIdent happy_var_2) happy_var_3 happy_var_4
-	) `HappyStk` happyRest}}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_22 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_22 = happyReduce 4# 12# happyReduction_22
-happyReduction_22 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut19 happy_x_2 of { happy_var_2 -> 
-	case happyOut21 happy_x_4 of { happy_var_4 -> 
-	happyIn18
-		 (Signature (Parameters happy_var_2) happy_var_4
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_23 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_23 = happySpecReduce_1  13# happyReduction_23
-happyReduction_23 happy_x_1
-	 =  case happyOut20 happy_x_1 of { happy_var_1 -> 
-	happyIn19
-		 (reverse happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_24 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_24 = happySpecReduce_3  14# happyReduction_24
-happyReduction_24 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut20 happy_x_1 of { happy_var_1 -> 
-	case happyOut10 happy_x_2 of { happy_var_2 -> 
-	case happyOutTok happy_x_3 of { happy_var_3 -> 
-	happyIn20
-		 ((ParameterDecl (nonEmpty happy_var_2) (Type $ getIdent happy_var_3)) : happy_var_1
-	)}}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_25 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_25 = happySpecReduce_0  14# happyReduction_25
-happyReduction_25  =  happyIn20
-		 ([]
-	)
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_26 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_26 = happySpecReduce_1  15# happyReduction_26
-happyReduction_26 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn21
-		 (Just (Type $ getIdent happy_var_1)
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_27 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_27 = happySpecReduce_0  15# happyReduction_27
-happyReduction_27  =  happyIn21
-		 (Nothing
-	)
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_28 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_28 = happySpecReduce_2  16# happyReduction_28
-happyReduction_28 happy_x_2
-	happy_x_1
-	 =  case happyOut25 happy_x_1 of { happy_var_1 -> 
-	happyIn22
-		 (happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_29 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_29 = happySpecReduce_1  16# happyReduction_29
-happyReduction_29 happy_x_1
-	 =  case happyOut26 happy_x_1 of { happy_var_1 -> 
-	happyIn22
-		 (SimpleStmt happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_30 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_30 = happySpecReduce_2  16# happyReduction_30
-happyReduction_30 happy_x_2
-	happy_x_1
-	 =  case happyOut27 happy_x_1 of { happy_var_1 -> 
-	happyIn22
-		 (happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_31 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_31 = happySpecReduce_2  16# happyReduction_31
-happyReduction_31 happy_x_2
-	happy_x_1
-	 =  happyIn22
-		 (Break
-	)
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_32 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_32 = happySpecReduce_2  16# happyReduction_32
-happyReduction_32 happy_x_2
-	happy_x_1
-	 =  happyIn22
-		 (Continue
-	)
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_33 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_33 = happySpecReduce_2  16# happyReduction_33
-happyReduction_33 happy_x_2
-	happy_x_1
-	 =  case happyOut12 happy_x_1 of { happy_var_1 -> 
-	happyIn22
-		 (Declare happy_var_1
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_34 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_34 = happyReduce 5# 16# happyReduction_34
-happyReduction_34 (happy_x_5 `HappyStk`
-	happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn22
-		 (Print happy_var_3
-	) `HappyStk` happyRest}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_35 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_35 = happyReduce 5# 16# happyReduction_35
-happyReduction_35 (happy_x_5 `HappyStk`
-	happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn22
-		 (Println happy_var_3
-	) `HappyStk` happyRest}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_36 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_36 = happySpecReduce_3  16# happyReduction_36
-happyReduction_36 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_2 of { happy_var_2 -> 
-	happyIn22
-		 (Return $ Just happy_var_2
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_37 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_37 = happySpecReduce_2  16# happyReduction_37
-happyReduction_37 happy_x_2
-	happy_x_1
-	 =  happyIn22
-		 (Return Nothing
-	)
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_38 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_38 = happySpecReduce_1  17# happyReduction_38
-happyReduction_38 happy_x_1
+happyReduce_20 = happySpecReduce_1  1# happyReduction_20
+happyReduction_20 happy_x_1
 	 =  case happyOut24 happy_x_1 of { happy_var_1 -> 
 	happyIn23
 		 (reverse happy_var_1
 	)}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_39 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_21 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_39 = happySpecReduce_2  18# happyReduction_39
-happyReduction_39 happy_x_2
+happyReduce_21 = happySpecReduce_2  2# happyReduction_21
+happyReduction_21 happy_x_2
 	happy_x_1
 	 =  case happyOut24 happy_x_1 of { happy_var_1 -> 
-	case happyOut22 happy_x_2 of { happy_var_2 -> 
+	case happyOut25 happy_x_2 of { happy_var_2 -> 
 	happyIn24
 		 (happy_var_2 : happy_var_1
 	)}}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_40 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_22 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_40 = happySpecReduce_0  18# happyReduction_40
-happyReduction_40  =  happyIn24
+happyReduce_22 = happySpecReduce_0  2# happyReduction_22
+happyReduction_22  =  happyIn24
 		 ([]
 	)
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_41 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_23 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_41 = happySpecReduce_3  19# happyReduction_41
-happyReduction_41 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut23 happy_x_2 of { happy_var_2 -> 
+happyReduce_23 = happySpecReduce_1  3# happyReduction_23
+happyReduction_23 happy_x_1
+	 =  case happyOut28 happy_x_1 of { happy_var_1 -> 
 	happyIn25
-		 (BlockStmt happy_var_2
+		 (TopDecl happy_var_1
 	)}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_42 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_24 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_42 = happySpecReduce_1  20# happyReduction_42
-happyReduction_42 happy_x_1
-	 =  happyIn26
-		 (EmptyStmt
-	)
+happyReduce_24 = happySpecReduce_1  3# happyReduction_24
+happyReduction_24 happy_x_1
+	 =  case happyOut33 happy_x_1 of { happy_var_1 -> 
+	happyIn25
+		 (TopFuncDecl happy_var_1
+	)}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_43 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_25 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_43 = happySpecReduce_3  20# happyReduction_43
-happyReduction_43 happy_x_3
+happyReduce_25 = happySpecReduce_1  4# happyReduction_25
+happyReduction_25 happy_x_1
+	 =  case happyOut27 happy_x_1 of { happy_var_1 -> 
+	happyIn26
+		 (reverse happy_var_1
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_26 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_26 = happySpecReduce_3  5# happyReduction_26
+happyReduction_26 happy_x_3
 	happy_x_2
 	happy_x_1
+	 =  case happyOut27 happy_x_1 of { happy_var_1 -> 
+	case happyOutTok happy_x_3 of { happy_var_3 -> 
+	happyIn27
+		 ((getIdent happy_var_3) : happy_var_1
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_27 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_27 = happySpecReduce_1  5# happyReduction_27
+happyReduction_27 happy_x_1
 	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn26
-		 (Increment $ Var (getIdent happy_var_1)
+	happyIn27
+		 ([getIdent happy_var_1]
 	)}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_44 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_28 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_44 = happySpecReduce_3  20# happyReduction_44
-happyReduction_44 happy_x_3
+happyReduce_28 = happySpecReduce_3  6# happyReduction_28
+happyReduction_28 happy_x_3
 	happy_x_2
 	happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn26
-		 (Decrement $ Var (getIdent happy_var_1)
+	 =  case happyOut29 happy_x_2 of { happy_var_2 -> 
+	happyIn28
+		 (VarDecl [happy_var_2]
 	)}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_45 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_29 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_45 = happyReduce 4# 20# happyReduction_45
-happyReduction_45 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just Add) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_46 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_46 = happyReduce 4# 20# happyReduction_46
-happyReduction_46 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just Subtract) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_47 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_47 = happyReduce 4# 20# happyReduction_47
-happyReduction_47 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just BitOr) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_48 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_48 = happyReduce 4# 20# happyReduction_48
-happyReduction_48 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just BitXor) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_49 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_49 = happyReduce 4# 20# happyReduction_49
-happyReduction_49 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just Multiply) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_50 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_50 = happyReduce 4# 20# happyReduction_50
-happyReduction_50 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just Divide) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_51 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_51 = happyReduce 4# 20# happyReduction_51
-happyReduction_51 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just Remainder) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_52 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_52 = happyReduce 4# 20# happyReduction_52
-happyReduction_52 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just ShiftL) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_53 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_53 = happyReduce 4# 20# happyReduction_53
-happyReduction_53 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just ShiftR) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_54 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_54 = happyReduce 4# 20# happyReduction_54
-happyReduction_54 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just BitAnd) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_55 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_55 = happyReduce 4# 20# happyReduction_55
-happyReduction_55 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp $ Just BitClear) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_56 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_56 = happyReduce 4# 20# happyReduction_56
-happyReduction_56 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut30 happy_x_1 of { happy_var_1 -> 
-	case happyOut30 happy_x_3 of { happy_var_3 -> 
-	happyIn26
-		 (Assign (AssignOp Nothing) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_57 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_57 = happyReduce 5# 21# happyReduction_57
-happyReduction_57 (happy_x_5 `HappyStk`
+happyReduce_29 = happyReduce 5# 6# happyReduction_29
+happyReduction_29 (happy_x_5 `HappyStk`
 	happy_x_4 `HappyStk`
 	happy_x_3 `HappyStk`
 	happy_x_2 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
-	 = case happyOut26 happy_x_2 of { happy_var_2 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	case happyOut25 happy_x_4 of { happy_var_4 -> 
-	case happyOut28 happy_x_5 of { happy_var_5 -> 
-	happyIn27
-		 (If (happy_var_2, happy_var_3) happy_var_4 happy_var_5
-	) `HappyStk` happyRest}}}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_58 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_58 = happyReduce 4# 21# happyReduction_58
-happyReduction_58 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut29 happy_x_2 of { happy_var_2 -> 
-	case happyOut25 happy_x_3 of { happy_var_3 -> 
-	case happyOut28 happy_x_4 of { happy_var_4 -> 
-	happyIn27
-		 (If (EmptyStmt, happy_var_2) happy_var_3 happy_var_4
-	) `HappyStk` happyRest}}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_59 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_59 = happySpecReduce_2  22# happyReduction_59
-happyReduction_59 happy_x_2
-	happy_x_1
-	 =  case happyOut27 happy_x_2 of { happy_var_2 -> 
+	 = case happyOut30 happy_x_3 of { happy_var_3 -> 
 	happyIn28
-		 (happy_var_2
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_60 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_60 = happySpecReduce_2  22# happyReduction_60
-happyReduction_60 happy_x_2
-	happy_x_1
-	 =  case happyOut25 happy_x_2 of { happy_var_2 -> 
-	happyIn28
-		 (happy_var_2
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_61 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_61 = happySpecReduce_0  22# happyReduction_61
-happyReduction_61  =  happyIn28
-		 (blank
-	)
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_62 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_62 = happySpecReduce_2  23# happyReduction_62
-happyReduction_62 happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_2 of { happy_var_2 -> 
-	happyIn29
-		 (Unary Pos happy_var_2
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_63 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_63 = happySpecReduce_2  23# happyReduction_63
-happyReduction_63 happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_2 of { happy_var_2 -> 
-	happyIn29
-		 (Unary Neg happy_var_2
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_64 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_64 = happySpecReduce_2  23# happyReduction_64
-happyReduction_64 happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_2 of { happy_var_2 -> 
-	happyIn29
-		 (Unary Not happy_var_2
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_65 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_65 = happySpecReduce_2  23# happyReduction_65
-happyReduction_65 happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_2 of { happy_var_2 -> 
-	happyIn29
-		 (Unary BitComplement happy_var_2
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_66 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_66 = happySpecReduce_3  23# happyReduction_66
-happyReduction_66 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 Or happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_67 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_67 = happySpecReduce_3  23# happyReduction_67
-happyReduction_67 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 And happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_68 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_68 = happySpecReduce_3  23# happyReduction_68
-happyReduction_68 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 Data.EQ happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_69 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_69 = happySpecReduce_3  23# happyReduction_69
-happyReduction_69 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 NEQ happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_70 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_70 = happySpecReduce_3  23# happyReduction_70
-happyReduction_70 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 Data.LT happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_71 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_71 = happySpecReduce_3  23# happyReduction_71
-happyReduction_71 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 LEQ happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_72 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_72 = happySpecReduce_3  23# happyReduction_72
-happyReduction_72 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 Data.GT happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_73 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_73 = happySpecReduce_3  23# happyReduction_73
-happyReduction_73 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 GEQ happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_74 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_74 = happySpecReduce_3  23# happyReduction_74
-happyReduction_74 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm Add) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_75 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_75 = happySpecReduce_3  23# happyReduction_75
-happyReduction_75 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm Subtract) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_76 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_76 = happySpecReduce_3  23# happyReduction_76
-happyReduction_76 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm Multiply) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_77 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_77 = happySpecReduce_3  23# happyReduction_77
-happyReduction_77 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm Divide) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_78 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_78 = happySpecReduce_3  23# happyReduction_78
-happyReduction_78 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm Remainder) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_79 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_79 = happySpecReduce_3  23# happyReduction_79
-happyReduction_79 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm BitOr) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_80 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_80 = happySpecReduce_3  23# happyReduction_80
-happyReduction_80 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm BitXor) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_81 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_81 = happySpecReduce_3  23# happyReduction_81
-happyReduction_81 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm BitAnd) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_82 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_82 = happySpecReduce_3  23# happyReduction_82
-happyReduction_82 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm BitClear) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_83 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_83 = happySpecReduce_3  23# happyReduction_83
-happyReduction_83 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm ShiftL) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_84 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_84 = happySpecReduce_3  23# happyReduction_84
-happyReduction_84 happy_x_3
-	happy_x_2
-	happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (Binary happy_var_1 (Arithm ShiftR) happy_var_3
-	)}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_85 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_85 = happySpecReduce_1  23# happyReduction_85
-happyReduction_85 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn29
-		 (Lit (IntLit Decimal $ getInnerString happy_var_1)
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_86 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_86 = happySpecReduce_1  23# happyReduction_86
-happyReduction_86 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn29
-		 (Lit (IntLit Octal $ getInnerString happy_var_1)
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_87 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_87 = happySpecReduce_1  23# happyReduction_87
-happyReduction_87 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn29
-		 (Lit (IntLit Hexadecimal $ getInnerString happy_var_1)
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_88 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_88 = happySpecReduce_1  23# happyReduction_88
-happyReduction_88 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn29
-		 (Lit (FloatLit $ getInnerFloat happy_var_1)
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_89 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_89 = happySpecReduce_1  23# happyReduction_89
-happyReduction_89 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn29
-		 (Lit (RuneLit $ getInnerChar happy_var_1)
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_90 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_90 = happySpecReduce_1  23# happyReduction_90
-happyReduction_90 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn29
-		 (Lit (StringLit Interpreted $ getInnerString happy_var_1)
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_91 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_91 = happySpecReduce_1  23# happyReduction_91
-happyReduction_91 happy_x_1
-	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
-	happyIn29
-		 (Lit (StringLit Raw $ getInnerString happy_var_1)
-	)}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_92 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_92 = happyReduce 6# 23# happyReduction_92
-happyReduction_92 (happy_x_6 `HappyStk`
-	happy_x_5 `HappyStk`
-	happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut29 happy_x_3 of { happy_var_3 -> 
-	case happyOut29 happy_x_5 of { happy_var_5 -> 
-	happyIn29
-		 (AppendExpr happy_var_3 happy_var_5
-	) `HappyStk` happyRest}}
-
-#if __GLASGOW_HASKELL__ >= 710
-happyReduce_93 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-#endif
-happyReduce_93 = happyReduce 4# 23# happyReduction_93
-happyReduction_93 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn29
-		 (LenExpr happy_var_3
+		 (VarDecl happy_var_3
 	) `HappyStk` happyRest}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_94 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_30 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_94 = happyReduce 4# 23# happyReduction_94
-happyReduction_94 (happy_x_4 `HappyStk`
-	happy_x_3 `HappyStk`
-	happy_x_2 `HappyStk`
-	happy_x_1 `HappyStk`
-	happyRest)
-	 = case happyOut29 happy_x_3 of { happy_var_3 -> 
+happyReduce_30 = happySpecReduce_3  7# happyReduction_30
+happyReduction_30 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut26 happy_x_1 of { happy_var_1 -> 
+	case happyOut32 happy_x_2 of { happy_var_2 -> 
 	happyIn29
-		 (CapExpr happy_var_3
-	) `HappyStk` happyRest}
+		 (VarDecl' (nonEmpty happy_var_1) happy_var_2
+	)}}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_95 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_31 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_95 = happySpecReduce_1  24# happyReduction_95
-happyReduction_95 happy_x_1
+happyReduce_31 = happySpecReduce_1  8# happyReduction_31
+happyReduction_31 happy_x_1
 	 =  case happyOut31 happy_x_1 of { happy_var_1 -> 
 	happyIn30
 		 (reverse happy_var_1
 	)}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_96 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_32 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_96 = happySpecReduce_3  25# happyReduction_96
+happyReduce_32 = happySpecReduce_2  9# happyReduction_32
+happyReduction_32 happy_x_2
+	happy_x_1
+	 =  case happyOut31 happy_x_1 of { happy_var_1 -> 
+	case happyOut29 happy_x_2 of { happy_var_2 -> 
+	happyIn31
+		 (happy_var_2 : happy_var_1
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_33 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_33 = happySpecReduce_0  9# happyReduction_33
+happyReduction_33  =  happyIn31
+		 ([]
+	)
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_34 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_34 = happySpecReduce_1  10# happyReduction_34
+happyReduction_34 happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn32
+		 (Left (Type (getIdent happy_var_1), [])
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_35 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_35 = happySpecReduce_3  10# happyReduction_35
+happyReduction_35 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn32
+		 (Left (Type (getIdent happy_var_1), happy_var_3)
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_36 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_36 = happySpecReduce_2  10# happyReduction_36
+happyReduction_36 happy_x_2
+	happy_x_1
+	 =  case happyOut46 happy_x_2 of { happy_var_2 -> 
+	happyIn32
+		 (Right (nonEmpty happy_var_2)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_37 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_37 = happyReduce 4# 11# happyReduction_37
+happyReduction_37 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOutTok happy_x_2 of { happy_var_2 -> 
+	case happyOut34 happy_x_3 of { happy_var_3 -> 
+	case happyOut41 happy_x_4 of { happy_var_4 -> 
+	happyIn33
+		 (FuncDecl (getIdent happy_var_2) happy_var_3 happy_var_4
+	) `HappyStk` happyRest}}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_38 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_38 = happyReduce 4# 12# happyReduction_38
+happyReduction_38 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut35 happy_x_2 of { happy_var_2 -> 
+	case happyOut37 happy_x_4 of { happy_var_4 -> 
+	happyIn34
+		 (Signature (Parameters happy_var_2) happy_var_4
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_39 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_39 = happySpecReduce_1  13# happyReduction_39
+happyReduction_39 happy_x_1
+	 =  case happyOut36 happy_x_1 of { happy_var_1 -> 
+	happyIn35
+		 (reverse happy_var_1
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_40 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_40 = happySpecReduce_3  14# happyReduction_40
+happyReduction_40 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut36 happy_x_1 of { happy_var_1 -> 
+	case happyOut26 happy_x_2 of { happy_var_2 -> 
+	case happyOutTok happy_x_3 of { happy_var_3 -> 
+	happyIn36
+		 ((ParameterDecl (nonEmpty happy_var_2) (Type $ getIdent happy_var_3)) : happy_var_1
+	)}}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_41 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_41 = happySpecReduce_0  14# happyReduction_41
+happyReduction_41  =  happyIn36
+		 ([]
+	)
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_42 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_42 = happySpecReduce_1  15# happyReduction_42
+happyReduction_42 happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn37
+		 (Just (Type $ getIdent happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_43 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_43 = happySpecReduce_0  15# happyReduction_43
+happyReduction_43  =  happyIn37
+		 (Nothing
+	)
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_44 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_44 = happySpecReduce_2  16# happyReduction_44
+happyReduction_44 happy_x_2
+	happy_x_1
+	 =  case happyOut41 happy_x_1 of { happy_var_1 -> 
+	happyIn38
+		 (happy_var_1
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_45 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_45 = happySpecReduce_1  16# happyReduction_45
+happyReduction_45 happy_x_1
+	 =  case happyOut42 happy_x_1 of { happy_var_1 -> 
+	happyIn38
+		 (SimpleStmt happy_var_1
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_46 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_46 = happySpecReduce_2  16# happyReduction_46
+happyReduction_46 happy_x_2
+	happy_x_1
+	 =  case happyOut43 happy_x_1 of { happy_var_1 -> 
+	happyIn38
+		 (happy_var_1
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_47 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_47 = happySpecReduce_2  16# happyReduction_47
+happyReduction_47 happy_x_2
+	happy_x_1
+	 =  happyIn38
+		 (Break
+	)
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_48 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_48 = happySpecReduce_2  16# happyReduction_48
+happyReduction_48 happy_x_2
+	happy_x_1
+	 =  happyIn38
+		 (Continue
+	)
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_49 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_49 = happySpecReduce_2  16# happyReduction_49
+happyReduction_49 happy_x_2
+	happy_x_1
+	 =  case happyOut28 happy_x_1 of { happy_var_1 -> 
+	happyIn38
+		 (Declare happy_var_1
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_50 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_50 = happyReduce 5# 16# happyReduction_50
+happyReduction_50 (happy_x_5 `HappyStk`
+	happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn38
+		 (Print happy_var_3
+	) `HappyStk` happyRest}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_51 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_51 = happyReduce 5# 16# happyReduction_51
+happyReduction_51 (happy_x_5 `HappyStk`
+	happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn38
+		 (Println happy_var_3
+	) `HappyStk` happyRest}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_52 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_52 = happySpecReduce_3  16# happyReduction_52
+happyReduction_52 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_2 of { happy_var_2 -> 
+	happyIn38
+		 (Return $ Just happy_var_2
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_53 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_53 = happySpecReduce_2  16# happyReduction_53
+happyReduction_53 happy_x_2
+	happy_x_1
+	 =  happyIn38
+		 (Return Nothing
+	)
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_54 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_54 = happySpecReduce_1  17# happyReduction_54
+happyReduction_54 happy_x_1
+	 =  case happyOut40 happy_x_1 of { happy_var_1 -> 
+	happyIn39
+		 (reverse happy_var_1
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_55 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_55 = happySpecReduce_2  18# happyReduction_55
+happyReduction_55 happy_x_2
+	happy_x_1
+	 =  case happyOut40 happy_x_1 of { happy_var_1 -> 
+	case happyOut38 happy_x_2 of { happy_var_2 -> 
+	happyIn40
+		 (happy_var_2 : happy_var_1
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_56 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_56 = happySpecReduce_0  18# happyReduction_56
+happyReduction_56  =  happyIn40
+		 ([]
+	)
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_57 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_57 = happySpecReduce_3  19# happyReduction_57
+happyReduction_57 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut39 happy_x_2 of { happy_var_2 -> 
+	happyIn41
+		 (BlockStmt happy_var_2
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_58 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_58 = happySpecReduce_1  20# happyReduction_58
+happyReduction_58 happy_x_1
+	 =  happyIn42
+		 (EmptyStmt
+	)
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_59 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_59 = happySpecReduce_3  20# happyReduction_59
+happyReduction_59 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn42
+		 (Increment $ Var (getIdent happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_60 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_60 = happySpecReduce_3  20# happyReduction_60
+happyReduction_60 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn42
+		 (Decrement $ Var (getIdent happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_61 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_61 = happyReduce 4# 20# happyReduction_61
+happyReduction_61 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just Add) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_62 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_62 = happyReduce 4# 20# happyReduction_62
+happyReduction_62 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just Subtract) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_63 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_63 = happyReduce 4# 20# happyReduction_63
+happyReduction_63 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just BitOr) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_64 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_64 = happyReduce 4# 20# happyReduction_64
+happyReduction_64 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just BitXor) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_65 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_65 = happyReduce 4# 20# happyReduction_65
+happyReduction_65 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just Multiply) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_66 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_66 = happyReduce 4# 20# happyReduction_66
+happyReduction_66 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just Divide) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_67 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_67 = happyReduce 4# 20# happyReduction_67
+happyReduction_67 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just Remainder) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_68 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_68 = happyReduce 4# 20# happyReduction_68
+happyReduction_68 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just ShiftL) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_69 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_69 = happyReduce 4# 20# happyReduction_69
+happyReduction_69 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just ShiftR) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_70 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_70 = happyReduce 4# 20# happyReduction_70
+happyReduction_70 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just BitAnd) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_71 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_71 = happyReduce 4# 20# happyReduction_71
+happyReduction_71 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp $ Just BitClear) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_72 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_72 = happyReduce 4# 20# happyReduction_72
+happyReduction_72 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut46 happy_x_1 of { happy_var_1 -> 
+	case happyOut46 happy_x_3 of { happy_var_3 -> 
+	happyIn42
+		 (Assign (AssignOp Nothing) (nonEmpty happy_var_1) (nonEmpty happy_var_3)
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_73 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_73 = happyReduce 5# 21# happyReduction_73
+happyReduction_73 (happy_x_5 `HappyStk`
+	happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut42 happy_x_2 of { happy_var_2 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	case happyOut41 happy_x_4 of { happy_var_4 -> 
+	case happyOut44 happy_x_5 of { happy_var_5 -> 
+	happyIn43
+		 (If (happy_var_2, happy_var_3) happy_var_4 happy_var_5
+	) `HappyStk` happyRest}}}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_74 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_74 = happyReduce 4# 21# happyReduction_74
+happyReduction_74 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut45 happy_x_2 of { happy_var_2 -> 
+	case happyOut41 happy_x_3 of { happy_var_3 -> 
+	case happyOut44 happy_x_4 of { happy_var_4 -> 
+	happyIn43
+		 (If (EmptyStmt, happy_var_2) happy_var_3 happy_var_4
+	) `HappyStk` happyRest}}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_75 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_75 = happySpecReduce_2  22# happyReduction_75
+happyReduction_75 happy_x_2
+	happy_x_1
+	 =  case happyOut43 happy_x_2 of { happy_var_2 -> 
+	happyIn44
+		 (happy_var_2
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_76 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_76 = happySpecReduce_2  22# happyReduction_76
+happyReduction_76 happy_x_2
+	happy_x_1
+	 =  case happyOut41 happy_x_2 of { happy_var_2 -> 
+	happyIn44
+		 (happy_var_2
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_77 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_77 = happySpecReduce_0  22# happyReduction_77
+happyReduction_77  =  happyIn44
+		 (blank
+	)
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_78 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_78 = happySpecReduce_2  23# happyReduction_78
+happyReduction_78 happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_2 of { happy_var_2 -> 
+	happyIn45
+		 (Unary Pos happy_var_2
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_79 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_79 = happySpecReduce_2  23# happyReduction_79
+happyReduction_79 happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_2 of { happy_var_2 -> 
+	happyIn45
+		 (Unary Neg happy_var_2
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_80 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_80 = happySpecReduce_2  23# happyReduction_80
+happyReduction_80 happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_2 of { happy_var_2 -> 
+	happyIn45
+		 (Unary Not happy_var_2
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_81 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_81 = happySpecReduce_2  23# happyReduction_81
+happyReduction_81 happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_2 of { happy_var_2 -> 
+	happyIn45
+		 (Unary BitComplement happy_var_2
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_82 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_82 = happySpecReduce_3  23# happyReduction_82
+happyReduction_82 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 Or happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_83 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_83 = happySpecReduce_3  23# happyReduction_83
+happyReduction_83 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 And happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_84 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_84 = happySpecReduce_3  23# happyReduction_84
+happyReduction_84 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 Data.EQ happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_85 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_85 = happySpecReduce_3  23# happyReduction_85
+happyReduction_85 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 NEQ happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_86 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_86 = happySpecReduce_3  23# happyReduction_86
+happyReduction_86 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 Data.LT happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_87 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_87 = happySpecReduce_3  23# happyReduction_87
+happyReduction_87 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 LEQ happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_88 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_88 = happySpecReduce_3  23# happyReduction_88
+happyReduction_88 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 Data.GT happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_89 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_89 = happySpecReduce_3  23# happyReduction_89
+happyReduction_89 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 GEQ happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_90 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_90 = happySpecReduce_3  23# happyReduction_90
+happyReduction_90 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm Add) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_91 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_91 = happySpecReduce_3  23# happyReduction_91
+happyReduction_91 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm Subtract) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_92 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_92 = happySpecReduce_3  23# happyReduction_92
+happyReduction_92 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm Multiply) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_93 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_93 = happySpecReduce_3  23# happyReduction_93
+happyReduction_93 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm Divide) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_94 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_94 = happySpecReduce_3  23# happyReduction_94
+happyReduction_94 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm Remainder) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_95 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_95 = happySpecReduce_3  23# happyReduction_95
+happyReduction_95 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm BitOr) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_96 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_96 = happySpecReduce_3  23# happyReduction_96
 happyReduction_96 happy_x_3
 	happy_x_2
 	happy_x_1
-	 =  case happyOut31 happy_x_1 of { happy_var_1 -> 
-	case happyOut29 happy_x_3 of { happy_var_3 -> 
-	happyIn31
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm BitXor) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_97 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_97 = happySpecReduce_3  23# happyReduction_97
+happyReduction_97 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm BitAnd) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_98 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_98 = happySpecReduce_3  23# happyReduction_98
+happyReduction_98 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm BitClear) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_99 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_99 = happySpecReduce_3  23# happyReduction_99
+happyReduction_99 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm ShiftL) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_100 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_100 = happySpecReduce_3  23# happyReduction_100
+happyReduction_100 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (Binary happy_var_1 (Arithm ShiftR) happy_var_3
+	)}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_101 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_101 = happySpecReduce_1  23# happyReduction_101
+happyReduction_101 happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn45
+		 (Lit (IntLit Decimal $ getInnerString happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_102 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_102 = happySpecReduce_1  23# happyReduction_102
+happyReduction_102 happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn45
+		 (Lit (IntLit Octal $ getInnerString happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_103 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_103 = happySpecReduce_1  23# happyReduction_103
+happyReduction_103 happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn45
+		 (Lit (IntLit Hexadecimal $ getInnerString happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_104 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_104 = happySpecReduce_1  23# happyReduction_104
+happyReduction_104 happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn45
+		 (Lit (FloatLit $ getInnerFloat happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_105 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_105 = happySpecReduce_1  23# happyReduction_105
+happyReduction_105 happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn45
+		 (Lit (RuneLit $ getInnerChar happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_106 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_106 = happySpecReduce_1  23# happyReduction_106
+happyReduction_106 happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn45
+		 (Lit (StringLit Interpreted $ getInnerString happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_107 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_107 = happySpecReduce_1  23# happyReduction_107
+happyReduction_107 happy_x_1
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn45
+		 (Lit (StringLit Raw $ getInnerString happy_var_1)
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_108 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_108 = happyReduce 6# 23# happyReduction_108
+happyReduction_108 (happy_x_6 `HappyStk`
+	happy_x_5 `HappyStk`
+	happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut45 happy_x_3 of { happy_var_3 -> 
+	case happyOut45 happy_x_5 of { happy_var_5 -> 
+	happyIn45
+		 (AppendExpr happy_var_3 happy_var_5
+	) `HappyStk` happyRest}}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_109 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_109 = happyReduce 4# 23# happyReduction_109
+happyReduction_109 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (LenExpr happy_var_3
+	) `HappyStk` happyRest}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_110 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_110 = happyReduce 4# 23# happyReduction_110
+happyReduction_110 (happy_x_4 `HappyStk`
+	happy_x_3 `HappyStk`
+	happy_x_2 `HappyStk`
+	happy_x_1 `HappyStk`
+	happyRest)
+	 = case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn45
+		 (CapExpr happy_var_3
+	) `HappyStk` happyRest}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_111 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_111 = happySpecReduce_1  24# happyReduction_111
+happyReduction_111 happy_x_1
+	 =  case happyOut47 happy_x_1 of { happy_var_1 -> 
+	happyIn46
+		 (reverse happy_var_1
+	)}
+
+#if __GLASGOW_HASKELL__ >= 710
+happyReduce_112 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+#endif
+happyReduce_112 = happySpecReduce_3  25# happyReduction_112
+happyReduction_112 happy_x_3
+	happy_x_2
+	happy_x_1
+	 =  case happyOut47 happy_x_1 of { happy_var_1 -> 
+	case happyOut45 happy_x_3 of { happy_var_3 -> 
+	happyIn47
 		 (happy_var_3 : happy_var_1
 	)}}
 
 #if __GLASGOW_HASKELL__ >= 710
-happyReduce_97 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyReduce_113 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 #endif
-happyReduce_97 = happySpecReduce_1  25# happyReduction_97
-happyReduction_97 happy_x_1
-	 =  case happyOut29 happy_x_1 of { happy_var_1 -> 
-	happyIn31
+happyReduce_113 = happySpecReduce_1  25# happyReduction_113
+happyReduction_113 happy_x_1
+	 =  case happyOut45 happy_x_1 of { happy_var_1 -> 
+	happyIn47
 		 ([happy_var_1]
 	)}
 
@@ -1580,34 +1596,82 @@ happyNewToken action sts stk
 happyError_ explist 86# tk = happyError' (tk, explist)
 happyError_ explist _ tk = happyError' (tk, explist)
 
-happyThen :: () => P a -> (a -> P b) -> P b
-happyThen = (thenP)
-happyReturn :: () => a -> P a
-happyReturn = (returnP)
+happyThen :: () => Alex a -> (a -> Alex b) -> Alex b
+happyThen = (>>=)
+happyReturn :: () => a -> Alex a
+happyReturn = (return)
 #if __GLASGOW_HASKELL__ >= 710
-happyParse :: () => Happy_GHC_Exts.Int# -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyParse :: () => Happy_GHC_Exts.Int# -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 
-happyNewToken :: () => Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyNewToken :: () => Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 
-happyDoAction :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
+happyDoAction :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
 
-happyReduceArr :: () => Happy_Data_Array.Array Int (Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> P (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _))
+happyReduceArr :: () => Happy_Data_Array.Array Int (Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _))
 
 #endif
-happyThen1 :: () => P a -> (a -> P b) -> P b
+happyThen1 :: () => Alex a -> (a -> Alex b) -> Alex b
 happyThen1 = happyThen
-happyReturn1 :: () => a -> P a
+happyReturn1 :: () => a -> Alex a
 happyReturn1 = happyReturn
-happyError' :: () => ((Token), [String]) -> P a
+happyError' :: () => ((Token), [String]) -> Alex a
 happyError' tk = parseError tk
 hparse = happySomeParser where
- happySomeParser = happyThen (happyParse 0#) (\x -> happyReturn (happyOut6 x))
+ happySomeParser = happyThen (happyParse 0#) (\x -> happyReturn (happyOut22 x))
 
-hparseId = happySomeParser where
- happySomeParser = happyThen (happyParse 1#) (\x -> happyReturn (happyOut10 x))
+pId = happySomeParser where
+ happySomeParser = happyThen (happyParse 1#) (\x -> happyReturn (happyOut26 x))
 
-hparseE = happySomeParser where
- happySomeParser = happyThen (happyParse 2#) (\x -> happyReturn (happyOut29 x))
+pTDecl = happySomeParser where
+ happySomeParser = happyThen (happyParse 2#) (\x -> happyReturn (happyOut25 x))
+
+pTDecls = happySomeParser where
+ happySomeParser = happyThen (happyParse 3#) (\x -> happyReturn (happyOut23 x))
+
+pDec = happySomeParser where
+ happySomeParser = happyThen (happyParse 4#) (\x -> happyReturn (happyOut28 x))
+
+pDecB = happySomeParser where
+ happySomeParser = happyThen (happyParse 5#) (\x -> happyReturn (happyOut32 x))
+
+pFDec = happySomeParser where
+ happySomeParser = happyThen (happyParse 6#) (\x -> happyReturn (happyOut33 x))
+
+pSig = happySomeParser where
+ happySomeParser = happyThen (happyParse 7#) (\x -> happyReturn (happyOut34 x))
+
+pIDecl = happySomeParser where
+ happySomeParser = happyThen (happyParse 8#) (\x -> happyReturn (happyOut29 x))
+
+pPar = happySomeParser where
+ happySomeParser = happyThen (happyParse 9#) (\x -> happyReturn (happyOut35 x))
+
+pRes = happySomeParser where
+ happySomeParser = happyThen (happyParse 10#) (\x -> happyReturn (happyOut37 x))
+
+pStmt = happySomeParser where
+ happySomeParser = happyThen (happyParse 11#) (\x -> happyReturn (happyOut38 x))
+
+pStmts = happySomeParser where
+ happySomeParser = happyThen (happyParse 12#) (\x -> happyReturn (happyOut39 x))
+
+pBStmt = happySomeParser where
+ happySomeParser = happyThen (happyParse 13#) (\x -> happyReturn (happyOut41 x))
+
+pSStmt = happySomeParser where
+ happySomeParser = happyThen (happyParse 14#) (\x -> happyReturn (happyOut42 x))
+
+pIf = happySomeParser where
+ happySomeParser = happyThen (happyParse 15#) (\x -> happyReturn (happyOut43 x))
+
+pElses = happySomeParser where
+ happySomeParser = happyThen (happyParse 16#) (\x -> happyReturn (happyOut44 x))
+
+pEl = happySomeParser where
+ happySomeParser = happyThen (happyParse 17#) (\x -> happyReturn (happyOut46 x))
+
+pE = happySomeParser where
+ happySomeParser = happyThen (happyParse 18#) (\x -> happyReturn (happyOut45 x))
 
 happySeq = happyDontSeq
 
@@ -1649,7 +1713,13 @@ parseError :: (Token, [String]) -> Alex a
 parseError (Token (AlexPn _ l c) t, strs) =                                           -- Megaparsec error reporting here
   alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ " at line " ++ show l ++ " column " ++ show c ++ ", expecting " ++ show strs)
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
+{-# LINE 1 "templates/GenericTemplate.hs" #-}
+{-# LINE 1 "<built-in>" #-}
+{-# LINE 1 "<command-line>" #-}
+{-# LINE 10 "<command-line>" #-}
+# 1 "/usr/include/stdc-predef.h" 1 3 4
 
+# 17 "/usr/include/stdc-predef.h" 3 4
 
 
 
@@ -1693,6 +1763,8 @@ parseError (Token (AlexPn _ l c) t, strs) =                                     
 
 
 
+{-# LINE 10 "<command-line>" #-}
+{-# LINE 1 "/usr/lib/ghc-8.6.3/include/ghcversion.h" #-}
 
 
 
@@ -1708,6 +1780,8 @@ parseError (Token (AlexPn _ l c) t, strs) =                                     
 
 
 
+{-# LINE 10 "<command-line>" #-}
+{-# LINE 1 "/tmp/ghc670_0/ghc_2.h" #-}
 
 
 
@@ -1858,6 +1932,50 @@ parseError (Token (AlexPn _ l c) t, strs) =                                     
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{-# LINE 10 "<command-line>" #-}
+{-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- Id: GenericTemplate.hs,v 1.26 2005/01/14 14:47:22 simonmar Exp 
 
 
@@ -1882,7 +2000,7 @@ parseError (Token (AlexPn _ l c) t, strs) =                                     
 #define GTE(n,m) (n Happy_GHC_Exts.>=# m)
 #define EQ(n,m) (n Happy_GHC_Exts.==# m)
 #endif
-
+{-# LINE 43 "templates/GenericTemplate.hs" #-}
 
 data Happy_IntList = HappyCons Happy_GHC_Exts.Int# Happy_IntList
 
@@ -1892,18 +2010,11 @@ data Happy_IntList = HappyCons Happy_GHC_Exts.Int# Happy_IntList
 
 
 
+{-# LINE 65 "templates/GenericTemplate.hs" #-}
 
+{-# LINE 75 "templates/GenericTemplate.hs" #-}
 
-
-
-
-
-
-
-
-
-
-
+{-# LINE 84 "templates/GenericTemplate.hs" #-}
 
 infixr 9 `HappyStk`
 data HappyStk a = HappyStk a (HappyStk a)
@@ -1931,7 +2042,7 @@ happyAccept j tk st sts (HappyStk ans _) =
 
 happyDoAction i tk st
         = {- nothing -}
-          
+
 
           case action of
                 0#           -> {- nothing -}
@@ -1939,11 +2050,11 @@ happyDoAction i tk st
                 -1#          -> {- nothing -}
                                      happyAccept i tk st
                 n | LT(n,(0# :: Happy_GHC_Exts.Int#)) -> {- nothing -}
-                                                   
+
                                                    (happyReduceArr Happy_Data_Array.! rule) i tk st
                                                    where rule = (Happy_GHC_Exts.I# ((Happy_GHC_Exts.negateInt# ((n Happy_GHC_Exts.+# (1# :: Happy_GHC_Exts.Int#))))))
                 n                 -> {- nothing -}
-                                     
+
 
                                      happyShift new_state i tk st
                                      where new_state = (n Happy_GHC_Exts.-# (1# :: Happy_GHC_Exts.Int#))
@@ -1989,7 +2100,7 @@ data HappyAddr = HappyA# Happy_GHC_Exts.Addr#
 -----------------------------------------------------------------------------
 -- HappyState data type (not arrays)
 
-
+{-# LINE 180 "templates/GenericTemplate.hs" #-}
 
 -----------------------------------------------------------------------------
 -- Shifting a token
@@ -2154,4 +2265,3 @@ happyDontSeq a b = b
 {-# NOINLINE happyFail #-}
 
 -- end of Happy Template.
-

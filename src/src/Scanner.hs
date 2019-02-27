@@ -1,8 +1,5 @@
 module Scanner
-  ( P
-  , thenP
-  , returnP
-  , showError
+  ( showError
   , getPos
   , happyError
   , lexer
@@ -171,15 +168,6 @@ scanP s =
 scanC :: String -> IO ()
 scanC s = either putExit (const $ putStrLn "OK" >> exitSuccess) (scan s)
 
--- | Monad types/functions to allow the scanner to interface with the parser
-type P a = T.Alex a
-
-thenP :: P a -> (a -> P b) -> P b
-thenP = (>>=)
-
-returnP :: a -> P a
-returnP = return
-
 -- | showError will be passed to happyError and will define behavior on parser errors
 showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
 showError (l, c, _) =
@@ -189,10 +177,10 @@ showError (l, c, _) =
 getPos :: T.Alex T.AlexPosn
 getPos = T.Alex (\s -> Right (s, T.alex_pos s))
 
-happyError :: P a
+happyError :: T.Alex a
 happyError = do
   (T.AlexPn _ l c) <- getPos
   showError (l, c, Nothing)
 
-lexer :: (T.Token -> P a) -> P a
+lexer :: (T.Token -> T.Alex a) -> T.Alex a
 lexer s = alexMonadScan >>= s
