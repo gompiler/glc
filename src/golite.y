@@ -161,11 +161,6 @@ import qualified Data.List.NonEmpty as NonEmpty
 
 %%
 
-{- TODO: EXPRESSION STATEMENTS -}
-{- TODO: FUNCTION TYPES -}
-{- TODO: LABELS -}
-{- TODO: TYPECASTS -}
-
 {- WHY DOES PACKAGE USE STRING AND NOT PACKAGENAME? -}
 Program     : package ident TopDecls                  { Program {package=getIdent($2), topLevels=$3} }
 
