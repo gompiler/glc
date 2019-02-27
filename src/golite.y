@@ -193,7 +193,7 @@ InnerDeclsR : InnerDeclsR InnerDecl                   { $2 : $1 }
 
 {- TODO: TYPES OF RETURN... NEED OVERRIDING AND STUFF -}
 DeclBody    : ident                                   { Left (Type (getIdent $1), []) }
-            | ident '=' ExprList                      { Left (Type (getIdent $1), $3) }
+            | ident '=' ExprList                      { Left (Type (getIdent $1), $3) } {- TODO: NON EMPTY? -}
             | '=' ExprList                            { Right (nonEmpty $2) }
 
 TypeDefs    : TypeDefsR                               { reverse $1 }
@@ -221,6 +221,7 @@ Result      : ident                                   { Just (Type $ getIdent $1
 Stmt        : BlockStmt ';'                           { $1 }
             | SimpleStmt                              { SimpleStmt $1 }
             | IfStmt ';'                              { $1 }
+            | ForStmt ';'                             { $1 }
             | break ';'                               { Break }
             | continue ';'                            { Continue }
             | Decl ';'                                { Declare $1 }
@@ -251,13 +252,17 @@ SimpleStmt  : ';'                                     { EmptyStmt }
             | ExprList "&=" ExprList ';'              { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
             | ExprList "&^=" ExprList ';'             { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
             | ExprList '=' ExprList ';'               { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
-         {- | TODO: SHORT DECL -}
+            | Idents ":=" ExprList ';'                { ShortDeclare $1 (nonEmpty $3) }
 
 IfStmt      : if SimpleStmt Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
             | if Expr BlockStmt Elses                 { If (EmptyStmt, $2) $3 $4 }
 Elses       : else IfStmt                             { $2 }
             | else BlockStmt                          { $2 }
             | {- empty -}                             { blank }
+
+ForStmt     : for BlockStmt                       { For ForInfinite $2 }
+            | for Expr BlockStmt                  { For (ForCond $2) $3 }
+            | for SimpleStmt Expr ';' SimpleStmt BlockStmt { For (ForClause $2 $3 $5) $6 } {- TODO: ALIGNMENT -}
 
 Expr        : '+' Expr %prec POS                      { Unary Pos $2 }
             | '-' Expr %prec NEG                      { Unary Neg $2 }
