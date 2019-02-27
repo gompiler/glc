@@ -139,6 +139,8 @@ expectScanT =
   , ("`teststring`\n", Right [TRStringVal "`teststring`", TSemicolon])
   , ("`teststring`;\n", Right [TRStringVal "`teststring`", TSemicolon])
   , ("1.23", Right [TFloatVal 1.23])
+  , ("1.", Right [TFloatVal 1.0])
+  , (".1", Right [TFloatVal 0.1])
   , ("1.23\n", Right [TFloatVal 1.23, TSemicolon])
   , ("1.23; \n", Right [TFloatVal 1.23, TSemicolon])
   , ("help\n", Right [TIdent "help", TSemicolon])
@@ -167,7 +169,7 @@ expectScanT =
   , ("/* Block comment */", Right [])
   , ("a /* Block \n */", Right ([TIdent "a", TSemicolon]))
                -- This will have to change if we change error printing
-  , ("''", Left "Error: lexical error at line 1, column 3. Previous character: '\\\'', current string: ")
+  -- , ("''", Left "Error: lexical error at line 1, column 3. Previous character: '\\\'', current string: ")
   , ("var", Right [TVar])
   , ("break varname;", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break varname\n", Right [TBreak, TIdent "varname", TSemicolon])
@@ -180,6 +182,22 @@ expectScanT =
   , ("a, b, dddd", Right[TIdent "a", TComma, TIdent "b", TComma, TIdent "dddd"])
   , ("weirdsp, _   ,aacing", Right[TIdent "weirdsp", TComma, TIdent "_", TComma, TIdent "aacing"])
   , ("weirdsp, _   \n,aacing", Right[TIdent "weirdsp", TComma, TIdent "_", TSemicolon, TComma, TIdent "aacing"])
+  , ("`\"`", Right [TRStringVal "`\"`"])
+  , ("`\'`", Right [TRStringVal "`\'`"])
+  , ("`\\z`", Right [TRStringVal "`\\z`"])
+  , ("\"'\"", Right [TStringVal "\"'\""])
+  , ("\"\"", Right [TStringVal "\"\""])
+  , ("``", Right [TRStringVal "``"])
+  , ("\"\\n\"", Right [TStringVal "\"\\n\""])
+  , ("'\\a'", Right [TRuneVal '\a'])
+  , ("'\\b'", Right [TRuneVal '\b'])
+  , ("'\\f'", Right [TRuneVal '\f'])
+  , ("'\\n'", Right [TRuneVal '\n'])
+  , ("'\\r'", Right [TRuneVal '\r'])
+  , ("'\\t'", Right [TRuneVal '\t'])
+  , ("'\\v'", Right [TRuneVal '\v'])
+  , ("'\\\\'", Right [TRuneVal '\\'])
+>>>>>>> scanner-fixes
   , ( unpack
         [text|
           /* Long block comment
@@ -205,6 +223,14 @@ expectScanT =
           a new line */
         |]
     , Right [TBreak, TSemicolon])
+  -- , ( unpack
+  --       [text|"\"|]
+  --   , Right [TBreak, TSemicolon])
+  -- , ( unpack
+  --       [text|
+  --            "\\"
+  --       |]
+  --   , Right [TBreak, TSemicolon])
   ]
 -- expectScanP :: [(String, String, Either String [InnerToken])]
 -- expectScanP = [("Prints tBREAK tSEMICOLON when given `break`")]
