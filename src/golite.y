@@ -114,28 +114,28 @@ import qualified Data.List.NonEmpty as NonEmpty
     "<<="                               { Token _ TLeftSA }
     ">>="                               { Token _ TRightSA }
     "&^="                               { Token _ TLAndNotA }
-    "..."                               { Token _ TLdots }
+    "..."                               { Token _ TLdots }            {- unsupported -}
     break                               { Token _ TBreak }
     case                                { Token _ TCase }
-    chan                                { Token _ TChan }
-    const                               { Token _ TConst }
+    chan                                { Token _ TChan }             {- unsupported -}
+    const                               { Token _ TConst }            {- unsupported -}
     continue                            { Token _ TContinue }
     default                             { Token _ TDefault }
-    defer                               { Token _ TDefer }
+    defer                               { Token _ TDefer }            {- unsupported -}
     else                                { Token _ TElse }
     fallthrough                         { Token _ TFallthrough }
     for                                 { Token _ TFor }
     func                                { Token _ TFunc }
-    go                                  { Token _ TGo }
+    go                                  { Token _ TGo }               {- unsupported -}
     goto                                { Token _ TGoto }
     if                                  { Token _ TIf }
-    import                              { Token _ TImport }
-    interface                           { Token _ TInterface }
-    map                                 { Token _ TMap }
+    import                              { Token _ TImport }           {- unsupported -}
+    interface                           { Token _ TInterface }        {- unsupported -}
+    map                                 { Token _ TMap }              {- unsupported -}
     package                             { Token _ TPackage }
-    range                               { Token _ TRange }
+    range                               { Token _ TRange }            {- unsupported -}
     return                              { Token _ TReturn }
-    select                              { Token _ TSelect }
+    select                              { Token _ TSelect }           {- unsupported -}
     struct                              { Token _ TStruct }
     switch                              { Token _ TSwitch }
     type                                { Token _ TType }
