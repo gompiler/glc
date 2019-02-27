@@ -156,11 +156,8 @@ import qualified Data.List.NonEmpty as NonEmpty
 
 %%
 
-{- TODO: TYPEDEFS -}
 {- TODO: EXPRESSION STATEMENTS -}
 {- TODO: FUNCTION TYPES -}
-{- TODO: FOR LOOPS -}
-{- TODO: SWITCH/CASE -}
 {- TODO: LABELS -}
 {- TODO: TYPECASTS -}
 
