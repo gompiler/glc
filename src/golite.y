@@ -227,7 +227,7 @@ Stmt        : BlockStmt ';'                           { $1 }
             | SwitchStmt ';'                          { $1 }
             | break ';'                               { Break }
             | continue ';'                            { Continue }
-         {- | fallthrough ';'                         {  } TODO -}
+            | fallthrough ';'                         { Fallthrough }
             | Decl ';'                                { Declare $1 }
             | print '(' ExprList ')' ';'              { Print $3 }
             | println '(' ExprList ')' ';'            { Println $3 }
