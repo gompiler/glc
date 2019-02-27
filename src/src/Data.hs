@@ -246,15 +246,29 @@ data Expr
           Expr
   -- | See https://golang.org/ref/spec#Slice
   -- Eg expr1[expr2:expr3]
-  -- TODO we can only have slice lists of length 2 or 3
-  | Slice Expr [Expr]
+  | Slice Expr
+          SliceRange
   -- | See https://golang.org/ref/spec#TypeAssertion
   -- Eg expr.(type)
-  | TypeAssertion Expr Offset Type'
+  | TypeAssertion Expr
+                  Offset
+                  Type'
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   -- TODO Golang specs support a lot more, but I believe we only need to support the basic call
-  | Arguments Expr [Expr]
+  | Arguments Expr
+              [Expr]
+  deriving (Show, Eq)
+
+-- | See https://golang.org/ref/spec#Slice_expressions
+data SliceRange
+  -- Eg a[1:2], a[1:], a[:2]
+  = SliceSimple (Maybe Expr)
+                (Maybe Expr)
+  -- Eg a[1:2:3]
+  | SliceFull (Maybe Expr)
+              Expr
+              Expr
   deriving (Show, Eq)
 
 --  PrimaryExpr Selector |
