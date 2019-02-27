@@ -6,19 +6,20 @@ addons:
   apt:
     packages:
     - libgmp-dev
-before_install:
-- mkdir -p ~/.local/bin
-- export PATH=$HOME/.local/bin:$PATH
-- travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar
-  xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-install:
-- cd src && stack --no-terminal --install-ghc test --only-dependencies
-script:
-- cd src && stack test
+# before_install:
+# - mkdir -p ~/.local/bin
+# - export PATH=$HOME/.local/bin:$PATH
+# - travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar
+  # xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+# install:
+# - cd src && stack --no-terminal --install-ghc test --only-dependencies
+# script:
+# - cd src && stack test
 notifications:
   email: false
   slack:
     secure: kFcpagVNrt9F7fPlKa2MrcEkPfIX+fNxY0a4uDr8vfWrxywpiiXNuN7Xa814TKKGfOR+8UyTyaNSpoUh0ingJDLeBGkj0soUCqUdnmTEKMBSXi8psdnIA9R/5lJU7IJuQmFZHPLkFxw3hc8TapkwElQ3xSi5JanFMulAEOQAmurA4AKRiw22vhFb0V2XTj4WjoqTakZI5c5p+2sslvm3ySdaKevG33DpeK8sMM1L6hZ0Srnovy9K0YAcECM5x3/A5LyuiGuXPwCJDjIXxfnumx2ZqrB89Af/792AHWDGcsB+3AGZXC3HQctASWcq6nHAzqHcgaLMbT6UuUa4fkzotCcL2CBDtoRba3e1ib3bWI8PlPh1trwfjk3HT7p0UrTvl7rfNxjla1+BDtvTOcChcTvI32XtlrlH0cgqcwaDZ1uc6TLw6q3qs0Pk/vX3cwOowzgqO8z3JX+DfKAbiRyRgUkmlFYLB8Enk4kAnBMSihFM+cQt0gDkkqLS4PfIDZ/L8XM/TVxvBfBbHyNjVo1J4seBN4YJkbTxTmVoKVAaqJ5KHGEZCMvd7tb6C5l7yRnBfFNTn+avxE8Zi1bX9X6fnLh3tQPOo3cidV920MTkvjxyg/TG1OfYv4BGzx3N3uSHrdYjOepWx+iPUjxOd1fT5eTL1GM7904n09MWzYJM7Yk=
     template:
-    - "Gompiler <%{build_url}|#%{build_number}> by %{author} %{result} in %{duration}"
-    - "%{repository_slug}@%{branch} (<%{compare_url}|%{commit}>)"
+    - "Test"
+    # - "Gompiler <%{build_url}|#%{build_number}> by %{author} %{result} in %{duration}"
+    # - "%{repository_slug}@%{branch} (<%{compare_url}|%{commit}>)"
