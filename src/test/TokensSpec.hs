@@ -170,13 +170,19 @@ expectScanT =
   , ("/* Block comment */", Right [])
   -- , ("a /* Block \n */", Right ([TIdent "a", TSemicolon]))
                -- This will have to change if we change error printing
-  , ("''", Left "Error: lexical error at line 1, column 3. Previous character: '\\\'', current string: ")
+  -- , ("''", Left "Error: lexical error at line 1, column 3. Previous character: '\\\'', current string: ")
   , ("var", Right [TVar])
   , ("break varname;", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break varname\n", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break varname;\n", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break varname \n", Right [TBreak, TIdent "varname", TSemicolon])
   , ("break +\n", Right [TBreak, TPlus])
+  , ("`\"`", Right [TRStringVal "`\"`"])
+  , ("`\'`", Right [TRStringVal "`\'`"])
+  , ("`\\z`", Right [TRStringVal "`\\z`"])
+  , ("\"'\"", Right [TStringVal "\"'\""])
+  , ("\"\"", Right [TStringVal "\"\""])
+  , ("``", Right [TRStringVal "``"])
   , ( unpack
         [text|
           /* Long block comment
@@ -202,6 +208,14 @@ expectScanT =
           a new line */
         |]
     , Right [TBreak, TSemicolon])
+  -- , ( unpack
+  --       [text|"\"|]
+  --   , Right [TBreak, TSemicolon])
+  -- , ( unpack
+  --       [text|
+  --            "\\"
+  --       |]
+  --   , Right [TBreak, TSemicolon])
   ]
 -- expectScanP :: [(String, String, Either String [InnerToken])]
 -- expectScanP = [("Prints tBREAK tSEMICOLON when given `break`")]

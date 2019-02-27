@@ -10,9 +10,9 @@ $upper = [A-Z]
 $lower = [a-z \_]
 $alpha = [$upper $lower]
 
-$charesc = [abfnrtv\\\'\"]
-$symbol = [\!\#\$\%\^\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\(\)\,\;\[\]\`\{\}]
-$graphic   = [$alpha $symbol $digit \:\"\']
+$charesc = [abfnrtv\\]
+$symbol = [\!\#\$\%\^\&\*\+\.\/\<\=\>\?\@\^\|\-\~\(\)\,\:\;\[\]\`\{\}]
+$graphic   = [$alpha $symbol $digit \"\']
 
 $octal = 0-7
 $hex = [$digit A-F a-f]
@@ -25,7 +25,9 @@ $ctrl = [$upper \@\[\\\]\^\_]
 
 @escape = \\ ($charesc)
 
-@string = $graphic # [\"\\] | " " | @escape | @special
+@rstring = $graphic # [\`] | " " | \\ | @special
+@string = $graphic # [\"] | " " | @escape | @special
+@char = $graphic # [\'] | " " | @escape | @special
 
 @comment = "/*"
 
@@ -116,11 +118,11 @@ tokens :-
     0$octal+                            { tokSM TOctVal }
     0[xX]$hex+                          { tokSM THexVal }
     $digit+                             { tokSM TDecVal }
-    $digit*\.$digit+                    { tokRInp TFloatVal }
+    $digit*\.$digit*                    { tokRInp TFloatVal }
     $alpha [$alpha $digit]*             { tokSM TIdent }
-    \' @string \'                       { tokCInp TRuneVal }
+    \' @char \'                         { tokCInp TRuneVal }
     \" @string* \"                      { tokSM TStringVal }
-    \` @string* \`                      { tokSM TRStringVal }
+    \` @rstring* \`                     { tokSM TRStringVal }
 
 {
 data Token = Token AlexPosn InnerToken
