@@ -156,10 +156,13 @@ data Stmt
        Stmt
        Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
+  -- | See https://golang.org/ref/spec#ExprSwitchStmt
   -- Golite does not support type switches
   -- Note that there should be at most one default
   -- The next AST model can make that distinction
-  | Switch [SwitchCase]
+  | Switch SimpleStmt
+           (Maybe Expr)
+           [SwitchCase]
   -- | See https://golang.org/ref/spec#For_statements
   | For ForClause
         Stmt
@@ -169,6 +172,8 @@ data Stmt
   -- | See https://golang.org/ref/spec#Continue_statements
   -- Labels are not supported in Golite
   | Continue Offset
+  -- | See https://golang.org/ref/spec#Fallthrough_statements
+  | Fallthrough Offset
   -- | See https://golang.org/ref/spec#Declaration
   | Declare Decl
   -- Golite exclusive
@@ -231,8 +236,39 @@ data Expr
   | CapExpr Expr
   | Conversion Type'
                Expr
+  -- | See https://golang.org/ref/spec#Selector
+  -- Eg a.b
+  | Selector Expr
+             Identifier
+  -- | See https://golang.org/ref/spec#Index
+  -- Eg expr1[expr2]
+  | Index Expr
+          Expr
+  -- | See https://golang.org/ref/spec#Slice
+  -- Eg expr1[expr2:expr3]
+  -- TODO we can only have slice lists of length 2 or 3
+  | Slice Expr [Expr]
+  -- | See https://golang.org/ref/spec#TypeAssertion
+  -- Eg expr.(type)
+  | TypeAssertion Expr Offset Type'
+  -- | See https://golang.org/ref/spec#Arguments
+  -- Eg expr(expr1, expr2, ...)
+  -- TODO Golang specs support a lot more, but I believe we only need to support the basic call
+  | Arguments Expr [Expr]
   deriving (Show, Eq)
 
+--  PrimaryExpr Selector |
+--  	PrimaryExpr Index |
+--  	PrimaryExpr Slice |
+--  	PrimaryExpr TypeAssertion |
+--  	PrimaryExpr Arguments .
+--
+--  Selector       = "." identifier .
+--  Index          = "[" Expression "]" .
+--  Slice          = "[" [ Expression ] ":" [ Expression ] "]" |
+--                   "[" [ Expression ] ":" Expression ":" Expression "]" .
+--  TypeAssertion  = "." "(" Type ")" .
+--  Arguments      = "(" [ ( ExpressionList | Type [ "," ExpressionList ] ) [ "..." ] [ "," ] ] ")" .
 -- | See https://golang.org/ref/spec#Literal
 -- TODO do we want to store string and type?
 -- Type can be inferred from string
