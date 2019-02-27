@@ -263,7 +263,17 @@ tok x = tokM $ const x
 -- | Char
 -- tokCInp :: (Char -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
 -- Input will *always* be of length 3 as we only feed '@string' to this, where @string is one character corresponding to the string macro
-tokCInp x = andBegin (tokM $ x . (!!1)) nl -- Take index 1 of the string that should be 'C' where C is a char
+tokCInp x = andBegin (tokM $ x . \s -> case s!!1 of
+                                            '\\' -> (case s!!2 of
+                                                          'a'  -> '\a'
+                                                          'b' -> '\b'
+                                                          'f' -> '\f'
+                                                          'n' -> '\n'
+                                                          'r' -> '\r'
+                                                          't' -> '\t'
+                                                          'v' -> '\v'
+                                                          '\\' -> '\\')
+                                            c -> c) nl -- Take index 1 of the string that should be 'C' where C is a char or escape character
                                            -- All literal vals can take optional semicolons, hence the nl
 
 -- tokRInp :: Read t => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token

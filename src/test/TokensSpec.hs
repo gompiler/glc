@@ -142,6 +142,8 @@ expectScanT =
   , ("`teststring`\n", Right [TRStringVal "`teststring`", TSemicolon])
   , ("`teststring`;\n", Right [TRStringVal "`teststring`", TSemicolon])
   , ("1.23", Right [TFloatVal 1.23])
+  -- , ("1.", Right [TFloatVal 1.0])
+  -- , (".1", Right [TFloatVal 0.1])
   , ("1.23\n", Right [TFloatVal 1.23, TSemicolon])
   , ("1.23; \n", Right [TFloatVal 1.23, TSemicolon])
   , ("help\n", Right [TIdent "help", TSemicolon])
@@ -183,6 +185,15 @@ expectScanT =
   , ("\"'\"", Right [TStringVal "\"'\""])
   , ("\"\"", Right [TStringVal "\"\""])
   , ("``", Right [TRStringVal "``"])
+  , ("\"\\n\"", Right [TStringVal "\"\\n\""])
+  , ("'\\a'", Right [TRuneVal '\a'])
+  , ("'\\b'", Right [TRuneVal '\b'])
+  , ("'\\f'", Right [TRuneVal '\f'])
+  , ("'\\n'", Right [TRuneVal '\n'])
+  , ("'\\r'", Right [TRuneVal '\r'])
+  , ("'\\t'", Right [TRuneVal '\t'])
+  , ("'\\v'", Right [TRuneVal '\v'])
+  , ("'\\\\'", Right [TRuneVal '\\'])
   , ( unpack
         [text|
           /* Long block comment
