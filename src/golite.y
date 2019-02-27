@@ -40,6 +40,8 @@ import qualified Data.List.NonEmpty as NonEmpty
 
 -- Other partial parsers for testing
 %partial pId Idents
+%partial pE Expr
+%partial pEl ExprList
 %partial pTDecl TopDecl
 %partial pTDecls TopDecls
 %partial pDec Decl
@@ -55,8 +57,9 @@ import qualified Data.List.NonEmpty as NonEmpty
 %partial pSStmt SimpleStmt
 %partial pIf IfStmt
 %partial pElses Elses
-%partial pEl ExprList
-%partial pE Expr
+%partial pSwS SwitchStmt
+%partial pSwB SwitchBody
+%partial pFor ForStmt
 
 {- Spec: https://golang.org/ref/spec#Operator_precedence -}
 %nonassoc ',' {- Lowest precedence, for arrays and expression lists. TODO: DO WE NEED THIS? -}
