@@ -8,6 +8,7 @@ module Prettify
 import           Data
 import           Data.List          (intercalate, intersperse, null)
 import           Data.List.NonEmpty (NonEmpty (..), toList)
+import qualified Data.Maybe         as Maybe
 
 tab :: [String] -> [String]
 tab = map ("\t" ++)
@@ -60,7 +61,7 @@ instance Prettify TypeDef' where
 
 instance Prettify FuncDecl
   -- TODO move brace onto same line as signature
-                                                                      where
+                                                 where
   prettify' (FuncDecl id sig body) = ("func " ++ prettify id) : prettify' sig ++ ["{"] ++ tab (prettify' body) ++ ["}"]
 
 instance Prettify ParameterDecl
@@ -68,11 +69,12 @@ instance Prettify ParameterDecl
 instance Prettify Parameters where
   prettify (Parameters params) = intercalate ", " $ map prettify params
 
-instance Prettify Signature
+instance Prettify Signature where
+  prettify' (Signature params t) = ["(" ++ prettify params ++ ")" ++ Maybe.maybe "" prettify t]
 
-instance Prettify Scope
-
-instance Prettify SimpleStmt
+--instance Prettify Scope
+instance Prettify SimpleStmt where
+  prettify' EmptyStmt = []
 
 instance Prettify Stmt
 
