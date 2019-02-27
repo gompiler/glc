@@ -163,6 +163,8 @@ data Stmt
   -- | See https://golang.org/ref/spec#Continue_statements
   -- Labels are not supported in Golite
   | Continue
+  -- | See https://golang.org/ref/spec#Fallthrough_statements
+  | Fallthrough
   -- | See https://golang.org/ref/spec#Declaration
   | Declare Decl
   -- Golite exclusive
