@@ -10,6 +10,12 @@ type ErrorBundle = ParseErrorBundle String Void
 newtype Offset =
   Offset Int
 
+instance Show Offset where
+  show _ = "o"
+
+instance Eq Offset where
+  (==) _ _ = True
+
 -- | Class containing an offset, which is used to create error messages
 class ErrorBreakpoint a where
   offset :: a -> Offset

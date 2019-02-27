@@ -2,12 +2,16 @@ module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
+import           ErrorBundle
 import           GHC.Exts           (Constraint)
 import           GHC.TypeLits
 
 -- note that I do not classify blank identifiers as a separate type
 -- because we can easily pattern match it already
-type Identifier = String
+data Identifier =
+  Identifier Offset
+             String
+  deriving (Show, Eq)
 
 newtype TODO =
   TODO String -- temp
@@ -48,13 +52,13 @@ data Decl
 -- Should a type be specified, the expression list is optional
 data VarDecl' =
   VarDecl' (NonEmpty Identifier)
-           (Either (Type, [Expr]) (NonEmpty Expr))
+           (Either (Type', [Expr]) (NonEmpty Expr))
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =
   TypeDef' Identifier
-           Type
+           Type'
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -78,7 +82,7 @@ data FuncDecl =
 -- Golite does not support unnamed parameters
 data ParameterDecl =
   ParameterDecl (NonEmpty Identifier)
-                Type
+                Type'
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Parameters
@@ -92,7 +96,7 @@ newtype Parameters =
 -- No result type needed
 data Signature =
   Signature Parameters
-            (Maybe Type)
+            (Maybe Type')
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -114,11 +118,14 @@ data SimpleStmt
   | ExprStmt TODO
   -- | See https://golang.org/ref/spec#IncDecStmt
   -- TODO check if we want to split these or add a new field for inc and dec
-  | Increment Expr
-  | Decrement Expr
+  | Increment Offset
+              Expr
+  | Decrement Offset
+              Expr
   -- | See https://golang.org/ref/spec#Assignments
   -- TODO confirm that expression lists should be equal
-  | Assign AssignOp
+  | Assign Offset
+           AssignOp
            (NonEmpty Expr)
            (NonEmpty Expr)
   -- | See https://golang.org/ref/spec#ShortVarDecl
@@ -156,10 +163,10 @@ data Stmt
         Stmt
   -- | See https://golang.org/ref/spec#Break_statements
   -- Labels are not supported in Golite
-  | Break
+  | Break Offset
   -- | See https://golang.org/ref/spec#Continue_statements
   -- Labels are not supported in Golite
-  | Continue
+  | Continue Offset
   -- | See https://golang.org/ref/spec#Declaration
   | Declare Decl
   -- Golite exclusive
@@ -195,13 +202,16 @@ data ForClause
 -- We can infer them from the AST
 -- TODO support slices? index?
 data Expr
-  = Unary UnaryOp
+  = Unary Offset
+          UnaryOp
           Expr
   | Binary Expr
+           Offset
            BinaryOp
            Expr
   -- | See https://golang.org/ref/spec#Operands
-  | Lit Literal
+  | Lit Offset
+        Literal
   -- | See https://golang.org/ref/spec#OperandName
   | Var Identifier
   -- | Golite spec
@@ -217,7 +227,7 @@ data Expr
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports arrays and slices
   | CapExpr Expr
-  | Conversion Type
+  | Conversion Type'
                Expr
   deriving (Show, Eq)
 
@@ -299,6 +309,11 @@ data StringType'
   | Raw
   deriving (Show, Eq)
 
+-- | Type with offset value
+-- We do not include offsets within types as
+-- it results in unnecessary nested offsets
+type Type' = (Offset, Type)
+
 -- | See https://golang.org/ref/spec#Types
 data Type
   -- | See https://golang.org/ref/spec#Array_types
@@ -317,13 +332,14 @@ data Type
 -- | See https://golang.org/ref/spec#string_lit
 -- TODO check if we want to use a data kind and reuse the StringLit constructor within Literals
 data StringLiteral =
-  StringLiteral StringType'
+  StringLiteral Offset
+                StringType'
                 String
   deriving (Show, Eq)
 
 data FieldDecl
   = FieldDecl (NonEmpty Identifier)
-              Type
+              Type'
               (Maybe StringLiteral)
   | EmbeddedField Identifier
                   (Maybe StringLiteral)
