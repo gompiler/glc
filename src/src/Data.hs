@@ -111,7 +111,7 @@ type FuncBody = Stmt
 data SimpleStmt
   = EmptyStmt
   -- | See https://golang.org/ref/spec#Expression_statements
-  | ExprStmt TODO
+  | ExprStmt Expr
   -- | See https://golang.org/ref/spec#IncDecStmt
   -- TODO check if we want to split these or add a new field for inc and dec
   | Increment Expr
