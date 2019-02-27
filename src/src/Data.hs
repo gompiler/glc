@@ -147,10 +147,13 @@ data Stmt
        Stmt
        Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
+  -- | See https://golang.org/ref/spec#ExprSwitchStmt
   -- Golite does not support type switches
   -- Note that there should be at most one default
   -- The next AST model can make that distinction
-  | Switch [SwitchCase]
+  | Switch SimpleStmt
+           (Maybe Expr)
+           [SwitchCase]
   -- | See https://golang.org/ref/spec#For_statements
   | For ForClause
         Stmt
