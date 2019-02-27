@@ -246,6 +246,8 @@ BlockStmt   : '{' Stmts '}'                           { BlockStmt $2 }
 SimpleStmt  : ';'                                     { EmptyStmt }
             | ident "++" ';'                          { Increment $ Var (getIdent $1) } {- TODO -}
             | ident "--" ';'                          { Decrement $ Var (getIdent $1) } {- TODO -}
+            | NIExpr ';'                              { ExprStmt $1 } {- Weed this to make sure they're valid expr stmts -}
+            | ident ';'                               { ExprStmt $ (varOfI . getIdent) $1 } {- This, plus NIExpr, make up Expr -}
             | EIList "+=" EIList ';'                  { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
             | EIList "-=" EIList ';'                  { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
             | EIList "|=" EIList ';'                  { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
