@@ -69,6 +69,8 @@ import qualified Data.List.NonEmpty as NonEmpty
 %left '+' '-' '|' '^'
 %left '*' '/' '%' "<<" ">>" '&' "&^"
 %nonassoc '!' POS NEG COM {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
+%left '[' ']' {- TODO: CHECK PRECEDENCE HERE -}
+%left '.' {- TODO: CHECK PRECEDENCE HERE -}
 
 %token
     '+'                                 { Token _ TPlus }
@@ -305,6 +307,8 @@ NIExpr      : '+' Expr %prec POS                      { Unary Pos $2 }
             | Expr "<<" Expr                          { Binary $1 (Arithm ShiftL) $3 }
             | Expr ">>" Expr                          { Binary $1 (Arithm ShiftR) $3 }
             | '(' Expr ')'                            { $2 }
+            | Expr '.' ident                          { Selector $1 $ getIdent $3 }
+            | Expr '[' Expr ']'                       { Index $1 $3 }
             | decv                                    { Lit (IntLit Decimal $ getInnerString $1) }
             | octv                                    { Lit (IntLit Octal $ getInnerString $1) }
             | hexv                                    { Lit (IntLit Hexadecimal $ getInnerString $1) }
