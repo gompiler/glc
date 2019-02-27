@@ -108,7 +108,7 @@ import qualified Data.List.NonEmpty as NonEmpty
     "^="                                { Token _ TLXorA }
     "&&"                                { Token _ TAnd }
     "||"                                { Token _ TOr }
-    "<-"                                { Token _ TRecv }
+    "<-"                                { Token _ TRecv }             {- unsupported -}
     "++"                                { Token _ TInc }
     "--"                                { Token _ TDInc }
     "=="                                { Token _ TEq }
@@ -132,7 +132,7 @@ import qualified Data.List.NonEmpty as NonEmpty
     for                                 { Token _ TFor }
     func                                { Token _ TFunc }
     go                                  { Token _ TGo }               {- unsupported -}
-    goto                                { Token _ TGoto }
+    goto                                { Token _ TGoto }             {- unsupported -}
     if                                  { Token _ TIf }
     import                              { Token _ TImport }           {- unsupported -}
     interface                           { Token _ TInterface }        {- unsupported -}
@@ -309,6 +309,11 @@ NIExpr      : '+' Expr %prec POS                      { Unary Pos $2 }
             | '(' Expr ')'                            { $2 }
             | Expr '.' ident                          { Selector $1 $ getIdent $3 }
             | Expr '[' Expr ']'                       { Index $1 $3 }
+            | Expr '[' ':' ']'                        { Slice $1 $ SliceSimple Nothing Nothing }
+            | Expr '[' ':' Expr ']'                   { Slice $1 $ SliceSimple Nothing (Just $4) }
+            | Expr '[' Expr ':' Expr ']'              { Slice $1 $ SliceSimple (Just $3) (Just $5) }
+            | Expr '[' ':' Expr ':' Expr ']'          { Slice $1 $ SliceFull Nothing $4 $6 }
+            | Expr '[' Expr ':' Expr ':' Expr ']'     { Slice $1 $ SliceFull (Just $3) $5 $7 }
             | decv                                    { Lit (IntLit Decimal $ getInnerString $1) }
             | octv                                    { Lit (IntLit Octal $ getInnerString $1) }
             | hexv                                    { Lit (IntLit Hexadecimal $ getInnerString $1) }
