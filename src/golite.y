@@ -322,7 +322,7 @@ NIExpr      : '+' Expr %prec POS                      { Unary Pos $2 }
             | append '(' Expr ',' Expr ')'            { AppendExpr $3 $5 }
             | len '(' Expr ')'                        { LenExpr $3 }
             | cap '(' Expr ')'                        { CapExpr $3 }
-            | Expr '(' EIList ')'                     { Arguments $1 $3 }
+            | Expr '(' EIList ')'                     { Arguments $1 $3 } {- SOMETHING GOES WRONG HERE -}
             {- TODO: HOW TO DO ARRAY ACCESS -}
 
 EIList      : NIExprList                              { $1 }
