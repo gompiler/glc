@@ -177,7 +177,9 @@ IdentsR     : IdentsR ',' ident                       { (getIdent $3) : $1 } {- 
             | ident                                   { [getIdent $1] }
 
 Type        : ident                                   { Type $ getIdent $1 }
+            | '(' Type ')'                            { $2 }
             | '[' Expr ']' Type                       { ArrayType $2 $4 }
+            | '[' ']' Type                            { SliceType $3 }
             | Struct                                  { StructType $1 }
 
 {- need errors for figuring out if a type was present and if so whether an expression was passed -}
