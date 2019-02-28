@@ -311,11 +311,6 @@ NIExpr      : '+' Expr %prec POS                      { Unary Pos $2 }
             | '(' Expr ')'                            { $2 }
             | Expr '.' ident                          { Selector $1 $ getIdent $3 }
             | Expr '[' Expr ']'                       { Index $1 $3 }
-            | Expr '[' ':' ']'                        { Slice $1 $ SliceSimple Nothing Nothing }
-            | Expr '[' ':' Expr ']'                   { Slice $1 $ SliceSimple Nothing (Just $4) }
-            | Expr '[' Expr ':' Expr ']'              { Slice $1 $ SliceSimple (Just $3) (Just $5) }
-            | Expr '[' ':' Expr ':' Expr ']'          { Slice $1 $ SliceFull Nothing $4 $6 }
-            | Expr '[' Expr ':' Expr ':' Expr ']'     { Slice $1 $ SliceFull (Just $3) $5 $7 }
             | decv                                    { Lit (IntLit Decimal $ getInnerString $1) }
             | octv                                    { Lit (IntLit Octal $ getInnerString $1) }
             | hexv                                    { Lit (IntLit Hexadecimal $ getInnerString $1) }
