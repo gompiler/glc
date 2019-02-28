@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
 
 module TokensSpec
   ( spec
@@ -11,10 +10,76 @@ import           Base
 import           Scanner
 
 spec :: Spec
-spec = specAll "scanner" scanInputs
+spec = do
+  specAll "scanner" scanInputs
+  describe "extra scanner tests" $
+    it "semicolon insertion" $
+    property $
+    verbose $
+    forAll genSemiI (\x -> scanT (x ++ "/* \n */") == scanT (x ++ ";"))
+
+genId :: Gen String
+genId =
+  oneof [choose ('A', 'Z') >>= toRetL, (:) <$> choose ('A', 'Z') <*> genId]
+
+genNum :: Gen String
+genNum =
+  oneof [choose ('0', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
+
+genHex' :: Gen String
+genHex' =
+  oneof
+    [ return []
+    , (:) <$> choose ('0', '9') <*> genHex'
+    , (:) <$> choose ('a', 'f') <*> genHex'
+    , (:) <$> choose ('A', 'F') <*> genHex'
+    ]
+
+genHex :: Gen String
+genHex = genHex' >>= (\l -> elements ['x', 'X'] >>= \x -> return $ '0' : x : l)
+
+genOct :: Gen String
+genOct = oneof [return ['0'], (:) <$> choose ('0', '7') <*> genOct]
+
+genFloat :: Gen String
+genFloat = do
+  n1 <- genNum
+  n2 <- genNum
+  return $ n1 ++ '.' : n2
+
+-- genString
+genString' :: Gen String
+genString' =
+  oneof
+    [ return []
+    , (:) <$> (choose (0, 255) >>= (return . toEnum :: Int -> Gen Char)) <*>
+      genString'
+    ]
+
+genSemiI :: Gen String
+genSemiI =
+  oneof
+    [ elements
+        [ "break"
+        , "continue"
+        , "fallthrough"
+        , "return"
+        , "++"
+        , "--"
+        , ")"
+        , "]"
+        , "}"
+        ]
+    , genId
+    , genNum
+    , genHex
+    , genOct
+    , genFloat
+    ]
 
 instance SpecBuilder String (Either String [InnerToken]) () where
-  expectation input output = it (show $ lines input) $ scanT input `shouldBe` output
+  expectation input output =
+    it (show $ lines input) $ scanT input `shouldBe` output
 
 scanInputs = specConvert Right scanSuccess ++ specConvert Left scanFailure
 
@@ -149,7 +214,7 @@ scanSuccess =
   , ("help\n", [TIdent "help", TSemicolon])
   , ("help;\n", [TIdent "help", TSemicolon])
   , ("help ;\n", [TIdent "help", TSemicolon])
-  , ("help \n",  ([TIdent "help", TSemicolon]))
+  , ("help \n", [TIdent "help", TSemicolon])
   , ("case", [TCase])
   , ("print", [TPrint])
   , ("println", [TPrintln])
@@ -170,34 +235,42 @@ scanSuccess =
   , ("\r", [])
   , ("// This is a comment", [])
   , ("/* Block comment */", [])
-  , ("a /* Block \n */",  ([TIdent "a", TSemicolon]))
+  , ("a /* Block \n */", [TIdent "a", TSemicolon])
   , ("var", [TVar])
   , ("break varname;", [TBreak, TIdent "varname", TSemicolon])
   , ("break varname\n", [TBreak, TIdent "varname", TSemicolon])
   , ("break varname;\n", [TBreak, TIdent "varname", TSemicolon])
   , ("break varname \n", [TBreak, TIdent "varname", TSemicolon])
   , ("break +\n", [TBreak, TPlus])
-  , ("testid",  [TIdent "testid"])
+  , ("testid", [TIdent "testid"])
   , ("identttt", [TIdent "identttt"])
   , ("_", [TIdent "_"])
   , ("a, b, dddd", [TIdent "a", TComma, TIdent "b", TComma, TIdent "dddd"])
-  , ("weirdsp, _   ,aacing", [TIdent "weirdsp", TComma, TIdent "_", TComma, TIdent "aacing"])
-  , ("weirdsp, _   \n,aacing", [TIdent "weirdsp", TComma, TIdent "_", TSemicolon, TComma, TIdent "aacing"])
-  , ("`\"`",  [TRStringVal "`\"`"])
-  , ("`\'`",  [TRStringVal "`\'`"])
-  , ("`\\z`",  [TRStringVal "`\\z`"])
-  , ("\"'\"",  [TStringVal "\"'\""])
-  , ("\"\"",  [TStringVal "\"\""])
-  , ("``",  [TRStringVal "``"])
-  , ("\"\\n\"",  [TStringVal "\"\\n\""])
-  , ("'\\a'",  [TRuneVal '\a'])
-  , ("'\\b'",  [TRuneVal '\b'])
-  , ("'\\f'",  [TRuneVal '\f'])
-  , ("'\\n'",  [TRuneVal '\n'])
-  , ("'\\r'",  [TRuneVal '\r'])
-  , ("'\\t'",  [TRuneVal '\t'])
-  , ("'\\v'",  [TRuneVal '\v'])
-  , ("'\\\\'",  [TRuneVal '\\'])
+  , ( "weirdsp, _   ,aacing"
+    , [TIdent "weirdsp", TComma, TIdent "_", TComma, TIdent "aacing"])
+  , ( "weirdsp, _   \n,aacing"
+    , [ TIdent "weirdsp"
+      , TComma
+      , TIdent "_"
+      , TSemicolon
+      , TComma
+      , TIdent "aacing"
+      ])
+  , ("`\"`", [TRStringVal "`\"`"])
+  , ("`\'`", [TRStringVal "`\'`"])
+  , ("`\\z`", [TRStringVal "`\\z`"])
+  , ("\"'\"", [TStringVal "\"'\""])
+  , ("\"\"", [TStringVal "\"\""])
+  , ("``", [TRStringVal "``"])
+  , ("\"\\n\"", [TStringVal "\"\\n\""])
+  , ("'\\a'", [TRuneVal '\a'])
+  , ("'\\b'", [TRuneVal '\b'])
+  , ("'\\f'", [TRuneVal '\f'])
+  , ("'\\n'", [TRuneVal '\n'])
+  , ("'\\r'", [TRuneVal '\r'])
+  , ("'\\t'", [TRuneVal '\t'])
+  , ("'\\v'", [TRuneVal '\v'])
+  , ("'\\\\'", [TRuneVal '\\'])
   , ( unpack
         [text|
             /* Long block comment
@@ -226,4 +299,7 @@ scanSuccess =
   ]
 
 scanFailure :: [(String, String)]
-scanFailure = [("''", "Error: lexical error at line 1, column 2. Previous character: '\\\'', current string: '")]
+scanFailure =
+  [ ( "''"
+    , "Error: lexical error at line 1, column 2. Previous character: '\\\'', current string: '")
+  ]
