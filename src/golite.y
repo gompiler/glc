@@ -70,6 +70,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 %left '+' '-' '|' '^'
 %left '*' '/' '%' "<<" ">>" '&' "&^"
 %nonassoc '!' POS NEG COM {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
+%left '(' ')'
 %left '[' ']' {- TODO: CHECK PRECEDENCE HERE -}
 %left '.' {- TODO: CHECK PRECEDENCE HERE -}
 
@@ -204,12 +205,11 @@ TypeDefsR   : TypeDefsR ident Type ';'                { (TypeDef' (getIdent $2) 
 Struct      : struct '{' FieldDecls '}'               { $3 }
 
 FieldDecls  : FieldDeclsR                             { reverse $1 }
-FieldDeclsR : FieldDeclsR Idents ident ';'            { (FieldDecl $2 (Type (getIdent $3))) : $1 }
-            | FieldDeclsR Idents Struct ';'           { (FieldDecl $2 (StructType $3)) : $1 }
+FieldDeclsR : FieldDeclsR Idents Type ';'             { (FieldDecl $2 $3) : $1 }
             | {- empty -}                             { [] }
 
 {- TODO: OPTIONAL/COMPLEX FUNC TYPE -}
-FuncDecl    : func ident Signature BlockStmt          { FuncDecl (getIdent $2) $3 $4 } {- TODO: PACKAGE NAME? -}
+FuncDecl    : func ident Signature BlockStmt ';'      { FuncDecl (getIdent $2) $3 $4 } {- TODO: PACKAGE NAME? -}
 
 Signature   : '(' Params ')' Result                   { Signature (Parameters $2) $4 }
 Params      : ParamsR                                 { reverse $1 }
@@ -220,14 +220,14 @@ Result      : Type                                    { Just $1 }
             | {- empty -}                             { Nothing }
 
 Stmt        : BlockStmt ';'                           { $1 }
-            | SimpleStmt                              { SimpleStmt $1 }
+            | SimpleStmt ';'                          { SimpleStmt $1 } {- simplestmt includes semicolon -}
             | IfStmt ';'                              { $1 }
             | ForStmt ';'                             { $1 }
             | SwitchStmt ';'                          { $1 }
             | break ';'                               { Break }
             | continue ';'                            { Continue }
             | fallthrough ';'                         { Fallthrough }
-            | Decl ';'                                { Declare $1 }
+            | Decl                                    { Declare $1 } {- decl includes semicolon -}
             | print '(' EIList ')' ';'                { Print $3 }
             | println '(' EIList ')' ';'              { Println $3 }
             | return Expr ';'                         { Return $ Just $2 }
@@ -240,7 +240,7 @@ StmtsR      : StmtsR Stmt                             { $2 : $1 }
 {- No semicolon, since we can't have semicolons in the middle of if/else statements -}
 BlockStmt   : '{' Stmts '}'                           { BlockStmt $2 }
 
-SimpleStmt  : ';'                                     { EmptyStmt }
+SimpleStmt  : {- empty -}                             { EmptyStmt }
             | ident "++" ';'                          { Increment $ Var (getIdent $1) } {- TODO -}
             | ident "--" ';'                          { Decrement $ Var (getIdent $1) } {- TODO -}
             | NIExpr ';'                              { ExprStmt $1 } {- Weed this to make sure they're valid expr stmts -}
@@ -259,7 +259,7 @@ SimpleStmt  : ';'                                     { EmptyStmt }
             | EIList '=' EIList ';'                   { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
             | Idents ":=" EIList ';'                  { ShortDeclare $1 (nonEmpty $3) }
 
-IfStmt      : if SimpleStmt Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
+IfStmt      : if SimpleStmt ';' Expr BlockStmt Elses  { If ($2, $4) $5 $6 }
             | if Expr BlockStmt Elses                 { If (EmptyStmt, $2) $3 $4 }
 Elses       : else IfStmt                             { $2 }
             | else BlockStmt                          { $2 }
@@ -267,12 +267,11 @@ Elses       : else IfStmt                             { $2 }
 
 ForStmt     : for BlockStmt                           { For ForInfinite $2 }
             | for Expr BlockStmt                      { For (ForCond $2) $3 }
-            | for SimpleStmt Expr ';' SimpleStmt BlockStmt { For (ForClause $2 $3 $5) $6 } {- TODO: ALIGNMENT -}
+            | for SimpleStmt ';' Expr ';' SimpleStmt BlockStmt { For (ForClause $2 $3 $5) $6 } {- TODO: ALIGNMENT -}
 
-SwitchStmt  : switch SimpleStmt Expr '{' SwitchBody '}' { Switch $2 (Just $3) $5 } {- TODO: NEED EXPR / SIMPLE STMT, ALIGNMENT -}
+SwitchStmt  : switch SimpleStmt ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) $6 } {- TODO: NEED EXPR / SIMPLE STMT, ALIGNMENT -}
             | switch SimpleStmt '{' SwitchBody '}'    { Switch $2 Nothing $4 }
             | switch Expr '{' SwitchBody '}'          { Switch EmptyStmt (Just $2) $4 }
-            | switch '{' SwitchBody '}'               { Switch EmptyStmt Nothing $3 }
 
 SwitchBody  : SwitchBodyR                             { reverse $1 }
 SwitchBodyR : SwitchBodyR case EIList ':' Stmts       { (Case (nonEmpty $3) (BlockStmt $5)) : $1 }
@@ -323,6 +322,7 @@ NIExpr      : '+' Expr %prec POS                      { Unary Pos $2 }
             | append '(' Expr ',' Expr ')'            { AppendExpr $3 $5 }
             | len '(' Expr ')'                        { LenExpr $3 }
             | cap '(' Expr ')'                        { CapExpr $3 }
+            | Expr '(' EIList ')'                     { Arguments $1 $3 }
             {- TODO: HOW TO DO ARRAY ACCESS -}
 
 EIList      : NIExprList                              { $1 }
