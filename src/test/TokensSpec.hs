@@ -10,6 +10,7 @@ module TokensSpec
   , genOct
   , genFloat
   , genChar
+  , genChar'
   , genString
   , genRString
   ) where
@@ -21,23 +22,25 @@ spec :: Spec
 spec = do
   specAll "scanner" scanInputs
   describe "extra scanner tests" $
-    it "semicolon insertion" $
-    property $
-    verbose $
-    forAll genSemiI (\x -> scanT (x ++ "/* \n */") == scanT (x ++ ";"))
+    qcGen "semicolon insertion" False genSemiI (\x -> scanT (x ++ "/* \n */") == scanT (x ++ ";"))
 
+genId' :: Gen String
+genId' = oneof $ [choose ('A', 'Z') >>= toRetL, (:) <$> choose ('A', 'Z') <*> genId']
+  
 genId :: Gen String
 genId =
-  oneof [choose ('A', 'Z') >>= toRetL, (:) <$> choose ('A', 'Z') <*> genId]
+  frequency [(30, genId'), (1, return "_")]
 
 genNum :: Gen String
-genNum =
-  oneof [choose ('0', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
+genNum = -- Ensure no octal
+  oneof [choose ('8', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
 
 genHex' :: Gen String
 genHex' =
   oneof
-    [ return []
+    [ choose ('0', '9') >>= toRetL
+    , choose ('a', 'f') >>= toRetL
+    , choose ('A', 'F') >>= toRetL
     , (:) <$> choose ('0', '9') <*> genHex'
     , (:) <$> choose ('a', 'f') <*> genHex'
     , (:) <$> choose ('A', 'F') <*> genHex'
@@ -46,8 +49,11 @@ genHex' =
 genHex :: Gen String
 genHex = genHex' >>= (\l -> elements ['x', 'X'] >>= \x -> return $ '0' : x : l)
 
+genOct' :: Gen String
+genOct' = oneof [choose ('0', '7') >>= toRetL, (:) <$> choose ('0', '7') <*> genOct']
+  
 genOct :: Gen String
-genOct = oneof [return ['0'], (:) <$> choose ('0', '7') <*> genOct]
+genOct = genOct' >>= \s -> return $ '0':s
 
 genFloat :: Gen String
 genFloat = do

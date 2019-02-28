@@ -15,6 +15,7 @@ module Base
   , module Test.Hspec
   , module Test.QuickCheck
   , toRetL
+  , qcGen
   ) where
 
 import           Control.Applicative
@@ -62,3 +63,7 @@ cartP = liftA2 (,)
 
 toRetL :: Monad m => a -> m [a]
 toRetL e = return [e]
+
+qcGen :: (Show a, Testable prop) => String -> Bool -> Gen a -> (a -> prop) -> SpecWith (Arg Property)
+qcGen desc verb g p = it desc $ property $ if verb then verbose (forAll g p)
+                                           else forAll g p
