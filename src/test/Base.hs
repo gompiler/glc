@@ -33,6 +33,8 @@ class SpecBuilder a b c where
   expectation :: a -> b -> SpecWith c
   specAll :: String -> [(a, b)] -> SpecWith c
   specAll name items = describe name $ mapM_ (uncurry expectation) items
+  specOne :: (a,b) -> SpecWith c
+  specOne item = uncurry expectation item
 
 expectG ::
      (Show a, Eq a)
