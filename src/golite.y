@@ -2,6 +2,7 @@
                 , AlexPosn(..)
                 , runAlex
                 , pId
+                , pT
                 , pTDecl
                 , pTDecls
                 , pDec
@@ -42,6 +43,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 -- Other partial parsers for testing
 %partial pId Idents
 %partial pE Expr
+%partial pT Type
 %partial pEl EIList
 %partial pTDecl TopDecl
 %partial pTDecls TopDecls
