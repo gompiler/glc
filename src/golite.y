@@ -229,7 +229,7 @@ Result      : Type                                    { Just $1 }
             | {- empty -}                             { Nothing }
 
 Stmt        : BlockStmt ';'                           { $1 }
-            | SimpleStSc                              { SimpleStmt $1 }
+            | SimpleStmt                              { SimpleStmt $1 }
             | IfStmt ';'                              { $1 }
             | ForStmt ';'                             { $1 }
             | SwitchStmt ';'                          { $1 }
@@ -251,7 +251,8 @@ StmtsR      : StmtsR Stmt                             { $2 : $1 }
 {- No semicolon, since we can't have semicolons in the middle of if/else statements -}
 BlockStmt   : '{' Stmts '}'                           { BlockStmt $2 }
 
-SimpleStmt  : {- empty -}                             { EmptyStmt }
+{- Spec: https://golang.org/ref/spec#SimpleStmt -}
+SimpleStNE  : {- empty -}                             { EmptyStmt }
             | ident "++"                              { Increment $ Var (getIdent $1) } {- TODO -}
             | ident "--"                              { Decrement $ Var (getIdent $1) } {- TODO -}
          {- | NIExpr                                  { ExprStmt $1 } Weed this to make sure they're valid expr stmts -}
@@ -286,25 +287,30 @@ SimpleStmt  : {- empty -}                             { EmptyStmt }
             | Idents ":=" EIList                      { ShortDeclare $1 (nonEmpty $3) }
             | ident ":=" Expr                         { ShortDeclare (nonEmpty [getIdent $1]) (nonEmpty [$3]) }
 
+{- Spec: https://golang.org/ref/spec#ExpressionStmt -}
 ExprStmtSc  : Expr ';'    { ExprStmt $1 }
 
-SimpleStSc  : SimpleStmt ';' { $1 } {- Keep separate to prevent r/r conflicts -}
+{- Spec: https://golang.org/ref/spec#SimpleStmt -}
+{- Keep expression statements separate to prevent r/r conflicts -}
+SimpleStmt  : SimpleStNE ';' { $1 }
             | ExprStmtSc { $1 }
 
-IfStmt      : if SimpleStSc Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
+{- Spec: https://golang.org/ref/spec#If_statements -}
+IfStmt      : if SimpleStmt Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
             | if Expr BlockStmt Elses                 { If (EmptyStmt, $2) $3 $4 }
 Elses       : else IfStmt                             { $2 }
             | else BlockStmt                          { $2 }
             | {- empty -}                             { blank }
 
+{- Spec: https://golang.org/ref/spec#For_statements -}
 ForStmt     : for BlockStmt                           { For ForInfinite $2 }
             | for Expr BlockStmt                      { For (ForCond $2) $3 }
-            | for SimpleStSc Expr ';' SimpleStmt BlockStmt { For (ForClause $2 $3 $5) $6 } {- TODO: ALIGNMENT -}
-            | for SimpleStSc Expr ';' Expr BlockStmt { For (ForClause $2 $3 (ExprStmt $5)) $6 } {- TODO: ALIGNMENT -}
+            | for SimpleStmt Expr ';' SimpleStNE BlockStmt { For (ForClause $2 $3 $5) $6 } {- TODO: ALIGNMENT -}
+            | for SimpleStmt Expr ';' Expr BlockStmt { For (ForClause $2 $3 (ExprStmt $5)) $6 } {- TODO: ALIGNMENT -}
 
 {- Spec: https://golang.org/ref/spec#Switch_statements -}
-SwitchStmt  : switch SimpleStSc ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) $6 } {- TODO: NEED EXPR / SIMPLE STMT, ALIGNMENT -}
-            | switch SimpleStSc ';' '{' SwitchBody '}'    { Switch $2 Nothing $5 }
+SwitchStmt  : switch SimpleStmt ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) $6 } {- TODO: NEED EXPR / SIMPLE STMT, ALIGNMENT -}
+            | switch SimpleStmt ';' '{' SwitchBody '}'    { Switch $2 Nothing $5 }
             | switch Expr '{' SwitchBody '}'          { Switch EmptyStmt (Just $2) $4 }
 
 SwitchBody  : SwitchBodyR                             { reverse $1 }
