@@ -212,13 +212,12 @@ data Expr
   = Unary Offset
           UnaryOp
           Expr
-  | Binary Expr
-           Offset
+  | Binary Offset
            BinaryOp
            Expr
+           Expr
   -- | See https://golang.org/ref/spec#Operands
-  | Lit Offset
-        Literal
+  | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
   | Var Identifier
   -- | Golite spec
@@ -291,10 +290,13 @@ data SliceRange
 -- we might want just string, or store as int and reformat on pretty print
 -- TODO support other literals?
 data Literal
-  = IntLit Offset IntType'
+  = IntLit Offset
+           IntType'
            String
-  | FloatLit Offset Float
-  | RuneLit Offset Char
+  | FloatLit Offset
+             Float
+  | RuneLit Offset
+            Char
   | StringLit StringLiteral
   -- | See https://golang.org/ref/spec#FunctionLit
   | FuncLit Signature

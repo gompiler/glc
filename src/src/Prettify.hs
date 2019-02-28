@@ -22,10 +22,6 @@ tabP a = "\t" ++ prettify a
 commaJoin :: Prettify a => [a] -> String
 commaJoin p = intercalate ", " $ map prettify p
 
--- Prettify, but enforces a single line
-prettify1 :: Prettify a => a -> String
-prettify1 = unwords . prettify'
-
 -- | Some prettified components span a single line
 -- In that case, we can implement prettify by default
 -- And use this function to derive the list format from the string format
@@ -138,8 +134,8 @@ instance Prettify (NonEmpty Expr) where
 
 instance Prettify Expr where
   prettify (Unary _ o e) = "(" ++ prettify o ++ prettify e ++ ")"
-  prettify (Binary e1 _ o e2) = "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
-  prettify (Lit _ l) = prettify l
+  prettify (Binary _ o e1  e2) = "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
+  prettify (Lit l) = prettify l
   prettify (Var i) = prettify i
   prettify (AppendExpr e1 e2) = "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
   prettify (LenExpr e) = "len(" ++ prettify e ++ ")"

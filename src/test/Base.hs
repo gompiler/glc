@@ -7,8 +7,11 @@ module Base
   , Data.Text.Text
   , Data.Text.unpack
   , NeatInterpolation.text
+  , o
   , module ErrorBundle
-  , specConvert
+  , sndConvert
+  , fstConvert
+  , pairConvert
   , module Test.Hspec
   ) where
 
@@ -17,11 +20,15 @@ import           ErrorBundle
 import           NeatInterpolation
 import           Test.Hspec
 
--- Offest placeholder
+-- Offset placeholder
 o = Offset 0
 
-specConvert :: (b -> c) -> [(a, b)] -> [(a, c)]
-specConvert f = map (\(i, o) -> (i, f o))
+pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
+pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))
+
+fstConvert f = pairConvert f id
+
+sndConvert = pairConvert id
 
 class SpecBuilder a b c where
   expectation :: a -> b -> SpecWith c
