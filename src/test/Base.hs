@@ -8,7 +8,6 @@ module Base
   , NeatInterpolation.text
   , module ErrorBundle
   , specConvert
-  , specWithG
   , strData
   , strData'
   , cartP
@@ -35,14 +34,6 @@ class SpecBuilder a b c where
   specAll :: String -> [(a, b)] -> SpecWith c
   specAll name items = describe name $ mapM_ (uncurry expectation) items
 
--- | specWith generator for any arbitrary function, not verbose
-specWithG ::
-     (Show a, Eq a)
-  => (String -> Either String a)
-  -> (String, Either String a)
-  -> SpecWith ()
-specWithG f (inp, out) = parallel $ it inp $ f inp `shouldBe` out
-
 expectG ::
      (Show a, Eq a)
   => (String -> Either String a)
@@ -51,10 +42,10 @@ expectG ::
 expectG f (inp, out) = f inp `shouldBe` out
 
 -- | Generate Either given a string and feed this to constructor
-strData :: String -> (String -> Either String a) -> (String, Either String a)
+strData :: String -> (String -> a) -> (String, a)
 strData s constr = (s, constr s)
 
-strData' :: (String -> Either String a) -> String -> (String, Either String a)
+strData' :: (String -> a) -> String -> (String, a)
 strData' constr s = (s, constr s)
 
 -- | Cartesian product of two lists

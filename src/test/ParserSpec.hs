@@ -1,3 +1,7 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes           #-}
+
 module ParserSpec
   ( spec
   ) where
@@ -24,7 +28,12 @@ spec = do
     qcGen "basic expressions" False genEBase (\(s, out) -> (scanToP pE s) == (Right $ out))
     qcGen "binary expressions" False genEBin (\(s, out) -> (scanToP pE s) == (Right $ out))
     qcGen "unary expressions" False genEUn (\(s, out) -> (scanToP pE s) == (Right $ out))
-
+  specAll "Types" ((specConvert Right expectT) :: [(String, Either String Type)])
+  
+instance SpecBuilder String (Either String Type) () where
+  expectation input output =
+    it (show $ lines input) $ scanToP pT input `shouldBe` output
+  
 genCommaList :: Gen String -- ^ Generator we use to generate things in between commas
              -> Gen String
 genCommaList f = oneof [f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',':s2, (++) <$> f <*> genCommaList f]
@@ -87,6 +96,17 @@ genEUn2 = do
 
 genEUn :: Gen (String, Expr)
 genEUn = frequency [(4, genEUn1), (2, genEUn2), (1, genEBase >>= \(s, e) -> return $ ('(':s ++ ")", e))]
+
+expectT :: [(String, Type)]
+expectT = [ (strData "wqiufhiwqf" (Type))
+          , (strData "int" (Type))
+          , ("(float64)", (Type "float64"))
+          , ("[22]int", (ArrayType (Lit $ IntLit Decimal "22") (Type "int")))
+          , ("[]int", (SliceType (Type "int")))
+          ]
+
+-- genETypeBase :: Gen (String, Type)
+-- genETypeBase = oneof [T.genId >>= genEBase >>= \i -> "[" ++  ++ "] " ++ id, ArrayType ]
 
 scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
 scanToP f s = runAlex s f
