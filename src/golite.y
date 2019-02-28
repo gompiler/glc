@@ -19,7 +19,8 @@
                 , pElses
                 , pEl
                 , pE
-                , hparse)
+                , hparse
+                , parse)
 where
 import Scanner
 import Data
