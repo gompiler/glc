@@ -21,7 +21,6 @@ import           Control.Applicative
 import           Data.Text           (Text, unpack)
 import           ErrorBundle
 import           NeatInterpolation
-import           System.Random
 import           Test.Hspec
 import           Test.QuickCheck
 
