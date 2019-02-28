@@ -164,7 +164,6 @@ import qualified Data.List.NonEmpty as NonEmpty
 
 %%
 
-{- WHY DOES PACKAGE USE STRING AND NOT PACKAGENAME? -}
 Program     : package ident ';' TopDecls              { Program {package=getIdent($2), topLevels=$4} }
 
 TopDecls    : TopDeclsR                               { reverse $1 }
