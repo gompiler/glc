@@ -2,7 +2,7 @@ module ParserSpec
   ( spec
   ) where
 
-import           CommonTest
+import           Base
 import           Data               as D
 import           Parser
 import           Scanner

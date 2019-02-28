@@ -144,10 +144,12 @@ scanSuccess =
   , ("1.23", [TFloatVal 1.23])
   , ("1.23\n", [TFloatVal 1.23, TSemicolon])
   , ("1.23; \n", [TFloatVal 1.23, TSemicolon])
+  , ("1.", [TFloatVal 1.0])
+  , (".1", [TFloatVal 0.1])
   , ("help\n", [TIdent "help", TSemicolon])
   , ("help;\n", [TIdent "help", TSemicolon])
   , ("help ;\n", [TIdent "help", TSemicolon])
-    -- , ("help \n",  ([TIdent "help", TSemicolon]))
+  , ("help \n",  ([TIdent "help", TSemicolon]))
   , ("case", [TCase])
   , ("print", [TPrint])
   , ("println", [TPrintln])
@@ -168,14 +170,34 @@ scanSuccess =
   , ("\r", [])
   , ("// This is a comment", [])
   , ("/* Block comment */", [])
-    -- , ("a /* Block \n */",  ([TIdent "a", TSemicolon]))
-                 -- This will have to change if we change error printing
+  , ("a /* Block \n */",  ([TIdent "a", TSemicolon]))
   , ("var", [TVar])
   , ("break varname;", [TBreak, TIdent "varname", TSemicolon])
   , ("break varname\n", [TBreak, TIdent "varname", TSemicolon])
   , ("break varname;\n", [TBreak, TIdent "varname", TSemicolon])
   , ("break varname \n", [TBreak, TIdent "varname", TSemicolon])
   , ("break +\n", [TBreak, TPlus])
+  , ("testid",  [TIdent "testid"])
+  , ("identttt", [TIdent "identttt"])
+  , ("_", [TIdent "_"])
+  , ("a, b, dddd", [TIdent "a", TComma, TIdent "b", TComma, TIdent "dddd"])
+  , ("weirdsp, _   ,aacing", [TIdent "weirdsp", TComma, TIdent "_", TComma, TIdent "aacing"])
+  , ("weirdsp, _   \n,aacing", [TIdent "weirdsp", TComma, TIdent "_", TSemicolon, TComma, TIdent "aacing"])
+  , ("`\"`",  [TRStringVal "`\"`"])
+  , ("`\'`",  [TRStringVal "`\'`"])
+  , ("`\\z`",  [TRStringVal "`\\z`"])
+  , ("\"'\"",  [TStringVal "\"'\""])
+  , ("\"\"",  [TStringVal "\"\""])
+  , ("``",  [TRStringVal "``"])
+  , ("\"\\n\"",  [TStringVal "\"\\n\""])
+  , ("'\\a'",  [TRuneVal '\a'])
+  , ("'\\b'",  [TRuneVal '\b'])
+  , ("'\\f'",  [TRuneVal '\f'])
+  , ("'\\n'",  [TRuneVal '\n'])
+  , ("'\\r'",  [TRuneVal '\r'])
+  , ("'\\t'",  [TRuneVal '\t'])
+  , ("'\\v'",  [TRuneVal '\v'])
+  , ("'\\\\'",  [TRuneVal '\\'])
   , ( unpack
         [text|
             /* Long block comment
@@ -204,6 +226,4 @@ scanSuccess =
   ]
 
 scanFailure :: [(String, String)]
-scanFailure = [("''", "Error: lexical error at line 1, column 3. Previous character: '\\\'', current string: ")]
--- expectScanP :: [(String, String, Either String [InnerToken])]
--- expectScanP = [("Prints tBREAK tSEMICOLON when given `break`")]
+scanFailure = [("''", "Error: lexical error at line 1, column 2. Previous character: '\\\'', current string: '")]
