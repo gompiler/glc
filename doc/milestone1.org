@@ -19,6 +19,8 @@ whilst implementing the components for milestone 1.
    solution as we don't have to traverse the whole list or get any
    context of any sort, other than the start code which is a feature
    built in to Alex.
+*** Adding newlines at the end of the file if they aren't present already
+*** Parsing floats in a special way as they are different to Haskell's floats
 ** Block comment support
    Alex seems to parse regexes one line at a time. The rule ~/* .* */~
    did not work for multiline block comments, so ~checkBlk~ was

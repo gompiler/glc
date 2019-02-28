@@ -1,26 +1,28 @@
 
 # Table of Contents
 
-1.  [Scanner](#orgbd94fc6)
-    1.  [One pass scanning for semicolon insertion](#org0df6a09)
-    2.  [Block comment support](#orgbf37cf6)
-2.  [Parser](#orga5390e2)
-    1.  [AST](#orgd42c885)
-        1.  [Accurate Type Representation](#orgfddb951)
-        2.  [Simplified Data Type Categories](#orga4f80db)
-        3.  [Format Preservation](#org3fbff12)
-        4.  [Structure Simplification](#org28b9f28)
+1.  [Scanner](#org30714ec)
+    1.  [One pass scanning for semicolon insertion](#org49ac561)
+        1.  [Adding newlines at the end of the file if they aren't present already](#orgf01d34a)
+        2.  [Parsing floats in a special way as they are different to Haskell's floats](#orgead8c10)
+    2.  [Block comment support](#org317347d)
+2.  [Parser](#orgbd367c7)
+    1.  [AST](#org1660c47)
+        1.  [Accurate Type Representation](#orgca62bc5)
+        2.  [Simplified Data Type Categories](#org34f002a)
+        3.  [Format Preservation](#org58a283c)
+        4.  [Structure Simplification](#orga2eb936)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 
 
-<a id="orgbd94fc6"></a>
+<a id="org30714ec"></a>
 
 # Scanner
 
 
-<a id="org0df6a09"></a>
+<a id="org49ac561"></a>
 
 ## One pass scanning for semicolon insertion
 
@@ -42,7 +44,17 @@ context of any sort, other than the start code which is a feature
 built in to Alex.
 
 
-<a id="orgbf37cf6"></a>
+<a id="orgf01d34a"></a>
+
+### Adding newlines at the end of the file if they aren't present already
+
+
+<a id="orgead8c10"></a>
+
+### Parsing floats in a special way as they are different to Haskell's floats
+
+
+<a id="org317347d"></a>
 
 ## Block comment support
 
@@ -62,12 +74,12 @@ and then we were able to insert a semicolon if the start code was
 \(nl\), which was conveniently available for us.
 
 
-<a id="orga5390e2"></a>
+<a id="orgbd367c7"></a>
 
 # Parser
 
 
-<a id="orgd42c885"></a>
+<a id="org1660c47"></a>
 
 ## AST
 
@@ -77,7 +89,7 @@ parts we don't support removed and additional parts for Golite added.
 In some cases, there are minor deviations from the CFG.
 
 
-<a id="orgfddb951"></a>
+<a id="orgca62bc5"></a>
 
 ### Accurate Type Representation
 
@@ -90,7 +102,7 @@ optional. While a direct translation would be `Maybe (NonEmpty a)`,
 we choose to make it `[a]` as it makes more sense.
 
 
-<a id="orga4f80db"></a>
+<a id="org34f002a"></a>
 
 ### Simplified Data Type Categories
 
@@ -108,7 +120,7 @@ so we can treat the else body exclusively as `Stmt` vs `Either
     Block IfStmt`
 
 
-<a id="org3fbff12"></a>
+<a id="org58a283c"></a>
 
 ### Format Preservation
 
@@ -119,7 +131,7 @@ the input, even though we can convert them all to a single type
 (eg dec and interpreted)
 
 
-<a id="org28b9f28"></a>
+<a id="orga2eb936"></a>
 
 ### Structure Simplification
 
