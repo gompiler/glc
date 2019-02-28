@@ -13,7 +13,7 @@ module Scanner
   , T.InnerToken(..)
   , T.AlexPosn(..)
   , T.alexError
-  , T.runAlex
+  , runAlex
   , T.Alex
   ) where
 
@@ -140,16 +140,31 @@ alexMonadScan = do
       T.alexSetInput inp__'
       action (T.ignorePendingBytes inp__) len
 
+-- | inpNL, input new line if input does not end with a newline
+inpNL :: String -> String
+inpNL s = reverse $ inpNLR s []
+  
+inpNLR :: String -> String -> String
+inpNLR s r = case s of
+               "\n" -> '\n':r
+               [] -> '\n':r
+               h:t -> inpNLR t (h:r)
+
+
+-- | Wrapper for runAlex to process output through inpNL
+runAlex :: String -> T.Alex a -> Either String a
+runAlex s = T.runAlex (inpNL s)
+
 -- | scan, the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
 scan :: String -> Either String [T.InnerToken]
-scan s =
-  T.runAlex s $ do
-    let loop tokl = do
-          (T.Token _ tok) <- alexMonadScan
-          if tok == T.TEOF
-            then return tokl
-            else loop (tok : tokl)
-    loop []
+scan s = 
+  runAlex s $ do
+  let loop tokl = do
+        (T.Token _ tok) <- alexMonadScan
+        if tok == T.TEOF
+          then return tokl
+          else loop (tok : tokl)
+  loop []
 
 scanT :: String -> Either String [T.InnerToken]
 scanT s = fmap reverse (scan s)
