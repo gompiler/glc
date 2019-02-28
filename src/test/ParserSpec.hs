@@ -29,15 +29,20 @@ spec = do
     qcGen "binary expressions" False genEBin (\(s, out) -> (scanToP pE s) == (Right $ out))
     qcGen "unary expressions" False genEUn (\(s, out) -> (scanToP pE s) == (Right $ out))
   specAll "Types" ((specConvert Right expectT) :: [(String, Either String Type)])
+  specAll "Expression Lists" ((specConvert Right expectEL) :: [(String, Either String [Expr])])
   
 instance SpecBuilder String (Either String Type) () where
   expectation input output =
     it (show $ lines input) $ scanToP pT input `shouldBe` output
   
-genCommaList :: Gen String -- ^ Generator we use to generate things in between commas
+instance SpecBuilder String (Either String [Expr]) () where
+  expectation input output =
+    it (show $ lines input) $ scanToP pEl input `shouldBe` output
+  
+genCommaList :: Gen String -- ^ What we will be comma separating
              -> Gen String
 genCommaList f = oneof [f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',':s2, (++) <$> f <*> genCommaList f]
-
+  
 genEBase :: Gen (String, Expr)
 genEBase = oneof [
   -- (T.genId >>= \s -> return (s, Var s))
@@ -97,6 +102,9 @@ genEUn2 = do
 genEUn :: Gen (String, Expr)
 genEUn = frequency [(4, genEUn1), (2, genEUn2), (1, genEBase >>= \(s, e) -> return $ ('(':s ++ ")", e))]
 
+genE :: Gen (String, Expr)
+genE = oneof [genEBase, genEUn, genEBin]
+
 expectT :: [(String, Type)]
 expectT = [ (strData "wqiufhiwqf" (Type))
           , (strData "int" (Type))
@@ -107,6 +115,11 @@ expectT = [ (strData "wqiufhiwqf" (Type))
 
 -- genETypeBase :: Gen (String, Type)
 -- genETypeBase = oneof [T.genId >>= genEBase >>= \i -> "[" ++  ++ "] " ++ id, ArrayType ]
+
+expectEL :: [(String, [Expr])]
+expectEL = [ ("123, 888", (Lit $ IntLit Decimal "123"):[Lit $ IntLit Decimal "888"])
+           , ("123, 88.8", (Lit $ IntLit Decimal "123"):[Lit $ FloatLit 88.8])
+           ]
 
 scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
 scanToP f s = runAlex s f
