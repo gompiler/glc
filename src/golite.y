@@ -317,6 +317,9 @@ SwitchBodyR : SwitchBodyR case EIList ':' Stmts       { (Case (nonEmpty $3) (Blo
             | SwitchBodyR default Stmts               { (Default $ BlockStmt $3) : $1 }
             | {- empty -}                             { [] }
 
+
+{- Spec: https://golang.org/ref/spec#Expressions -}
+
 Expr        : NIExpr                                  { $1 }
             | ident                                   { Var (getIdent $1) }
 
@@ -359,6 +362,13 @@ NIExpr      : '+' Expr %prec POS                      { Unary Pos $2 }
             | Expr '(' Expr ')'                       { Arguments $1 [$3] }
             | Expr '(' EIList ')'                     { Arguments $1 $3 } {- SOMETHING GOES WRONG HERE -}
             {- TODO: HOW TO DO ARRAY ACCESS -}
+
+{-
+  Spec: https://golang.org/ref/spec#ExpressionList
+  Note: We do not allow one expression in an expression list, since it results
+  in an ambiguous grammar. Instead, we split rules into combinatorial variatons
+  of single expressions and expression lists / identifiers and identifier lists.
+-}
 
 EIList      : NIExprList                              { $1 }
             | Idents                                  { map varOfI $ NonEmpty.toList $1 }
