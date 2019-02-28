@@ -57,7 +57,7 @@ genFloat = do
 
 genChar' :: Gen Char -- 92 = \, 34 = ", 39 = ', 32 - 126 is space to ~, most "normal" characters
 genChar' =
-  choose (32, 126) `suchThat` (\i -> not $ i == 92 || i == 43 || i == 39) >>=
+  choose (32, 126) `suchThat` (\i -> not $ i == 92 || i == 34 || i == 39) >>=
   (return . toEnum :: Int -> Gen Char)
 
 genRChar' :: Gen Char -- 96 = `
@@ -75,7 +75,7 @@ genString :: Gen String
 genString = genString' >>= \s -> return $ '\"' : s ++ "\""
 
 genRString' :: Gen String
-genRString' = oneof [genRChar' >>= toRetL, (:) <$> genRChar' <*> genString']
+genRString' = oneof [genRChar' >>= toRetL, (:) <$> genRChar' <*> genRString']
 
 genRString :: Gen String
 genRString = genRString' >>= \s -> return $ '`' : s ++ "`"
