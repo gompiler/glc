@@ -22,6 +22,13 @@ tabP a = "\t" ++ prettify a
 commaJoin :: Prettify a => [a] -> String
 commaJoin p = intercalate ", " $ map prettify p
 
+-- | Joins last line of first list with first line of last list with a space
+skipNewLine :: [String] -> [String] -> [String]
+[] `skipNewLine` a = a
+a `skipNewLine` [] = a
+[a] `skipNewLine` (b:b') = (a ++ " " ++ b) : b'
+(a:a') `skipNewLine` b = a : a' `skipNewLine` b
+
 -- | Some prettified components span a single line
 -- In that case, we can implement prettify by default
 -- And use this function to derive the list format from the string format
@@ -69,10 +76,9 @@ instance Prettify TypeDef' where
   prettify (TypeDef' id t) = prettify id ++ " = " ++ prettify t
   prettify' = prettify''
 
-instance Prettify FuncDecl
-  -- TODO move brace onto same line as signature
-                                                 where
-  prettify' (FuncDecl id sig body) = ("func " ++ prettify id) : prettify' sig ++ ["{"] ++ tab (prettify' body) ++ ["}"]
+instance Prettify FuncDecl where
+  prettify' (FuncDecl id sig body) =
+    ("func " ++ prettify id) : (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
 
 instance Prettify ParameterDecl where
   prettify (ParameterDecl ids t) = prettify ids ++ " " ++ prettify t
@@ -101,10 +107,8 @@ instance Prettify Stmt where
     where
       i' = tab $ prettify' i
       e' =
-        case e
-          -- todo put if on same line
-              of
-          If {} -> "} else" : prettify' e ++ ["}"]
+        case e of
+          If {} -> ["} else"] `skipNewLine` prettify' e ++ ["}"]
           _     -> "} else {" : tab (prettify' e) ++ ["}"]
   prettify' (Switch ss se cases) = ("switch " ++ ss' ++ "{") : tab (cases >>= prettify') ++ ["}"]
     where
@@ -134,7 +138,7 @@ instance Prettify (NonEmpty Expr) where
 
 instance Prettify Expr where
   prettify (Unary _ o e) = "(" ++ prettify o ++ prettify e ++ ")"
-  prettify (Binary _ o e1  e2) = "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
+  prettify (Binary _ o e1 e2) = "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
   prettify (Lit l) = prettify l
   prettify (Var i) = prettify i
   prettify (AppendExpr e1 e2) = "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
