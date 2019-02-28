@@ -6,15 +6,21 @@ module Prettify
   ) where
 
 import           Data
-import           Data.List          (intercalate, intersperse, null)
+import           Data.List          (dropWhileEnd, intercalate, intersperse,
+                                     null)
 import           Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Maybe         as Maybe
+import           Data.Text          (strip)
+import           GHC.Unicode        (isSpace)
 
 tab :: [String] -> [String]
 tab = map ("\t" ++)
 
 tabP :: Prettify a => a -> String
 tabP a = "\t" ++ prettify a
+
+commaJoin :: Prettify a => [a] -> String
+commaJoin p = intercalate ", " $ map prettify p
 
 -- Prettify, but enforces a single line
 prettify1 :: Prettify a => a -> String
@@ -36,7 +42,7 @@ instance Prettify Identifier where
   prettify' = prettify''
 
 instance Prettify Identifiers where
-  prettify ids = intercalate ", " $ map prettify $ toList ids
+  prettify ids = commaJoin $ toList ids
   prettify' = prettify''
 
 instance Prettify Program where
@@ -50,8 +56,9 @@ instance Prettify TopDecl where
 instance Prettify Decl where
   prettify' (VarDecl [decl]) = ["var " ++ prettify decl]
   prettify' (VarDecl decls)  = "var (" : tab (map prettify decls) ++ [")"]
+  prettify' (TypeDef [def])  = ["type " ++ prettify def]
+  prettify' (TypeDef defs)   = "type (" : tab (map prettify defs) ++ [")"]
 
---  prettify' (TypeDef defs) = [intercalate ", " $ map prettify decls]
 instance Prettify VarDecl' where
   prettify (VarDecl' ids (Left (t, exprs))) = prettify ids ++ " " ++ prettify t ++ exprs'
     where
@@ -76,7 +83,7 @@ instance Prettify ParameterDecl where
   prettify' = prettify''
 
 instance Prettify Parameters where
-  prettify (Parameters params) = intercalate ", " $ map prettify params
+  prettify (Parameters params) = commaJoin params
   prettify' = prettify''
 
 instance Prettify Signature where
@@ -94,13 +101,8 @@ instance Prettify SimpleStmt where
 instance Prettify Stmt where
   prettify' (BlockStmt stmts) = stmts >>= prettify'
   prettify' (SimpleStmt s) = prettify' s
-  prettify' (If (cs, ce) i e) = ("if " ++ cs' ++ ce' ++ "{") : i' ++ e'
+  prettify' (If c i e) = ("if " ++ prettify c ++ "{") : i' ++ e'
     where
-      cs' =
-        if cs == EmptyStmt
-          then ""
-          else prettify cs ++ "; "
-      ce' = prettify ce
       i' = tab $ prettify' i
       e' =
         case e
@@ -111,18 +113,49 @@ instance Prettify Stmt where
   prettify' (Switch ss se cases) = ("switch " ++ ss' ++ "{") : tab (cases >>= prettify') ++ ["}"]
     where
       ss' =
-        case (ss, se) of
-          (EmptyStmt, _) -> Maybe.maybe "" prettify se ++ " "
-          (_, Nothing)   -> prettify ss ++ " "
-          (_, Just se')  -> prettify ss ++ "; " ++ prettify se' ++ " "
+        case se of
+          Just se' -> prettify (ss, se')
+          Nothing  -> prettify ss
 
-instance Prettify SwitchCase
+instance Prettify SwitchCase where
+  prettify' (Case e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)
+  prettify' (Default s) = "default:" : tab (prettify' s)
 
-instance Prettify ForClause
+instance Prettify (SimpleStmt, Expr) where
+  prettify (EmptyStmt, e) = prettify e
+  prettify (s, e)         = prettify s ++ "; " ++ prettify e
+  prettify' = prettify''
 
-instance Prettify (NonEmpty Expr)
+instance Prettify ForClause where
+  prettify ForInfinite         = ""
+  prettify (ForCond e)         = prettify e
+  prettify (ForClause cs ce s) = []
+  prettify' = prettify''
 
-instance Prettify Expr
+instance Prettify (NonEmpty Expr) where
+  prettify e = commaJoin $ toList e
+  prettify' = prettify''
+
+instance Prettify Expr where
+  prettify (Unary _ o e) = "(" ++ prettify o ++ prettify e ++ ")"
+  prettify (Binary e1 _ o e2) = "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
+  prettify (Lit _ l) = prettify l
+  prettify (Var i) = prettify i
+  prettify (AppendExpr e1 e2) = "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
+  prettify (LenExpr e) = "len(" ++ prettify e ++ ")"
+  prettify (CapExpr e) = "cap(" ++ prettify e ++ ")"
+  prettify (Conversion t e) = prettify t ++ "(" ++ prettify e ++ ")"
+  prettify (Selector e i) = prettify e ++ "." ++ prettify i
+  prettify (Index e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
+  prettify (Slice e r) = prettify e ++ "[" ++ prettify r ++ "]"
+  prettify (TypeAssertion e _ t) = prettify e ++ ".(" ++ prettify t ++ ")"
+  prettify (Arguments e ee) = prettify e ++ "(" ++ commaJoin ee ++ ")"
+  prettify' = prettify''
+
+instance Prettify SliceRange where
+  prettify (SliceSimple e1 e2) = Maybe.maybe "" prettify e1 ++ ":" ++ Maybe.maybe "" prettify e2
+  prettify (SliceFull e1 e2 e3) = Maybe.maybe "" prettify e1 ++ ":" ++ prettify e2 ++ ":" ++ prettify e3
+  prettify' = prettify''
 
 instance Prettify Literal where
   prettify (IntLit _ _ i) = i

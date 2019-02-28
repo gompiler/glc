@@ -234,6 +234,7 @@ data Expr
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports arrays and slices
   | CapExpr Expr
+  -- | See https://golang.org/ref/spec#Conversions
   | Conversion Type'
                Expr
   -- | See https://golang.org/ref/spec#Selector
