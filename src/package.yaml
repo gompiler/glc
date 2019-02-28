@@ -29,6 +29,8 @@ dependencies:
 - hspec
 - text
 - neat-interpolation
+- QuickCheck
+- split
 
 library:
   source-dirs: [src, src/generated]
