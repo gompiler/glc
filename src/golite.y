@@ -213,9 +213,10 @@ FuncDecl    : func ident Signature BlockStmt          { FuncDecl (getIdent $2) $
 
 Signature   : '(' Params ')' Result                   { Signature (Parameters $2) $4 }
 Params      : ParamsR                                 { reverse $1 }
-ParamsR     : ParamsR Idents ident                    { (ParameterDecl $2 (Type $ getIdent $3)) : $1 }
             | {- empty -}                             { [] }
-Result      : ident                                   { Just (Type $ getIdent $1) }
+ParamsR     : ParamsR ',' Idents Type                 { (ParameterDecl $3 $4) : $1 }
+            | Idents Type                             { [(ParameterDecl $1 $2)] }
+Result      : Type                                    { Just $1 }
             | {- empty -}                             { Nothing }
 
 Stmt        : BlockStmt ';'                           { $1 }
