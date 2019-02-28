@@ -288,12 +288,12 @@ SimpleStNE  : {- empty -}                             { EmptyStmt }
             | ident ":=" Expr                         { ShortDeclare (nonEmpty [getIdent $1]) (nonEmpty [$3]) }
 
 {- Spec: https://golang.org/ref/spec#ExpressionStmt -}
-ExprStmtSc  : Expr ';'    { ExprStmt $1 }
+ExprStmt    : Expr ';'    { ExprStmt $1 }
 
 {- Spec: https://golang.org/ref/spec#SimpleStmt -}
 {- Keep expression statements separate to prevent r/r conflicts -}
-SimpleStmt  : SimpleStNE ';' { $1 }
-            | ExprStmtSc { $1 }
+SimpleStmt  : SimpleStNE ';'                          { $1 }
+            | ExprStmt                                { $1 }
 
 {- Spec: https://golang.org/ref/spec#If_statements -}
 IfStmt      : if SimpleStmt Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
