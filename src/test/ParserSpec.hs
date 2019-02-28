@@ -88,88 +88,8 @@ genEUn2 = do
 genEUn :: Gen (String, Expr)
 genEUn = frequency [(4, genEUn1), (2, genEUn2), (1, genEBase >>= \(s, e) -> return $ ('(':s ++ ")", e))]
 
-
-
 scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
 scanToP f s = runAlex s f
-
--- eComb :: [(String, Expr)] -> [(String, Expr)]
--- eComb baseL =
---   baseL ++
---   map (\(s, e) -> ('+' : s, Unary Pos e)) baseL ++
---   map (\(s, e) -> ("+      \n" ++ s, Unary Pos e)) baseL ++
---   map (\(s, e) -> ('-' : s, Unary Neg e)) baseL ++
---   map (\(s, e) -> ('!' : s, Unary Not e)) baseL ++
---   map (\(s, e) -> ('^' : s, Unary BitComplement e)) baseL ++
---   map (\(s, e) -> ('(' : s ++ ")", e)) baseL ++
---   map (\(s, e) -> ("len (" ++ s ++ ")", LenExpr e)) baseL ++
---   map (\(s, e) -> ("cap (" ++ s ++ ")", CapExpr e)) baseL ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "||" ++ s2, Binary e1 Or e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "&&" ++ s2, Binary e1 And e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "==" ++ s2, Binary e1 D.EQ e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "!=" ++ s2, Binary e1 NEQ e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "<" ++ s2, Binary e1 D.LT e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "<=" ++ s2, Binary e1 LEQ e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ ">" ++ s2, Binary e1 D.GT e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ ">=" ++ s2, Binary e1 GEQ e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "+" ++ s2, Binary e1 (Arithm Add) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "-" ++ s2, Binary e1 (Arithm Subtract) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "*" ++ s2, Binary e1 (Arithm Multiply) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "/" ++ s2, Binary e1 (Arithm Divide) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "%" ++ s2, Binary e1 (Arithm Remainder) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "|" ++ s2, Binary e1 (Arithm BitOr) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "^" ++ s2, Binary e1 (Arithm BitXor) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "&" ++ s2, Binary e1 (Arithm BitAnd) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "&^" ++ s2, Binary e1 (Arithm BitClear) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ "<<" ++ s2, Binary e1 (Arithm ShiftL) e2))
---     (cartP baseL baseL) ++
---   map
---     (\((s1, e1), (s2, e2)) -> (s1 ++ ">>" ++ s2, Binary e1 (Arithm ShiftR) e2))
---     (cartP baseL baseL)
-
--- eComb' :: [(String, Expr)]
--- eComb' = eComb eBase
-
--- expectT :: [(String, Either String Type)]
--- expectT = map (strData (Right $ Type)) idNames
-
--- expectE :: [(String, Either String Expr)]
--- expectE = map (\(s, e) -> (s, Right e)) eComb'
 
 intExamples =
   [ "0"
