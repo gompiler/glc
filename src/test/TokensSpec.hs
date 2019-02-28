@@ -308,6 +308,32 @@ scanSuccess =
   , ("'\\\\'", [TRuneVal '\\', TSemicolon])
   , ( unpack
         [text|
+          +   /* Multiline to simulate
+          a new line */
+        |]
+    , [TPlus])
+  , ( unpack
+        [text|
+          fallthrough   /* New line after comment */
+
+        |]
+    , [TFallthrough, TSemicolon])
+  , ( unpack
+        [text|
+          ++   /* New line after comment
+          and inside comment*/
+
+        |]
+    , [TInc, TSemicolon])
+  , ( unpack
+        [text|
+          )   ;   /* New line after comment
+          and inside comment*/
+
+        |]
+    , [TRParen, TSemicolon])
+  , ( unpack
+        [text|
             /* Long block comment
             here's another line
             and another
