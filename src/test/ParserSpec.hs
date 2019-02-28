@@ -21,11 +21,12 @@ import           Data.List.Split    (splitOn)
 spec :: Spec
 spec = do
   describe "Identifiers" $ do
-    qcGen
-      "single ident"
-      False
-      T.genId
-      (\x -> scanToP pId x == (Right $ NonEmpty.fromList [x]))
+    -- No more single ident productions for Idents non-term
+    -- qcGen
+      -- "single ident"
+      -- False
+      -- T.genId
+      -- (\x -> scanToP pId x == (Right $ NonEmpty.fromList [x]))
     qcGen
       "ident list"
       False
