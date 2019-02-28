@@ -1447,11 +1447,11 @@ happyReduction_102 (happy_x_7 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
 	 = case happyOut51 happy_x_2 of { happy_var_2 -> 
-	case happyOutTok happy_x_3 of { happy_var_3 -> 
-	case happyOutTok happy_x_5 of { happy_var_5 -> 
+	case happyOut58 happy_x_4 of { happy_var_4 -> 
 	case happyOut51 happy_x_6 of { happy_var_6 -> 
+	case happyOut50 happy_x_7 of { happy_var_7 -> 
 	happyIn54
-		 (For (ForClause happy_var_2 happy_var_3 happy_var_5) happy_var_6
+		 (For (ForClause happy_var_2 happy_var_4 happy_var_6) happy_var_7
 	) `HappyStk` happyRest}}}}
 
 #if __GLASGOW_HASKELL__ >= 710

@@ -267,7 +267,7 @@ Elses       : else IfStmt                             { $2 }
 
 ForStmt     : for BlockStmt                           { For ForInfinite $2 }
             | for Expr BlockStmt                      { For (ForCond $2) $3 }
-            | for SimpleStmt ';' Expr ';' SimpleStmt BlockStmt { For (ForClause $2 $3 $5) $6 } {- TODO: ALIGNMENT -}
+            | for SimpleStmt ';' Expr ';' SimpleStmt BlockStmt { For (ForClause $2 $4 $6) $7 } {- TODO: ALIGNMENT -}
 
 SwitchStmt  : switch SimpleStmt ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) $6 } {- TODO: NEED EXPR / SIMPLE STMT, ALIGNMENT -}
             | switch SimpleStmt '{' SwitchBody '}'    { Switch $2 Nothing $4 }
