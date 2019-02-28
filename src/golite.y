@@ -72,8 +72,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 %left '+' '-' '|' '^'
 %left '*' '/' '%' "<<" ">>" '&' "&^"
 %nonassoc '!' POS NEG COM {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
-%left '(' ')'
-%left '[' ']' {- TODO: CHECK PRECEDENCE HERE -}
+%left '[' ']' '(' ')' {- TODO: CHECK PRECEDENCE HERE -}
 %left '.' {- TODO: CHECK PRECEDENCE HERE -}
 
 %token
@@ -177,7 +176,7 @@ TopDecl     : Decl                                    { TopDecl $1 }
 
 Idents      : IdentsR                                 { (nonEmpty . reverse) $1 }
 IdentsR     : IdentsR ',' ident                       { (getIdent $3) : $1 } {- TODO -}
-            | ident                                   { [getIdent $1] }
+            | ident ',' ident                         { [getIdent $3, getIdent $1] }
 
 Type        : ident                                   { Type $ getIdent $1 }
             | '(' Type ')'                            { $2 }
@@ -193,6 +192,7 @@ Decl        : var InnerDecl                           { VarDecl [$2] }
             | type '(' TypeDefs ')' ';'               { TypeDef $3 }
 
 InnerDecl   : Idents DeclBody ';'                     { VarDecl' $1 $2 }
+            | ident DeclBody ';'                      { VarDecl' (nonEmpty [getIdent $1]) $2 }
 InnerDecls  : InnerDeclsR                             { reverse $1 }
 InnerDeclsR : InnerDeclsR InnerDecl                   { $2 : $1 }
             | {- empty -}                             { [] }
@@ -200,7 +200,9 @@ InnerDeclsR : InnerDeclsR InnerDecl                   { $2 : $1 }
 {- TODO: TYPES OF RETURN... NEED OVERRIDING AND STUFF -}
 DeclBody    : Type                                    { Left ($1, []) }
             | Type '=' EIList                         { Left ($1, $3) } {- TODO: NON EMPTY? -}
+            | Type '=' Expr                           { Left ($1, [$3]) } {- TODO: NON EMPTY? -}
             | '=' EIList                              { Right (nonEmpty $2) }
+            | '=' Expr                                { Right (nonEmpty [$2]) }
 
 TypeDefs    : TypeDefsR                               { reverse $1 }
 TypeDefsR   : TypeDefsR ident Type ';'                { (TypeDef' (getIdent $2) $3) : $1 }
@@ -210,6 +212,7 @@ Struct      : struct '{' FieldDecls '}'               { $3 }
 
 FieldDecls  : FieldDeclsR                             { reverse $1 }
 FieldDeclsR : FieldDeclsR Idents Type ';'             { (FieldDecl $2 $3) : $1 }
+            | FieldDeclsR ident Type ';'              { (FieldDecl (nonEmpty [getIdent $2]) $3) : $1 }
             | {- empty -}                             { [] }
 
 {- TODO: OPTIONAL/COMPLEX FUNC TYPE -}
@@ -219,12 +222,14 @@ Signature   : '(' Params ')' Result                   { Signature (Parameters $2
 Params      : ParamsR                                 { reverse $1 }
             | {- empty -}                             { [] }
 ParamsR     : ParamsR ',' Idents Type                 { (ParameterDecl $3 $4) : $1 }
+            | ParamsR ',' ident Type                  { (ParameterDecl (nonEmpty [getIdent $3]) $4) : $1 }
             | Idents Type                             { [(ParameterDecl $1 $2)] }
+            | ident Type                              { [(ParameterDecl (nonEmpty [getIdent $1]) $2)] }
 Result      : Type                                    { Just $1 }
             | {- empty -}                             { Nothing }
 
 Stmt        : BlockStmt ';'                           { $1 }
-            | SimpleStmt ';'                          { SimpleStmt $1 } {- simplestmt includes semicolon -}
+            | SimpleStSc                              { SimpleStmt $1 }
             | IfStmt ';'                              { $1 }
             | ForStmt ';'                             { $1 }
             | SwitchStmt ';'                          { $1 }
@@ -233,7 +238,9 @@ Stmt        : BlockStmt ';'                           { $1 }
             | fallthrough ';'                         { Fallthrough }
             | Decl                                    { Declare $1 } {- decl includes semicolon -}
             | print '(' EIList ')' ';'                { Print $3 }
+            | print '(' Expr ')' ';'                  { Print [$3] }
             | println '(' EIList ')' ';'              { Println $3 }
+            | println '(' Expr ')' ';'                { Println [$3] }
             | return Expr ';'                         { Return $ Just $2 }
             | return ';'                              { Return Nothing }
 
@@ -245,25 +252,46 @@ StmtsR      : StmtsR Stmt                             { $2 : $1 }
 BlockStmt   : '{' Stmts '}'                           { BlockStmt $2 }
 
 SimpleStmt  : {- empty -}                             { EmptyStmt }
-            | ident "++" ';'                          { Increment $ Var (getIdent $1) } {- TODO -}
-            | ident "--" ';'                          { Decrement $ Var (getIdent $1) } {- TODO -}
-            | NIExpr ';'                              { ExprStmt $1 } {- Weed this to make sure they're valid expr stmts -}
-            | ident ';'                               { ExprStmt $ (varOfI . getIdent) $1 } {- This, plus NIExpr, make up Expr -}
-            | EIList "+=" EIList ';'                  { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "-=" EIList ';'                  { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "|=" EIList ';'                  { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "^=" EIList ';'                  { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "*=" EIList ';'                  { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "/=" EIList ';'                  { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "%=" EIList ';'                  { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "<<=" EIList ';'                 { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
-            | EIList ">>=" EIList ';'                 { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "&=" EIList ';'                  { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "&^=" EIList ';'                 { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
-            | EIList '=' EIList ';'                   { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
-            | Idents ":=" EIList ';'                  { ShortDeclare $1 (nonEmpty $3) }
+            | ident "++"                              { Increment $ Var (getIdent $1) } {- TODO -}
+            | ident "--"                              { Decrement $ Var (getIdent $1) } {- TODO -}
+         {- | NIExpr                                  { ExprStmt $1 } Weed this to make sure they're valid expr stmts -}
+         {- | ident                                   { ExprStmt $ (varOfI . getIdent) $1 } This, plus NIExpr, make up Expr -}
 
-IfStmt      : if SimpleStmt ';' Expr BlockStmt Elses  { If ($2, $4) $5 $6 }
+            | EIList "+=" EIList                      { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "-=" EIList                      { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "|=" EIList                      { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "^=" EIList                      { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "*=" EIList                      { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "/=" EIList                      { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "%=" EIList                      { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "<<=" EIList                     { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
+            | EIList ">>=" EIList                     { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "&=" EIList                      { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "&^=" EIList                     { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
+            | EIList '=' EIList                       { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
+
+            | Expr "+=" Expr                          { Assign (AssignOp $ Just Add) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr "-=" Expr                          { Assign (AssignOp $ Just Subtract) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr "|=" Expr                          { Assign (AssignOp $ Just BitOr) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr "^=" Expr                          { Assign (AssignOp $ Just BitXor) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr "*=" Expr                          { Assign (AssignOp $ Just Multiply) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr "/=" Expr                          { Assign (AssignOp $ Just Divide) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr "%=" Expr                          { Assign (AssignOp $ Just Remainder) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr "<<=" Expr                         { Assign (AssignOp $ Just ShiftL) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr ">>=" Expr                         { Assign (AssignOp $ Just ShiftR) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr "&=" Expr                          { Assign (AssignOp $ Just BitAnd) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr "&^=" Expr                         { Assign (AssignOp $ Just BitClear) (nonEmpty [$1]) (nonEmpty [$3]) }
+            | Expr '=' Expr                           { Assign (AssignOp Nothing) (nonEmpty [$1]) (nonEmpty [$3]) }
+
+            | Idents ":=" EIList                      { ShortDeclare $1 (nonEmpty $3) }
+            | ident ":=" Expr                         { ShortDeclare (nonEmpty [getIdent $1]) (nonEmpty [$3]) }
+
+ExprStmtSc  : Expr ';'    { ExprStmt $1 }
+
+SimpleStSc  : SimpleStmt ';' { $1 } {- Keep separate to prevent r/r conflicts -}
+            | ExprStmtSc { $1 }
+
+IfStmt      : if SimpleStSc Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
             | if Expr BlockStmt Elses                 { If (EmptyStmt, $2) $3 $4 }
 Elses       : else IfStmt                             { $2 }
             | else BlockStmt                          { $2 }
@@ -271,14 +299,17 @@ Elses       : else IfStmt                             { $2 }
 
 ForStmt     : for BlockStmt                           { For ForInfinite $2 }
             | for Expr BlockStmt                      { For (ForCond $2) $3 }
-            | for SimpleStmt ';' Expr ';' SimpleStmt BlockStmt { For (ForClause $2 $4 $6) $7 } {- TODO: ALIGNMENT -}
+            | for SimpleStSc Expr ';' SimpleStmt BlockStmt { For (ForClause $2 $3 $5) $6 } {- TODO: ALIGNMENT -}
+            | for SimpleStSc Expr ';' Expr BlockStmt { For (ForClause $2 $3 (ExprStmt $5)) $6 } {- TODO: ALIGNMENT -}
 
-SwitchStmt  : switch SimpleStmt ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) $6 } {- TODO: NEED EXPR / SIMPLE STMT, ALIGNMENT -}
-            | switch SimpleStmt '{' SwitchBody '}'    { Switch $2 Nothing $4 }
+{- Spec: https://golang.org/ref/spec#Switch_statements -}
+SwitchStmt  : switch SimpleStSc ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) $6 } {- TODO: NEED EXPR / SIMPLE STMT, ALIGNMENT -}
+            | switch SimpleStSc ';' '{' SwitchBody '}'    { Switch $2 Nothing $5 }
             | switch Expr '{' SwitchBody '}'          { Switch EmptyStmt (Just $2) $4 }
 
 SwitchBody  : SwitchBodyR                             { reverse $1 }
 SwitchBodyR : SwitchBodyR case EIList ':' Stmts       { (Case (nonEmpty $3) (BlockStmt $5)) : $1 }
+            | SwitchBodyR case Expr ':' Stmts         { (Case (nonEmpty [$3]) (BlockStmt $5)) : $1 }
             | SwitchBodyR default Stmts               { (Default $ BlockStmt $3) : $1 }
             | {- empty -}                             { [] }
 
@@ -321,6 +352,7 @@ NIExpr      : '+' Expr %prec POS                      { Unary Pos $2 }
             | append '(' Expr ',' Expr ')'            { AppendExpr $3 $5 }
             | len '(' Expr ')'                        { LenExpr $3 }
             | cap '(' Expr ')'                        { CapExpr $3 }
+            | Expr '(' Expr ')'                       { Arguments $1 [$3] }
             | Expr '(' EIList ')'                     { Arguments $1 $3 } {- SOMETHING GOES WRONG HERE -}
             {- TODO: HOW TO DO ARRAY ACCESS -}
 
@@ -330,7 +362,9 @@ EIList      : NIExprList                              { $1 }
 NIExprList  : NIExprListR                             { reverse $1 }
 NIExprListR : NIExprListR ',' Expr                    { $3 : $1 }
             | IdentsR ',' NIExpr                      { $3 : (map varOfI $1) }
-            | NIExpr                                  { [$1] }
+            | NIExpr ',' NIExpr                       { [$3, $1] }
+            | NIExpr ',' ident                        { [(varOfI . getIdent) $3, $1] }
+            | ident ',' NIExpr                        { [$3, (varOfI . getIdent) $1] }
 
 {
 
