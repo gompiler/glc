@@ -7,13 +7,17 @@ module Base
   , Data.Text.Text
   , Data.Text.unpack
   , NeatInterpolation.text
+  , module ErrorBundle
   , specConvert
   , module Test.Hspec
   ) where
 
 import           Data.Text         (Text, unpack)
+import           ErrorBundle
 import           NeatInterpolation
 import           Test.Hspec
+
+o = Offset 0
 
 specConvert :: (b -> c) -> [(a, b)] -> [(a, c)]
 specConvert f = map (\(i, o) -> (i, f o))
