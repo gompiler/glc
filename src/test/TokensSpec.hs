@@ -4,6 +4,14 @@
 
 module TokensSpec
   ( spec
+  , genId
+  , genNum
+  , genHex
+  , genOct
+  , genFloat
+  , genChar
+  , genString
+  , genRString
   ) where
 
 import           Base
@@ -47,14 +55,30 @@ genFloat = do
   n2 <- genNum
   return $ n1 ++ '.' : n2
 
--- genString
+genChar' :: Gen Char -- 92 = \, 34 = ", 39 = ', 32 - 126 is space to ~, most "normal" characters
+genChar' =
+  choose (32, 126) `suchThat` (\i -> not $ i == 92 || i == 43 || i == 39) >>=
+  (return . toEnum :: Int -> Gen Char)
+
+genRChar' :: Gen Char -- 96 = `
+genRChar' =
+  choose (32, 126) `suchThat` (not . (==) 96) >>=
+  (return . toEnum :: Int -> Gen Char)
+
+genChar :: Gen String
+genChar = genChar' >>= \s -> return $ '\'' : s : ['\'']
+
 genString' :: Gen String
-genString' =
-  oneof
-    [ return []
-    , (:) <$> (choose (0, 255) >>= (return . toEnum :: Int -> Gen Char)) <*>
-      genString'
-    ]
+genString' = oneof [genChar' >>= toRetL, (:) <$> genChar' <*> genString']
+
+genString :: Gen String
+genString = genString' >>= \s -> return $ '\"' : s ++ "\""
+
+genRString' :: Gen String
+genRString' = oneof [genRChar' >>= toRetL, (:) <$> genRChar' <*> genString']
+
+genRString :: Gen String
+genRString = genRString' >>= \s -> return $ '`' : s ++ "`"
 
 genSemiI :: Gen String
 genSemiI =
@@ -75,6 +99,9 @@ genSemiI =
     , genHex
     , genOct
     , genFloat
+    , genChar
+    , genString
+    , genRString
     ]
 
 instance SpecBuilder String (Either String [InnerToken]) () where
@@ -236,6 +263,7 @@ scanSuccess =
   , ("// This is a comment", [])
   , ("/* Block comment */", [])
   , ("a /* Block \n */", [TIdent "a", TSemicolon])
+  , ("+ /* Block \n */", [TPlus])
   , ("var", [TVar])
   , ("break varname;", [TBreak, TIdent "varname", TSemicolon])
   , ("break varname\n", [TBreak, TIdent "varname", TSemicolon])
