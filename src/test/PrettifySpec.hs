@@ -19,6 +19,11 @@ shouldPrettifyTo' :: (HasCallStack, Prettify a) => a -> Text -> Expectation
 ast `shouldPrettifyTo'` s = prettify ast `shouldBe` unpack s
 
 spec :: Spec
-spec = specAll "IntLit" intlit
+spec =
+  describe "Literals" $ do
+    specAll "IntLit" intLit
+    specAll "FloatLit" floatLit
 
-intlit = [(IntLit Decimal "12", "12")]
+intLit = map (\(i, o) -> (IntLit i o, o)) [(Decimal, "12"), (Hexadecimal, "0xCAFEBABE"), (Octal, "01001")]
+
+floatLit = [(FloatLit 0.123, "0.123")]

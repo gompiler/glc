@@ -290,12 +290,11 @@ data SliceRange
 -- we might want just string, or store as int and reformat on pretty print
 -- TODO support other literals?
 data Literal
-  = IntLit IntType'
+  = IntLit Offset IntType'
            String
-  | FloatLit Float
-  | RuneLit Char
-  | StringLit StringType'
-              String
+  | FloatLit Offset Float
+  | RuneLit Offset Char
+  | StringLit StringLiteral
   -- | See https://golang.org/ref/spec#FunctionLit
   | FuncLit Signature
             FuncBody
@@ -350,9 +349,13 @@ newtype AssignOp =
   AssignOp (Maybe ArithmOp)
   deriving (Show, Eq)
 
+-- | See https://golang.org/ref/spec#Integer_literals
 data IntType'
+  -- Eg 123
   = Decimal
+  -- Eg 0135
   | Octal
+  -- Eg 0xab90
   | Hexadecimal
   deriving (Show, Eq)
 
@@ -390,6 +393,7 @@ data StringLiteral =
                 String
   deriving (Show, Eq)
 
+-- | See https://golang.org/ref/spec#FieldDecl
 data FieldDecl
   = FieldDecl Identifiers
               Type'

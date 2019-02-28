@@ -17,6 +17,7 @@ import           ErrorBundle
 import           NeatInterpolation
 import           Test.Hspec
 
+-- Offest placeholder
 o = Offset 0
 
 specConvert :: (b -> c) -> [(a, b)] -> [(a, c)]
