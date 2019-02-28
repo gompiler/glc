@@ -204,6 +204,24 @@ spec = do
     specOne
       ( "type (num int;);"
       , Right (TopDecl $ TypeDef [TypeDef' "num" (Type "int")]) :: Either String TopDecl)
+    specAll "Programs" (specConvert Right programE :: [(String, Either String Program)])
+
+programMain :: [(String, FuncBody)]
+programMain = [ ("", (BlockStmt []))
+              ,("var a = !!!!!! false;", (BlockStmt [Declare (VarDecl [VarDecl' ("a" :| []) (Right (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Var "false")))))) :| []))])]))]
+
+programMainL :: [(String, String)]
+programMainL = [ ("", "") ]
+
+programE :: [(String, Program)]
+programE = map (\(s,body) -> ("package main; func main(){" ++ s ++ "}", Program {package = "main", topLevels = [TopFuncDecl (FuncDecl "main" (Signature (Parameters []) Nothing) body)]})) programMain
+  
+programEL :: [(String, String)]
+programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
+
+instance SpecBuilder String (Either String Program) () where
+  expectation input output =
+    it (show $ lines input) $ parse input `shouldBe` output
 
 instance SpecBuilder String (Either String Stmt) () where
   expectation input output =
