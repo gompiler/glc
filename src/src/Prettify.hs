@@ -13,6 +13,10 @@ import qualified Data.Maybe         as Maybe
 tab :: [String] -> [String]
 tab = map ("\t" ++)
 
+-- Prettify, but enforces a single line
+prettify1 :: Prettify a => a -> String
+prettify1 = unwords . prettify'
+
 -- | Some prettified components span a single line
 -- In that case, we can implement prettify by default
 -- And use this function to derive the list format from the string format
@@ -78,6 +82,8 @@ instance Prettify SimpleStmt where
   prettify' (ExprStmt e) = prettify' e
   prettify' (Increment _ e) = ["(" ++ prettify e ++ ")++"]
   prettify' (Decrement _ e) = ["(" ++ prettify e ++ ")--"]
+  prettify' (Assign _ op e1 e2) = [prettify e1 ++ " " ++ prettify op ++ " " ++ prettify e2]
+  prettify' (ShortDeclare ids exprs) = [prettify ids ++ " := " ++ prettify exprs]
 
 instance Prettify Stmt
 
@@ -85,8 +91,19 @@ instance Prettify SwitchCase
 
 instance Prettify ForClause
 
+instance Prettify (NonEmpty Expr)
+
 instance Prettify Expr
 
+instance Prettify Literal where
+  prettify (IntLit _ i)              = i
+  prettify (FloatLit f)              = show f
+  prettify (RuneLit c)               = "'" ++ [c] ++ "'"
+  prettify (StringLit Interpreted s) = "\"" ++ s ++ "\""
+  prettify (StringLit Raw s)         = "`" ++ s ++ "`"
+  prettify' = prettify''
+
+--  prettify' (FuncLit sig body)         = ["func" ++ prettify sig]
 instance Prettify BinaryOp
 
 instance Prettify ArithmOp
