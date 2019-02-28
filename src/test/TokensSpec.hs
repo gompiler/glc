@@ -11,7 +11,7 @@ import           Scanner
 import           Test.Hspec
 
 spec :: Spec
-spec =
+spec = do
   describe "scanT" $ do
     specWithG scanT  (";", Right ([TSemicolon]))
     mapM_ (specWithG scanT) expectScanT

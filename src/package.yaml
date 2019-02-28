@@ -29,6 +29,7 @@ dependencies:
 - hspec
 - text
 - neat-interpolation
+- QuickCheck
 
 library:
   source-dirs: [src, src/generated]

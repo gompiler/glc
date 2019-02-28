@@ -19,19 +19,20 @@ spec = do
   describe "parseId" $ do
     mapM_ (specWithG $ scanToP pId) expectId
     mapM_ (specWithG $ scanToP pE) expectE
-
+    -- mapM_ (specWithG $ scanToP pT) expectT
+    
 scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
 scanToP f s = runAlex s f
 
+idNames :: [String]
+idNames = ["testid", "identttt", "_"]
+
 expectId :: [(String, Either String (NonEmpty Identifier))]
 expectId =
-  [ ("testid", Right (NonEmpty.fromList ["testid"]))
-  , ("identttt", Right (NonEmpty.fromList ["identttt"]))
-  , ("_", Right (NonEmpty.fromList ["_"]))
-  , ("a, b, dddd", Right (NonEmpty.fromList ["a", "b", "dddd"]))
+  map (strData' (\id -> Right $ NonEmpty.fromList $ [id])) idNames ++
+  [ ("a, b, dddd", Right (NonEmpty.fromList ["a", "b", "dddd"]))
   , ("_, _,_", Right (NonEmpty.fromList ["_", "_", "_"]))
-  , ( "weirdsp, _   ,aacing"
-    , Right (NonEmpty.fromList ["weirdsp", "_", "aacing"]))
+  , ( "weirdsp, _   ,aacing" , Right (NonEmpty.fromList ["weirdsp", "_", "aacing"]))
   ]
 
 -- | Base expression list
@@ -128,6 +129,9 @@ eComb baseL =
 
 eComb' :: [(String, Expr)]
 eComb' = eComb eBase
+
+-- expectT :: [(String, Either String Type)]
+-- expectT = map (strData (Right $ Type)) idNames
 
 expectE :: [(String, Either String Expr)]
 expectE = map (\(s, e) -> (s, Right e)) eComb'
