@@ -22,10 +22,7 @@ stmtRecursiveVerify constraint (For _ s) = verifyAll (stmtRecursiveVerify constr
 stmtRecursiveVerify _ _ = undefined
 
 switchVerify :: PureConstraint Program
-switchVerify program =
-  if null errors
-    then Nothing
-    else Just $ head errors
+switchVerify program = firstOrNothing errors
   where
     errors :: [ErrorBundle']
     errors = mapMaybe (stmtRecursiveVerify stmtVerify) (mapMaybe topToStmt $ topLevels program)
