@@ -15,8 +15,11 @@ cleangen:
 	@rm -f src/generated/Parser.hs
 
 .PHONY: build
-build: src/generated/Tokens.hs src/generated/Parser.hs
+build: gen
 	stack --allow-different-user build
+
+.PHONY: gen
+gen: src/generated/Tokens.hs src/generated/Parser.hs
 
 src/generated/Tokens.hs: golite.x
 	alex $< -g -o $@

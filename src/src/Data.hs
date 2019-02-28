@@ -258,24 +258,10 @@ data SliceRange
               Expr
   deriving (Show, Eq)
 
---  PrimaryExpr Selector |
---  	PrimaryExpr Index |
---  	PrimaryExpr Slice |
---  	PrimaryExpr TypeAssertion |
---  	PrimaryExpr Arguments .
---
---  Selector       = "." identifier .
---  Index          = "[" Expression "]" .
---  Slice          = "[" [ Expression ] ":" [ Expression ] "]" |
---                   "[" [ Expression ] ":" Expression ":" Expression "]" .
---  TypeAssertion  = "." "(" Type ")" .
---  Arguments      = "(" [ ( ExpressionList | Type [ "," ExpressionList ] ) [ "..." ] [ "," ] ] ")" .
 -- | See https://golang.org/ref/spec#Literal
--- TODO do we want to store string and type?
 -- Type can be inferred from string
 -- If we want to keep erroneous states invalid,
 -- we might want just string, or store as int and reformat on pretty print
--- TODO support other literals?
 data Literal
   = IntLit IntType'
            String
