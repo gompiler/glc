@@ -165,7 +165,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 %%
 
 {- WHY DOES PACKAGE USE STRING AND NOT PACKAGENAME? -}
-Program     : package ident TopDecls                  { Program {package=getIdent($2), topLevels=$3} }
+Program     : package ident ';' TopDecls              { Program {package=getIdent($2), topLevels=$4} }
 
 TopDecls    : TopDeclsR                               { reverse $1 }
 TopDeclsR   : TopDeclsR TopDecl                       { $2 : $1 }
@@ -186,7 +186,7 @@ Type        : ident                                   { Type $ getIdent $1 }
 
 {- need errors for figuring out if a type was present and if so whether an expression was passed -}
 {- TODO: LIST OF DECLARATIONS...? -}
-Decl        : var InnerDecl ';'                       { VarDecl [$2] }
+Decl        : var InnerDecl                           { VarDecl [$2] }
             | var '(' InnerDecls ')' ';'              { VarDecl $3 }
             | type ident Type ';'                     { TypeDef [TypeDef' (getIdent $2) $3] }
             | type '(' TypeDefs ')' ';'               { TypeDef $3 }
@@ -203,7 +203,7 @@ DeclBody    : Type                                    { Left ($1, []) }
 
 TypeDefs    : TypeDefsR                               { reverse $1 }
 TypeDefsR   : TypeDefsR ident Type ';'                { (TypeDef' (getIdent $2) $3) : $1 }
-            | {- empty -}                             { [] }
+            | ident Type ';'                          { [TypeDef' (getIdent $1) $2] }
 
 Struct      : struct '{' FieldDecls '}'               { $3 }
 
@@ -217,9 +217,11 @@ FuncDecl    : func ident Signature BlockStmt          { FuncDecl (getIdent $2) $
 
 Signature   : '(' Params ')' Result                   { Signature (Parameters $2) $4 }
 Params      : ParamsR                                 { reverse $1 }
-ParamsR     : ParamsR Idents ident                    { (ParameterDecl $2 (Type $ getIdent $3)) : $1 }
+ParamsR     : ParamsR Idents Type                     { (ParameterDecl $2 $3) : $1 }
+            | ParamsR ',' Idents Type                 { (ParameterDecl $3 $4) : $1}
             | {- empty -}                             { [] }
-Result      : ident                                   { Just (Type $ getIdent $1) }
+            
+Result      : Type                                    { Just $1 }
             | {- empty -}                             { Nothing }
 
 Stmt        : BlockStmt ';'                           { $1 }
@@ -230,7 +232,7 @@ Stmt        : BlockStmt ';'                           { $1 }
             | break ';'                               { Break }
             | continue ';'                            { Continue }
             | fallthrough ';'                         { Fallthrough }
-            | Decl ';'                                { Declare $1 }
+            | Decl                                    { Declare $1 }
             | print '(' EIList ')' ';'                { Print $3 }
             | println '(' EIList ')' ';'              { Println $3 }
             | return Expr ';'                         { Return $ Just $2 }
