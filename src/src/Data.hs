@@ -2,9 +2,9 @@ module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
-import           ErrorBundle
 import           GHC.Exts           (Constraint)
 import           GHC.TypeLits
+import ErrorBundle
 
 -- note that I do not classify blank identifiers as a separate type
 -- because we can easily pattern match it already
@@ -187,9 +187,9 @@ data Stmt
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
 data SwitchCase
-  = Case (NonEmpty Expr)
+  = Case Offset (NonEmpty Expr)
          Stmt
-  | Default Stmt
+  | Default Offset Stmt
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#For_statements

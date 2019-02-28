@@ -118,8 +118,8 @@ instance Prettify Stmt where
           Nothing  -> prettify ss
 
 instance Prettify SwitchCase where
-  prettify' (Case e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)
-  prettify' (Default s) = "default:" : tab (prettify' s)
+  prettify' (Case _ e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)
+  prettify' (Default _ s) = "default:" : tab (prettify' s)
 
 instance Prettify (SimpleStmt, Expr) where
   prettify (EmptyStmt, e) = prettify e

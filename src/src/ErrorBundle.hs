@@ -7,6 +7,8 @@ import           Text.Megaparsec
 
 type ErrorBundle = ParseErrorBundle String Void
 
+type ErrorBundle' = PosState String -> ErrorBundle
+
 newtype Offset =
   Offset Int
 
@@ -26,6 +28,9 @@ class ErrorBreakpoint a where
           { bundleErrors = NonEmpty.fromList [FancyError o (Set.singleton $ ErrorFail msg)]
           , bundlePosState = initialState
           }
+
+instance ErrorBreakpoint Offset where
+  offset = id
 
 -- | Pass string, where first character marks offset 1
 createInitialState :: String -> PosState String
