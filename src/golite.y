@@ -256,17 +256,6 @@ SimpleStNE  : {- empty -}                             { EmptyStmt }
             | ident "++"                              { Increment $ Var (getIdent $1) } {- TODO -}
             | ident "--"                              { Decrement $ Var (getIdent $1) } {- TODO -}
 
-            | EIList "+=" EIList                      { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "-=" EIList                      { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "|=" EIList                      { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "^=" EIList                      { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "*=" EIList                      { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "/=" EIList                      { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "%=" EIList                      { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "<<=" EIList                     { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
-            | EIList ">>=" EIList                     { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "&=" EIList                      { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
-            | EIList "&^=" EIList                     { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
             | EIList '=' EIList                       { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
 
             | Expr "+=" Expr                          { Assign (AssignOp $ Just Add) (nonEmpty [$1]) (nonEmpty [$3]) }
