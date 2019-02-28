@@ -20,7 +20,8 @@
                 , pElses
                 , pEl
                 , pE
-                , hparse)
+                , hparse
+                , parse)
 where
 import Scanner
 import Data
@@ -43,7 +44,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 %partial pId Idents
 %partial pE Expr
 %partial pT Type
-%partial pEl ExprList
+%partial pEl EIList
 %partial pTDecl TopDecl
 %partial pTDecls TopDecls
 %partial pDec Decl
@@ -71,6 +72,8 @@ import qualified Data.List.NonEmpty as NonEmpty
 %left '+' '-' '|' '^'
 %left '*' '/' '%' "<<" ">>" '&' "&^"
 %nonassoc '!' POS NEG COM {- TODO: SHOULD THIS BE ASSOCIATIVE? -}
+%left '[' ']' {- TODO: CHECK PRECEDENCE HERE -}
+%left '.' {- TODO: CHECK PRECEDENCE HERE -}
 
 %token
     '+'                                 { Token _ TPlus }
@@ -108,7 +111,7 @@ import qualified Data.List.NonEmpty as NonEmpty
     "^="                                { Token _ TLXorA }
     "&&"                                { Token _ TAnd }
     "||"                                { Token _ TOr }
-    "<-"                                { Token _ TRecv }
+    "<-"                                { Token _ TRecv }             {- unsupported -}
     "++"                                { Token _ TInc }
     "--"                                { Token _ TDInc }
     "=="                                { Token _ TEq }
@@ -132,7 +135,7 @@ import qualified Data.List.NonEmpty as NonEmpty
     for                                 { Token _ TFor }
     func                                { Token _ TFunc }
     go                                  { Token _ TGo }               {- unsupported -}
-    goto                                { Token _ TGoto }
+    goto                                { Token _ TGoto }             {- unsupported -}
     if                                  { Token _ TIf }
     import                              { Token _ TImport }           {- unsupported -}
     interface                           { Token _ TInterface }        {- unsupported -}
@@ -160,11 +163,6 @@ import qualified Data.List.NonEmpty as NonEmpty
     ident                               { Token _ (TIdent _) }
 
 %%
-
-{- TODO: EXPRESSION STATEMENTS -}
-{- TODO: FUNCTION TYPES -}
-{- TODO: LABELS -}
-{- TODO: TYPECASTS -}
 
 {- WHY DOES PACKAGE USE STRING AND NOT PACKAGENAME? -}
 Program     : package ident TopDecls                  { Program {package=getIdent($2), topLevels=$3} }
@@ -198,8 +196,8 @@ InnerDeclsR : InnerDeclsR InnerDecl                   { $2 : $1 }
 
 {- TODO: TYPES OF RETURN... NEED OVERRIDING AND STUFF -}
 DeclBody    : Type                                    { Left ($1, []) }
-            | Type '=' ExprList                       { Left ($1, $3) } {- TODO: NON EMPTY? -}
-            | '=' ExprList                            { Right (nonEmpty $2) }
+            | Type '=' EIList                         { Left ($1, $3) } {- TODO: NON EMPTY? -}
+            | '=' EIList                              { Right (nonEmpty $2) }
 
 TypeDefs    : TypeDefsR                               { reverse $1 }
 TypeDefsR   : TypeDefsR ident Type ';'                { (TypeDef' (getIdent $2) $3) : $1 }
@@ -229,10 +227,10 @@ Stmt        : BlockStmt ';'                           { $1 }
             | SwitchStmt ';'                          { $1 }
             | break ';'                               { Break }
             | continue ';'                            { Continue }
-         {- | fallthrough ';'                         {  } TODO -}
+            | fallthrough ';'                         { Fallthrough }
             | Decl ';'                                { Declare $1 }
-            | print '(' ExprList ')' ';'              { Print $3 }
-            | println '(' ExprList ')' ';'            { Println $3 }
+            | print '(' EIList ')' ';'                { Print $3 }
+            | println '(' EIList ')' ';'              { Println $3 }
             | return Expr ';'                         { Return $ Just $2 }
             | return ';'                              { Return Nothing }
 
@@ -246,19 +244,21 @@ BlockStmt   : '{' Stmts '}'                           { BlockStmt $2 }
 SimpleStmt  : ';'                                     { EmptyStmt }
             | ident "++" ';'                          { Increment $ Var (getIdent $1) } {- TODO -}
             | ident "--" ';'                          { Decrement $ Var (getIdent $1) } {- TODO -}
-            | ExprList "+=" ExprList ';'              { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "-=" ExprList ';'              { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "|=" ExprList ';'              { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "^=" ExprList ';'              { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "*=" ExprList ';'              { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "/=" ExprList ';'              { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "%=" ExprList ';'              { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "<<=" ExprList ';'             { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList ">>=" ExprList ';'             { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "&=" ExprList ';'              { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList "&^=" ExprList ';'             { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
-            | ExprList '=' ExprList ';'               { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
-            | Idents ":=" ExprList ';'                { ShortDeclare $1 (nonEmpty $3) }
+            | NIExpr ';'                              { ExprStmt $1 } {- Weed this to make sure they're valid expr stmts -}
+            | ident ';'                               { ExprStmt $ (varOfI . getIdent) $1 } {- This, plus NIExpr, make up Expr -}
+            | EIList "+=" EIList ';'                  { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "-=" EIList ';'                  { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "|=" EIList ';'                  { Assign (AssignOp $ Just BitOr) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "^=" EIList ';'                  { Assign (AssignOp $ Just BitXor) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "*=" EIList ';'                  { Assign (AssignOp $ Just Multiply) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "/=" EIList ';'                  { Assign (AssignOp $ Just Divide) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "%=" EIList ';'                  { Assign (AssignOp $ Just Remainder) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "<<=" EIList ';'                 { Assign (AssignOp $ Just ShiftL) (nonEmpty $1) (nonEmpty $3) }
+            | EIList ">>=" EIList ';'                 { Assign (AssignOp $ Just ShiftR) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "&=" EIList ';'                  { Assign (AssignOp $ Just BitAnd) (nonEmpty $1) (nonEmpty $3) }
+            | EIList "&^=" EIList ';'                 { Assign (AssignOp $ Just BitClear) (nonEmpty $1) (nonEmpty $3) }
+            | EIList '=' EIList ';'                   { Assign (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
+            | Idents ":=" EIList ';'                  { ShortDeclare $1 (nonEmpty $3) }
 
 IfStmt      : if SimpleStmt Expr BlockStmt Elses      { If ($2, $3) $4 $5 }
             | if Expr BlockStmt Elses                 { If (EmptyStmt, $2) $3 $4 }
@@ -276,11 +276,14 @@ SwitchStmt  : switch SimpleStmt Expr '{' SwitchBody '}' { Switch $2 (Just $3) $5
             | switch '{' SwitchBody '}'               { Switch EmptyStmt Nothing $3 }
 
 SwitchBody  : SwitchBodyR                             { reverse $1 }
-SwitchBodyR : SwitchBodyR case ExprList ':' Stmts     { (Case (nonEmpty $3) (BlockStmt $5)) : $1 }
+SwitchBodyR : SwitchBodyR case EIList ':' Stmts       { (Case (nonEmpty $3) (BlockStmt $5)) : $1 }
             | SwitchBodyR default Stmts               { (Default $ BlockStmt $3) : $1 }
             | {- empty -}                             { [] }
 
-Expr        : '+' Expr %prec POS                      { Unary Pos $2 }
+Expr        : NIExpr                                  { $1 }
+            | ident                                   { Var (getIdent $1) }
+
+NIExpr      : '+' Expr %prec POS                      { Unary Pos $2 }
             | '-' Expr %prec NEG                      { Unary Neg $2 }
             | '!' Expr                                { Unary Not $2 }
             | '^' Expr %prec COM                      { Unary BitComplement $2 }
@@ -304,6 +307,13 @@ Expr        : '+' Expr %prec POS                      { Unary Pos $2 }
             | Expr "<<" Expr                          { Binary $1 (Arithm ShiftL) $3 }
             | Expr ">>" Expr                          { Binary $1 (Arithm ShiftR) $3 }
             | '(' Expr ')'                            { $2 }
+            | Expr '.' ident                          { Selector $1 $ getIdent $3 }
+            | Expr '[' Expr ']'                       { Index $1 $3 }
+            | Expr '[' ':' ']'                        { Slice $1 $ SliceSimple Nothing Nothing }
+            | Expr '[' ':' Expr ']'                   { Slice $1 $ SliceSimple Nothing (Just $4) }
+            | Expr '[' Expr ':' Expr ']'              { Slice $1 $ SliceSimple (Just $3) (Just $5) }
+            | Expr '[' ':' Expr ':' Expr ']'          { Slice $1 $ SliceFull Nothing $4 $6 }
+            | Expr '[' Expr ':' Expr ':' Expr ']'     { Slice $1 $ SliceFull (Just $3) $5 $7 }
             | decv                                    { Lit (IntLit Decimal $ getInnerString $1) }
             | octv                                    { Lit (IntLit Octal $ getInnerString $1) }
             | hexv                                    { Lit (IntLit Hexadecimal $ getInnerString $1) }
@@ -314,16 +324,22 @@ Expr        : '+' Expr %prec POS                      { Unary Pos $2 }
             | append '(' Expr ',' Expr ')'            { AppendExpr $3 $5 }
             | len '(' Expr ')'                        { LenExpr $3 }
             | cap '(' Expr ')'                        { CapExpr $3 }
-         {- | ident                                   { Var (getIdent $1) } HOW TO DO WITHOUT CONFLICTS? -}
             {- TODO: HOW TO DO ARRAY ACCESS -}
 
-ExprList    : ExprListR                               { reverse $1 }
-ExprListR   : ExprListR ',' Expr                      { $3 : $1 }
-            | Expr                                    { [$1] }
+EIList      : NIExprList                              { $1 }
+            | Idents                                  { map varOfI $ NonEmpty.toList $1 }
+
+NIExprList  : NIExprListR                             { reverse $1 }
+NIExprListR : NIExprListR ',' Expr                    { $3 : $1 }
+            | IdentsR ',' NIExpr                      { $3 : (map varOfI $1) }
+            | NIExpr                                  { [$1] }
 
 {
 
 -- Helper functions
+
+varOfI :: Identifier -> Expr
+varOfI i = Var i
 
 nonEmpty :: [a] -> NonEmpty a
 nonEmpty l = NonEmpty.fromList l

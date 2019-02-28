@@ -7,6 +7,7 @@ module Scanner
   , scanP
   , scanC
   , putExit
+  , putSucc
   , prettify
   , T.Token(..)
   , T.InnerToken(..)
@@ -155,9 +156,11 @@ scanT s = fmap reverse (scan s)
 
 -- | putExit: function to output to stderr and exit with return code 1
 putExit :: String -> IO ()
-putExit err = do
-  hPutStrLn stderr err
-  exitFailure
+putExit err = hPutStrLn stderr err >> exitFailure
+
+-- | putSucc: output to stdin and exit with success
+putSucc :: String -> IO ()
+putSucc s = putStrLn s >> exitSuccess
 
 -- | Print result of scan, i.e. tokens or error
 scanP :: String -> IO ()

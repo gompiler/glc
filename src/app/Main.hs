@@ -2,8 +2,8 @@ module Main where
 
 import qualified Options.Applicative as Op
 import           ParseCLI
+import           Parser
 import           Scanner
-import Parser
 
 main :: IO ()
 main = do
@@ -17,7 +17,7 @@ main = do
       case cmd of
         Scan      -> scanC
         Tokens    -> scanP
-        Parse     -> const $ putStrLn "parse not yet implemented"
+        Parse     -> either putExit (const $ putSucc "OK") . parse
         Pretty    -> const $ putStrLn "pretty not yet implemented"
         Symbol    -> const $ putStrLn "symbol not yet implemented"
         Typecheck -> const $ putStrLn "typecheck not yet implemented"
