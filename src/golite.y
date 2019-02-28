@@ -175,7 +175,7 @@ TopDecl     : Decl                                    { TopDecl $1 }
             | FuncDecl                                { TopFuncDecl $1 }
 
 Idents      : IdentsR                                 { (nonEmpty . reverse) $1 }
-IdentsR     : IdentsR ',' ident                       { (getIdent $3) : $1 } {- TODO -}
+IdentsR     : IdentsR ',' ident                       { (getIdent $3) : $1 }
             | ident ',' ident                         { [getIdent $3, getIdent $1] }
 
 Type        : ident                                   { Type $ getIdent $1 }
@@ -197,7 +197,6 @@ InnerDecls  : InnerDeclsR                             { reverse $1 }
 InnerDeclsR : InnerDeclsR InnerDecl                   { $2 : $1 }
             | {- empty -}                             { [] }
 
-{- TODO: TYPES OF RETURN... NEED OVERRIDING AND STUFF -}
 DeclBody    : Type                                    { Left ($1, []) }
             | Type '=' EIList                         { Left ($1, $3) } {- TODO: NON EMPTY? -}
             | Type '=' Expr                           { Left ($1, [$3]) } {- TODO: NON EMPTY? -}
@@ -215,7 +214,6 @@ FieldDeclsR : FieldDeclsR Idents Type ';'             { (FieldDecl $2 $3) : $1 }
             | FieldDeclsR ident Type ';'              { (FieldDecl (nonEmpty [getIdent $2]) $3) : $1 }
             | {- empty -}                             { [] }
 
-{- TODO: OPTIONAL/COMPLEX FUNC TYPE -}
 FuncDecl    : func ident Signature BlockStmt ';'      { FuncDecl (getIdent $2) $3 $4 } {- TODO: PACKAGE NAME? -}
 
 Signature   : '(' Params ')' Result                   { Signature (Parameters $2) $4 }
@@ -237,10 +235,12 @@ Stmt        : BlockStmt ';'                           { $1 }
             | continue ';'                            { Continue }
             | fallthrough ';'                         { Fallthrough }
             | Decl                                    { Declare $1 } {- decl includes semicolon -}
+
             | print '(' EIList ')' ';'                { Print $3 }
             | print '(' Expr ')' ';'                  { Print [$3] }
             | println '(' EIList ')' ';'              { Println $3 }
             | println '(' Expr ')' ';'                { Println [$3] }
+
             | return Expr ';'                         { Return $ Just $2 }
             | return ';'                              { Return Nothing }
 
@@ -255,8 +255,6 @@ BlockStmt   : '{' Stmts '}'                           { BlockStmt $2 }
 SimpleStNE  : {- empty -}                             { EmptyStmt }
             | ident "++"                              { Increment $ Var (getIdent $1) } {- TODO -}
             | ident "--"                              { Decrement $ Var (getIdent $1) } {- TODO -}
-         {- | NIExpr                                  { ExprStmt $1 } Weed this to make sure they're valid expr stmts -}
-         {- | ident                                   { ExprStmt $ (varOfI . getIdent) $1 } This, plus NIExpr, make up Expr -}
 
             | EIList "+=" EIList                      { Assign (AssignOp $ Just Add) (nonEmpty $1) (nonEmpty $3) }
             | EIList "-=" EIList                      { Assign (AssignOp $ Just Subtract) (nonEmpty $1) (nonEmpty $3) }
