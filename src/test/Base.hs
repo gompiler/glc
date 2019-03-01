@@ -28,11 +28,13 @@ import           NeatInterpolation
 import           Test.Hspec
 import           Test.QuickCheck
 
+o :: Offset
 o = Offset 0
 
 pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
 pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))
 
+fstConvert :: (a -> a') -> [(a, b')] -> [(a', b')]
 fstConvert f = pairConvert f id
 
 sndConvert = pairConvert id

@@ -29,9 +29,9 @@ spec = do
       -- (\x -> scanToP pId x == (Right $ NonEmpty.fromList [x]))
     qcGen
       "ident list"
-      False
+      True
       (genCommaList T.genId)
-      (\x -> scanToP pId x == (Right $ NonEmpty.fromList $ splitOn "," x))
+      (\x -> scanToP pId x == (Right $ NonEmpty.fromList $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
     qcGen
       "basic expressions"
@@ -210,14 +210,15 @@ spec = do
     -- specAll "Invalid Programs" (sndConver Left programEL :: [(String, Either String Program)])
 
 programMain :: [(String, FuncBody)]
-programMain = [ ("", (BlockStmt []))
-              ,("var a = !!!!!! false;", (BlockStmt [Declare (VarDecl [VarDecl' ("a" :| []) (Right (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Var "false")))))) :| []))])]))]
+programMain = [ ("", (BlockStmt []))]
+              -- ,("var a = !!!!!! false;", (BlockStmt [Declare (VarDecl [VarDecl' (Identifier o "a" :| []) (Right (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Var "false")))))) :| []))])]))]
 
 programMainL :: [(String, String)]
-programMainL = [ ("", "") ]
+programMainL = [ ("", "")
+               , ("var a = !!!!!! false;", "")]
 
 programE :: [(String, Program)]
-programE = map (\(s,body) -> ("package main; func main(){" ++ s ++ "}", Program {package = "main", topLevels = [TopFuncDecl (FuncDecl "main" (Signature (Parameters []) Nothing) body)]})) programMain
+programE = map (\(s,body) -> ("package main; func main(){" ++ s ++ "}", Program {package = "main", topLevels = [TopFuncDecl (FuncDecl (Identifier o "main") (Signature (Parameters []) Nothing) body)]})) programMain
   
 programEL :: [(String, String)]
 programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
@@ -242,7 +243,7 @@ instance SpecBuilder String (Either String [ParameterDecl]) () where
   expectation input output =
     it (show $ lines input) $ scanToP pPar input `shouldBe` output
 
-instance SpecBuilder String (Either String Type) () where
+instance SpecBuilder String (Either String (Offset, Type)) () where
   expectation input output =
     it (show $ lines input) $ scanToP pT input `shouldBe` output
 
@@ -274,15 +275,15 @@ genCommaList f =
 genEBase :: Gen (String, Expr)
 genEBase =
   oneof
-    [ T.genId >>= \s -> return (s, Var s)
-    , T.genNum >>= \s -> return (s, Lit $ IntLit (Offset 0) Decimal s)
-    , T.genOct >>= \s -> return (s, Lit $ IntLit (Offset 0) Octal s)
-    , T.genHex >>= \s -> return (s, Lit $ IntLit (Offset 0) Hexadecimal s)
+    [ T.genId >>= \s -> return (s, Var $ Identifier o s)
+    , T.genNum >>= \s -> return (s, Lit $ IntLit o Decimal s)
+    , T.genOct >>= \s -> return (s, Lit $ IntLit o Octal s)
+    , T.genHex >>= \s -> return (s, Lit $ IntLit o Hexadecimal s)
     , ((arbitrary :: Gen Float) `suchThat` \f -> f > 0.0 && f > 0.1) >>= \f ->
-        return (show f, Lit $ FloatLit (Offset 0) f)
-    , T.genChar' >>= \c -> return ('\'' : c : "'", Lit $ RuneLit (Offset 0) c)
-    , T.genString >>= \s -> return (s, Lit $ StringLit $ Offset Interpreted s)
-    , T.genRString >>= \s -> return (s, Lit $ StringLit $ Offset Raw s)
+        return (show f, Lit $ FloatLit o f)
+    , T.genChar' >>= \c -> return ('\'' : c : "'", Lit $ RuneLit o c)
+    , T.genString >>= \s -> return (s, Lit $ StringLit o Interpreted s)
+    , T.genRString >>= \s -> return (s, Lit $ StringLit o Raw s)
     ]
 
 genEBin :: Gen (String, Expr)
@@ -311,14 +312,14 @@ genEBin = do
       , ("<<", Arithm ShiftL)
       , (">>", Arithm ShiftR)
       ]
-  return (s1 ++ sop ++ s2, Binary e1 op e2)
+  return (s1 ++ sop ++ s2, Binary o op e1 e2)
 
 genEUn1 :: Gen (String, Expr)
 genEUn1 = do
   (s, e) <- genEBase
   (sop, op) <-
     elements [("+", Pos), ("-", Neg), ("!", Not), ("^", BitComplement)]
-  return (sop ++ s, Unary op e)
+  return (sop ++ s, Unary o op e)
 
 genEUn2 :: Gen (String, Expr)
 genEUn2 = do
@@ -334,7 +335,7 @@ genEUn =
     , (1, genEBase >>= \(s, e) -> return ('(' : s ++ ")", e))
     , ( 1
       , T.genId >>= \id1 ->
-          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector (Var id1) id2))
+          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector (Var $ Identifier o id1) $ Identifier o id2))
     ]
 
 genE :: Gen (String, Expr)
@@ -342,19 +343,19 @@ genE = oneof [genEBase, genEUn, genEBin]
 
 expectT :: [(String, Type)]
 expectT =
-  [ strData "wqiufhiwqf" (Type)
-  , strData "int" (Type)
-  , ("(float64)", Type "float64")
-  , ("[22]int", ArrayType (Lit $ IntLit Decimal "22") (Type "int"))
-  , ("[]int", SliceType (Type "int"))
+  [ strData "wqiufhiwqf" (Type . Identifier o)
+  , strData "int" (Type . Identifier o)
+  , ("(float64)", Type $ Identifier o "float64")
+  , ("[22]int", ArrayType (Lit $ IntLit o Decimal "22") (Type $ Identifier o "int"))
+  , ("[]int", SliceType (Type $ Identifier o "int"))
   ]
 
 -- genETypeBase :: Gen (String, Type)
 -- genETypeBase = oneof [T.genId >>= genEBase >>= \i -> "[" ++  ++ "] " ++ id, ArrayType ]
 expectEL :: [(String, [Expr])]
 expectEL =
-  [ ("123, 888", (Lit $ IntLit (Offset 0) Decimal "123") : [Lit $ IntLit (Offset 0) Decimal "888"])
-  , ("123, 88.8", (Lit $ IntLit (Offset 0) Decimal "123") : [Lit $ FloatLit (Offset 0) 88.8])
+  [ ("123, 888", (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
+  , ("123, 88.8", (Lit $ IntLit o Decimal "123") : [Lit $ FloatLit o 88.8])
   ]
 
 -- expectDecl :: [(String, Decl)]

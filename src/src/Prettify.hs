@@ -216,7 +216,7 @@ instance Prettify Type' where
 instance Prettify Type where
   prettify (ArrayType e t) = "[" ++ prettify e ++ "]" ++ prettify t
   prettify (StructType [fdl]) = "struct {" ++ prettify fdl ++ "}"
-  prettify (StructType fdls) = "struct {" : tab (map prettify fdls) ++ "}"
+  -- prettify' (StructType fdls) = "struct {" : tab (map prettify fdls) ++ "}"
   prettify (SliceType t)   = "[]" ++ prettify t
   prettify (PointerType t) = "*" ++ prettify t
   prettify (FuncType s)    = "func" ++ prettify s
