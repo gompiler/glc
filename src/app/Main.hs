@@ -5,6 +5,7 @@ import           ParseCLI
 import           Parser
 import           Prettify
 import           Scanner
+import           Weeding
 
 main :: IO ()
 main = do
@@ -18,7 +19,7 @@ main = do
       case cmd of
         Scan      -> scanC
         Tokens    -> scanP
-        Parse     -> either putExit (const $ putSucc "OK") . parse
+        Parse -> either putExit (const $ putSucc "OK") . (\s -> parse s >>= weed s)
         Pretty    -> putStrLn . (pCoupler parse)
-        Symbol    -> const $ putStrLn "symbol not yet implemented"
+        Symbol -> const $ putStrLn "symbol not yet implemented"
         Typecheck -> const $ putStrLn "typecheck not yet implemented"
