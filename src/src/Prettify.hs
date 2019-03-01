@@ -155,8 +155,10 @@ instance Prettify Literal where
   prettify (IntLit _ _ i)              = i
   prettify (FloatLit _ f)              = show f
   prettify (RuneLit _ c)               = "'" ++ [c] ++ "'"
-  prettify (StringLit _ Interpreted s) = "\"" ++ s ++ "\""
-  prettify (StringLit _ Raw s)         = "`" ++ s ++ "`"
+  -- Quotes within string s
+  prettify (StringLit _ Interpreted s) = s
+  -- Quotes within string s
+  prettify (StringLit _ Raw s)         = s
   prettify' = prettify''
 
 --  prettify' (FuncLit sig body)         = ["func" ++ prettify sig]
