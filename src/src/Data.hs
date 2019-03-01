@@ -1,3 +1,7 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
+
 module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
@@ -15,9 +19,8 @@ data Identifier =
 
 type Identifiers = NonEmpty Identifier
 
-newtype TODO =
-  TODO String -- temp
-  deriving (Show, Eq)
+instance ErrorBreakpoint Identifiers where
+  offset (Identifier o _ :| _) = o
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
@@ -194,6 +197,10 @@ data SwitchCase
             Stmt
   deriving (Show, Eq)
 
+instance ErrorBreakpoint where
+  offset (Case o _ _)  = o
+  offset (Default o _) = o
+
 -- | See https://golang.org/ref/spec#For_statements
 -- Golite does not support range statement
 data ForClause
@@ -286,8 +293,8 @@ data Literal
   | RuneLit Offset
             Char
   | StringLit Offset
-                StringType'
-                String
+              StringType'
+              String
   -- | See https://golang.org/ref/spec#FunctionLit
   | FuncLit Signature
             FuncBody
