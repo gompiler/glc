@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 module TokensSpec
   ( spec
@@ -26,7 +27,7 @@ spec = do
 
 genId' :: Gen String
 genId' = oneof $ [choose ('A', 'Z') >>= toRetL, (:) <$> choose ('A', 'Z') <*> genId']
-  
+
 genId :: Gen String
 genId =
   frequency [(30, genId'), (1, return "_")]
@@ -51,7 +52,7 @@ genHex = genHex' >>= (\l -> elements ['x', 'X'] >>= \x -> return $ '0' : x : l)
 
 genOct' :: Gen String
 genOct' = oneof [choose ('0', '7') >>= toRetL, (:) <$> choose ('0', '7') <*> genOct']
-  
+
 genOct :: Gen String
 genOct = genOct' >>= \s -> return $ '0':s
 
@@ -114,7 +115,7 @@ instance SpecBuilder String (Either String [InnerToken]) () where
   expectation input output =
     it (show $ lines input) $ scanT input `shouldBe` output
 
-scanInputs = specConvert Right scanSuccess ++ specConvert Left scanFailure
+scanInputs = sndConvert Right scanSuccess ++ sndConvert Left scanFailure
 
 scanSuccess :: [(String, [InnerToken])]
 scanSuccess =

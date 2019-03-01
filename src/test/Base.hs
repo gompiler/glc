@@ -1,13 +1,17 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 module Base
   ( SpecBuilder(..)
   , Data.Text.Text
   , Data.Text.unpack
   , NeatInterpolation.text
+  , o
   , module ErrorBundle
-  , specConvert
+  , sndConvert
+  , fstConvert
+  , pairConvert
   , strData
   , strData'
   , cartP
@@ -24,10 +28,16 @@ import           NeatInterpolation
 import           Test.Hspec
 import           Test.QuickCheck
 
+o :: Offset
 o = Offset 0
 
-specConvert :: (b -> c) -> [(a, b)] -> [(a, c)]
-specConvert f = map (\(i, o) -> (i, f o))
+pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
+pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))
+
+fstConvert :: (a -> a') -> [(a, b')] -> [(a', b')]
+fstConvert f = pairConvert f id
+
+sndConvert = pairConvert id
 
 class SpecBuilder a b c where
   expectation :: a -> b -> SpecWith c
@@ -35,6 +45,16 @@ class SpecBuilder a b c where
   specAll name items = describe name $ mapM_ (uncurry expectation) items
   specOne :: (a,b) -> SpecWith c
   specOne item = uncurry expectation item
+
+--spec :: Spec
+--spec =
+--  describe "scanT" $ do
+--    specWithScanT (";", Right ([TSemicolon]))
+--    mapM_ specWithScanT expectScanT
+--
+---- | Generate a SpecWith using the scan function
+--specWithScanT :: (String, Either String [InnerToken]) -> SpecWith ()
+--specWithScanT (input, output) = it ("given \n" ++ input ++ "\nreturns " ++ show output) $ scanT input `shouldBe` output
 
 expectG ::
      (Show a, Eq a)
