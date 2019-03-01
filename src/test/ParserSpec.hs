@@ -29,7 +29,7 @@ spec = do
       -- (\x -> scanToP pId x == (Right $ NonEmpty.fromList [x]))
     qcGen
       "ident list"
-      True
+      False
       (genCommaList T.genId)
       (\x -> scanToP pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
@@ -45,19 +45,20 @@ spec = do
       (\(s, out) -> scanToP pE s == (Right out))
     qcGen
       "unary expressions"
-      True
+      False
       genEUn
       (\(s, out) -> scanToP pE s == (Right out))
-    -- specOne ("05.ffield", Left "" :: Either String Expr)
-  -- specAll "Types" (sndConvert Right expectT :: [(String, Either String Type)])
+    specOne ("05.ffield", Right (Lit (FloatLit o 5.0)) :: Either String Expr)
+    -- specAll "Types" (sndConvert Right expectT :: [(String, Either String (Offset, Type))])
   -- specAll
   --   "Expression Lists"
   --   (sndConvert Right expectEL :: [(String, Either String [Expr])])
   -- -- specAll "Inner declarations" ((sndConvert Right expectIDecl) :: [(String, Either String [VarDecl'])])
   -- describe "Declarations" $ do
   --   it "int = 5" $
-  --     scanToP pDecB "int = 5" `shouldBe`
-  --     Right (Left (Type "int", [Lit (IntLit Decimal "5")]))
+  --     scanToP pDecB "int = 5" `shouldBe` (Left "")
+--      Right (Left (Type (Identifier o "int"), [Lit (IntLit o Decimal "5")]))
+
   -- describe "Declarations" $ -- DeclBody
   --  do
   --   it "int" $ scanToP pDecB "int" `shouldBe` Right (Left (Type "int", []))
@@ -206,8 +207,8 @@ spec = do
   --     , Right (TopDecl $ TypeDef [TypeDef' "num" (Type "int")]) :: Either String TopDecl)
   --   specAll "Programs" (sndConvert Right programE :: [(String, Either String Program)])
   --   specOne ( "package main; func zzzz(a int){}", Right (Program {package = "main", topLevels = [TopFuncDecl (FuncDecl "zzzz" (Signature (Parameters [ParameterDecl ("a" :| []) (Type "int")]) Nothing) (BlockStmt []))]}) :: Either String Program)
-    -- specOne ( "package main; func main(){ func lll(ggg){} }", Left "" :: Either String Program)
-    -- specAll "Invalid Programs" (sndConver Left programEL :: [(String, Either String Program)])
+  --   specOne ( "package main; func main(){ func lll(ggg){} }", Left "" :: Either String Program)
+  --   specAll "Invalid Programs" (sndConvert Left programEL :: [(String, Either String Program)])
 
 programMain :: [(String, FuncBody)]
 programMain = [ ("", (BlockStmt []))]
@@ -341,14 +342,14 @@ genEUn =
 genE :: Gen (String, Expr)
 genE = oneof [genEBase, genEUn, genEBin]
 
-expectT :: [(String, Type)]
-expectT =
-  [ strData "wqiufhiwqf" (Type . Identifier o)
-  , strData "int" (Type . Identifier o)
-  , ("(float64)", Type $ Identifier o "float64")
-  , ("[22]int", ArrayType (Lit $ IntLit o Decimal "22") (Type $ Identifier o "int"))
-  , ("[]int", SliceType (Type $ Identifier o "int"))
-  ]
+-- expectT :: [(String, (Offset, Type))]
+-- expectT =
+--   [ strData "wqiufhiwqf" (o, Type . Identifier o)
+--   , strData "int" (o, (Type . Identifier o))
+--   , ("(float64)", (o, Type $ Identifier o "float64"))
+--   , ("[22]int", (o, ArrayType (Lit $ IntLit o Decimal "22") (Type $ Identifier o "int")))
+--   , ("[]int", (o, SliceType (Type $ Identifier o "int")))
+--   ]
 
 -- genETypeBase :: Gen (String, Type)
 -- genETypeBase = oneof [T.genId >>= genEBase >>= \i -> "[" ++  ++ "] " ++ id, ArrayType ]
