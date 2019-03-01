@@ -197,7 +197,7 @@ data SwitchCase
             Stmt
   deriving (Show, Eq)
 
-instance ErrorBreakpoint where
+instance ErrorBreakpoint SwitchCase where
   offset (Case o _ _)  = o
   offset (Default o _) = o
 
