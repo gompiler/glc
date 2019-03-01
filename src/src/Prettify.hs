@@ -161,7 +161,8 @@ instance Prettify Literal where
   prettify (IntLit _ _ i) = i
   prettify (FloatLit _ f) = show f
   prettify (RuneLit _ c)  = "'" ++ [c] ++ "'"
-  prettify (StringLit s)  = prettify s
+  prettify (StringLit _ Interpreted s) = "\"" ++ s ++ "\""
+  prettify (StringLit _ Raw s)         = "`" ++ s ++ "`"
   prettify' = prettify''
 
 --  prettify' (FuncLit sig body)         = ["func" ++ prettify sig]
@@ -214,15 +215,12 @@ instance Prettify Type' where
 
 instance Prettify Type where
   prettify (ArrayType e t) = "[" ++ prettify e ++ "]" ++ prettify t
+  prettify (StructType [fdl]) = "struct {" ++ prettify fdl ++ "}"
+  -- prettify' (StructType fdls) = "struct {" : tab (map prettify fdls) ++ "}"
   prettify (SliceType t)   = "[]" ++ prettify t
   prettify (PointerType t) = "*" ++ prettify t
   prettify (FuncType s)    = "func" ++ prettify s
   prettify (Type id)       = prettify id
-  prettify' = prettify''
-
-instance Prettify StringLiteral where
-  prettify (StringLiteral _ Interpreted s) = "\"" ++ s ++ "\""
-  prettify (StringLiteral _ Raw s)         = "`" ++ s ++ "`"
   prettify' = prettify''
 
 instance Prettify FieldDecl where

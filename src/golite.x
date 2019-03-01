@@ -10,9 +10,9 @@ $upper = [A-Z]
 $lower = [a-z \_]
 $alpha = [$upper $lower]
 
-$charesc = [abfnrtv\\\'\"]
-$symbol = [\!\#\$\%\^\&\*\+\.\/\<\=\>\?\@\\\^\|\-\~\(\)\,\;\[\]\`\{\}]
-$graphic   = [$alpha $symbol $digit \:\"\']
+$charesc = [abfnrtv\\]
+$symbol = [\!\#\$\%\^\&\*\+\.\/\<\=\>\?\@\^\|\-\~\(\)\,\:\;\[\]\`\{\}]
+$graphic   = [$alpha $symbol $digit \"\']
 
 $octal = 0-7
 $hex = [$digit A-F a-f]
@@ -24,8 +24,12 @@ $ctrl = [$upper \@\[\\\]\^\_]
 @special = \^ $ctrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK | BEL | BS | TAB | LF | VT | FF | CR | SO | SI | DLE | DC1 | DC2 | DC4 | NAK | SYN | ETB | CAN | EM | SUB | ESC | FS | GS | RS | US | SP | DEL
 
 @escape = \\ ($charesc)
+@escapestr = \\ \"
+@escapec = \\ \'
 
-@string = $graphic # [\"\\] | " " | @escape | @special
+@rstring = $graphic # [\`] | " " | \\ | @special
+@string = $graphic # [\"] | " " | @escape | @escapestr | @special
+@char = $graphic # [\'] | " " | @escape | @escapec | @special
 
 @comment = "/*"
 
@@ -116,11 +120,11 @@ tokens :-
     0$octal+                            { tokSM TOctVal }
     0[xX]$hex+                          { tokSM THexVal }
     $digit+                             { tokSM TDecVal }
-    $digit*\.$digit+                    { tokRInp TFloatVal }
+    $digit*\.$digit*                    { tokFInp TFloatVal }
     $alpha [$alpha $digit]*             { tokSM TIdent }
-    \' @string \'                       { tokCInp TRuneVal }
+    \' @char \'                         { tokCInp TRuneVal }
     \" @string* \"                      { tokSM TStringVal }
-    \` @string* \`                      { tokSM TRStringVal }
+    \` @rstring* \`                     { tokSM TRStringVal }
 
 {
 data Token = Token AlexPosn InnerToken
@@ -261,12 +265,27 @@ tok x = tokM $ const x
 -- | Char
 -- tokCInp :: (Char -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
 -- Input will *always* be of length 3 as we only feed '@string' to this, where @string is one character corresponding to the string macro
-tokCInp x = andBegin (tokM $ x . (!!1)) nl -- Take index 1 of the string that should be 'C' where C is a char
+tokCInp x = andBegin (tokM $ x . \s -> case s!!1 of
+                                            '\\' -> (case s!!2 of
+                                                          'a'  -> '\a'
+                                                          'b'  -> '\b'
+                                                          'f'  -> '\f'
+                                                          'n'  -> '\n'
+                                                          'r'  -> '\r'
+                                                          't'  -> '\t'
+                                                          'v'  -> '\v'
+                                                          '\'' -> '\''
+                                                          '\\' -> '\\')
+                                            c -> c) nl -- Take index 1 of the string that should be 'C' where C is a char or escape character
                                            -- All literal vals can take optional semicolons, hence the nl
 
--- tokRInp :: Read t => (t -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
--- | tokInp but pass s through read (for things that aren't strings)
-tokRInp x = andBegin (tokM $ x . read) nl -- Lit val
+-- tokFInp :: (String -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
+-- | Floats
+tokFInp x = andBegin (tokM $ x . read . (\s -> case (break (== '.') s) of -- Separate by String by . and check if any side is empty
+                                                 (n, '.':[]) -> s ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
+                                                 ([], '.':n) -> '0' : s -- Prepend 0 because .1 is not a valid Float
+                                                 (_, _)      -> s
+                                                 )) nl -- Lit val
 
 nlTokens  = [TInc, TDInc, TRParen, TRSquareB, TRBrace, TBreak, TContinue, TFallthrough, TReturn]
 
