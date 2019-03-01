@@ -43,18 +43,15 @@ stmtRecursiveVerifyAll c stmts = verifyAll (stmtRecursiveVerify c) stmts
 -- | Takes a top level statement verifier and applies it to all scopes
 stmtRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
 stmtRecursiveVerify constraint stmt =
-  case stmt of
-    BlockStmt stmts -> all stmts
-    If _ s1 s2 -> (constraint stmt) <|> all [s1, s2]
-    For _ s -> (constraint stmt) <|> all [s]
-    Switch _ _ cases -> (constraint stmt) <|> (all $ map stmtFromCase cases)
-    -- TODO: case statements (since they implicitly define scopes/block statements?)
-    -- TODO finish
-    -- Non-scoped statements will not yield errors here
-    _ -> constraint stmt -- Just $ createError (Offset 0) (show a)
+      (constraint stmt) -- Check constraints against the current statement
+  <|> (stmtRecursiveVerifyAll constraint $ case stmt of  -- Recursively traverse all child scopes
+        BlockStmt stmts -> stmts
+        If _ s1 s2 -> [s1, s2]
+        For _ s -> [s]
+        Switch _ _ cases -> map stmtFromCase cases
+        -- TODO finish
+        _ -> [])
   where
-    all :: [Stmt] -> Maybe ErrorBundle'
-    all = stmtRecursiveVerifyAll constraint
     stmtFromCase :: SwitchCase -> Stmt
     stmtFromCase (Case _ _ stmt)  = stmt
     stmtFromCase (Default _ stmt) = stmt
@@ -89,6 +86,9 @@ stmtVerify (For (ForClause pre _ post) _) =
     ShortDeclare (Identifier offset _ :| _) _ ->
       Just $ createError offset "For post-statement cannot be declaration"
     _ -> Nothing
+
+-- TODO
+stmtVerify otherwise = Nothing
 
 programVerify :: PureConstraint Program
 programVerify program = firstOrNothing errors
