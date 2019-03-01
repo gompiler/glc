@@ -27,6 +27,7 @@ stmtRecursiveVerify constraint stmt =
     BlockStmt stmts -> stmtRecursiveVerifyAll constraint stmts
     If _ s1 s2 -> stmtRecursiveVerifyAll constraint [s1, s2]
     For _ s -> stmtRecursiveVerifyAll constraint [s]
+    -- TODO: case statements (since they implicitly define scopes/block statements?)
     -- TODO finish
     _ -> undefined
 
