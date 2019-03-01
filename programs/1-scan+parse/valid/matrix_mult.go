@@ -3,37 +3,51 @@
 package main
 
 // Treating matrix as [# ROWS][# COLS]
-func mult(a [500][500]int, b [500][500]int) [500][500]int{
+func mult(a [][]int, b [][]int) [][]int{
+	m_a := len(a)
+	n_a := len(a[0])
+	m_b := len(b)
+	n_b := len(b[0])
 
-	var prod [500][500]int;
-	for i := 0; i < 500; i++ {
-		for j := 0; j < 500; j++ {
-			sum := 0
-			for k := 0; k < 500; k++ {
-				sum += a[i][k] * b[k][j]
+	var prod [][]int
+
+	if n_a != m_b {
+		return prod
+	} else {
+		for i := 0; i < m_a; i++ {
+			var inner []int
+			for j := 0; j < n_b; j++ {
+				sum := 0
+				for k :=0; k < n_a; k++ {
+					sum += a[i][k] * b[k][j]
+				}
+				inner = append(inner, sum)
 			}
-			prod[i][j] = sum
+			prod = append(prod, inner)
 		}
+		return prod
 	}
-	return prod
 }
 
-func matrixGen() [500][500]int{
+func matrixGen(m, n int) [][]int{
 	// Generate entries with a pseudorandom bitsequence
-	// Use PRBS7
-	var gen [500][500] int;
-	for i := 0; i < 500; i++ {
-		for j := 0; j < 500; j++ {
+	var gen [][] int;
+	for i := 0; i < m; i++ {
+		var inner []int;
+		for j := 0; j < n; j++ {
+			// Use pseudorandom bitsequence 7 (x^7 + x^6 + 1) linear feedback shift register
 			n := i + j
-			gen[i][j] = (((n << 1) | (n >> 6) ^ (n >> 5) & 1) & 0x7f)
+			n = (((n << 1) | (n >> 6) ^ (n >> 5) & 1) & 0x7f)
+			inner = append(inner, n)
 		}
+		gen = append(gen, inner)
 	}
 	return gen
 }
 
 func main() {
-	var a [500][500]int = matrixGen();
-	var b [500][500]int = matrixGen();
+	var a [][]int = matrixGen(1000, 1000);
+	var b [][]int = matrixGen(1000, 1000);
 	for i := 0; i < 10; i++ {
 		mult(a,b)
 	}
