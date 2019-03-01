@@ -1,5 +1,5 @@
 // Benchmark, performs matrix multiplication of large matrices
-// We use the naive O(n^3) iterative algorithm because a divide and conquer algorithm is not feasible without variable size function param and return types
+// We use the naive O(n^3) iterative algorithm
 package main
 
 // Treating matrix as [# ROWS][# COLS]
