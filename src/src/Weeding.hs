@@ -27,10 +27,11 @@ stmtRecursiveVerify constraint stmt =
     BlockStmt stmts -> all stmts
     If _ s1 s2 -> all [s1, s2]
     For _ s -> all [s]
-    Switch _ _ cases -> all (map stmtFromCase cases)
+    Switch _ _ cases -> all $ map stmtFromCase cases
     -- TODO: case statements (since they implicitly define scopes/block statements?)
     -- TODO finish
-    _ -> undefined
+    -- Non-scoped statements will not yield errors here
+    _ -> Nothing
   where
     all :: [Stmt] -> Maybe ErrorBundle'
     all = stmtRecursiveVerifyAll constraint
