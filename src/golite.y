@@ -341,8 +341,8 @@ NIExpr      : '+' Expr %prec POS                            { Unary (getOffset $
             | hexv                                          { Lit (IntLit (getOffset $1) Hexadecimal $ getInnerString $1) }
             | fv                                            { Lit (FloatLit (getOffset $1) $ getInnerFloat $1) }
             | rv                                            { Lit (RuneLit (getOffset $1) $ getInnerChar $1) }
-            | sv                                            { Lit (StringLit (StringLiteral (getOffset $1) Interpreted $ getInnerString $1)) }
-            | rsv                                           { Lit (StringLit (StringLiteral (getOffset $1) Raw $ getInnerString $1)) }
+            | sv                                            { Lit (StringLit (getOffset $1) Interpreted $ getInnerString $1) }
+            | rsv                                           { Lit (StringLit (getOffset $1) Raw $ getInnerString $1) }
             | append '(' Expr ',' Expr ')'                  { AppendExpr $3 $5 }
             | len '(' Expr ')'                              { LenExpr $3 }
             | cap '(' Expr ')'                              { CapExpr $3 }
