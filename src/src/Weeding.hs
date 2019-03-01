@@ -24,12 +24,19 @@ stmtRecursiveVerifyAll c stmts = verifyAll (stmtRecursiveVerify c) stmts
 stmtRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
 stmtRecursiveVerify constraint stmt =
   case stmt of
-    BlockStmt stmts -> stmtRecursiveVerifyAll constraint stmts
-    If _ s1 s2 -> stmtRecursiveVerifyAll constraint [s1, s2]
-    For _ s -> stmtRecursiveVerifyAll constraint [s]
+    BlockStmt stmts -> all stmts
+    If _ s1 s2 -> all [s1, s2]
+    For _ s -> all [s]
+    Switch _ _ cases -> all (map stmtFromCase cases)
     -- TODO: case statements (since they implicitly define scopes/block statements?)
     -- TODO finish
     _ -> undefined
+  where
+    all :: [Stmt] -> Maybe ErrorBundle'
+    all = stmtRecursiveVerifyAll constraint
+    stmtFromCase :: SwitchCase -> Stmt
+    stmtFromCase (Case _ _ stmt)  = stmt
+    stmtFromCase (Default _ stmt) = stmt
 
 -- | Verification rules for specific statements
 stmtVerify :: Stmt -> Maybe ErrorBundle'
