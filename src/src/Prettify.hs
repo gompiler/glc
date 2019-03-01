@@ -131,8 +131,9 @@ instance Prettify Stmt where
   prettify' (Continue _) = ["continue"]
   prettify' (Fallthrough _) = ["fallthrough"]
   prettify' (Declare d) = prettify' d
+  prettify' (Print es) = ["print(" ++ concat(intersperse ", " (es >>= prettify')) ++ ")"]
+  prettify' (Println es) = ["println(" ++ concat(intersperse ", " (es >>= prettify')) ++ ")"]
   prettify' (Return m) = ["return"] `skipNewLine` (maybe [] (prettify') m)
-  prettify' _ = ["TODO"]
 
 instance Prettify SwitchCase where
   prettify' (Case _ e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)
