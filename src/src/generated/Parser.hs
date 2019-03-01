@@ -2276,7 +2276,7 @@ happyReduce_167 = happySpecReduce_1  37# happyReduction_167
 happyReduction_167 happy_x_1
 	 =  case happyOut30 happy_x_1 of { happy_var_1 -> 
 	happyIn63
-		 (map varOfI $ NonEmpty.toList happy_var_1
+		 (map Var $ NonEmpty.toList happy_var_1
 	)}
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -2312,7 +2312,7 @@ happyReduction_170 happy_x_3
 	 =  case happyOut31 happy_x_1 of { happy_var_1 -> 
 	case happyOut62 happy_x_3 of { happy_var_3 -> 
 	happyIn65
-		 (happy_var_3 : (map varOfI happy_var_1)
+		 (happy_var_3 : (map Var happy_var_1)
 	)}}
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -2338,7 +2338,7 @@ happyReduction_172 happy_x_3
 	 =  case happyOut62 happy_x_1 of { happy_var_1 -> 
 	case happyOutTok happy_x_3 of { happy_var_3 -> 
 	happyIn65
-		 ([(varOfI . getIdent) happy_var_3, happy_var_1]
+		 ([(Var . getIdent) happy_var_3, happy_var_1]
 	)}}
 
 #if __GLASGOW_HASKELL__ >= 710
@@ -2351,7 +2351,7 @@ happyReduction_173 happy_x_3
 	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
 	case happyOut62 happy_x_3 of { happy_var_3 -> 
 	happyIn65
-		 ([happy_var_3, (varOfI . getIdent) happy_var_1]
+		 ([happy_var_3, (Var . getIdent) happy_var_1]
 	)}}
 
 happyNewToken action sts stk
@@ -2543,10 +2543,6 @@ happySeq = happyDontSeq
 
 
 -- Helper functions
-
-varOfI :: Identifier -> Expr
-varOfI i = Var i
-
 nonEmpty :: [a] -> NonEmpty a
 nonEmpty l = NonEmpty.fromList l
 
