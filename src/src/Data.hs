@@ -17,10 +17,13 @@ data Identifier =
              String
   deriving (Show, Eq)
 
+instance ErrorBreakpoint Identifier where
+  offset (Identifier o _) = o
+
 type Identifiers = NonEmpty Identifier
 
 instance ErrorBreakpoint Identifiers where
-  offset (Identifier o _ :| _) = o
+  offset (id :| _) = offset id
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
@@ -89,6 +92,9 @@ data ParameterDecl =
   ParameterDecl Identifiers
                 Type'
   deriving (Show, Eq)
+
+instance ErrorBreakpoint ParameterDecl where
+  offset (ParameterDecl ids _) = offset ids
 
 -- | See https://golang.org/ref/spec#Parameters
 -- Variadic parameters aren't supported in golite
@@ -232,18 +238,19 @@ data Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
-  | AppendExpr Expr
+  | AppendExpr Offset
+               Expr
                Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports strings, arrays, and slices
-  | LenExpr Expr
+  | LenExpr Offset Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports arrays and slices
-  | CapExpr Expr
+  | CapExpr Offset Expr
   -- | See https://golang.org/ref/spec#Conversions
-  | Conversion Type'
+  | Conversion Offset Type'
                Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
@@ -265,6 +272,15 @@ data Expr
               [Expr]
   deriving (Show, Eq)
 
+instance ErrorBreakpoint Expr where
+  offset (Unary o _ _)    = o
+  offset (Binary o _ _ _) = o
+  offset (Lit l)          = offset l
+  offset (Var id)         = offset id
+  -- TODO check
+  offset (AppendExpr o _ _) = offset o
+  offset (LenExpr o _) = o
+
 -- | See https://golang.org/ref/spec#Literal
 -- Type can be inferred from string
 -- If we want to keep erroneous states invalid,
@@ -285,6 +301,13 @@ data Literal
             FuncBody
   deriving (Show, Eq)
 
+instance ErrorBreakpoint Literal where
+  offset (IntLit o _ _)    = o
+  offset (FloatLit o _)    = o
+  offset (RuneLit o _)     = o
+  offset (StringLit o _ _) = o
+
+--  offset (StringLit o _ _) = o
 -- | See https://golang.org/ref/spec#binary_op
 -- & See https://golang.org/ref/spec#rel_op
 data BinaryOp

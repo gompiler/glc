@@ -2117,11 +2117,12 @@ happyReduction_154 (happy_x_6 `HappyStk`
 	happy_x_2 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
-	 = case happyOut54 happy_x_3 of { happy_var_3 -> 
+	 = case happyOutTok happy_x_1 of { happy_var_1 -> 
+	case happyOut54 happy_x_3 of { happy_var_3 -> 
 	case happyOut54 happy_x_5 of { happy_var_5 -> 
 	happyIn55
-		 (AppendExpr happy_var_3 happy_var_5
-	) `HappyStk` happyRest}}
+		 (AppendExpr (getOffset happy_var_1) happy_var_3 happy_var_5
+	) `HappyStk` happyRest}}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_155 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
@@ -2132,10 +2133,11 @@ happyReduction_155 (happy_x_4 `HappyStk`
 	happy_x_2 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
-	 = case happyOut54 happy_x_3 of { happy_var_3 -> 
+	 = case happyOutTok happy_x_1 of { happy_var_1 -> 
+	case happyOut54 happy_x_3 of { happy_var_3 -> 
 	happyIn55
-		 (LenExpr happy_var_3
-	) `HappyStk` happyRest}
+		 (LenExpr (getOffset happy_var_1) happy_var_3
+	) `HappyStk` happyRest}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_156 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
@@ -2146,10 +2148,11 @@ happyReduction_156 (happy_x_4 `HappyStk`
 	happy_x_2 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
-	 = case happyOut54 happy_x_3 of { happy_var_3 -> 
+	 = case happyOutTok happy_x_1 of { happy_var_1 -> 
+	case happyOut54 happy_x_3 of { happy_var_3 -> 
 	happyIn55
-		 (CapExpr happy_var_3
-	) `HappyStk` happyRest}
+		 (CapExpr (getOffset happy_var_1) happy_var_3
+	) `HappyStk` happyRest}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_157 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)

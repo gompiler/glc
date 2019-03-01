@@ -339,9 +339,9 @@ NIExpr      : '+' Expr %prec POS                            { Unary (getOffset $
             | rv                                            { Lit (RuneLit (getOffset $1) $ getInnerChar $1) }
             | sv                                            { Lit (StringLit (getOffset $1) Interpreted $ getInnerString $1) }
             | rsv                                           { Lit (StringLit (getOffset $1) Raw $ getInnerString $1) }
-            | append '(' Expr ',' Expr ')'                  { AppendExpr $3 $5 }
-            | len '(' Expr ')'                              { LenExpr $3 }
-            | cap '(' Expr ')'                              { CapExpr $3 }
+            | append '(' Expr ',' Expr ')'                  { AppendExpr (getOffset $1) $3 $5 }
+            | len '(' Expr ')'                              { LenExpr (getOffset $1) $3 }
+            | cap '(' Expr ')'                              { CapExpr (getOffset $1) $3 }
             | Expr '(' Expr ')'                             { Arguments $1 [$3] }
             | Expr '(' EIList ')'                           { Arguments $1 $3 }
 
