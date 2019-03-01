@@ -253,10 +253,6 @@ data Expr
   -- Eg expr1[expr2]
   | Index Expr
           Expr
-  -- | See https://golang.org/ref/spec#Slice
-  -- Eg expr1[expr2:expr3]
-  | Slice Expr
-          SliceRange
   -- | See https://golang.org/ref/spec#TypeAssertion
   -- Eg expr.(type)
   | TypeAssertion Expr
@@ -267,17 +263,6 @@ data Expr
   -- TODO Golang specs support a lot more, but I believe we only need to support the basic call
   | Arguments Expr
               [Expr]
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#Slice_expressions
-data SliceRange
-  -- Eg a[1:2], a[1:], a[:2]
-  = SliceSimple (Maybe Expr)
-                (Maybe Expr)
-  -- Eg a[1:2:3]
-  | SliceFull (Maybe Expr)
-              Expr
-              Expr
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Literal
