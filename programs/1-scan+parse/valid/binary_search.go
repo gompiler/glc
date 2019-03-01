@@ -16,8 +16,8 @@ func binary_search(a [10]int, l, r int, target int) bool {
 }
 
 // Helper wrapper for recursive function
-func search(a [10]int, target int) bool {
-	return binary_search(a, 0, len(a), target)
+func search(a [10]int, target int) {
+	println("Found", target, ":", binary_search(a, 0, len(a), target))
 }
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	a[8] = 0
 	a[9] = 3
 
-	println("Found", 3, ":", search(a, 3))
-	println("Found", 2, ":", search(a, 2))
+	search(a, 3)
+	search(a, 2)
 }
 
