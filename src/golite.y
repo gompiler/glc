@@ -165,17 +165,16 @@ import qualified Data.List.NonEmpty as NonEmpty
 
 %%
 
-Program     : package ident ';' TopDecls                    { Program {package=getInnerString($2), topLevels=$4} }
+Program     : package ident ';' TopDecls                    { Program {package=getInnerString($2), topLevels=(reverse $4)} }
 
-TopDecls    : TopDeclsR                                     { reverse $1 }
-TopDeclsR   : TopDeclsR TopDecl                             { $2 : $1 }
+TopDecls    : TopDecls TopDecl                              { $2 : $1 }
             | {- empty -}                                   { [] }
 
 TopDecl     : Decl                                          { TopDecl $1 }
             | FuncDecl                                      { TopFuncDecl $1 }
 
-Idents      : IdentsR                                       { (nonEmpty . reverse) $1 }
-IdentsR     : IdentsR ',' ident                             { (getIdent $3) : $1 }
+{- Idents is in reverse order -}
+Idents      : Idents ',' ident                              { (getIdent $3) : $1 }
             | ident ',' ident                               { [getIdent $3, getIdent $1] }
 
 Type        : ident                                         { ((getOffset $1), Type $ getIdent $1) }
@@ -185,14 +184,13 @@ Type        : ident                                         { ((getOffset $1), T
             | Struct                                        { ((fst $1), StructType (snd $1)) }
 
 Decl        : var InnerDecl                                 { VarDecl [$2] }
-            | var '(' InnerDecls ')' ';'                    { VarDecl $3 }
+            | var '(' InnerDecls ')' ';'                    { VarDecl (reverse $3) }
             | type ident Type ';'                           { TypeDef [TypeDef' (getIdent $2) $3] }
-            | type '(' TypeDefs ')' ';'                     { TypeDef $3 }
+            | type '(' TypeDefs ')' ';'                     { TypeDef (reverse $3) }
 
-InnerDecl   : Idents DeclBody ';'                           { VarDecl' $1 $2 }
+InnerDecl   : Idents DeclBody ';'                           { VarDecl' ((nonEmpty . reverse) $1) $2 }
             | ident DeclBody ';'                            { VarDecl' (nonEmpty [getIdent $1]) $2 }
-InnerDecls  : InnerDeclsR                                   { reverse $1 }
-InnerDeclsR : InnerDeclsR InnerDecl                         { $2 : $1 }
+InnerDecls  : InnerDecls InnerDecl                          { $2 : $1 }
             | {- empty -}                                   { [] }
 
 DeclBody    : Type                                          { Left ($1, []) }
@@ -201,15 +199,13 @@ DeclBody    : Type                                          { Left ($1, []) }
             | '=' EIList                                    { Right (nonEmpty $2) }
             | '=' Expr                                      { Right (nonEmpty [$2]) }
 
-TypeDefs    : TypeDefsR                                     { reverse $1 }
-TypeDefsR   : TypeDefsR ident Type ';'                      { (TypeDef' (getIdent $2) $3) : $1 }
+TypeDefs    : TypeDefs ident Type ';'                       { (TypeDef' (getIdent $2) $3) : $1 }
             | ident Type ';'                                { [TypeDef' (getIdent $1) $2] }
 
-Struct      : struct '{' FieldDecls '}'                     { ((getOffset $1), $3) }
+Struct      : struct '{' FieldDecls '}'                     { ((getOffset $1), (reverse $3)) }
 
-FieldDecls  : FieldDeclsR                                   { reverse $1 }
-FieldDeclsR : FieldDeclsR Idents Type ';'                   { (FieldDecl $2 $3) : $1 }
-            | FieldDeclsR ident Type ';'                    { (FieldDecl (nonEmpty [getIdent $2]) $3) : $1 }
+FieldDecls  : FieldDecls Idents Type ';'                    { (FieldDecl ((nonEmpty . reverse) $2) $3) : $1 }
+            | FieldDecls ident Type ';'                     { (FieldDecl (nonEmpty [getIdent $2]) $3) : $1 }
             | {- empty -}                                   { [] }
 
 FuncDecl    : func ident Signature BlockStmt ';'            { FuncDecl (getIdent $2) $3 $4 }
@@ -217,9 +213,9 @@ FuncDecl    : func ident Signature BlockStmt ';'            { FuncDecl (getIdent
 Signature   : '(' Params ')' Result                         { Signature (Parameters $2) $4 }
 Params      : ParamsR                                       { reverse $1 }
             | {- empty -}                                   { [] }
-ParamsR     : ParamsR ',' Idents Type                       { (ParameterDecl $3 $4) : $1 }
+ParamsR     : ParamsR ',' Idents Type                       { (ParameterDecl ((nonEmpty . reverse) $3) $4) : $1 }
             | ParamsR ',' ident Type                        { (ParameterDecl (nonEmpty [getIdent $3]) $4) : $1 }
-            | Idents Type                                   { [(ParameterDecl $1 $2)] }
+            | Idents Type                                   { [(ParameterDecl ((nonEmpty . reverse) $1) $2)] }
             | ident Type                                    { [(ParameterDecl (nonEmpty [getIdent $1]) $2)] }
 Result      : Type                                          { Just $1 }
             | {- empty -}                                   { Nothing }
@@ -242,12 +238,12 @@ Stmt        : BlockStmt ';'                                 { $1 }
             | return Expr ';'                               { Return $ Just $2 }
             | return ';'                                    { Return Nothing }
 
-Stmts       : StmtsR                                        { reverse $1 }
-StmtsR      : StmtsR Stmt                                   { $2 : $1 }
+{- Stmts is in reverse order -}
+Stmts       : Stmts Stmt                                    { $2 : $1 }
             | {- empty -}                                   { [] }
 
 {- No semicolon, since we can't have semicolons in the middle of if/else statements -}
-BlockStmt   : '{' Stmts '}'                                 { BlockStmt $2 }
+BlockStmt   : '{' Stmts '}'                                 { BlockStmt (reverse $2) }
 
 {- Spec: https://golang.org/ref/spec#SimpleStmt -}
 SimpleStNE  : {- empty -}                                   { EmptyStmt }
@@ -269,7 +265,7 @@ SimpleStNE  : {- empty -}                                   { EmptyStmt }
             | Expr "&^=" Expr                               { Assign (getOffset $2) (AssignOp $ Just BitClear) (nonEmpty [$1]) (nonEmpty [$3]) }
             | Expr '=' Expr                                 { Assign (getOffset $2) (AssignOp Nothing) (nonEmpty [$1]) (nonEmpty [$3]) }
 
-            | Idents ":=" EIList                            { ShortDeclare $1 (nonEmpty $3) }
+            | Idents ":=" EIList                            { ShortDeclare ((nonEmpty . reverse) $1) (nonEmpty $3) }
             | ident ":=" Expr                               { ShortDeclare (nonEmpty [getIdent $1]) (nonEmpty [$3]) }
 
 {- Spec: https://golang.org/ref/spec#ExpressionStmt -}
@@ -294,14 +290,14 @@ ForStmt     : for BlockStmt                                 { For ForInfinite $2
             | for SimpleStmt Expr ';' Expr BlockStmt        { For (ForClause $2 $3 (ExprStmt $5)) $6 }
 
 {- Spec: https://golang.org/ref/spec#Switch_statements -}
-SwitchStmt  : switch SimpleStmt ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) $6 }
-            | switch SimpleStmt ';' '{' SwitchBody '}'      { Switch $2 Nothing $5 }
-            | switch Expr '{' SwitchBody '}'                { Switch EmptyStmt (Just $2) $4 }
+SwitchStmt  : switch SimpleStmt ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) (reverse $6) }
+            | switch SimpleStmt ';' '{' SwitchBody '}'      { Switch $2 Nothing (reverse $5) }
+            | switch Expr '{' SwitchBody '}'                { Switch EmptyStmt (Just $2) (reverse $4) }
 
-SwitchBody  : SwitchBodyR                                   { reverse $1 }
-SwitchBodyR : SwitchBodyR case EIList ':' Stmts             { (Case (nonEmpty $3) (BlockStmt $5)) : $1 }
-            | SwitchBodyR case Expr ':' Stmts               { (Case (nonEmpty [$3]) (BlockStmt $5)) : $1 }
-            | SwitchBodyR default Stmts                     { (Default $ BlockStmt $3) : $1 }
+{- SwitchBody is in reverse order -}
+SwitchBody  : SwitchBody case EIList ':' Stmts              { (Case (nonEmpty $3) (BlockStmt $ reverse $5)) : $1 }
+            | SwitchBody case Expr ':' Stmts                { (Case (nonEmpty [$3]) (BlockStmt $ reverse $5)) : $1 }
+            | SwitchBody default Stmts                      { (Default $ BlockStmt (reverse $3)) : $1 }
             | {- empty -}                                   { [] }
 
 
@@ -356,12 +352,13 @@ NIExpr      : '+' Expr %prec POS                            { Unary (getOffset $
   of single expressions and expression lists / identifiers and identifier lists.
 -}
 
-EIList      : NIExprList                                    { $1 }
-            | Idents                                        { map Var $ NonEmpty.toList $1 }
+{- EIList is correctly-ordered -}
+EIList      : NIExprList                                    { reverse $1 }
+            | Idents                                        { map Var (reverse $1) }
 
-NIExprList  : NIExprListR                                   { reverse $1 }
-NIExprListR : NIExprListR ',' Expr                          { $3 : $1 }
-            | IdentsR ',' NIExpr                            { $3 : (map Var $1) }
+{- NIExprList is reversed -}
+NIExprList  : NIExprList ',' Expr                           { $3 : $1 }
+            | Idents ',' NIExpr                             { $3 : (map Var $1) }
             | NIExpr ',' NIExpr                             { [$3, $1] }
             | NIExpr ',' ident                              { [(Var . getIdent) $3, $1] }
             | ident ',' NIExpr                              { [$3, (Var . getIdent) $1] }
