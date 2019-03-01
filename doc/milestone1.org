@@ -79,3 +79,14 @@ whilst implementing the components for milestone 1.
     3)~, as there is no guarantee at this stage that the number of
     identifiers matches the number of values. This would have to be
     checked at a later stage
+** Weeding
+   TODO
+* Implementation Tools and Language
+  TODO
+* Team
+** Team Organization
+   TODO
+** Contributions
+   *Julian Lore* TODO
+   *David Lougheed* TODO
+   *Allan Wang* TODO
