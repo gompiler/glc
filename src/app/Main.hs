@@ -18,7 +18,7 @@ main = do
       case cmd of
         Scan      -> scanC
         Tokens    -> scanP
-        Parse     -> either putExit (const $ putSucc "OK") . parse
+        Parse     -> either putExit (const $ putSucc "OK") . (wCoupler parse)
         Pretty    -> const $ putStrLn "pretty not yet implemented"
         Symbol    -> const $ putStrLn "symbol not yet implemented"
         Typecheck -> const $ putStrLn "typecheck not yet implemented"

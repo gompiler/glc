@@ -19,6 +19,24 @@ weed program code =
     errorBundle :: Maybe ErrorBundle'
     errorBundle = programVerify program
 
+-- | Replace this, but hooks up parser to weeder
+wCoupler :: (String -> Either String Program) -> String -> Either String Program
+wCoupler parser code =
+  case pResult of
+    Left err -> Left err
+    Right program -> weedProgram program
+  where
+    weedProgram :: Program -> Either String Program
+    weedProgram program =
+      case wResult of
+        Just err -> Left err
+        Nothing -> Right program
+      where
+        wResult :: Maybe String
+        wResult = (weed program code)
+    pResult :: Either String Program
+    pResult = parser code
+
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
 firstOrNothing []    = Nothing
@@ -58,6 +76,8 @@ stmtVerify (SimpleStmt stmt) =
     ExprStmt (Arguments _ _) -> Nothing
     ExprStmt _ -> Just $ createError (Offset 0) "Expression statements must be function calls" -- TODO: OFFSET
     _ -> Nothing
+
+stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 
 -- Verify that switch statements only have one default
 stmtVerify (Switch _ _ cases) =
