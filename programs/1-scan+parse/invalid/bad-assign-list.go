@@ -1,3 +1,5 @@
+// Two variables cannot be assigned one value.
+
 package main
 
 func main() {
