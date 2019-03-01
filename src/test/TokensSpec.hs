@@ -308,6 +308,16 @@ scanSuccess =
   , ("'\\\\'", [TRuneVal '\\', TSemicolon])
   , ( unpack
         [text|
+             "\""
+        |]
+    , [TStringVal "\"\\\"\"", TSemicolon])
+  , ( unpack
+        [text|
+             '\''
+        |]
+    , [TRuneVal '\'', TSemicolon])
+  , ( unpack
+        [text|
           +   /* Multiline to simulate
           a new line */
         |]
