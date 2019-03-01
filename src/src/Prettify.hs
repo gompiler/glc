@@ -145,10 +145,10 @@ instance Prettify Expr where
   prettify (LenExpr _ e) = "len(" ++ prettify e ++ ")"
   prettify (CapExpr _ e) = "cap(" ++ prettify e ++ ")"
   prettify (Conversion _ t e) = prettify t ++ "(" ++ prettify e ++ ")"
-  prettify (Selector e i) = prettify e ++ "." ++ prettify i
-  prettify (Index e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
-  prettify (TypeAssertion e _ t) = prettify e ++ ".(" ++ prettify t ++ ")"
-  prettify (Arguments e ee) = prettify e ++ "(" ++ commaJoin ee ++ ")"
+  prettify (Selector _ e i) = prettify e ++ "." ++ prettify i
+  prettify (Index _ e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
+  prettify (TypeAssertion _ e t) = prettify e ++ ".(" ++ prettify t ++ ")"
+  prettify (Arguments _ e ee) = prettify e ++ "(" ++ commaJoin ee ++ ")"
   prettify' = prettify''
 
 instance Prettify Literal where

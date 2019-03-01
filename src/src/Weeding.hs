@@ -62,7 +62,7 @@ stmtVerify :: Stmt -> Maybe ErrorBundle'
 -- Verify that expression statements are only function calls
 stmtVerify (SimpleStmt stmt) =
   case stmt of
-    ExprStmt (Arguments _ _) -> Nothing
+    ExprStmt Arguments {} -> Nothing
     ExprStmt _ -> Just $ createError (Offset 0) "Expression statements must be function calls" -- TODO: OFFSET
     _ -> Nothing
 

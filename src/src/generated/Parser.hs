@@ -2016,10 +2016,11 @@ happyReduction_145 happy_x_3
 	happy_x_2
 	happy_x_1
 	 =  case happyOut54 happy_x_1 of { happy_var_1 -> 
+	case happyOutTok happy_x_2 of { happy_var_2 -> 
 	case happyOutTok happy_x_3 of { happy_var_3 -> 
 	happyIn55
-		 (Selector happy_var_1 $ getIdent happy_var_3
-	)}}
+		 (Selector (getOffset happy_var_2) happy_var_1 $ getIdent happy_var_3
+	)}}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_146 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
@@ -2031,10 +2032,11 @@ happyReduction_146 (happy_x_4 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
 	 = case happyOut54 happy_x_1 of { happy_var_1 -> 
+	case happyOutTok happy_x_2 of { happy_var_2 -> 
 	case happyOut54 happy_x_3 of { happy_var_3 -> 
 	happyIn55
-		 (Index happy_var_1 happy_var_3
-	) `HappyStk` happyRest}}
+		 (Index (getOffset happy_var_2) happy_var_1 happy_var_3
+	) `HappyStk` happyRest}}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_147 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
@@ -2164,10 +2166,11 @@ happyReduction_157 (happy_x_4 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
 	 = case happyOut54 happy_x_1 of { happy_var_1 -> 
+	case happyOutTok happy_x_2 of { happy_var_2 -> 
 	case happyOut54 happy_x_3 of { happy_var_3 -> 
 	happyIn55
-		 (Arguments happy_var_1 [happy_var_3]
-	) `HappyStk` happyRest}}
+		 (Arguments (getOffset happy_var_2) happy_var_1 [happy_var_3]
+	) `HappyStk` happyRest}}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_158 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
@@ -2179,10 +2182,11 @@ happyReduction_158 (happy_x_4 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
 	 = case happyOut54 happy_x_1 of { happy_var_1 -> 
+	case happyOutTok happy_x_2 of { happy_var_2 -> 
 	case happyOut56 happy_x_3 of { happy_var_3 -> 
 	happyIn55
-		 (Arguments happy_var_1 happy_var_3
-	) `HappyStk` happyRest}}
+		 (Arguments (getOffset happy_var_2) happy_var_1 happy_var_3
+	) `HappyStk` happyRest}}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_159 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)

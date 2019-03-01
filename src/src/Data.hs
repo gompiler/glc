@@ -244,42 +244,49 @@ data Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports strings, arrays, and slices
-  | LenExpr Offset Expr
+  | LenExpr Offset
+            Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports arrays and slices
-  | CapExpr Offset Expr
+  | CapExpr Offset
+            Expr
   -- | See https://golang.org/ref/spec#Conversions
-  | Conversion Offset Type'
+  | Conversion Offset
+               Type'
                Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
-  | Selector Expr
+  | Selector Offset
+             Expr
              Identifier
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
-  | Index Expr
+  | Index Offset
+          Expr
           Expr
   -- | See https://golang.org/ref/spec#TypeAssertion
   -- Eg expr.(type)
-  | TypeAssertion Expr
-                  Offset
+  | TypeAssertion Offset
+                  Expr
                   Type'
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   -- TODO Golang specs support a lot more, but I believe we only need to support the basic call
-  | Arguments Expr
+  | Arguments Offset Expr
               [Expr]
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
-  offset (Unary o _ _)    = o
-  offset (Binary o _ _ _) = o
-  offset (Lit l)          = offset l
-  offset (Var id)         = offset id
-  -- TODO check
+  offset (Unary o _ _)      = o
+  offset (Binary o _ _ _)   = o
+  offset (Lit l)            = offset l
+  offset (Var id)           = offset id
   offset (AppendExpr o _ _) = offset o
-  offset (LenExpr o _) = o
+  offset (LenExpr o _)      = o
+  offset (CapExpr o _)      = o
+  offset (Conversion o _ _) = o
+  offset (Selector o _ _)   = o
 
 -- | See https://golang.org/ref/spec#Literal
 -- Type can be inferred from string

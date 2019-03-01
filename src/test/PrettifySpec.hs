@@ -35,8 +35,7 @@ intLit = map (\(i, e) -> (IntLit o i e, e)) [(Decimal, "12"), (Hexadecimal, "0xC
 
 floatLit = fstConvert (FloatLit o) [(0.123, "0.123"), (0.0, "0.0"), (-1.0, "-1.0")]
 
-stringLitInterpreted =
-  map (\i -> (StringLit o Interpreted i, "\"" ++ i ++ "\"")) ["hello", "world", "\"", "new\nline"]
+stringLitInterpreted = map (\i -> (StringLit o Interpreted i, "\"" ++ i ++ "\"")) ["hello", "world", "\"", "new\nline"]
 
 stringLitRaw = map (\i -> (StringLit o Raw i, "`" ++ i ++ "`")) ["hello", "world", "\"", "new\nline"]
 
@@ -65,10 +64,9 @@ exprs =
   , (LenExpr o baseExpr, "len(" ++ baseExpr' ++ ")")
   , (CapExpr o baseExpr, "cap(" ++ baseExpr' ++ ")")
   , (Conversion o baseType baseExpr, baseType' ++ "(" ++ baseExpr' ++ ")")
-  , (Selector baseExpr baseId, baseExpr' ++ "." ++ baseId')
-  , (Index baseExpr baseExpr, baseExpr' ++ "[" ++ baseExpr' ++ "]")
-  , (TypeAssertion baseExpr o baseType, baseExpr' ++ ".(" ++ baseType' ++ ")")
-  , ( Arguments baseExpr [baseExpr, baseExpr, baseExpr]
+  , (Selector o baseExpr baseId, baseExpr' ++ "." ++ baseId')
+  , (Index o baseExpr baseExpr, baseExpr' ++ "[" ++ baseExpr' ++ "]")
+  , (TypeAssertion o baseExpr baseType, baseExpr' ++ ".(" ++ baseType' ++ ")")
+  , ( Arguments o baseExpr [baseExpr, baseExpr, baseExpr]
     , baseExpr' ++ "(" ++ baseExpr' ++ ", " ++ baseExpr' ++ ", " ++ baseExpr' ++ ")")
   ]
-

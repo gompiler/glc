@@ -336,7 +336,7 @@ genEUn =
     , (1, genEBase >>= \(s, e) -> return ('(' : s ++ ")", e))
     , ( 1
       , T.genId >>= \id1 ->
-          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector (Var $ Identifier o id1) $ Identifier o id2))
+          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector o (Var $ Identifier o id1) $ Identifier o id2))
     ]
 
 genE :: Gen (String, Expr)
