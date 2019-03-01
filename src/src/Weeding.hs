@@ -106,13 +106,3 @@ programVerify program = firstOrNothing errors
 topToStmt :: TopDecl -> Maybe Stmt
 topToStmt (TopFuncDecl (FuncDecl _ _ stmt)) = Just stmt
 topToStmt _                                 = Nothing
-
--- | Extracts offsets from literals
-literalOffset :: Literal -> Offset
-literalOffset lit
-  = case lit of
-    IntLit offset _ _    -> offset
-    FloatLit offset _    -> offset
-    RuneLit offset _     -> offset
-    StringLit offset _ _ -> offset
-    FuncLit _ _          -> Offset 0 -- TODO!!!

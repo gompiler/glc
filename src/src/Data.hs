@@ -85,6 +85,9 @@ data FuncDecl =
            FuncBody
   deriving (Show, Eq)
 
+instance ErrorBreakpoint FuncDecl where
+  offset (FuncDecl id _ _) = offset id
+
 -- | See https://golang.org/ref/spec#ParameterDecl
 -- Func components
 -- Golite does not support unnamed parameters
@@ -143,6 +146,14 @@ data SimpleStmt
   | ShortDeclare Identifiers
                  (NonEmpty Expr)
   deriving (Show, Eq)
+
+instance ErrorBreakpoint SimpleStmt where
+  offset EmptyStmt            = error "EmptyStmt has no offset"
+  offset (ExprStmt e)         = offset e
+  offset (Increment o _)      = o
+  offset (Decrement o _)      = o
+  offset (Assign o _ _ _)     = o
+  offset (ShortDeclare ids _) = offset ids
 
 -- | Shortcut for a blank stmt
 blank :: Stmt
@@ -273,20 +284,24 @@ data Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   -- TODO Golang specs support a lot more, but I believe we only need to support the basic call
-  | Arguments Offset Expr
+  | Arguments Offset
+              Expr
               [Expr]
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
-  offset (Unary o _ _)      = o
-  offset (Binary o _ _ _)   = o
-  offset (Lit l)            = offset l
-  offset (Var id)           = offset id
-  offset (AppendExpr o _ _) = offset o
-  offset (LenExpr o _)      = o
-  offset (CapExpr o _)      = o
-  offset (Conversion o _ _) = o
-  offset (Selector o _ _)   = o
+  offset (Unary o _ _)         = o
+  offset (Binary o _ _ _)      = o
+  offset (Lit l)               = offset l
+  offset (Var id)              = offset id
+  offset (AppendExpr o _ _)    = offset o
+  offset (LenExpr o _)         = o
+  offset (CapExpr o _)         = o
+  offset (Conversion o _ _)    = o
+  offset (Selector o _ _)      = o
+  offset (Index o _ _)         = o
+  offset (TypeAssertion o _ _) = o
+  offset (Arguments o _ _)     = o
 
 -- | See https://golang.org/ref/spec#Literal
 -- Type can be inferred from string
@@ -303,9 +318,6 @@ data Literal
   | StringLit Offset
               StringType'
               String
-  -- | See https://golang.org/ref/spec#FunctionLit
-  | FuncLit Signature
-            FuncBody
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Literal where
@@ -384,6 +396,9 @@ data StringType'
 -- it results in unnecessary nested offsets
 type Type' = (Offset, Type)
 
+instance ErrorBreakpoint Type' where
+  offset (o, _) = o
+
 -- | See https://golang.org/ref/spec#Types
 data Type
   -- | See https://golang.org/ref/spec#Array_types
@@ -406,3 +421,6 @@ data FieldDecl
               Type'
   | EmbeddedField Identifier
   deriving (Show, Eq)
+
+instance ErrorBreakpoint FieldDecl where
+  offset (FieldDecl ids _) = offset ids

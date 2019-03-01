@@ -161,7 +161,6 @@ instance Prettify Literal where
   prettify (StringLit _ Raw s)         = s
   prettify' = prettify''
 
---  prettify' (FuncLit sig body)         = ["func" ++ prettify sig]
 instance Prettify BinaryOp where
   prettify Or         = "||"
   prettify And        = "||"
