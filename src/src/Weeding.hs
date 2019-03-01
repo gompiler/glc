@@ -63,12 +63,9 @@ stmtVerify (Switch _ _ cases) =
 -- Verify that for-loop post conditions are not short declarations
 stmtVerify (For (ForClause _ _ post) _) =
   case post of
-    ShortDeclare idents _ ->
-      Just $ createError (getOffset $ NonEmpty.toList idents) "For post-statement cannot be declaration"
+    ShortDeclare (Identifier offset _ :| _) _ ->
+      Just $ createError offset "For post-statement cannot be declaration"
     _ -> Nothing
-  where
-    getOffset :: [Identifier] -> Offset
-    getOffset ((Identifier offset _):_) = offset
 
 programVerify :: PureConstraint Program
 programVerify program = firstOrNothing errors
