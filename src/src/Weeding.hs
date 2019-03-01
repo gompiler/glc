@@ -69,19 +69,22 @@ stmtVerify (SimpleStmt stmt) =
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 
 -- Verify that switch statements only have one default
-stmtVerify (Switch _ _ cases) =
-  -- The [...] pattern matching returns all the examples in the list where the
-  -- pattern was matched (i.e. a default case was found). Effectively a
-  -- pattern-matching filter.
-  case [x | x@(Default _ _) <- cases] of
-    -- This pattern matching checks if the list is of length > 1 AND extracts
-    -- the offset at the same time for error reporting.
+stmtVerify (Switch s _ cases) =
+      (stmtVerify $ SimpleStmt s)
+  <|> case [x | x@(Default _ _) <- cases] of
+    -- The [...] pattern matching returns all the examples in the list where the
+    -- pattern was matched (i.e. a default case was found). Effectively a
+    -- pattern-matching filter.
+
+    -- The below pattern matching checks if the list is of length > 1 AND
+    -- extracts the offset at the same time for error reporting.
     (_:Default dupOffset _:_) -> Just $ createError dupOffset "Duplicate default found"
     _ -> Nothing
 
 -- Verify that for-loop post conditions are not short declarations
 stmtVerify (For (ForClause pre _ post) _) =
-  (stmtVerify $ SimpleStmt pre)
+      (stmtVerify $ SimpleStmt pre)
+  <|> (stmtVerify $ SimpleStmt post)
   <|> case post of
     ShortDeclare (Identifier offset _ :| _) _ ->
       Just $ createError offset "For post-statement cannot be declaration"
