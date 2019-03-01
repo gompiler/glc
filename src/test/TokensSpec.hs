@@ -115,7 +115,7 @@ instance SpecBuilder String (Either String [InnerToken]) () where
   expectation input output =
     it (show $ lines input) $ scanT input `shouldBe` output
 
-scanInputs = specConvert Right scanSuccess ++ specConvert Left scanFailure
+scanInputs = sndConvert Right scanSuccess ++ sndConvert Left scanFailure
 
 scanSuccess :: [(String, [InnerToken])]
 scanSuccess =

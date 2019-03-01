@@ -283,7 +283,9 @@ data Literal
              Float
   | RuneLit Offset
             Char
-  | StringLit StringLiteral
+  | StringLit Offset
+                StringType'
+                String
   -- | See https://golang.org/ref/spec#FunctionLit
   | FuncLit Signature
             FuncBody
@@ -372,14 +374,6 @@ data Type
   -- | See https://golang.org/ref/spec#Function_types
   | FuncType Signature
   | Type Identifier
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#string_lit
--- TODO check if we want to use a data kind and reuse the StringLit constructor within Literals
-data StringLiteral =
-  StringLiteral Offset
-                StringType'
-                String
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl
