@@ -205,6 +205,9 @@ spec = do
       ( "type (num int;);"
       , Right (TopDecl $ TypeDef [TypeDef' "num" (Type "int")]) :: Either String TopDecl)
     specAll "Programs" (specConvert Right programE :: [(String, Either String Program)])
+    specOne ( "package main; func zzzz(a int){}", Right (Program {package = "main", topLevels = [TopFuncDecl (FuncDecl "zzzz" (Signature (Parameters [ParameterDecl ("a" :| []) (Type "int")]) Nothing) (BlockStmt []))]}) :: Either String Program)
+    -- specOne ( "package main; func main(){ func lll(ggg){} }", Left "" :: Either String Program)
+    -- specAll "Invalid Programs" (specConvert Left programEL :: [(String, Either String Program)])
 
 programMain :: [(String, FuncBody)]
 programMain = [ ("", (BlockStmt []))
