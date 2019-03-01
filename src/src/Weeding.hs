@@ -11,21 +11,15 @@ import           ErrorBundle
 type PureConstraint a = a -> Maybe ErrorBundle'
 
 -- | Main weeding function
-weed :: Program -> String -> Maybe String
-weed program code =
+-- Takes in input code as well as ast program
+weed :: String -> Program -> Either String Program
+weed code program =
   case errorBundle of
-    Just eb -> Just $ errorString $ eb (createInitialState code)
-    Nothing -> Nothing
+    Just eb -> Left $ errorString $ eb (createInitialState code)
+    Nothing -> Right program
   where
     errorBundle :: Maybe ErrorBundle'
     errorBundle = programVerify program
-
--- | Replace this, but hooks up parser to weeder
-wCoupler :: (String -> Either String Program) -> String -> Either String Program
-wCoupler parser code = either Left weedProgram (parser code)
-  where
-    weedProgram :: Program -> Either String Program
-    weedProgram program = maybe (Right program) Left (weed program code)
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
