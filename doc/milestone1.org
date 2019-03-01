@@ -37,6 +37,10 @@ whilst implementing the components for milestone 1.
    and then we were able to insert a semicolon if the start code was
    $nl$, which was conveniently available for us.
 * Parser
+** Grammar
+   TODO: Issues with reversing, original solution and realization about
+   non-terminals...
+   TODO: Semicolon insertion and EOF
 ** AST
    The AST is largely a one to one mapping of the Golang specs, with
    parts we don't support removed and additional parts for Golite added.
@@ -89,8 +93,8 @@ whilst implementing the components for milestone 1.
 ** Contributions
    *Julian Lore* TODO
 
-   *David Lougheed:* I worked on the bulk of the parser and contributed to the
-   weeder. Additionally, I wrote 3 of the valid programs and 8 of the invalid
-   ones and had minor contributions to miscellaneous other components.
+   *David Lougheed:* I wrote the bulk of the parser grammar and contributed to
+   the weeder. Additionally, I wrote 3 of the valid programs and 8 of the
+   invalid ones and had minor contributions to miscellaneous other components.
 
    *Allan Wang* TODO
