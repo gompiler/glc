@@ -147,14 +147,8 @@ instance Prettify Expr where
   prettify (Conversion t e) = prettify t ++ "(" ++ prettify e ++ ")"
   prettify (Selector e i) = prettify e ++ "." ++ prettify i
   prettify (Index e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
-  prettify (Slice e r) = prettify e ++ "[" ++ prettify r ++ "]"
   prettify (TypeAssertion e _ t) = prettify e ++ ".(" ++ prettify t ++ ")"
   prettify (Arguments e ee) = prettify e ++ "(" ++ commaJoin ee ++ ")"
-  prettify' = prettify''
-
-instance Prettify SliceRange where
-  prettify (SliceSimple e1 e2) = Maybe.maybe "" prettify e1 ++ ":" ++ Maybe.maybe "" prettify e2
-  prettify (SliceFull e1 e2 e3) = Maybe.maybe "" prettify e1 ++ ":" ++ prettify e2 ++ ":" ++ prettify e3
   prettify' = prettify''
 
 instance Prettify Literal where
