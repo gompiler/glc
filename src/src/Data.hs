@@ -187,9 +187,11 @@ data Stmt
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
 data SwitchCase
-  = Case (NonEmpty Expr)
+  = Case Offset
+         (NonEmpty Expr)
          Stmt
-  | Default Stmt
+  | Default Offset
+            Stmt
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#For_statements
