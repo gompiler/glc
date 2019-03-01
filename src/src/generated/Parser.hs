@@ -1615,11 +1615,12 @@ happyReduction_115 (happy_x_5 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
 	 = case happyOut53 happy_x_1 of { happy_var_1 -> 
+	case happyOutTok happy_x_2 of { happy_var_2 -> 
 	case happyOut56 happy_x_3 of { happy_var_3 -> 
 	case happyOut44 happy_x_5 of { happy_var_5 -> 
 	happyIn53
-		 ((Case (nonEmpty happy_var_3) (BlockStmt $ reverse happy_var_5)) : happy_var_1
-	) `HappyStk` happyRest}}}
+		 ((Case (getOffset happy_var_2) (nonEmpty happy_var_3) (BlockStmt $ reverse happy_var_5)) : happy_var_1
+	) `HappyStk` happyRest}}}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_116 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
@@ -1632,11 +1633,12 @@ happyReduction_116 (happy_x_5 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
 	 = case happyOut53 happy_x_1 of { happy_var_1 -> 
+	case happyOutTok happy_x_2 of { happy_var_2 -> 
 	case happyOut54 happy_x_3 of { happy_var_3 -> 
 	case happyOut44 happy_x_5 of { happy_var_5 -> 
 	happyIn53
-		 ((Case (nonEmpty [happy_var_3]) (BlockStmt $ reverse happy_var_5)) : happy_var_1
-	) `HappyStk` happyRest}}}
+		 ((Case (getOffset happy_var_2) (nonEmpty [happy_var_3]) (BlockStmt $ reverse happy_var_5)) : happy_var_1
+	) `HappyStk` happyRest}}}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_117 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
@@ -1646,10 +1648,11 @@ happyReduction_117 happy_x_3
 	happy_x_2
 	happy_x_1
 	 =  case happyOut53 happy_x_1 of { happy_var_1 -> 
+	case happyOutTok happy_x_2 of { happy_var_2 -> 
 	case happyOut44 happy_x_3 of { happy_var_3 -> 
 	happyIn53
-		 ((Default $ BlockStmt (reverse happy_var_3)) : happy_var_1
-	)}}
+		 ((Default (getOffset happy_var_2) $ BlockStmt (reverse happy_var_3)) : happy_var_1
+	)}}}
 
 #if __GLASGOW_HASKELL__ >= 710
 happyReduce_118 :: () => Happy_GHC_Exts.Int# -> Token -> Happy_GHC_Exts.Int# -> Happy_IntList -> HappyStk (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _) -> Alex (HappyAbsSyn _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
