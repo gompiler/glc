@@ -3,6 +3,7 @@ module Weeding where
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
 
+import           Control.Applicative
 import           Data
 import           Data.Maybe  as Maybe
 import           ErrorBundle
@@ -53,13 +54,13 @@ stmtRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
 stmtRecursiveVerify constraint stmt =
   case stmt of
     BlockStmt stmts -> all stmts
-    If _ s1 s2 -> all [s1, s2]
-    For _ s -> all [s]
-    Switch _ _ cases -> all $ map stmtFromCase cases
+    If _ s1 s2 -> (constraint stmt) <|> all [s1, s2]
+    For _ s -> (constraint stmt) <|> all [s]
+    Switch _ _ cases -> (constraint stmt) <|> (all $ map stmtFromCase cases)
     -- TODO: case statements (since they implicitly define scopes/block statements?)
     -- TODO finish
     -- Non-scoped statements will not yield errors here
-    _ -> Nothing
+    _ -> constraint stmt -- Just $ createError (Offset 0) (show a)
   where
     all :: [Stmt] -> Maybe ErrorBundle'
     all = stmtRecursiveVerifyAll constraint
@@ -91,8 +92,9 @@ stmtVerify (Switch _ _ cases) =
     _ -> Nothing
 
 -- Verify that for-loop post conditions are not short declarations
-stmtVerify (For (ForClause _ _ post) _) =
-  case post of
+stmtVerify (For (ForClause pre _ post) _) =
+  (stmtVerify $ SimpleStmt pre)
+  <|> case post of
     ShortDeclare (Identifier offset _ :| _) _ ->
       Just $ createError offset "For post-statement cannot be declaration"
     _ -> Nothing
