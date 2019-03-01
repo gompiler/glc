@@ -31,11 +31,6 @@ stmtRecursiveVerify constraint stmt =
     -- TODO finish
     _ -> undefined
 
--- | Extracts block statements from top-level function declarations
-topToStmt :: TopDecl -> Maybe Stmt
-topToStmt (TopFuncDecl (FuncDecl _ _ stmt)) = Just stmt
-topToStmt _                                 = Nothing
-
 -- | Verification rules for specific statements
 stmtVerify :: Stmt -> Maybe ErrorBundle'
 
@@ -72,3 +67,20 @@ programVerify program = firstOrNothing errors
   where
     errors :: [ErrorBundle']
     errors = mapMaybe (stmtRecursiveVerify stmtVerify) (mapMaybe topToStmt $ topLevels program)
+
+
+-- Helpers
+
+-- | Extracts block statements from top-level function declarations
+topToStmt :: TopDecl -> Maybe Stmt
+topToStmt (TopFuncDecl (FuncDecl _ _ stmt)) = Just stmt
+topToStmt _                                 = Nothing
+
+-- | Extracts offsets from literals
+literalOffset :: Literal -> Offset
+literalOffset
+  | IntLit offset _ _    = offset
+  | FloatLit offset _    = offset
+  | RuneLit offset _     = offset
+  | StringLit offset _ _ = offset
+  | FuncLit _ _          = undefined
