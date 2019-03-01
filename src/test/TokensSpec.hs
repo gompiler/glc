@@ -1,207 +1,366 @@
-{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes           #-}
 
 module TokensSpec
   ( spec
+  , genId
+  , genNum
+  , genHex
+  , genOct
+  , genFloat
+  , genChar
+  , genChar'
+  , genString
+  , genRString
   ) where
 
-import           Data.Text         (Text, unpack)
-import           NeatInterpolation
+import           Base
 import           Scanner
-import           Test.Hspec
 
 spec :: Spec
-spec =
-  describe "scanT" $ do
-    specWithScanT (";", Right ([TSemicolon]))
-    mapM_ specWithScanT expectScanT
+spec = do
+  specAll "scanner" scanInputs
+  describe "extra scanner tests" $
+    qcGen "semicolon insertion" False genSemiI (\x -> scanT (x ++ "/* \n */") == scanT (x ++ ";"))
 
--- | Generate a SpecWith using the scan function
-specWithScanT :: (String, Either String [InnerToken]) -> SpecWith ()
-specWithScanT (input, output) = it ("given \n" ++ input ++ "\nreturns " ++ show output) $ scanT input `shouldBe` output
+genId' :: Gen String
+genId' = oneof $ [choose ('A', 'Z') >>= toRetL, (:) <$> choose ('A', 'Z') <*> genId']
+  
+genId :: Gen String
+genId =
+  frequency [(30, genId'), (1, return "_")]
 
-expectScanT :: [(String, Either String [InnerToken])]
-expectScanT =
-  [ ("break", Right [TBreak])
-  , ("break\n", Right [TBreak, TSemicolon])
-  , ("break\r", Right [TBreak, TSemicolon])
-  , ("break;", Right [TBreak, TSemicolon])
-  , ("break;\n", Right [TBreak, TSemicolon])
-  , ("break\n;", Right [TBreak, TSemicolon, TSemicolon])
-  , ("break ;", Right [TBreak, TSemicolon])
-  , ("break \n", Right [TBreak, TSemicolon])
-  , ("break \n;", Right [TBreak, TSemicolon, TSemicolon])
-  , ("chan", Right [TChan])
-  , ("const", Right [TConst])
-  , ("continue", Right [TContinue])
-  , ("continue\n", Right [TContinue, TSemicolon])
-  , ("continue;", Right [TContinue, TSemicolon])
-  , ("default", Right [TDefault])
-  , ("defer", Right [TDefer])
-  , ("else", Right [TElse])
-  , ("fallthrough", Right [TFallthrough])
-  , ("fallthrough\n", Right [TFallthrough, TSemicolon])
-  , ("fallthrough;\n", Right [TFallthrough, TSemicolon])
-  , ("for", Right [TFor])
-  , ("func", Right [TFunc])
-  , ("go", Right [TGo])
-  , ("goto", Right [TGoto])
-  , ("if", Right [TIf])
-  , ("import", Right [TImport])
-  , ("interface", Right [TInterface])
-  , ("map", Right [TMap])
-  , ("package", Right [TPackage])
-  , ("range", Right [TRange])
-  , ("return", Right [TReturn])
-  , ("return\n", Right [TReturn, TSemicolon])
-  , ("return;\n", Right [TReturn, TSemicolon])
-  , ("select", Right [TSelect])
-  , ("struct", Right [TStruct])
-  , ("switch", Right [TSwitch])
-  , (",", Right [TComma])
-  , (".", Right [TDot])
-  , (":", Right [TColon])
-  , (";", Right [TSemicolon])
-  , (";;;", Right [TSemicolon, TSemicolon, TSemicolon])
-  , ("(", Right [TLParen])
-  , (")", Right [TRParen])
-  , (")\n", Right [TRParen, TSemicolon])
-  , (");\n", Right [TRParen, TSemicolon])
-  , ("[", Right [TLSquareB])
-  , ("]", Right [TRSquareB])
-  , ("]\n", Right [TRSquareB, TSemicolon])
-  , ("];\n", Right [TRSquareB, TSemicolon])
-  , ("{", Right [TLBrace])
-  , ("}", Right [TRBrace])
-  , ("}\n", Right [TRBrace, TSemicolon])
-  , ("};\n", Right [TRBrace, TSemicolon])
-  , ("+", Right [TPlus])
-  , ("-", Right [TMinus])
-  , ("*", Right [TTimes])
-  , ("/", Right [TDiv])
-  , ("%", Right [TMod])
-  , ("=", Right [TAssn])
-  , (">", Right [TGt])
-  , ("<", Right [TLt])
-  , ("!", Right [TNot])
-  , ("==", Right [TEq])
-  , ("!=", Right [TNEq])
-  , (">=", Right [TGEq])
-  , ("<=", Right [TLEq])
-  , ("&&", Right [TAnd])
-  , ("||", Right [TOr])
-  , ("&", Right [TLAnd])
-  , ("|", Right [TLOr])
-  , ("^", Right [TLXor])
-  , ("<<", Right [TLeftS])
-  , (">>", Right [TRightS])
-  , ("&^", Right [TLAndNot])
-  , ("+=", Right [TIncA])
-  , ("-=", Right [TDIncA])
-  , ("*=", Right [TMultA])
-  , ("/=", Right [TDivA])
-  , ("%=", Right [TModA])
-  , ("&=", Right [TLAndA])
-  , ("|=", Right [TLOrA])
-  , ("^=", Right [TLXorA])
-  , ("<<=", Right [TLeftSA])
-  , (">>=", Right [TRightSA])
-  , ("&^=", Right [TLAndNotA])
-  , ("<-", Right [TRecv])
-  , (":=", Right [TDeclA])
-  , ("...", Right [TLdots])
-  , ("12947631951", Right [TDecVal "12947631951"])
-  , ("12947631951\n", Right [TDecVal "12947631951", TSemicolon])
-  , ("12947631951;\n", Right [TDecVal "12947631951", TSemicolon])
-  , ("003777", Right [TOctVal "003777"])
-  , ("0xCAFEBABE", Right [THexVal "0xCAFEBABE"])
-  , ("0XCAFEBABE", Right [THexVal "0XCAFEBABE"])
-  , ("0xcAFEbABE", Right [THexVal "0xcAFEbABE"])
-  , ("0xcafebabe", Right [THexVal "0xcafebabe"])
-  , ("0XcAFEbABE", Right [THexVal "0XcAFEbABE"])
-  , ("0Xcafebabe", Right [THexVal "0Xcafebabe"])
-  , ("003777\n", Right [TOctVal "003777", TSemicolon])
-  , ("0xCAFEBABE\n", Right [THexVal "0xCAFEBABE", TSemicolon])
-  , ("0XCAFEBABE\n", Right [THexVal "0XCAFEBABE", TSemicolon])
-  , ("0xcAFEbABE\n", Right [THexVal "0xcAFEbABE", TSemicolon])
-  , ("0xcafebabe\n", Right [THexVal "0xcafebabe", TSemicolon])
-  , ("0XcAFEbABE\n", Right [THexVal "0XcAFEbABE", TSemicolon])
-  , ("0Xcafebabe\n", Right [THexVal "0Xcafebabe", TSemicolon])
-  , ("003777;\n", Right [TOctVal "003777", TSemicolon])
-  , ("0xCAFEBABE;\n", Right [THexVal "0xCAFEBABE", TSemicolon])
-  , ("0XCAFEBABE;\n", Right [THexVal "0XCAFEBABE", TSemicolon])
-  , ("0xcAFEbABE;\n", Right [THexVal "0xcAFEbABE", TSemicolon])
-  , ("0xcafebabe;\n", Right [THexVal "0xcafebabe", TSemicolon])
-  , ("0XcAFEbABE;\n", Right [THexVal "0XcAFEbABE", TSemicolon])
-  , ("0Xcafebabe;\n", Right [THexVal "0Xcafebabe", TSemicolon])
-  , ("\"teststring\"", Right [TStringVal "\"teststring\""])
-  , ("\"teststring\\n\"", Right [TStringVal "\"teststring\\n\""])
-  , ("\"teststring\"\n", Right [TStringVal "\"teststring\"", TSemicolon])
-  , ("\"teststring\\n\"\n", Right [TStringVal "\"teststring\\n\"", TSemicolon])
-  , ("\"teststring\"\n", Right [TStringVal "\"teststring\"", TSemicolon])
-  , ("`teststring`", Right [TRStringVal "`teststring`"])
-  , ("`teststring`\n", Right [TRStringVal "`teststring`", TSemicolon])
-  , ("`teststring`;\n", Right [TRStringVal "`teststring`", TSemicolon])
-  , ("1.23", Right [TFloatVal 1.23])
-  , ("1.23\n", Right [TFloatVal 1.23, TSemicolon])
-  , ("1.23; \n", Right [TFloatVal 1.23, TSemicolon])
-  , ("help\n", Right [TIdent "help", TSemicolon])
-  , ("help;\n", Right [TIdent "help", TSemicolon])
-  , ("help ;\n", Right [TIdent "help", TSemicolon])
-  -- , ("help \n", Right ([TIdent "help", TSemicolon]))
-  , ("case", Right [TCase])
-  , ("print", Right [TPrint])
-  , ("println", Right [TPrintln])
-  , ("type", Right [TType])
-  , ("append", Right [TAppend])
-  , ("len", Right [TLen])
-  , ("cap", Right [TCap])
-  , ("++", Right [TInc])
-  , ("++\n", Right [TInc, TSemicolon])
-  , ("++;", Right [TInc, TSemicolon])
-  , ("--", Right [TDInc])
-  , ("--\n", Right [TDInc, TSemicolon])
-  , ("--;", Right [TDInc, TSemicolon])
-  , ("'a'", Right [TRuneVal 'a'])
-  , ("'a'\n", Right [TRuneVal 'a', TSemicolon])
-  , ("", Right [])
-  , ("\n", Right [])
-  , ("\r", Right [])
-  , ("// This is a comment", Right [])
-  , ("/* Block comment */", Right [])
-  -- , ("a /* Block \n */", Right ([TIdent "a", TSemicolon]))
-               -- This will have to change if we change error printing
-  , ("''", Left "Error: lexical error at line 1, column 3. Previous character: '\\\'', current string: ")
-  , ("var", Right [TVar])
-  , ("break varname;", Right [TBreak, TIdent "varname", TSemicolon])
-  , ("break varname\n", Right [TBreak, TIdent "varname", TSemicolon])
-  , ("break varname;\n", Right [TBreak, TIdent "varname", TSemicolon])
-  , ("break varname \n", Right [TBreak, TIdent "varname", TSemicolon])
-  , ("break +\n", Right [TBreak, TPlus])
+genNum :: Gen String
+genNum = -- Ensure no octal
+  oneof [choose ('8', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
+
+genHex' :: Gen String
+genHex' =
+  oneof
+    [ choose ('0', '9') >>= toRetL
+    , choose ('a', 'f') >>= toRetL
+    , choose ('A', 'F') >>= toRetL
+    , (:) <$> choose ('0', '9') <*> genHex'
+    , (:) <$> choose ('a', 'f') <*> genHex'
+    , (:) <$> choose ('A', 'F') <*> genHex'
+    ]
+
+genHex :: Gen String
+genHex = genHex' >>= (\l -> elements ['x', 'X'] >>= \x -> return $ '0' : x : l)
+
+genOct' :: Gen String
+genOct' = oneof [choose ('0', '7') >>= toRetL, (:) <$> choose ('0', '7') <*> genOct']
+  
+genOct :: Gen String
+genOct = genOct' >>= \s -> return $ '0':s
+
+genFloat :: Gen String
+genFloat = do
+  n1 <- genNum
+  n2 <- genNum
+  return $ n1 ++ '.' : n2
+
+genChar' :: Gen Char -- 92 = \, 34 = ", 39 = ', 32 - 126 is space to ~, most "normal" characters
+genChar' =
+  choose (32, 126) `suchThat` (\i -> not $ i == 92 || i == 34 || i == 39) >>=
+  (return . toEnum :: Int -> Gen Char)
+
+genRChar' :: Gen Char -- 96 = `
+genRChar' =
+  choose (32, 126) `suchThat` (not . (==) 96) >>=
+  (return . toEnum :: Int -> Gen Char)
+
+genChar :: Gen String
+genChar = genChar' >>= \s -> return $ '\'' : s : ['\'']
+
+genString' :: Gen String
+genString' = oneof [genChar' >>= toRetL, (:) <$> genChar' <*> genString']
+
+genString :: Gen String
+genString = genString' >>= \s -> return $ '\"' : s ++ "\""
+
+genRString' :: Gen String
+genRString' = oneof [genRChar' >>= toRetL, (:) <$> genRChar' <*> genRString']
+
+genRString :: Gen String
+genRString = genRString' >>= \s -> return $ '`' : s ++ "`"
+
+genSemiI :: Gen String
+genSemiI =
+  oneof
+    [ elements
+        [ "break"
+        , "continue"
+        , "fallthrough"
+        , "return"
+        , "++"
+        , "--"
+        , ")"
+        , "]"
+        , "}"
+        ]
+    , genId
+    , genNum
+    , genHex
+    , genOct
+    , genFloat
+    , genChar
+    , genString
+    , genRString
+    ]
+
+instance SpecBuilder String (Either String [InnerToken]) () where
+  expectation input output =
+    it (show $ lines input) $ scanT input `shouldBe` output
+
+scanInputs = specConvert Right scanSuccess ++ specConvert Left scanFailure
+
+scanSuccess :: [(String, [InnerToken])]
+scanSuccess =
+  [ (";", [TSemicolon])
+  , ("break", [TBreak, TSemicolon])
+  , ("break\n", [TBreak, TSemicolon])
+  , ("break\r", [TBreak, TSemicolon])
+  , ("break;", [TBreak, TSemicolon])
+  , ("break;\n", [TBreak, TSemicolon])
+  , ("break\n;", [TBreak, TSemicolon, TSemicolon])
+  , ("break ;", [TBreak, TSemicolon])
+  , ("break \n", [TBreak, TSemicolon])
+  , ("break \n;", [TBreak, TSemicolon, TSemicolon])
+  , ("chan", [TChan])
+  , ("const", [TConst])
+  , ("continue", [TContinue, TSemicolon])
+  , ("continue\n", [TContinue, TSemicolon])
+  , ("continue;", [TContinue, TSemicolon])
+  , ("default", [TDefault])
+  , ("defer", [TDefer])
+  , ("else", [TElse])
+  , ("fallthrough", [TFallthrough, TSemicolon])
+  , ("fallthrough\n", [TFallthrough, TSemicolon])
+  , ("fallthrough;\n", [TFallthrough, TSemicolon])
+  , ("for", [TFor])
+  , ("func", [TFunc])
+  , ("go", [TGo])
+  , ("goto", [TGoto])
+  , ("if", [TIf])
+  , ("import", [TImport])
+  , ("interface", [TInterface])
+  , ("map", [TMap])
+  , ("package", [TPackage])
+  , ("range", [TRange])
+  , ("return", [TReturn, TSemicolon])
+  , ("return\n", [TReturn, TSemicolon])
+  , ("return;\n", [TReturn, TSemicolon])
+  , ("select", [TSelect])
+  , ("struct", [TStruct])
+  , ("switch", [TSwitch])
+  , (",", [TComma])
+  , (".", [TDot])
+  , (":", [TColon])
+  , (";", [TSemicolon])
+  , (";;;", [TSemicolon, TSemicolon, TSemicolon])
+  , ("(", [TLParen])
+  , (")", [TRParen, TSemicolon])
+  , (")\n", [TRParen, TSemicolon])
+  , (");\n", [TRParen, TSemicolon])
+  , ("[", [TLSquareB])
+  , ("]", [TRSquareB, TSemicolon])
+  , ("]\n", [TRSquareB, TSemicolon])
+  , ("];\n", [TRSquareB, TSemicolon])
+  , ("{", [TLBrace])
+  , ("}", [TRBrace, TSemicolon])
+  , ("}\n", [TRBrace, TSemicolon])
+  , ("};\n", [TRBrace, TSemicolon])
+  , ("+", [TPlus])
+  , ("-", [TMinus])
+  , ("*", [TTimes])
+  , ("/", [TDiv])
+  , ("%", [TMod])
+  , ("=", [TAssn])
+  , (">", [TGt])
+  , ("<", [TLt])
+  , ("!", [TNot])
+  , ("==", [TEq])
+  , ("!=", [TNEq])
+  , (">=", [TGEq])
+  , ("<=", [TLEq])
+  , ("&&", [TAnd])
+  , ("||", [TOr])
+  , ("&", [TLAnd])
+  , ("|", [TLOr])
+  , ("^", [TLXor])
+  , ("<<", [TLeftS])
+  , (">>", [TRightS])
+  , ("&^", [TLAndNot])
+  , ("+=", [TIncA])
+  , ("-=", [TDIncA])
+  , ("*=", [TMultA])
+  , ("/=", [TDivA])
+  , ("%=", [TModA])
+  , ("&=", [TLAndA])
+  , ("|=", [TLOrA])
+  , ("^=", [TLXorA])
+  , ("<<=", [TLeftSA])
+  , (">>=", [TRightSA])
+  , ("&^=", [TLAndNotA])
+  , ("<-", [TRecv])
+  , (":=", [TDeclA])
+  , ("...", [TLdots])
+  , ("12947631951", [TDecVal "12947631951", TSemicolon])
+  , ("12947631951\n", [TDecVal "12947631951", TSemicolon])
+  , ("12947631951;\n", [TDecVal "12947631951", TSemicolon])
+  , ("003777", [TOctVal "003777", TSemicolon])
+  , ("0xCAFEBABE", [THexVal "0xCAFEBABE", TSemicolon])
+  , ("0XCAFEBABE", [THexVal "0XCAFEBABE", TSemicolon])
+  , ("0xcAFEbABE", [THexVal "0xcAFEbABE", TSemicolon])
+  , ("0xcafebabe", [THexVal "0xcafebabe", TSemicolon])
+  , ("0XcAFEbABE", [THexVal "0XcAFEbABE", TSemicolon])
+  , ("0Xcafebabe", [THexVal "0Xcafebabe", TSemicolon])
+  , ("003777\n", [TOctVal "003777", TSemicolon])
+  , ("0xCAFEBABE\n", [THexVal "0xCAFEBABE", TSemicolon])
+  , ("0XCAFEBABE\n", [THexVal "0XCAFEBABE", TSemicolon])
+  , ("0xcAFEbABE\n", [THexVal "0xcAFEbABE", TSemicolon])
+  , ("0xcafebabe\n", [THexVal "0xcafebabe", TSemicolon])
+  , ("0XcAFEbABE\n", [THexVal "0XcAFEbABE", TSemicolon])
+  , ("0Xcafebabe\n", [THexVal "0Xcafebabe", TSemicolon])
+  , ("003777;\n", [TOctVal "003777", TSemicolon])
+  , ("0xCAFEBABE;\n", [THexVal "0xCAFEBABE", TSemicolon])
+  , ("0XCAFEBABE;\n", [THexVal "0XCAFEBABE", TSemicolon])
+  , ("0xcAFEbABE;\n", [THexVal "0xcAFEbABE", TSemicolon])
+  , ("0xcafebabe;\n", [THexVal "0xcafebabe", TSemicolon])
+  , ("0XcAFEbABE;\n", [THexVal "0XcAFEbABE", TSemicolon])
+  , ("0Xcafebabe;\n", [THexVal "0Xcafebabe", TSemicolon])
+  , ("\"teststring\"", [TStringVal "\"teststring\"", TSemicolon])
+  , ("\"teststring\\n\"", [TStringVal "\"teststring\\n\"", TSemicolon])
+  , ("\"teststring\"\n", [TStringVal "\"teststring\"", TSemicolon])
+  , ("\"teststring\\n\"\n", [TStringVal "\"teststring\\n\"", TSemicolon])
+  , ("\"teststring\"\n", [TStringVal "\"teststring\"", TSemicolon])
+  , ("`teststring`", [TRStringVal "`teststring`", TSemicolon])
+  , ("`teststring`\n", [TRStringVal "`teststring`", TSemicolon])
+  , ("`teststring`;\n", [TRStringVal "`teststring`", TSemicolon])
+  , ("1.23", [TFloatVal 1.23, TSemicolon])
+  , ("1.23\n", [TFloatVal 1.23, TSemicolon])
+  , ("1.23; \n", [TFloatVal 1.23, TSemicolon])
+  , ("1.", [TFloatVal 1.0, TSemicolon])
+  , (".1", [TFloatVal 0.1, TSemicolon])
+  , ("help\n", [TIdent "help", TSemicolon])
+  , ("help;\n", [TIdent "help", TSemicolon])
+  , ("help ;\n", [TIdent "help", TSemicolon])
+  , ("help \n", [TIdent "help", TSemicolon])
+  , ("case", [TCase])
+  , ("print", [TPrint])
+  , ("println", [TPrintln])
+  , ("type", [TType])
+  , ("append", [TAppend])
+  , ("len", [TLen])
+  , ("cap", [TCap])
+  , ("++", [TInc, TSemicolon])
+  , ("++\n", [TInc, TSemicolon])
+  , ("++;", [TInc, TSemicolon])
+  , ("--", [TDInc, TSemicolon])
+  , ("--\n", [TDInc, TSemicolon])
+  , ("--;", [TDInc, TSemicolon])
+  , ("'a'", [TRuneVal 'a', TSemicolon])
+  , ("'a'\n", [TRuneVal 'a', TSemicolon])
+  , ("", [])
+  , ("\n", [])
+  , ("\r", [])
+  , ("// This is a comment", [])
+  , ("/* Block comment */", [])
+  , ("a /* Block \n */", [TIdent "a", TSemicolon])
+  , ("+ /* Block \n */", [TPlus])
+  , ("var", [TVar])
+  , ("break varname;", [TBreak, TIdent "varname", TSemicolon])
+  , ("break varname\n", [TBreak, TIdent "varname", TSemicolon])
+  , ("break varname;\n", [TBreak, TIdent "varname", TSemicolon])
+  , ("break varname \n", [TBreak, TIdent "varname", TSemicolon])
+  , ("break +\n", [TBreak, TPlus])
+  , ("testid", [TIdent "testid", TSemicolon])
+  , ("identttt", [TIdent "identttt", TSemicolon])
+  , ("_", [TIdent "_", TSemicolon])
+  , ("a, b, dddd", [TIdent "a", TComma, TIdent "b", TComma, TIdent "dddd", TSemicolon])
+  , ( "weirdsp, _   ,aacing"
+    , [TIdent "weirdsp", TComma, TIdent "_", TComma, TIdent "aacing", TSemicolon])
+  , ( "weirdsp, _   \n,aacing"
+    , [ TIdent "weirdsp"
+      , TComma
+      , TIdent "_"
+      , TSemicolon
+      , TComma
+      , TIdent "aacing"
+      , TSemicolon
+      ])
+  , ("`\"`", [TRStringVal "`\"`", TSemicolon])
+  , ("`\'`", [TRStringVal "`\'`", TSemicolon])
+  , ("`\\z`", [TRStringVal "`\\z`", TSemicolon])
+  , ("\"'\"", [TStringVal "\"'\"", TSemicolon])
+  , ("\"\"", [TStringVal "\"\"", TSemicolon])
+  , ("``", [TRStringVal "``", TSemicolon])
+  , ("\"\\n\"", [TStringVal "\"\\n\"", TSemicolon])
+  , ("'\\a'", [TRuneVal '\a', TSemicolon])
+  , ("'\\b'", [TRuneVal '\b', TSemicolon])
+  , ("'\\f'", [TRuneVal '\f', TSemicolon])
+  , ("'\\n'", [TRuneVal '\n', TSemicolon])
+  , ("'\\r'", [TRuneVal '\r', TSemicolon])
+  , ("'\\t'", [TRuneVal '\t', TSemicolon])
+  , ("'\\v'", [TRuneVal '\v', TSemicolon])
+  , ("'\\\\'", [TRuneVal '\\', TSemicolon])
   , ( unpack
         [text|
-          /* Long block comment
-          here's another line
-          and another
-          */
-        |]
-    , Right [])
-  , ( unpack
-        [text|
-          /* Long block comment no new line */
-        |]
-    , Right [])
-  , ( unpack
-        [text|
-          // Short comments
-          // More
-        |]
-    , Right [])
-  , ( unpack
-        [text|
-          break /* Multiline to simulate
+          +   /* Multiline to simulate
           a new line */
         |]
-    , Right [TBreak, TSemicolon])
+    , [TPlus])
+  , ( unpack
+        [text|
+          fallthrough   /* New line after comment */
+
+        |]
+    , [TFallthrough, TSemicolon])
+  , ( unpack
+        [text|
+          ++   /* New line after comment
+          and inside comment*/
+
+        |]
+    , [TInc, TSemicolon])
+  , ( unpack
+        [text|
+          )   ;   /* New line after comment
+          and inside comment*/
+
+        |]
+    , [TRParen, TSemicolon])
+  , ( unpack
+        [text|
+            /* Long block comment
+            here's another line
+            and another
+            */
+          |]
+    , [])
+  , ( unpack
+        [text|
+            /* Long block comment no new line */
+          |]
+    , [])
+  , ( unpack
+        [text|
+            // Short comments
+            // More
+          |]
+    , [])
+  , ( unpack
+        [text|
+            break /* Multiline to simulate
+            a new line */
+          |]
+    , [TBreak, TSemicolon])
   ]
--- expectScanP :: [(String, String, Either String [InnerToken])]
--- expectScanP = [("Prints tBREAK tSEMICOLON when given `break`")]
+
+scanFailure :: [(String, String)]
+scanFailure =
+  [ ( "''"
+    , "Error: lexical error at line 1, column 2. Previous character: '\\\'', current string: '\n")
+  ]

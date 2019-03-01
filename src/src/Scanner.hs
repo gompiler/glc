@@ -1,8 +1,5 @@
 module Scanner
-  ( P
-  , thenP
-  , returnP
-  , showError
+  ( showError
   , getPos
   , happyError
   , lexer
@@ -10,12 +7,13 @@ module Scanner
   , scanP
   , scanC
   , putExit
+  , putSucc
   , prettify
   , T.Token(..)
   , T.InnerToken(..)
   , T.AlexPosn(..)
   , T.alexError
-  , T.runAlex
+  , runAlex
   , T.Alex
   ) where
 
@@ -142,25 +140,42 @@ alexMonadScan = do
       T.alexSetInput inp__'
       action (T.ignorePendingBytes inp__) len
 
+-- | inpNL, input new line if input does not end with a newline
+inpNL :: String -> String
+inpNL s = reverse $ inpNLR s []
+  
+inpNLR :: String -> String -> String
+inpNLR s r = case s of
+               "\n" -> '\n':r
+               [] -> '\n':r
+               h:t -> inpNLR t (h:r)
+
+
+-- | Wrapper for runAlex to process output through inpNL
+runAlex :: String -> T.Alex a -> Either String a
+runAlex s = T.runAlex (inpNL s)
+
 -- | scan, the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
 scan :: String -> Either String [T.InnerToken]
-scan s =
-  T.runAlex s $ do
-    let loop tokl = do
-          (T.Token _ tok) <- alexMonadScan
-          if tok == T.TEOF
-            then return tokl
-            else loop (tok : tokl)
-    loop []
+scan s = 
+  runAlex s $ do
+  let loop tokl = do
+        (T.Token _ tok) <- alexMonadScan
+        if tok == T.TEOF
+          then return tokl
+          else loop (tok : tokl)
+  loop []
 
 scanT :: String -> Either String [T.InnerToken]
 scanT s = fmap reverse (scan s)
 
 -- | putExit: function to output to stderr and exit with return code 1
 putExit :: String -> IO ()
-putExit err = do
-  hPutStrLn stderr err
-  exitFailure
+putExit err = hPutStrLn stderr err >> exitFailure
+
+-- | putSucc: output to stdin and exit with success
+putSucc :: String -> IO ()
+putSucc s = putStrLn s >> exitSuccess
 
 -- | Print result of scan, i.e. tokens or error
 scanP :: String -> IO ()
@@ -171,15 +186,6 @@ scanP s =
 scanC :: String -> IO ()
 scanC s = either putExit (const $ putStrLn "OK" >> exitSuccess) (scan s)
 
--- | Monad types/functions to allow the scanner to interface with the parser
-type P a = T.Alex a
-
-thenP :: P a -> (a -> P b) -> P b
-thenP = (>>=)
-
-returnP :: a -> P a
-returnP = return
-
 -- | showError will be passed to happyError and will define behavior on parser errors
 showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
 showError (l, c, _) =
@@ -189,10 +195,10 @@ showError (l, c, _) =
 getPos :: T.Alex T.AlexPosn
 getPos = T.Alex (\s -> Right (s, T.alex_pos s))
 
-happyError :: P a
+happyError :: T.Alex a
 happyError = do
   (T.AlexPn _ l c) <- getPos
   showError (l, c, Nothing)
 
-lexer :: (T.Token -> P a) -> P a
+lexer :: (T.Token -> T.Alex a) -> T.Alex a
 lexer s = alexMonadScan >>= s
