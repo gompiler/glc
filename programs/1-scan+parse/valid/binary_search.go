@@ -1,23 +1,23 @@
 package main
 
 // Recursive binary search function
-func binary_search(a [10]int, l, r int, target int) bool {
-	if r - l <= 1 {
+func binarySearch(a [10]int, l, r int, target int) bool {
+	if r-l <= 1 {
 		return a[l] == target
 	}
 
-	var midpoint = (l + r)  / 2
+	var midpoint = (l + r) / 2
 
 	if a[midpoint] == target {
 		return true
 	}
 
-	return binary_search(a, l, midpoint, target) || binary_search(a, midpoint, r, target)
+	return binarySearch(a, l, midpoint, target) || binarySearch(a, midpoint, r, target)
 }
 
 // Helper wrapper for recursive function
 func search(a [10]int, target int) {
-	println("Found", target, ":", binary_search(a, 0, len(a), target))
+	println("Found", target, ":", binarySearch(a, 0, len(a), target))
 }
 
 func main() {
@@ -36,4 +36,3 @@ func main() {
 	search(a, 3)
 	search(a, 2)
 }
-
