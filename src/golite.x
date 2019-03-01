@@ -24,10 +24,12 @@ $ctrl = [$upper \@\[\\\]\^\_]
 @special = \^ $ctrl | NUL | SOH | STX | ETX | EOT | ENQ | ACK | BEL | BS | TAB | LF | VT | FF | CR | SO | SI | DLE | DC1 | DC2 | DC4 | NAK | SYN | ETB | CAN | EM | SUB | ESC | FS | GS | RS | US | SP | DEL
 
 @escape = \\ ($charesc)
+@escapestr = \\ \"
+@escapec = \\ \'
 
 @rstring = $graphic # [\`] | " " | \\ | @special
-@string = $graphic # [\"] | " " | @escape | @special
-@char = $graphic # [\'] | " " | @escape | @special
+@string = $graphic # [\"] | " " | @escape | @escapestr | @special
+@char = $graphic # [\'] | " " | @escape | @escapec | @special
 
 @comment = "/*"
 
@@ -266,12 +268,13 @@ tok x = tokM $ const x
 tokCInp x = andBegin (tokM $ x . \s -> case s!!1 of
                                             '\\' -> (case s!!2 of
                                                           'a'  -> '\a'
-                                                          'b' -> '\b'
-                                                          'f' -> '\f'
-                                                          'n' -> '\n'
-                                                          'r' -> '\r'
-                                                          't' -> '\t'
-                                                          'v' -> '\v'
+                                                          'b'  -> '\b'
+                                                          'f'  -> '\f'
+                                                          'n'  -> '\n'
+                                                          'r'  -> '\r'
+                                                          't'  -> '\t'
+                                                          'v'  -> '\v'
+                                                          '\'' -> '\''
                                                           '\\' -> '\\')
                                             c -> c) nl -- Take index 1 of the string that should be 'C' where C is a char or escape character
                                            -- All literal vals can take optional semicolons, hence the nl
