@@ -118,7 +118,8 @@ instance Prettify Stmt where
       i' = tab $ prettify' i
       e' =
         case e of
-          If {} -> ["} else"] `skipNewLine` prettify' e ++ ["}"]
+          If {} -> ["} else"] `skipNewLine` prettify' e -- Else If
+          SimpleStmt EmptyStmt -> ["}"] -- No real else block, don't print anything
           _     -> "} else {" : tab (prettify' e) ++ ["}"]
   prettify' (Switch ss se cases) = ("switch " ++ ss' ++ "{") : tab (cases >>= prettify') ++ ["}"]
     where
