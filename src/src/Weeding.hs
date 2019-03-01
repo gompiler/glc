@@ -23,20 +23,11 @@ weed program code =
 -- | Replace this, but hooks up parser to weeder
 wCoupler :: (String -> Either String Program) -> String -> Either String Program
 wCoupler parser code =
-  case pResult of
-    Left err -> Left err
-    Right program -> weedProgram program
+  either Left weedProgram (parser code)
   where
     weedProgram :: Program -> Either String Program
     weedProgram program =
-      case wResult of
-        Just err -> Left err
-        Nothing -> Right program
-      where
-        wResult :: Maybe String
-        wResult = (weed program code)
-    pResult :: Either String Program
-    pResult = parser code
+      maybe (Right program) Left (weed program code)
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
