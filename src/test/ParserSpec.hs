@@ -31,7 +31,7 @@ spec = do
       "ident list"
       True
       (genCommaList T.genId)
-      (\x -> scanToP pId x == (Right $ NonEmpty.fromList $ map (Identifier o) (splitOn "," x)))
+      (\x -> scanToP pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
     qcGen
       "basic expressions"
@@ -219,7 +219,7 @@ programMainL = [ ("", "")
 
 programE :: [(String, Program)]
 programE = map (\(s,body) -> ("package main; func main(){" ++ s ++ "}", Program {package = "main", topLevels = [TopFuncDecl (FuncDecl (Identifier o "main") (Signature (Parameters []) Nothing) body)]})) programMain
-  
+
 programEL :: [(String, String)]
 programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
 
@@ -254,7 +254,7 @@ instance SpecBuilder String (Either String Decl) () where
 instance SpecBuilder String (Either String [Expr]) () where
   expectation input output =
     it (show $ lines input) $ scanToP pEl input `shouldBe` output
-  
+
 instance SpecBuilder String (Either String Expr) () where
   expectation input output =
     it (show $ lines input) $ scanToP pE input `shouldBe` output
