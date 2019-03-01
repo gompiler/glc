@@ -129,6 +129,7 @@ type FuncBody = Stmt
 data SimpleStmt
   = EmptyStmt
   -- | See https://golang.org/ref/spec#Expression_statements
+  -- Note that expr must be some function
   | ExprStmt Expr
   -- | See https://golang.org/ref/spec#IncDecStmt
   -- TODO check if we want to split these or add a new field for inc and dec
@@ -283,7 +284,6 @@ data Expr
                   Type'
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
-  -- TODO Golang specs support a lot more, but I believe we only need to support the basic call
   | Arguments Offset
               Expr
               [Expr]
@@ -294,7 +294,7 @@ instance ErrorBreakpoint Expr where
   offset (Binary o _ _ _)      = o
   offset (Lit l)               = offset l
   offset (Var id)              = offset id
-  offset (AppendExpr o _ _)    = offset o
+  offset (AppendExpr o _ _)    = o
   offset (LenExpr o _)         = o
   offset (CapExpr o _)         = o
   offset (Conversion o _ _)    = o
