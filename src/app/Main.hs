@@ -4,6 +4,7 @@ import qualified Options.Applicative as Op
 import           ParseCLI
 import           Parser
 import           Scanner
+import           Weeding
 
 main :: IO ()
 main = do

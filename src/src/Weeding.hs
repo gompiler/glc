@@ -9,6 +9,16 @@ import           ErrorBundle
 
 type PureConstraint a = a -> Maybe ErrorBundle'
 
+-- | Main weeding function
+weed :: Program -> String -> Maybe String
+weed program code =
+  case errorBundle of
+    Just eb -> Just $ errorString $ eb (createInitialState code)
+    Nothing -> Nothing
+  where
+    errorBundle :: Maybe ErrorBundle'
+    errorBundle = programVerify program
+
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
 firstOrNothing []    = Nothing
