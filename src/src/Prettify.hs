@@ -35,8 +35,18 @@ a `skipNewLine` [] = a
 prettify'' :: Prettify a => a -> [String]
 prettify'' item = [prettify item]
 
+-- | TODO: Replace this
+
 class Prettify a where
   prettify :: a -> String
+  pCoupler :: (String -> Either String a) -> String -> String
+  pCoupler parser code =
+    case ppResult of
+      Left err -> err
+      Right pretty -> pretty
+    where
+      ppResult :: Either String String
+      ppResult = either Left (Right . prettify) (parser code)
   prettify = intercalate "\n" . prettify'
   prettify' :: a -> [String]
 
@@ -78,7 +88,7 @@ instance Prettify TypeDef' where
 
 instance Prettify FuncDecl where
   prettify' (FuncDecl id sig body) =
-    ("func " ++ prettify id) : (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
+    [("func " ++ prettify id)] `skipNewLine` (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
 
 instance Prettify ParameterDecl where
   prettify (ParameterDecl ids t) = prettify ids ++ " " ++ prettify t
@@ -103,7 +113,7 @@ instance Prettify SimpleStmt where
 instance Prettify Stmt where
   prettify' (BlockStmt stmts) = stmts >>= prettify'
   prettify' (SimpleStmt s) = prettify' s
-  prettify' (If c i e) = ("if " ++ prettify c ++ "{") : i' ++ e'
+  prettify' (If c i e) = ("if " ++ prettify c ++ " {") : i' ++ e'
     where
       i' = tab $ prettify' i
       e' =
@@ -116,6 +126,13 @@ instance Prettify Stmt where
         case se of
           Just se' -> prettify (ss, se')
           Nothing  -> prettify ss
+  prettify' (For fc s) = ("for " ++ (prettify fc) ++ " {") : (tab $ prettify' s) ++ ["}"]
+  prettify' (Break _) = ["break"]
+  prettify' (Continue _) = ["continue"]
+  prettify' (Fallthrough _) = ["fallthrough"]
+  prettify' (Declare d) = prettify' d
+  prettify' (Return m) = ["return"] `skipNewLine` (maybe [] (prettify') m)
+  prettify' _ = ["TODO"]
 
 instance Prettify SwitchCase where
   prettify' (Case _ e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)
@@ -129,7 +146,7 @@ instance Prettify (SimpleStmt, Expr) where
 instance Prettify ForClause where
   prettify ForInfinite         = ""
   prettify (ForCond e)         = prettify e
-  prettify (ForClause cs ce s) = []
+  prettify (ForClause cs ce s) = (prettify cs) ++ "; " ++ (prettify ce) ++ "; " ++ (prettify s)
   prettify' = prettify''
 
 instance Prettify (NonEmpty Expr) where
