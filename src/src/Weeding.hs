@@ -39,6 +39,14 @@ topToStmt _                                 = Nothing
 -- | Verification rules for specific statements
 stmtVerify :: Stmt -> Maybe ErrorBundle'
 
+-- Verify that expression statements are only function calls
+stmtVerify (SimpleStmt stmt) =
+  case stmt of
+    ExprStmt (Arguments _ _) -> Nothing
+    ExprStmt _ -> Just $ createError (Offset 0) "Expression statements must be function calls" -- TODO: OFFSET
+    _ -> Nothing
+
+-- Verify that switch statements only have one default
 stmtVerify (Switch _ _ cases) =
   -- The [...] pattern matching returns all the examples in the list where the
   -- pattern was matched (i.e. a default case was found). Effectively a
@@ -49,6 +57,7 @@ stmtVerify (Switch _ _ cases) =
     (_:Default dupOffset _:_) -> Just $ createError dupOffset "Duplicate default found"
     _ -> Nothing
 
+-- Verify that for-loop post conditions are not short declarations
 stmtVerify (For (ForClause _ _ post) _) =
   case post of
     ShortDeclare idents _ ->
