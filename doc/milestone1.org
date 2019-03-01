@@ -88,5 +88,9 @@ whilst implementing the components for milestone 1.
    TODO
 ** Contributions
    *Julian Lore* TODO
-   *David Lougheed* TODO
+
+   *David Lougheed:* I worked on the bulk of the parser and contributed to the
+   weeder. Additionally, I wrote 3 of the valid programs and 8 of the invalid
+   ones and had minor contributions to miscellaneous other components.
+
    *Allan Wang* TODO
