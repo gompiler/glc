@@ -141,10 +141,10 @@ instance Prettify Expr where
   prettify (Binary _ o e1 e2) = "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
   prettify (Lit l) = prettify l
   prettify (Var i) = prettify i
-  prettify (AppendExpr e1 e2) = "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
-  prettify (LenExpr e) = "len(" ++ prettify e ++ ")"
-  prettify (CapExpr e) = "cap(" ++ prettify e ++ ")"
-  prettify (Conversion t e) = prettify t ++ "(" ++ prettify e ++ ")"
+  prettify (AppendExpr _ e1 e2) = "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
+  prettify (LenExpr _ e) = "len(" ++ prettify e ++ ")"
+  prettify (CapExpr _ e) = "cap(" ++ prettify e ++ ")"
+  prettify (Conversion _ t e) = prettify t ++ "(" ++ prettify e ++ ")"
   prettify (Selector e i) = prettify e ++ "." ++ prettify i
   prettify (Index e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
   prettify (TypeAssertion e _ t) = prettify e ++ ".(" ++ prettify t ++ ")"
@@ -152,9 +152,9 @@ instance Prettify Expr where
   prettify' = prettify''
 
 instance Prettify Literal where
-  prettify (IntLit _ _ i) = i
-  prettify (FloatLit _ f) = show f
-  prettify (RuneLit _ c)  = "'" ++ [c] ++ "'"
+  prettify (IntLit _ _ i)              = i
+  prettify (FloatLit _ f)              = show f
+  prettify (RuneLit _ c)               = "'" ++ [c] ++ "'"
   prettify (StringLit _ Interpreted s) = "\"" ++ s ++ "\""
   prettify (StringLit _ Raw s)         = "`" ++ s ++ "`"
   prettify' = prettify''
@@ -208,13 +208,13 @@ instance Prettify Type' where
   prettify' = prettify''
 
 instance Prettify Type where
-  prettify (ArrayType e t) = "[" ++ prettify e ++ "]" ++ prettify t
+  prettify (ArrayType e t)    = "[" ++ prettify e ++ "]" ++ prettify t
   prettify (StructType [fdl]) = "struct {" ++ prettify fdl ++ "}"
   -- prettify' (StructType fdls) = "struct {" : tab (map prettify fdls) ++ "}"
-  prettify (SliceType t)   = "[]" ++ prettify t
-  prettify (PointerType t) = "*" ++ prettify t
-  prettify (FuncType s)    = "func" ++ prettify s
-  prettify (Type id)       = prettify id
+  prettify (SliceType t)      = "[]" ++ prettify t
+  prettify (PointerType t)    = "*" ++ prettify t
+  prettify (FuncType s)       = "func" ++ prettify s
+  prettify (Type id)          = prettify id
   prettify' = prettify''
 
 instance Prettify FieldDecl where

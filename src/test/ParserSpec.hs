@@ -326,7 +326,7 @@ genEUn2 :: Gen (String, Expr)
 genEUn2 = do
   (s, e) <- genEBase
   (sop, op) <- elements [("len (", LenExpr), ("cap (", CapExpr)]
-  return (sop ++ s ++ ")", op e)
+  return (sop ++ s ++ ")", op o e)
 
 genEUn :: Gen (String, Expr)
 genEUn =
