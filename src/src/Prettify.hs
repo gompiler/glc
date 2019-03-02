@@ -21,8 +21,8 @@ checkPrettifyInvariance input = do
   ast2 <- parse input
   let pretty2 = prettify ast2
   case (ast1 == ast2, pretty1 == pretty2) of
-    (False, _) -> Left "AST mismatch:\n\n" ++ show ast1 + "\n\n" ++ show ast2
-    (_, False) -> Left "Prettify mismatch" ++ pretty1 ++ "\n\n" ++ pretty2
+    (False, _) -> Left $ "AST mismatch:\n\n" ++ show ast1 ++ "\n\n" ++ show ast2
+    (_, False) -> Left $ "Prettify mismatch" ++ pretty1 ++ "\n\n" ++ pretty2
     _          -> Right pretty2
 
 tab :: [String] -> [String]
