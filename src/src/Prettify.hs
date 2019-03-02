@@ -47,7 +47,7 @@ instance Prettify Identifiers where
 
 instance Prettify Program where
   prettify' Program {package = package, topLevels = topLevels} =
-    ("package " ++ package ++ "\n") : (topLevels >>= (("" :) . prettify'))
+    ("package " ++ package) : (topLevels >>= (("" :) . prettify'))
 
 instance Prettify TopDecl where
   prettify' (TopDecl decl)     = prettify' decl
