@@ -119,6 +119,24 @@ spec = do
     , "if a := 2; b { } else if 0 < 1 { c-- \n}"
     ] ++
     intExamples ++ floatExamples ++ map (\s -> "'" ++ s ++ "'") runeExamples
+  expectPass @Stmt [
+    [text|
+    if bool {
+      for i := 0; i < twenty; i++ {
+        for {
+          switch {
+            case i % 2 == 0:
+              switch i {
+                default:
+                  append(s, s)
+              }
+            break
+          }
+        }
+      }
+    }
+    |]
+    ]
   where
     blankExpr = Var $ Identifier o "temp"
     blankStmt = blank

@@ -7,13 +7,10 @@ module WeedingSpec
   ( spec
   ) where
 
-import           NeatInterpolation
-
 import           Base
 import           Data
-import           Data.Functor      ((<&>))
-import           Debug.Trace       (trace)
-import           Prettify
+import           Data.Functor ((<&>))
+import           Debug.Trace  (trace)
 import           Weeding
 
 expectWeedPass :: Stringable s => [s] -> SpecWith ()
@@ -43,5 +40,31 @@ expectWeedFail =
 
 spec :: Spec
 spec = do
-  expectWeedPass ["if true { }"]
-  expectWeedFail ["break", "if t { break; }"]
+  expectWeedPass ["if true { }", "a.b()", "a++"]
+  expectWeedPass
+    [ [text|
+      for {
+        // within for loop scope
+        break
+      }
+      |]
+    , [text|
+      for {
+        {
+          a++
+          if true {
+            // Still within loop scope
+            break
+          }
+        }
+      }
+      |]
+
+    ]
+  expectWeedFail
+    [ "break"
+    , "if t { break; }"
+    -- ExprStmt must be functions
+    , "action"
+    , "a.b"
+    ]
