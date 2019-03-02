@@ -291,15 +291,15 @@ ForStmt     : for BlockStmt                                 { For ForInfinite $2
             | for SimpleStmt Expr ';' Expr BlockStmt        { For (ForClause $2 $3 (ExprStmt $5)) $6 }
 
 {- Spec: https://golang.org/ref/spec#Switch_statements -}
-SwitchStmt  : switch SimpleStmt ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) (reverse $6) }
-            | switch SimpleStmt ';' '{' SwitchBody '}'      { Switch $2 Nothing (reverse $5) }
+SwitchStmt  : switch SimpleStmt Expr '{' SwitchBody '}'     { Switch $2 (Just $3) (reverse $5) }
+            | switch SimpleStmt '{' SwitchBody '}'          { Switch $2 Nothing (reverse $4) }
             | switch Expr '{' SwitchBody '}'                { Switch EmptyStmt (Just $2) (reverse $4) }
             | switch '{' SwitchBody '}'                     { Switch EmptyStmt Nothing (reverse $3) }
 
 {- SwitchBody is in reverse order -}
 SwitchBody  : SwitchBody case EIList ':' Stmts              { (Case (getOffset $2) (nonEmpty $3) (BlockStmt $ reverse $5)) : $1 }
             | SwitchBody case Expr ':' Stmts                { (Case (getOffset $2) (nonEmpty [$3]) (BlockStmt $ reverse $5)) : $1 }
-            | SwitchBody default Stmts                      { (Default (getOffset $2) $ BlockStmt (reverse $3)) : $1 }
+            | SwitchBody default ':' Stmts                  { (Default (getOffset $2) $ BlockStmt (reverse $4)) : $1 }
             | {- empty -}                                   { [] }
 
 
