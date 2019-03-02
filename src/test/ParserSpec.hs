@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 module ParserSpec
   ( spec
@@ -31,14 +33,16 @@ spec = do
     qcGen "basic expressions" False genEBase (\(s, out) -> scanToP pE s == Right out)
     qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == Right out)
     qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == Right out)
-  expectSuccess parseType ["asdf"]
-  expectSuccess parseExpr ["a", "2", "1.0", "1 + 2", "append(a, b)"]
-  expectSuccess parseStmt ["if (a) { }"]
-  expectAst parseExpr [("a", Var (Identifier o "a"))]
+  expectPass @Type' ["asdf"]
+  expectPass @Stmt ["if (a) { }"]
+  expectPass @Expr ["a"]
   where
     blankExpr = Var $ Identifier o "temp"
     blankStmt = blank
 
+--  expectSuccess parseExpr ["a", "2", "1.0", "1 + 2", "append(a, b)"]
+--  expectSuccess parseStmt ["if (a) { }"]
+--  expectAst parseExpr [("a", Var (Identifier o "a"))]
 --      Right (Left (Type (Identifier o "int"), [Lit (IntLit o Decimal "5")]))
 programMain :: [(String, FuncBody)]
 programMain = [("", BlockStmt [])]
@@ -60,51 +64,15 @@ programE =
 programEL :: [(String, String)]
 programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
 
--- | Container for tag + parser
-data SpecParser a =
-  SpecParser String
-             (String -> Either String a)
-
-parseProgram :: SpecParser Program
-parseProgram = SpecParser "program" parse
-
-parseStmt :: SpecParser Stmt
-parseStmt = SpecParser "stmt" $ scanToP pStmt
-
-parseTopDecl :: SpecParser TopDecl
-parseTopDecl = SpecParser "topDecl" $ scanToP pTDecl
-
-parseSignature :: SpecParser Signature
-parseSignature = SpecParser "sig" $ scanToP pSig
-
-parseParameters :: SpecParser [ParameterDecl]
-parseParameters = SpecParser "par" $ scanToP pPar
-
-parseType :: SpecParser Type'
-parseType = SpecParser "type" $ scanToP pT
-
-parseDecl :: SpecParser Decl
-parseDecl = SpecParser "decl" $ scanToP pDec
-
-parseExprs :: SpecParser [Expr]
-parseExprs = SpecParser "exprs" $ scanToP pEl
-
-parseExpr :: SpecParser Expr
-parseExpr = SpecParser "expr" $ scanToP pE
-
-parseVarDecl :: SpecParser VarDecl'
-parseVarDecl = SpecParser "varDecl" $ scanToP pIDecl
-
-expectSuccess :: Show a => SpecParser a -> [String] -> SpecWith ()
-expectSuccess (SpecParser tag parse') inputs = describe (tag ++ " success") $ mapM_ expectation inputs
-  where
-    expectation input = it (show $ lines input) $ parse' input `shouldSatisfy` Either.isRight
-
-expectAst :: (Eq a, Show a) => SpecParser a -> [(String, a)] -> SpecWith ()
-expectAst (SpecParser tag parse') items = describe (tag ++ " success") $ mapM_ expectation items
-  where
-    expectation (input, expect) = it (show $ lines input) $ parse' input `shouldBe` Right expect
-
+--expectSuccess :: (Stringable a, Parsable b) => SpecParser a -> [String] -> SpecWith ()
+--expectSuccess (SpecParser tag parse') inputs = describe (tag ++ " success") $ mapM_ expectation inputs
+--  where
+--    expectation input = it (show $ lines input) $ parse' input `shouldSatisfy` Either.isRight
+--
+--expectAst :: (Eq a, Show a) => SpecParser a -> [(String, a)] -> SpecWith ()
+--expectAst (SpecParser tag parse') items = describe (tag ++ " success") $ mapM_ expectation items
+--  where
+--    expectation (input, expect) = it (show $ lines input) $ parse' input `shouldBe` Right expect
 genCommaList ::
      Gen String -- ^ What we will be comma separating
   -> Gen String

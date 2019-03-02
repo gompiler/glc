@@ -1,5 +1,7 @@
+{-# LANGUAGE AllowAmbiguousTypes   #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 
 module Base
@@ -13,6 +15,8 @@ module Base
   , fstConvert
   , pairConvert
   , strData
+  , Stringable(..)
+  , Parsable(..)
   , strData'
   , cartP
   , module Test.Hspec
@@ -23,12 +27,14 @@ module Base
 
 import           Control.Applicative
 import           Data
+import qualified Data.Either         as Either
 import           Data.List.NonEmpty  (NonEmpty (..), fromList)
 import           Data.Text           (Text, unpack)
 import           ErrorBundle
 import           NeatInterpolation
-import           Parser              (pDec, pE, pEl, pId, pIDecl, pPar, pSig,
-                                      pStmt, pT, pTDecl, parse)
+import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
+                                      pStmt, pT, pTDecl)
+import qualified Parser              (parse)
 import           Scanner             (Alex (..), runAlex)
 import           Test.Hspec
 import           Test.QuickCheck
@@ -45,67 +51,84 @@ instance Stringable String where
 instance Stringable Text where
   toString = unpack
 
+expectPassBase :: Parsable a => String -> (String -> Either String a) -> [String] -> SpecWith ()
+expectPassBase name parse inputs = describe (name ++ " success") $ mapM_ expect inputs
+  where
+    expect input = it (show $ lines input) $ parse input `shouldSatisfy` Either.isRight
+
 class (Show a, Eq a) =>
       Parsable a
   where
-  tag :: a -> String
+  tag :: String
   parse :: String -> Either String a
   placeholder :: a
+  expectPass :: [String] -> SpecWith ()
 
 instance Parsable Program where
-  tag = const "program"
+  tag = "program"
   parse = Parser.parse
   placeholder = Program {package = "temp", topLevels = []}
+  expectPass = expectPassBase (tag @Program) (parse @Program)
 
 instance Parsable Stmt where
-  tag = const "stmt"
+  tag = "stmt"
   parse = scanToP pStmt
   placeholder = blank
+  expectPass = expectPassBase (tag @Stmt) (parse @Stmt)
 
 instance Parsable TopDecl where
-  tag = const "topDecl"
+  tag = "topDecl"
   parse = scanToP pTDecl
   placeholder = TopDecl $ VarDecl [placeholder]
+  expectPass = expectPassBase (tag @TopDecl) (parse @TopDecl)
 
 instance Parsable Signature where
-  tag = const "signature"
+  tag = "signature"
   parse = scanToP pSig
   placeholder = Signature (Parameters placeholder) Nothing
+  expectPass = expectPassBase (tag @Signature) (parse @Signature)
 
 instance Parsable [ParameterDecl] where
-  tag = const "parameterDecls"
+  tag = "parameterDecls"
   parse = scanToP pPar
   placeholder = [ParameterDecl placeholder placeholder]
+  expectPass = expectPassBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
 
 instance Parsable Type' where
-  tag = const "type"
+  tag = "type"
   parse = scanToP pT
   placeholder = (o, Type $ Identifier o "temp")
+  expectPass = expectPassBase (tag @Type') (parse @Type')
 
 instance Parsable Decl where
-  tag = const "decl"
+  tag = "decl"
   parse = scanToP pDec
   placeholder = VarDecl [placeholder]
+  expectPass = expectPassBase (tag @Decl) (parse @Decl)
 
 instance Parsable [Expr] where
-  tag = const "exprs"
+  tag = "exprs"
   parse = scanToP pEl
   placeholder = [placeholder]
+  expectPass = expectPassBase (tag @[Expr]) (parse @[Expr])
 
 instance Parsable Expr where
-  tag = const "expr"
+  tag = "expr"
   parse = scanToP pE
   placeholder = Lit $ StringLit o Raw "`temp`"
+  expectPass = expectPassBase (tag @Expr) (parse @Expr)
 
 instance Parsable VarDecl' where
-  tag = const "varDecl"
+  tag = "varDecl"
   parse = scanToP pIDecl
   placeholder = VarDecl' placeholder (Right $ placeholder :| [])
+  expectPass = expectPassBase (tag @VarDecl') (parse @VarDecl')
 
 instance Parsable (NonEmpty Identifier) where
-  tag = const "ids"
-  parse s = fmap fromList $ scanToP pId s
+  tag = "ids"
+  parse s = fromList <$> scanToP pId s
   placeholder = Identifier o "temp" :| []
+  expectPass = expectPassBase (tag @(NonEmpty Identifier)) (parse @(NonEmpty Identifier))
 
 scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
 scanToP f s = runAlex s f
