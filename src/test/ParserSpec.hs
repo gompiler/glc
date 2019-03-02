@@ -42,6 +42,7 @@ spec = do
   expectPass @Stmt ["if true { }"]
   expectPass
     @Expr
+    -- Basic
     [ "a"
     , "-a"
     , "+abc"
@@ -53,6 +54,7 @@ spec = do
     , "a.b"
     , "a[0 + 2]"
     , "a(b, c, d)"
+    -- Advanced
     , "a.b(a[0] + c.d, 0, \"asdf\", 'a')[0]"
     ]
   expectFail @Expr ["append(a, b, c)", "a[[]", "'aa'"]
