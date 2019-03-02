@@ -19,8 +19,6 @@ module Base
   , module Test.QuickCheck
   , toRetL
   , qcGen
-  , isLeft
-  , isRight
   ) where
 
 import           Control.Applicative
@@ -32,6 +30,8 @@ import           Test.QuickCheck
 
 o :: Offset
 o = Offset 0
+
+
 
 pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
 pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))
@@ -62,12 +62,9 @@ toRetL :: Monad m => a -> m [a]
 toRetL e = return [e]
 
 qcGen :: (Show a, Testable prop) => String -> Bool -> Gen a -> (a -> prop) -> SpecWith (Arg Property)
-qcGen desc verb g p = it desc $ property $ if verb then verbose (forAll g p)
-                                           else forAll g p
-
--- | Returns true if the Either is Left
-isLeft :: (Either a b) -> Bool
-isLeft = either (const True) (const False)
-
-isRight :: (Either a b) -> Bool
-isRight = either (const False) (const True)
+qcGen desc verb g p =
+  it desc $
+  property $
+  if verb
+    then verbose (forAll g p)
+    else forAll g p

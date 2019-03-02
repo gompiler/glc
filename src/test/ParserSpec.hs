@@ -11,7 +11,7 @@ import           Parser
 import           Scanner
 import qualified TokensSpec         as T
 
-import           Data.Either        as Either
+import qualified Data.Either        as Either
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
 import           Data.List.Split    (splitOn)
@@ -21,26 +21,192 @@ import           Data.List.Split    (splitOn)
 -- | Spec template listing some expected tests; not yet implemented
 spec :: Spec
 spec = do
-  describe "Identifiers" $
-    -- No more single ident productions for Idents non-term
-    -- qcGen
-      -- "single ident"
-      -- False
-      -- T.genId
-      -- (\x -> scanToP pId x == (Right $ NonEmpty.fromList [x]))
-   do
+  describe "Identifiers" $ do
     qcGen
       "ident list"
       False
       (genCommaList T.genId)
       (\x -> scanToP pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
-    qcGen "basic expressions" False genEBase (\(s, out) -> scanToP pE s == (Right out))
-    qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == (Right out))
-    qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == (Right out))
-    -- specOne ("05.ffield", Right (Lit (FloatLit o 5.0)) :: Either String Expr)
+    qcGen "basic expressions" False genEBase (\(s, out) -> scanToP pE s == Right out)
+    qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == Right out)
+    qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == Right out)
   expectSuccess parseType ["asdf"]
-    -- specAll "Types" (sndConvert Right expectT :: [(String, Either String (Offset, Type))])
+  expectSuccess parseExpr ["a", "2", "1.0", "1 + 2", "append(a, b)"]
+  expectSuccess parseStmt ["if (a) { }"]
+  expectAst parseExpr [("a", Var (Identifier o "a"))]
+  where
+    blankExpr = Var $ Identifier o "temp"
+    blankStmt = blank
+
+--      Right (Left (Type (Identifier o "int"), [Lit (IntLit o Decimal "5")]))
+programMain :: [(String, FuncBody)]
+programMain = [("", BlockStmt [])]
+
+programMainL :: [(String, String)]
+programMainL = [("", ""), ("var a = !!!!!! false;", "")]
+
+programE :: [(String, Program)]
+programE =
+  map
+    (\(s, body) ->
+       ( "package main; func main(){" ++ s ++ "}"
+       , Program
+           { package = "main"
+           , topLevels = [TopFuncDecl (FuncDecl (Identifier o "main") (Signature (Parameters []) Nothing) body)]
+           }))
+    programMain
+
+programEL :: [(String, String)]
+programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
+
+-- | Container for tag + parser
+data SpecParser a =
+  SpecParser String
+             (String -> Either String a)
+
+parseProgram :: SpecParser Program
+parseProgram = SpecParser "program" parse
+
+parseStmt :: SpecParser Stmt
+parseStmt = SpecParser "stmt" $ scanToP pStmt
+
+parseTopDecl :: SpecParser TopDecl
+parseTopDecl = SpecParser "topDecl" $ scanToP pTDecl
+
+parseSignature :: SpecParser Signature
+parseSignature = SpecParser "sig" $ scanToP pSig
+
+parseParameters :: SpecParser [ParameterDecl]
+parseParameters = SpecParser "par" $ scanToP pPar
+
+parseType :: SpecParser Type'
+parseType = SpecParser "type" $ scanToP pT
+
+parseDecl :: SpecParser Decl
+parseDecl = SpecParser "decl" $ scanToP pDec
+
+parseExprs :: SpecParser [Expr]
+parseExprs = SpecParser "exprs" $ scanToP pEl
+
+parseExpr :: SpecParser Expr
+parseExpr = SpecParser "expr" $ scanToP pE
+
+parseVarDecl :: SpecParser VarDecl'
+parseVarDecl = SpecParser "varDecl" $ scanToP pIDecl
+
+expectSuccess :: Show a => SpecParser a -> [String] -> SpecWith ()
+expectSuccess (SpecParser tag parse') inputs = describe (tag ++ " success") $ mapM_ expectation inputs
+  where
+    expectation input = it (show $ lines input) $ parse' input `shouldSatisfy` Either.isRight
+
+expectAst :: (Eq a, Show a) => SpecParser a -> [(String, a)] -> SpecWith ()
+expectAst (SpecParser tag parse') items = describe (tag ++ " success") $ mapM_ expectation items
+  where
+    expectation (input, expect) = it (show $ lines input) $ parse' input `shouldBe` Right expect
+
+genCommaList ::
+     Gen String -- ^ What we will be comma separating
+  -> Gen String
+genCommaList f = oneof [f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',' : s2, (++) <$> f <*> genCommaList f]
+
+genEBase :: Gen (String, Expr)
+genEBase =
+  oneof
+    [ T.genId >>= \s -> return (s, Var $ Identifier o s)
+    , T.genNum >>= \s -> return (s, Lit $ IntLit o Decimal s)
+    , T.genOct >>= \s -> return (s, Lit $ IntLit o Octal s)
+    , T.genHex >>= \s -> return (s, Lit $ IntLit o Hexadecimal s)
+    , ((arbitrary :: Gen Float) `suchThat` \f -> f > 0.0 && f > 0.1) >>= \f -> return (show f, Lit $ FloatLit o f)
+    , T.genChar' >>= \c -> return ('\'' : c : "'", Lit $ RuneLit o c)
+    , T.genString >>= \s -> return (s, Lit $ StringLit o Interpreted s)
+    , T.genRString >>= \s -> return (s, Lit $ StringLit o Raw s)
+    ]
+
+genEBin :: Gen (String, Expr)
+genEBin = do
+  (s1, e1) <- genEBase
+  (s2, e2) <- genEBase
+  (sop, op) <-
+    elements
+      [ ("||", Or)
+      , ("&&", And)
+      , ("==", D.EQ)
+      , ("!=", NEQ)
+      , ("<", D.LT)
+      , ("<=", LEQ)
+      , (">", D.GT)
+      , (">=", GEQ)
+      , ("+", Arithm Add)
+      , ("-", Arithm Subtract)
+      , ("*", Arithm Multiply)
+      , ("/", Arithm Divide)
+      , ("%", Arithm Remainder)
+      , ("|", Arithm BitOr)
+      , ("^", Arithm BitXor)
+      , ("&", Arithm BitAnd)
+      , ("&^", Arithm BitClear)
+      , ("<<", Arithm ShiftL)
+      , (">>", Arithm ShiftR)
+      ]
+  return (s1 ++ sop ++ s2, Binary o op e1 e2)
+
+genEUn1 :: Gen (String, Expr)
+genEUn1 = do
+  (s, e) <- genEBase
+  (sop, op) <- elements [("+", Pos), ("-", Neg), ("!", Not), ("^", BitComplement)]
+  return (sop ++ s, Unary o op e)
+
+genEUn2 :: Gen (String, Expr)
+genEUn2 = do
+  (s, e) <- genEBase
+  (sop, op) <- elements [("len (", LenExpr), ("cap (", CapExpr)]
+  return (sop ++ s ++ ")", op o e)
+
+genEUn :: Gen (String, Expr)
+genEUn =
+  frequency
+    [ (4, genEUn1)
+    , (2, genEUn2)
+    , (1, genEBase >>= \(s, e) -> return ('(' : s ++ ")", e))
+    , ( 1
+      , T.genId >>= \id1 ->
+          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector o (Var $ Identifier o id1) $ Identifier o id2))
+    ]
+
+genE :: Gen (String, Expr)
+genE = oneof [genEBase, genEUn, genEBin]
+
+-- expectT :: [(String, (Offset, Type))]
+-- expectT =
+--   [ strData "wqiufhiwqf" (o, Type . Identifier o)
+--   , strData "int" (o, (Type . Identifier o))
+--   , ("(float64)", (o, Type $ Identifier o "float64"))
+--   , ("[22]int", (o, ArrayType (Lit $ IntLit o Decimal "22") (Type $ Identifier o "int")))
+--   , ("[]int", (o, SliceType (Type $ Identifier o "int")))
+--   ]
+-- genETypeBase :: Gen (String, Type)
+-- genETypeBase = oneof [T.genId >>= genEBase >>= \i -> "[" ++  ++ "] " ++ id, ArrayType ]
+expectEL :: [(String, [Expr])]
+expectEL =
+  [ ("123, 888", (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
+  , ("123, 88.8", (Lit $ IntLit o Decimal "123") : [Lit $ FloatLit o 88.8])
+  ]
+
+-- expectDecl :: [(String, Decl)]
+-- expectDecl = [ ("var a = 34", (VarDecl [VarDecl' (NonEmpty "a") ()]))
+--            ]
+-- expectIDecl :: [(String, VarDecl')]
+-- expectIDecl = [ ("= 5", VarDecl' (Left (Type "aaaaa")) (NonEmpty $ Lit $ IntLit Decimal "123"))]
+scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
+scanToP f s = runAlex s f
+
+intExamples = ["0", "1", "-123", "1234567890", "42", "0600", "0xBadFace", "170141183460469231731687303715884105727"]
+
+floatExamples = [".1234567890", "0.", "72.40", "072.40", "2.71828", "1.e+0", "6.67428e-11", "1E6", ".25", ".12345E+5"]
+
+runeExamples = ['a', 'b', 'c', '\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'', '\"']
+  -- specAll "Types" (sndConvert Right expectT :: [(String, Either String (Offset, Type))])
   -- specAll
   --   "Expression Lists"
   --   (sndConvert Right expectEL :: [(String, Either String [Expr])])
@@ -198,157 +364,3 @@ spec = do
   --   specOne ( "package main; func zzzz(a int){}", Right (Program {package = "main", topLevels = [TopFuncDecl (FuncDecl "zzzz" (Signature (Parameters [ParameterDecl ("a" :| []) (Type "int")]) Nothing) (BlockStmt []))]}) :: Either String Program)
   --   specOne ( "package main; func main(){ func lll(ggg){} }", Left "" :: Either String Program)
   --   specAll "Invalid Programs" (sndConvert Left programEL :: [(String, Either String Program)])
-
---      Right (Left (Type (Identifier o "int"), [Lit (IntLit o Decimal "5")]))
-programMain :: [(String, FuncBody)]
-programMain = [("", BlockStmt [])]
-              -- ,("var a = !!!!!! false;", (BlockStmt [Declare (VarDecl [VarDecl' (Identifier o "a" :| []) (Right (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Var "false")))))) :| []))])]))]
-
-programMainL :: [(String, String)]
-programMainL = [("", ""), ("var a = !!!!!! false;", "")]
-
-programE :: [(String, Program)]
-programE =
-  map
-    (\(s, body) ->
-       ( "package main; func main(){" ++ s ++ "}"
-       , Program
-           { package = "main"
-           , topLevels = [TopFuncDecl (FuncDecl (Identifier o "main") (Signature (Parameters []) Nothing) body)]
-           }))
-    programMain
-
-programEL :: [(String, String)]
-programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
-
--- | Container for tag + parser
-data SpecParser a =
-  SpecParser String (String -> Either String a)
-
-parseProgram :: SpecParser Program
-parseProgram = SpecParser "program" parse
-parseStmt :: SpecParser Stmt
-parseStmt = SpecParser "stmt" $ scanToP pStmt
-parseTopDecl :: SpecParser TopDecl
-parseTopDecl = SpecParser "topDecl" $ scanToP pTDecl
-parseSignature :: SpecParser Signature
-parseSignature = SpecParser "sig" $ scanToP pSig
-parseParameters :: SpecParser [ParameterDecl]
-parseParameters = SpecParser "par" $ scanToP pPar
-parseType :: SpecParser Type' 
-parseType = SpecParser "type" $ scanToP pT
-parseDecl :: SpecParser Decl 
-parseDecl = SpecParser "decl" $ scanToP pDec
-parseExprs :: SpecParser [Expr]
-parseExprs = SpecParser "exprs" $ scanToP pEl
-parseExpr :: SpecParser Expr
-parseExpr = SpecParser "expr" $ scanToP pE 
-parseVarDecl :: SpecParser VarDecl'
-parseVarDecl = SpecParser "varDecl" $ scanToP pIDecl
-
-expectSuccess :: Show a => SpecParser a -> [String] -> SpecWith ()
-expectSuccess (SpecParser tag parse') inputs = describe (tag ++ " success") $ mapM_ expectation inputs
-  where
-    expectation input = it (show $ lines input) $ parse' input `shouldSatisfy` Either.isRight
-
-genCommaList ::
-     Gen String -- ^ What we will be comma separating
-  -> Gen String
-genCommaList f = oneof [f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',' : s2, (++) <$> f <*> genCommaList f]
-
-genEBase :: Gen (String, Expr)
-genEBase =
-  oneof
-    [ T.genId >>= \s -> return (s, Var $ Identifier o s)
-    , T.genNum >>= \s -> return (s, Lit $ IntLit o Decimal s)
-    , T.genOct >>= \s -> return (s, Lit $ IntLit o Octal s)
-    , T.genHex >>= \s -> return (s, Lit $ IntLit o Hexadecimal s)
-    , ((arbitrary :: Gen Float) `suchThat` \f -> f > 0.0 && f > 0.1) >>= \f -> return (show f, Lit $ FloatLit o f)
-    , T.genChar' >>= \c -> return ('\'' : c : "'", Lit $ RuneLit o c)
-    , T.genString >>= \s -> return (s, Lit $ StringLit o Interpreted s)
-    , T.genRString >>= \s -> return (s, Lit $ StringLit o Raw s)
-    ]
-
-genEBin :: Gen (String, Expr)
-genEBin = do
-  (s1, e1) <- genEBase
-  (s2, e2) <- genEBase
-  (sop, op) <-
-    elements
-      [ ("||", Or)
-      , ("&&", And)
-      , ("==", D.EQ)
-      , ("!=", NEQ)
-      , ("<", D.LT)
-      , ("<=", LEQ)
-      , (">", D.GT)
-      , (">=", GEQ)
-      , ("+", Arithm Add)
-      , ("-", Arithm Subtract)
-      , ("*", Arithm Multiply)
-      , ("/", Arithm Divide)
-      , ("%", Arithm Remainder)
-      , ("|", Arithm BitOr)
-      , ("^", Arithm BitXor)
-      , ("&", Arithm BitAnd)
-      , ("&^", Arithm BitClear)
-      , ("<<", Arithm ShiftL)
-      , (">>", Arithm ShiftR)
-      ]
-  return (s1 ++ sop ++ s2, Binary o op e1 e2)
-
-genEUn1 :: Gen (String, Expr)
-genEUn1 = do
-  (s, e) <- genEBase
-  (sop, op) <- elements [("+", Pos), ("-", Neg), ("!", Not), ("^", BitComplement)]
-  return (sop ++ s, Unary o op e)
-
-genEUn2 :: Gen (String, Expr)
-genEUn2 = do
-  (s, e) <- genEBase
-  (sop, op) <- elements [("len (", LenExpr), ("cap (", CapExpr)]
-  return (sop ++ s ++ ")", op o e)
-
-genEUn :: Gen (String, Expr)
-genEUn =
-  frequency
-    [ (4, genEUn1)
-    , (2, genEUn2)
-    , (1, genEBase >>= \(s, e) -> return ('(' : s ++ ")", e))
-    , ( 1
-      , T.genId >>= \id1 ->
-          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector o (Var $ Identifier o id1) $ Identifier o id2))
-    ]
-
-genE :: Gen (String, Expr)
-genE = oneof [genEBase, genEUn, genEBin]
-
--- expectT :: [(String, (Offset, Type))]
--- expectT =
---   [ strData "wqiufhiwqf" (o, Type . Identifier o)
---   , strData "int" (o, (Type . Identifier o))
---   , ("(float64)", (o, Type $ Identifier o "float64"))
---   , ("[22]int", (o, ArrayType (Lit $ IntLit o Decimal "22") (Type $ Identifier o "int")))
---   , ("[]int", (o, SliceType (Type $ Identifier o "int")))
---   ]
--- genETypeBase :: Gen (String, Type)
--- genETypeBase = oneof [T.genId >>= genEBase >>= \i -> "[" ++  ++ "] " ++ id, ArrayType ]
-expectEL :: [(String, [Expr])]
-expectEL =
-  [ ("123, 888", (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
-  , ("123, 88.8", (Lit $ IntLit o Decimal "123") : [Lit $ FloatLit o 88.8])
-  ]
-
--- expectDecl :: [(String, Decl)]
--- expectDecl = [ ("var a = 34", (VarDecl [VarDecl' (NonEmpty "a") ()]))
---            ]
--- expectIDecl :: [(String, VarDecl')]
--- expectIDecl = [ ("= 5", VarDecl' (Left (Type "aaaaa")) (NonEmpty $ Lit $ IntLit Decimal "123"))]
-scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
-scanToP f s = runAlex s f
-
-intExamples = ["0", "1", "-123", "1234567890", "42", "0600", "0xBadFace", "170141183460469231731687303715884105727"]
-
-floatExamples = [".1234567890", "0.", "72.40", "072.40", "2.71828", "1.e+0", "6.67428e-11", "1E6", ".25", ".12345E+5"]
-
-runeExamples = ['a', 'b', 'c', '\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'', '\"']
