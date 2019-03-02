@@ -19,7 +19,7 @@ weed code program =
     Nothing -> Right program
   where
     errorBundle :: Maybe ErrorBundle'
-    errorBundle = programVerify program
+    errorBundle = (programVerify program) <|> (continueVerify program)
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
@@ -83,6 +83,35 @@ programVerify program = firstOrNothing errors
   where
     errors :: [ErrorBundle']
     errors = mapMaybe (stmtRecursiveVerify stmtVerify) (mapMaybe topToStmt $ topLevels program)
+
+continueRecursiveVerifyAll :: PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
+continueRecursiveVerifyAll c = verifyAll $ continueRecursiveVerify c
+
+continueRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
+continueRecursiveVerify constraint stmt =
+  constraint stmt <|>
+  continueRecursiveVerifyAll
+    constraint
+    (case stmt of
+       BlockStmt stmts  -> stmts
+       If _ s1 s2       -> [s1, s2]
+       For _ s          -> [] -- Skip for, since continues can occur there
+       Switch _ _ cases -> map stmtFromCase cases
+       _                -> [])
+  where
+    stmtFromCase :: SwitchCase -> Stmt
+    stmtFromCase (Case _ _ stmt)  = stmt
+    stmtFromCase (Default _ stmt) = stmt
+
+continueConstraint :: Stmt -> Maybe ErrorBundle'
+continueConstraint (Continue o) = Just $ createError o "Continue statement must occur in for loop"
+continueConstraint _ = Nothing
+
+continueVerify :: PureConstraint Program
+continueVerify program = firstOrNothing errors
+  where
+    errors :: [ErrorBundle']
+    errors = mapMaybe (continueRecursiveVerify continueConstraint) (mapMaybe topToStmt $ topLevels program)
 
 -- Helpers
 -- | Extracts block statements from top-level function declarations
