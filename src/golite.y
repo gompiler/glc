@@ -38,7 +38,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 %tokentype { Token }
 %monad { Alex } { >>= } { return }
 %lexer { lexer } { Token _ TEOF }
-%errorhandlertype explist
+-- %errorhandlertype explist
 %error { parseError }
 
 -- Other partial parsers for testing
@@ -396,15 +396,17 @@ getInnerChar (Token _ (TRuneVal val)) = val
 
 -- Main parse function
 parse :: String -> Either String Program
-parse s = runAlex s $ hparse
+parse s = either (Left . errO s "") Right (runAlex s $ hparse)
 
 -- Extract posn only
 ptokl t = case t of
           Token pos _ -> pos
 
 -- parseError function for better error messages
-parseError :: (Token, [String]) -> Alex a
-parseError (Token (AlexPn _ l c) t, strs) =                                           -- Megaparsec error reporting here
-  alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ " at line " ++ show l ++ " column " ++ show c ++ ", expecting " ++ show strs)
-
+--parseError :: (Token, [String]) -> Alex a
+--parseError (Token (AlexPn o l c) t, strs) =
+--           alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ ", expecting " ++ show strs, o)
+parseError :: (Token) -> Alex a
+parseError (Token (AlexPn o l c) t) =
+           alexError ("Error: parsing error, unexpected " ++ (prettify t), o)
 }

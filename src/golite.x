@@ -1,5 +1,14 @@
 {
-module Tokens where
+module Tokens
+( Alex(..)
+, AlexPosn(..)
+, alex_pos
+, alexError
+, Token(..)
+, InnerToken(..)
+, alexMonadScan
+, runAlex
+) where
 import TokensBase
 }
 
@@ -219,11 +228,23 @@ data InnerToken = TBreak
                 | TEOF
                 deriving (Eq, Show)
 
--- | Custom state for storing input we are scanning
-data AlexUserState = AlexUserState String
+-- | Custom definition of alexMonadScan to modify the error message with more info
+alexMonadScan :: Alex Token
+alexMonadScan = do
+  inp__ <- alexGetInput
+  sc <- alexGetStartCode
+  case alexScan inp__ sc of
+    AlexEOF -> alexEOF
+    AlexError (AlexPn o line column, prev, _, s) -> errGenL o
+    AlexSkip inp__' _len -> do
+      alexSetInput inp__'
+      alexMonadScan
+    AlexToken inp__' len action -> do
+      alexSetInput inp__'
+      action (ignorePendingBytes inp__) len
 
--- | Dummy constructor, change when we overload runAlex in Scanner.hs
-alexInitUserState = AlexUserState ""
+errGenL :: Int -> Alex a
+errGenL o = alexError ("Error: lexical error at ", o)
 
 alexEOF :: Alex Token
 alexEOF = do
@@ -235,18 +256,18 @@ blockComment _ _ = do
                  inp <- alexGetInput
                  checkBlk inp inp False
 
-checkBlk :: AlexInput
-         -> AlexInput -- ^ Where the comment started so we can get position to associate with semicolon insertion
-         -> Bool -> Alex Token
-checkBlk inp beg@(pos, _, _, _) semi =
+-- checkBlk :: AlexInput
+--         -> AlexInput -- ^ Where the comment started so we can get position to associate with semicolon insertion
+--         -> Bool -> Alex a
+checkBlk inp beg@(pos@(AlexPn o _ _), _, _, _) semi =
   maybe
-    (alexError "block error") matchEnd (alexGetByte inp)
+    (alexError ("Error: unclosed block comment at ", o)) matchEnd (alexGetByte inp)
   where
   bToC b = (toEnum (fromIntegral b) :: Char)
   matchEnd (b, inp) = case bToC b of
                         '*'  ->
                             maybe
-                                (alexError "block error")
+                                (alexError ("Error: unclosed block comment at ", o))
                                 matchEnd2 (alexGetByte inp)
                         '\n' -> checkBlk inp beg True
                         _    -> checkBlk inp beg semi

@@ -19,7 +19,6 @@ import GHC.Exts
 #else
 import GlaExts
 #endif
-{-# LINE 1 "templates/wrappers.hs" #-}
 -- -----------------------------------------------------------------------------
 -- Alex wrapper code.
 --
@@ -196,16 +195,27 @@ data AlexState = AlexState {
 
 -- Compile with -funbox-strict-fields for best results!
 
-runAlex :: String -> Alex a -> Either String a
-runAlex input__ (Alex f)
-   = case f (AlexState {alex_pos = alexStartPos,
-                        alex_inp = input__,
-                        alex_chr = '\n',
-                        alex_bytes = [],
-                        alex_scd = 0}) of Left msg -> Left msg
-                                          Right ( _, a ) -> Right a
+-- | inpNL, input new line if input does not end with a newline
+inpNL :: String -> String
+inpNL s = reverse $ inpNLR s []
 
-newtype Alex a = Alex { unAlex :: AlexState -> Either String (AlexState, a) }
+inpNLR :: String -> String -> String
+inpNLR s r = case s of
+               "\n" -> '\n':r
+               [] -> '\n':r
+               h:t -> inpNLR t (h:r)
+
+
+-- | Wrapper for runAlex to process output through inpNL and also initialize AlexUserState
+runAlex :: String -> Alex a -> Either (String, Int) a
+runAlex s (Alex f) = let inp = inpNL s in
+                       either Left (\(_, a) -> Right a) $ f (AlexState {alex_pos = alexStartPos,
+                          alex_inp = inp,
+                          alex_chr = '\n',
+                          alex_bytes = [],
+                          alex_scd = 0}) 
+
+newtype Alex a = Alex { unAlex :: AlexState -> Either (String, Int) (AlexState, a) }
 
 instance Functor Alex where
   fmap f a = Alex $ \s -> case unAlex a s of
@@ -236,8 +246,8 @@ alexSetInput (pos,c,bs,inp__)
  = Alex $ \s -> case s{alex_pos=pos,alex_chr=c,alex_bytes=bs,alex_inp=inp__} of
                   state__@(AlexState{}) -> Right (state__, ())
 
-alexError :: String -> Alex a
-alexError message = Alex $ const $ Left message
+alexError :: (String, Int) -> Alex a
+alexError = Alex . const . Left
 
 alexGetStartCode :: Alex Int
 alexGetStartCode = Alex $ \s@AlexState{alex_scd=sc} -> Right (s, sc)
@@ -265,10 +275,7 @@ token t input__ len = return (t input__ len)
 
 
 -- -----------------------------------------------------------------------------
--- ALEX TEMPLATE
---
--- This code is in the PUBLIC DOMAIN; you may copy it freely and use
--- it for any purpose whatsoever.
+-- CUSTOM ALEX TEMPLATE
 
 -- -----------------------------------------------------------------------------
 -- INTERNALS and main scanner engine
