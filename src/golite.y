@@ -38,7 +38,6 @@ import qualified Data.List.NonEmpty as NonEmpty
 %tokentype { Token }
 %monad { Alex } { >>= } { return }
 %lexer { lexer } { Token _ TEOF }
--- %errorhandlertype explist
 %error { parseError }
 
 -- Other partial parsers for testing
@@ -402,10 +401,6 @@ parse s = either (Left . errO s "") Right (runAlex s $ hparse)
 ptokl t = case t of
           Token pos _ -> pos
 
--- parseError function for better error messages
---parseError :: (Token, [String]) -> Alex a
---parseError (Token (AlexPn o l c) t, strs) =
---           alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ ", expecting " ++ show strs, o)
 parseError :: (Token) -> Alex a
 parseError (Token (AlexPn o l c) t) =
            alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at: ", o)
