@@ -373,5 +373,5 @@ scanSuccess =
 scanFailure :: [(String, String)]
 scanFailure =
   [ ( "''"
-    , "Error: lexical error at line 1, column 2. Previous character: '\\\'', current string: '\n")
+    , "Error: lexical error at 1:2:\n  |\n1 | ''\n  |  ^\n\n")
   ]
