@@ -7,11 +7,8 @@ module PrettifySpec
   ( spec
   ) where
 
-import           NeatInterpolation
-
 import           Base
 import           Data
-import           Debug.Trace       (trace)
 import           Prettify
 
 spec :: Spec

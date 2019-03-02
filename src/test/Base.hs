@@ -16,6 +16,7 @@ module Base
   , pairConvert
   , strData
   , Stringable(..)
+  , expectBase
   , Parsable(..)
   , strData'
   , cartP
