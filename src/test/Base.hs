@@ -72,7 +72,7 @@ expectPassBase tag parse =
     (\s ->
        case parse s of
          Left error ->
-           expectationFailure $ "Expected parse success on:\n\n" ++ toString s ++ "\n\n, but failed with\n\n" ++ error
+           expectationFailure $ "Expected parse success on:\n\n" ++ toString s ++ "\n\nbut failed with\n\n" ++ error
          _ -> return ())
     toString
     tag
@@ -85,7 +85,7 @@ expectFailBase tag parse =
        case parse s of
          Right ast ->
            expectationFailure $
-           "Expected parse failure on:\n\n" ++ toString s ++ "\n\n, but succeeded with\n\n" ++ show ast
+           "Expected parse failure on:\n\n" ++ toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
          _ -> return ())
     toString
     tag
@@ -96,7 +96,7 @@ expectAstBase =
     "ast"
     (\(s, e) ->
        unless (parse s == Right e) . expectationFailure $
-       "Invalid ast for:\n\n" ++ toString s ++ "\n\n, expected\n\n" ++ show e)
+       "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e)
     (toString . fst)
 
 class (Show a, Eq a) =>
@@ -191,13 +191,13 @@ instance Parsable VarDecl' where
   expectFail = expectFailBase (tag @VarDecl') (parse @VarDecl')
   expectAst = expectAstBase (tag @VarDecl')
 
-instance Parsable (NonEmpty Identifier) where
+instance Parsable Identifiers where
   tag = "ids"
   parse' s = fromList <$> scanToP pId s
   placeholder = Identifier o "temp" :| []
-  expectPass = expectPassBase (tag @(NonEmpty Identifier)) (parse @(NonEmpty Identifier))
-  expectFail = expectFailBase (tag @(NonEmpty Identifier)) (parse @(NonEmpty Identifier))
-  expectAst = expectAstBase (tag @(NonEmpty Identifier))
+  expectPass = expectPassBase (tag @Identifiers) (parse @Identifiers)
+  expectFail = expectFailBase (tag @Identifiers) (parse @Identifiers)
+  expectAst = expectAstBase (tag @Identifiers)
 
 scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
 scanToP f s = runAlex s f

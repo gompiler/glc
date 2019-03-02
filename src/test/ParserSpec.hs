@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
-{-# LANGUAGE QuasiQuotes           #-}
 
 module ParserSpec
   ( spec
@@ -34,10 +34,28 @@ spec = do
     qcGen "basic expressions" False genEBase (\(s, out) -> scanToP pE s == Right out)
     qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == Right out)
     qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == Right out)
-  expectPass @Type' ["asdf", "int", "a0"]
-  expectFail @Type' ["0", "-", "*", "as"]
+  -- Though a single identifier is valid, we parse it without going through the identifiers type
+  expectPass @Identifiers ["a, b", "a, b, c, d, e"]
+  expectFail @Identifiers ["", ",", "a,", ",b", "a,,c"]
+  expectPass @Type' ["asdf", "int", "a0", "_0a"]
+  expectFail @Type' ["0", "-", "*"]
   expectPass @Stmt ["if true { }"]
-  expectPass @Expr ["a"]
+  expectPass
+    @Expr
+    [ "a"
+    , "-a"
+    , "+abc"
+    , "-(a + c * d) / a"
+    , "`raw string`"
+    , "append(a, 0 + 2)"
+    , "len(array)"
+    , "cap(array)"
+    , "a.b"
+    , "a[0 + 2]"
+    , "a(b, c, d)"
+    , "a.b(a[0] + c.d, 0, \"asdf\", 'a')[0]"
+    ]
+  expectFail @Expr ["append(a, b, c)", "a[[]", "'aa'"]
   where
     blankExpr = Var $ Identifier o "temp"
     blankStmt = blank
