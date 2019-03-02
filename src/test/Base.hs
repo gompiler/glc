@@ -110,14 +110,7 @@ expectAstBase =
 expectPrettyInvarBase ::
      (Parsable a, Prettify a, Stringable s) => String -> (String -> Either String a) -> [s] -> SpecWith ()
 expectPrettyInvarBase tag parse =
-  expectBase
-    "pretty invar"
-    (\s ->
-       case multiPass $ toString s of
-         Left err -> expectationFailure err
-         _ -> return ())
-    toString
-    tag
+  expectBase "pretty invar" (\s -> either expectationFailure (const $ return ()) (multiPass $ toString s)) toString tag
   where
     multiPass input = do
       ast1 <- parse input
