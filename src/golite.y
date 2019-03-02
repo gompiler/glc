@@ -21,7 +21,8 @@
                 , pEl
                 , pE
                 , hparse
-                , parse)
+                , parse
+                , parsef)
 where
 import Scanner
 import Data
@@ -40,29 +41,29 @@ import qualified Data.List.NonEmpty as NonEmpty
 %lexer { lexer } { Token _ TEOF }
 %error { parseError }
 
--- Other partial parsers for testing
-%partial pId Idents
-%partial pE Expr
-%partial pT Type
-%partial pEl EIList
-%partial pTDecl TopDecl
-%partial pTDecls TopDecls
-%partial pDec Decl
-%partial pDecB DeclBody
-%partial pFDec FuncDecl
-%partial pSig Signature
-%partial pIDecl InnerDecl
-%partial pPar Params
-%partial pRes Result
-%partial pStmt Stmt
-%partial pStmts Stmts
-%partial pBStmt BlockStmt
-%partial pSStmt SimpleStmt
-%partial pIf IfStmt
-%partial pElses Elses
-%partial pSwS SwitchStmt
-%partial pSwB SwitchBody
-%partial pFor ForStmt
+-- Other subparsers for testing
+%name pId Idents
+%name pE Expr
+%name pT Type
+%name pEl EIList
+%name pTDecl TopDecl
+%name pTDecls TopDecls
+%name pDec Decl
+%name pDecB DeclBody
+%name pFDec FuncDecl
+%name pSig Signature
+%name pIDecl InnerDecl
+%name pPar Params
+%name pRes Result
+%name pStmt Stmt
+%name pStmts Stmts
+%name pBStmt BlockStmt
+%name pSStmt SimpleStmt
+%name pIf IfStmt
+%name pElses Elses
+%name pSwS SwitchStmt
+%name pSwB SwitchBody
+%name pFor ForStmt
 
 {- Spec: https://golang.org/ref/spec#Operator_precedence -}
 %nonassoc ',' {- Lowest precedence, for arrays and expression lists. TODO: DO WE NEED THIS? -}
@@ -391,6 +392,10 @@ getInnerString t = case t of
 -- Main parse function
 parse :: String -> Either String Program
 parse s = either (Left . errODef s) Right (runAlex s $ hparse)
+
+-- Parse function that takes in any parser
+parsef :: (Alex a) -> String -> Either String a
+parsef f s = either (Left . errODef s) Right (runAlex' s $ f)
 
 -- Extract posn only
 ptokl t = case t of

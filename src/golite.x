@@ -8,6 +8,7 @@ module Tokens
 , InnerToken(..)
 , alexMonadScan
 , runAlex
+, runAlex'
 ) where
 import TokensBase
 }

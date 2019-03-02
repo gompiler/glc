@@ -27,11 +27,11 @@ spec = do
       "ident list"
       False
       (genCommaList T.genId)
-      (\x -> scanToP pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
+      (\x -> parsef pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
-    qcGen "basic expressions" False genEBase (\(s, out) -> scanToP pE s == Right out)
-    qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == Right out)
-    qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == Right out)
+    qcGen "basic expressions" False genEBase (\(s, out) -> parsef pE s == Right out)
+    qcGen "binary expressions" False genEBin (\(s, out) -> parsef pE s == Right out)
+    qcGen "unary expressions" False genEUn (\(s, out) -> parsef pE s == Right out)
   -- Though a single identifier is valid, we parse it without going through the identifiers type
   expectPass
     @Identifiers
@@ -162,14 +162,14 @@ programEL :: [(String, String)]
 programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
 
 --expectSuccess :: (Stringable a, Parsable b) => SpecParser a -> [String] -> SpecWith ()
---expectSuccess (SpecParser tag parse') inputs = describe (tag ++ " success") $ mapM_ expectation inputs
+--expectSuccess (SpecParser tag parsef) inputs = describe (tag ++ " success") $ mapM_ expectation inputs
 --  where
---    expectation input = it (show $ lines input) $ parse' input `shouldSatisfy` Either.isRight
+--    expectation input = it (show $ lines input) $ parsef input `shouldSatisfy` Either.isRight
 --
 --expectAst :: (Eq a, Show a) => SpecParser a -> [(String, a)] -> SpecWith ()
---expectAst (SpecParser tag parse') items = describe (tag ++ " success") $ mapM_ expectation items
+--expectAst (SpecParser tag parsef) items = describe (tag ++ " success") $ mapM_ expectation items
 --  where
---    expectation (input, expect) = it (show $ lines input) $ parse' input `shouldBe` Right expect
+--    expectation (input, expect) = it (show $ lines input) $ parsef input `shouldBe` Right expect
 genCommaList ::
      Gen String -- ^ What we will be comma separating
   -> Gen String
@@ -291,33 +291,33 @@ runeExamples = ["a", "b", "c", "\\a", "\\b", "\\f", "\\n", "\\r", "\\t", "\\v", 
   -- -- specAll "Inner declarations" ((sndConvert Right expectIDecl) :: [(String, Either String [VarDecl'])])
   -- describe "Declarations" $ do
   --   it "int = 5" $
-  --     scanToP pDecB "int = 5" `shouldBe` (Left "")
+  --     parsef pDecB "int = 5" `shouldBe` (Left "")
   -- describe "Declarations" $ -- DeclBody
   --  do
-  --   it "int" $ scanToP pDecB "int" `shouldBe` Right (Left (Type "int", []))
+  --   it "int" $ parsef pDecB "int" `shouldBe` Right (Left (Type "int", []))
   --   it " = 3" $
-  --     scanToP pDecB " = 3" `shouldBe`
+  --     parsef pDecB " = 3" `shouldBe`
   --     Right (Right (Lit (IntLit Decimal "3") :| []))
   --   it " = 3" $
-  --     scanToP pDecB " = 3" `shouldBe`
+  --     parsef pDecB " = 3" `shouldBe`
   --     Right (Right (Lit (IntLit Decimal "3") :| []))
   --      -- InnerDecl
   --   it "a = 3;" $
-  --     scanToP pIDecl "a = 3;" `shouldBe`
+  --     parsef pIDecl "a = 3;" `shouldBe`
   --     Right (VarDecl' ("a" :| []) (Right (Lit (IntLit Decimal "3") :| [])))
   --   it "a,b = 3, 4;" $
-  --     scanToP pIDecl "a,b = 3, 4;" `shouldBe`
+  --     parsef pIDecl "a,b = 3, 4;" `shouldBe`
   --     Right
   --       (VarDecl'
   --          ("a" :| ["b"])
   --          (Right (Lit (IntLit Decimal "3") :| [Lit (IntLit Decimal "4")])))
   --      -- Decl
   --   it "var a = 3;" $
-  --     scanToP pDec "var a = 3;" `shouldBe`
+  --     parsef pDec "var a = 3;" `shouldBe`
   --     Right
   --       (VarDecl [VarDecl' ("a" :| []) (Right (Lit (IntLit Decimal "3") :| []))])
   --   it "var (a = 3; b = 4;);" $
-  --     scanToP pDec "var (a = 3; b = 4;);" `shouldBe`
+  --     parsef pDec "var (a = 3; b = 4;);" `shouldBe`
   --     Right
   --       (VarDecl
   --          [ VarDecl' ("a" :| []) (Right (Lit (IntLit Decimal "3") :| []))

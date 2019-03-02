@@ -11,6 +11,7 @@ module Tokens
 , InnerToken(..)
 , alexMonadScan
 , runAlex
+, runAlex'
 ) where
 import TokensBase
 
@@ -476,7 +477,7 @@ alex_actions = array (0 :: Int, 187)
   , (0,alex_action_88)
   ]
 
-{-# LINE 138 "golite.x" #-}
+{-# LINE 139 "golite.x" #-}
 
 data Token = Token AlexPosn InnerToken
            deriving (Eq, Show)
