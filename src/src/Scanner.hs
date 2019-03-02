@@ -14,6 +14,7 @@ module Scanner
   , T.runAlex
   , T.Alex
   , errO
+  , errODef
   ) where
 
 import           System.Exit
@@ -224,11 +225,15 @@ scan' s =
 
 -- | Helper to process offsets
 scan :: String -> Either String [T.InnerToken]
-scan s = either (Left . errO s "") Right (scan' s)
+scan s = either (Left . errODef s) Right (scan' s)
 
 -- | Convert (String, Int) to String, i.e. err msg + offset to string
 errO :: String -> String -> (String, Int) -> String
-errO s err2 (err, o) = err ++ errorPos o s err2
+errO s err2 (err, o) = err ++ errorString (createError o err2 (createInitialState s))
+
+-- | errO but no message after Megaparsec error, i.e. just feed it the empty string as we have no additional error to repot
+errODef :: String -> (String, Int) -> String
+errODef s = errO s ""
 
 scanT :: String -> Either String [T.InnerToken]
 scanT s = fmap reverse (scan s)

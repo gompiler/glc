@@ -48,12 +48,5 @@ createInitialState input =
 errorString :: ErrorBundle -> String
 errorString = errorBundlePretty
 
-posToOffset :: T.AlexPosn -> Offset
-posToOffset (T.AlexPn _ _ o) = Offset o
-
 instance ErrorBreakpoint Int where
   offset = Offset
-
--- | errorBundlePretty from offset and String
-errorPos :: Int -> String -> String -> String
-errorPos o inp err = errorString $ createError o err (createInitialState inp)

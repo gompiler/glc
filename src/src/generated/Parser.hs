@@ -2060,7 +2060,7 @@ getInnerChar (Token _ (TRuneVal val)) = val
 
 -- Main parse function
 parse :: String -> Either String Program
-parse s = either (Left . errO s "") Right (runAlex s $ hparse)
+parse s = either (Left . errODef s) Right (runAlex s $ hparse)
 
 -- Extract posn only
 ptokl t = case t of
