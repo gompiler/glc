@@ -41,7 +41,7 @@ import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
                                       pStmt, pT, pTDecl)
 import qualified Parser              (parse)
 import           Prettify
-import           Scanner             (Alex (..), runAlex)
+import           Scanner             (Alex (..), runAlex, errODef)
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -254,7 +254,7 @@ instance Parsable Identifiers where
   expectPrettyInvar = expectPrettyInvarBase (tag @Identifiers) (parse @Identifiers)
 
 scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
-scanToP f s = either (\(err, o) -> Left err) Right (runAlex s f)
+scanToP f s = either (Left . errODef s) Right (runAlex s f)
 
 pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
 pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))

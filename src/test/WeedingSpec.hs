@@ -59,7 +59,15 @@ spec = do
         }
       }
       |]
-
+    , [text|
+      switch {
+        case a:
+          // Within switch scope
+          break
+        default:
+          break
+      }
+      |]
     ]
   expectWeedFail
     [ "break"
@@ -68,3 +76,13 @@ spec = do
     , "action"
     , "a.b"
     ]
+  expectWeedFail
+    [ [text|
+      switch {
+        case a:
+        case b:
+        default:
+        case c:
+        default:
+      }
+      |]]
