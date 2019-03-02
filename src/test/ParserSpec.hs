@@ -11,6 +11,7 @@ import           Parser
 import           Scanner
 import qualified TokensSpec         as T
 
+import           Data.Either        as Either
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
 import           Data.List.Split    (splitOn)
@@ -20,35 +21,25 @@ import           Data.List.Split    (splitOn)
 -- | Spec template listing some expected tests; not yet implemented
 spec :: Spec
 spec = do
-  describe "Identifiers" $ do
+  describe "Identifiers" $
     -- No more single ident productions for Idents non-term
     -- qcGen
       -- "single ident"
       -- False
       -- T.genId
       -- (\x -> scanToP pId x == (Right $ NonEmpty.fromList [x]))
+   do
     qcGen
       "ident list"
       False
       (genCommaList T.genId)
       (\x -> scanToP pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
-    qcGen
-      "basic expressions"
-      False
-      genEBase
-      (\(s, out) -> scanToP pE s == (Right out))
-    qcGen
-      "binary expressions"
-      False
-      genEBin
-      (\(s, out) -> scanToP pE s == (Right out))
-    qcGen
-      "unary expressions"
-      False
-      genEUn
-      (\(s, out) -> scanToP pE s == (Right out))
-    specOne ("05.ffield", Right (Lit (FloatLit o 5.0)) :: Either String Expr)
+    qcGen "basic expressions" False genEBase (\(s, out) -> scanToP pE s == (Right out))
+    qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == (Right out))
+    qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == (Right out))
+    -- specOne ("05.ffield", Right (Lit (FloatLit o 5.0)) :: Either String Expr)
+  expectSuccess parseType ["asdf"]
     -- specAll "Types" (sndConvert Right expectT :: [(String, Either String (Offset, Type))])
   -- specAll
   --   "Expression Lists"
@@ -57,8 +48,6 @@ spec = do
   -- describe "Declarations" $ do
   --   it "int = 5" $
   --     scanToP pDecB "int = 5" `shouldBe` (Left "")
---      Right (Left (Type (Identifier o "int"), [Lit (IntLit o Decimal "5")]))
-
   -- describe "Declarations" $ -- DeclBody
   --  do
   --   it "int" $ scanToP pDecB "int" `shouldBe` Right (Left (Type "int", []))
@@ -210,68 +199,62 @@ spec = do
   --   specOne ( "package main; func main(){ func lll(ggg){} }", Left "" :: Either String Program)
   --   specAll "Invalid Programs" (sndConvert Left programEL :: [(String, Either String Program)])
 
+--      Right (Left (Type (Identifier o "int"), [Lit (IntLit o Decimal "5")]))
 programMain :: [(String, FuncBody)]
-programMain = [ ("", (BlockStmt []))]
+programMain = [("", BlockStmt [])]
               -- ,("var a = !!!!!! false;", (BlockStmt [Declare (VarDecl [VarDecl' (Identifier o "a" :| []) (Right (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Unary Not (Var "false")))))) :| []))])]))]
 
 programMainL :: [(String, String)]
-programMainL = [ ("", "")
-               , ("var a = !!!!!! false;", "")]
+programMainL = [("", ""), ("var a = !!!!!! false;", "")]
 
 programE :: [(String, Program)]
-programE = map (\(s,body) -> ("package main; func main(){" ++ s ++ "}", Program {package = "main", topLevels = [TopFuncDecl (FuncDecl (Identifier o "main") (Signature (Parameters []) Nothing) body)]})) programMain
+programE =
+  map
+    (\(s, body) ->
+       ( "package main; func main(){" ++ s ++ "}"
+       , Program
+           { package = "main"
+           , topLevels = [TopFuncDecl (FuncDecl (Identifier o "main") (Signature (Parameters []) Nothing) body)]
+           }))
+    programMain
 
 programEL :: [(String, String)]
 programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
 
-instance SpecBuilder String (Either String Program) () where
-  expectation input output =
-    it (show $ lines input) $ parse input `shouldBe` output
+-- | Container for tag + parser
+data SpecParser a =
+  SpecParser String (String -> Either String a)
 
-instance SpecBuilder String (Either String Stmt) () where
-  expectation input output =
-    it (show $ lines input) $ scanToP pStmt input `shouldBe` output
+parseProgram :: SpecParser Program
+parseProgram = SpecParser "program" parse
+parseStmt :: SpecParser Stmt
+parseStmt = SpecParser "stmt" $ scanToP pStmt
+parseTopDecl :: SpecParser TopDecl
+parseTopDecl = SpecParser "topDecl" $ scanToP pTDecl
+parseSignature :: SpecParser Signature
+parseSignature = SpecParser "sig" $ scanToP pSig
+parseParameters :: SpecParser [ParameterDecl]
+parseParameters = SpecParser "par" $ scanToP pPar
+parseType :: SpecParser Type' 
+parseType = SpecParser "type" $ scanToP pT
+parseDecl :: SpecParser Decl 
+parseDecl = SpecParser "decl" $ scanToP pDec
+parseExprs :: SpecParser [Expr]
+parseExprs = SpecParser "exprs" $ scanToP pEl
+parseExpr :: SpecParser Expr
+parseExpr = SpecParser "expr" $ scanToP pE 
+parseVarDecl :: SpecParser VarDecl'
+parseVarDecl = SpecParser "varDecl" $ scanToP pIDecl
 
-instance SpecBuilder String (Either String TopDecl) () where
-  expectation input output =
-    it (show $ lines input) $ scanToP pTDecl input `shouldBe` output
-
-instance SpecBuilder String (Either String Signature) () where
-  expectation input output =
-    it (show $ lines input) $ scanToP pSig input `shouldBe` output
-
-instance SpecBuilder String (Either String [ParameterDecl]) () where
-  expectation input output =
-    it (show $ lines input) $ scanToP pPar input `shouldBe` output
-
-instance SpecBuilder String (Either String (Offset, Type)) () where
-  expectation input output =
-    it (show $ lines input) $ scanToP pT input `shouldBe` output
-
-instance SpecBuilder String (Either String Decl) () where
-  expectation input output =
-    it (show $ lines input) $ scanToP pDec input `shouldBe` output
-
-instance SpecBuilder String (Either String [Expr]) () where
-  expectation input output =
-    it (show $ lines input) $ scanToP pEl input `shouldBe` output
-
-instance SpecBuilder String (Either String Expr) () where
-  expectation input output =
-    it (show $ lines input) $ scanToP pE input `shouldBe` output
-
-instance SpecBuilder String (Either String VarDecl') () where
-  expectation input output =
-    it (show $ lines input) $ scanToP pIDecl input `shouldBe` output
+expectSuccess :: Show a => SpecParser a -> [String] -> SpecWith ()
+expectSuccess (SpecParser tag parse') inputs = describe (tag ++ " success") $ mapM_ expectation inputs
+  where
+    expectation input = it (show $ lines input) $ parse' input `shouldSatisfy` Either.isRight
 
 genCommaList ::
      Gen String -- ^ What we will be comma separating
   -> Gen String
-genCommaList f =
-  oneof
-    [ f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',' : s2
-    , (++) <$> f <*> genCommaList f
-    ]
+genCommaList f = oneof [f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',' : s2, (++) <$> f <*> genCommaList f]
 
 genEBase :: Gen (String, Expr)
 genEBase =
@@ -280,8 +263,7 @@ genEBase =
     , T.genNum >>= \s -> return (s, Lit $ IntLit o Decimal s)
     , T.genOct >>= \s -> return (s, Lit $ IntLit o Octal s)
     , T.genHex >>= \s -> return (s, Lit $ IntLit o Hexadecimal s)
-    , ((arbitrary :: Gen Float) `suchThat` \f -> f > 0.0 && f > 0.1) >>= \f ->
-        return (show f, Lit $ FloatLit o f)
+    , ((arbitrary :: Gen Float) `suchThat` \f -> f > 0.0 && f > 0.1) >>= \f -> return (show f, Lit $ FloatLit o f)
     , T.genChar' >>= \c -> return ('\'' : c : "'", Lit $ RuneLit o c)
     , T.genString >>= \s -> return (s, Lit $ StringLit o Interpreted s)
     , T.genRString >>= \s -> return (s, Lit $ StringLit o Raw s)
@@ -318,8 +300,7 @@ genEBin = do
 genEUn1 :: Gen (String, Expr)
 genEUn1 = do
   (s, e) <- genEBase
-  (sop, op) <-
-    elements [("+", Pos), ("-", Neg), ("!", Not), ("^", BitComplement)]
+  (sop, op) <- elements [("+", Pos), ("-", Neg), ("!", Not), ("^", BitComplement)]
   return (sop ++ s, Unary o op e)
 
 genEUn2 :: Gen (String, Expr)
@@ -350,7 +331,6 @@ genE = oneof [genEBase, genEUn, genEBin]
 --   , ("[22]int", (o, ArrayType (Lit $ IntLit o Decimal "22") (Type $ Identifier o "int")))
 --   , ("[]int", (o, SliceType (Type $ Identifier o "int")))
 --   ]
-
 -- genETypeBase :: Gen (String, Type)
 -- genETypeBase = oneof [T.genId >>= genEBase >>= \i -> "[" ++  ++ "] " ++ id, ArrayType ]
 expectEL :: [(String, [Expr])]
@@ -367,29 +347,8 @@ expectEL =
 scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
 scanToP f s = runAlex s f
 
-intExamples =
-  [ "0"
-  , "1"
-  , "-123"
-  , "1234567890"
-  , "42"
-  , "0600"
-  , "0xBadFace"
-  , "170141183460469231731687303715884105727"
-  ]
+intExamples = ["0", "1", "-123", "1234567890", "42", "0600", "0xBadFace", "170141183460469231731687303715884105727"]
 
-floatExamples =
-  [ ".1234567890"
-  , "0."
-  , "72.40"
-  , "072.40"
-  , "2.71828"
-  , "1.e+0"
-  , "6.67428e-11"
-  , "1E6"
-  , ".25"
-  , ".12345E+5"
-  ]
+floatExamples = [".1234567890", "0.", "72.40", "072.40", "2.71828", "1.e+0", "6.67428e-11", "1E6", ".25", ".12345E+5"]
 
-runeExamples =
-  ['a', 'b', 'c', '\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'', '\"']
+runeExamples = ['a', 'b', 'c', '\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'', '\"']

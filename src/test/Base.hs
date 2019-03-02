@@ -42,12 +42,10 @@ fstConvert f = pairConvert f id
 sndConvert :: (b -> b') -> [(a, b)] -> [(a, b')]
 sndConvert = pairConvert id
 
-class SpecBuilder a b c where
-  expectation :: a -> b -> SpecWith c
-  specAll :: String -> [(a, b)] -> SpecWith c
-  specAll name items = describe name $ mapM_ (uncurry expectation) items
-  specOne :: (a,b) -> SpecWith c
-  specOne = uncurry expectation
+class SpecBuilder a where
+  expectation :: a -> SpecWith ()
+  specAll :: String -> [a] -> SpecWith ()
+  specAll name items = describe name $ mapM_ expectation items
 
 -- | Generate Either given a string and feed this to constructor
 strData :: String -> (String -> a) -> (String, a)
