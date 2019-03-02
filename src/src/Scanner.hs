@@ -1,27 +1,26 @@
 module Scanner
-  ( P
-  , thenP
-  , returnP
-  , showError
-  , getPos
-  , happyError
-  , lexer
+  ( lexer
   , scanT
   , scanP
   , scanC
   , putExit
+  , putSucc
   , prettify
+  , humanize
   , T.Token(..)
   , T.InnerToken(..)
   , T.AlexPosn(..)
   , T.alexError
   , T.runAlex
   , T.Alex
+  , errO
+  , errODef
   ) where
 
 import           System.Exit
 import           System.IO
 
+import           ErrorBundle
 -- Helper functions for scanning using tokens and also pass relevant things to parser
 import qualified Tokens      as T
 
@@ -117,50 +116,135 @@ prettify t =
     T.TDInc           -> "tDEC"
     T.TEOF            -> error "TEOF should not be converted into a string"
 
+-- | Like prettify but more human readable for compile errors
+humanize :: T.InnerToken -> String
+humanize t =
+  case t of
+    T.TBreak          -> "break"
+    T.TChan           -> "chan"
+    T.TConst          -> "const"
+    T.TContinue       -> "continue"
+    T.TDefault        -> "default"
+    T.TDefer          -> "defer"
+    T.TElse           -> "else"
+    T.TFallthrough    -> "fallthrough"
+    T.TFor            -> "for"
+    T.TFunc           -> "func"
+    T.TGo             -> "go"
+    T.TGoto           -> "goto"
+    T.TIf             -> "if"
+    T.TImport         -> "import"
+    T.TInterface      -> "interface"
+    T.TMap            -> "map"
+    T.TPackage        -> "package"
+    T.TRange          -> "range"
+    T.TReturn         -> "return"
+    T.TSelect         -> "select"
+    T.TStruct         -> "struct"
+    T.TSwitch         -> "switch"
+    T.TComma          -> ","
+    T.TDot            -> "."
+    T.TColon          -> ":"
+    T.TSemicolon      -> ";"
+    T.TLParen         -> "("
+    T.TRParen         -> ")"
+    T.TLSquareB       -> "["
+    T.TRSquareB       -> "]"
+    T.TLBrace         -> "{"
+    T.TRBrace         -> "}"
+    T.TPlus           -> "+"
+    T.TMinus          -> "-"
+    T.TTimes          -> "*"
+    T.TDiv            -> "/"
+    T.TMod            -> "%"
+    T.TAssn           -> "="
+    T.TGt             -> ">"
+    T.TLt             -> "<"
+    T.TNot            -> "!"
+    T.TEq             -> "=="
+    T.TNEq            -> "!="
+    T.TGEq            -> ">="
+    T.TLEq            -> "<="
+    T.TAnd            -> "&&"
+    T.TOr             -> "||"
+    T.TLAnd           -> "&"
+    T.TLOr            -> "|"
+    T.TLXor           -> "&"
+    T.TLeftS          -> "<<"
+    T.TRightS         -> ">>"
+    T.TLAndNot        -> "&^"
+    T.TIncA           -> "+="
+    T.TDIncA          -> "-="
+    T.TMultA          -> "*="
+    T.TDivA           -> "/="
+    T.TModA           -> "%="
+    T.TLAndA          -> "&="
+    T.TLOrA           -> "|="
+    T.TLXorA          -> "^="
+    T.TLeftSA         -> "<<="
+    T.TRightSA        -> ">>="
+    T.TLAndNotA       -> "&^="
+    T.TRecv           -> "->"
+    T.TDeclA          -> ":="
+    T.TLdots          -> "..."
+    T.TVar            -> "var"
+    (T.TDecVal _)     -> "int"
+    (T.TOctVal _)     -> "int"
+    (T.THexVal _)     -> "int"
+    (T.TFloatVal _)   -> "float"
+    (T.TRuneVal _)    -> "rune"
+    (T.TStringVal _)  -> "string"
+    (T.TRStringVal _) -> "string"
+    (T.TIdent s)      -> "identifier " ++ s
+    T.TCase           -> "case"
+    T.TPrint          -> "print"
+    T.TPrintln        -> "println"
+    T.TType           -> "type"
+    T.TAppend         -> "append"
+    T.TLen            -> "len"
+    T.TCap            -> "cap"
+    T.TInc            -> "++"
+    T.TDInc           -> "--"
+    T.TEOF            -> error "TEOF should not be converted into a string"
+
 -- |prettyPrint calls prettify on a list of tokens and then prints each one one a new line
 prettyPrint :: [T.InnerToken] -> IO ()
 prettyPrint = mapM_ (putStrLn . prettify)
 
--- | Custom definition of alexMonadScan to modify the error message with more info
-alexMonadScan :: T.Alex T.Token
-alexMonadScan = do
-  inp__ <- T.alexGetInput
-  sc <- T.alexGetStartCode
-  case T.alexScan inp__ sc of
-    T.AlexEOF -> T.alexEOF
-    T.AlexError (T.AlexPn _ line column, prev, _, s) ->
-      T.alexError $
-      "Error: lexical error at line " ++
-      show line ++
-      ", column " ++
-      show column ++
-      ". Previous character: " ++ show prev ++ ", current string: " ++ s
-    T.AlexSkip inp__' _len -> do
-      T.alexSetInput inp__'
-      alexMonadScan
-    T.AlexToken inp__' len action -> do
-      T.alexSetInput inp__'
-      action (T.ignorePendingBytes inp__) len
-
--- | scan, the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
-scan :: String -> Either String [T.InnerToken]
-scan s =
+-- | scan', the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
+scan' :: String -> Either (String, Int) [T.InnerToken]
+scan' s =
   T.runAlex s $ do
     let loop tokl = do
-          (T.Token _ tok) <- alexMonadScan
+          (T.Token _ tok) <- T.alexMonadScan
           if tok == T.TEOF
             then return tokl
             else loop (tok : tokl)
     loop []
+
+-- | Helper to process offsets
+scan :: String -> Either String [T.InnerToken]
+scan s = either (Left . errODef s) Right (scan' s)
+
+-- | Convert (String, Int) to String, i.e. err msg + offset to string
+errO :: String -> String -> (String, Int) -> String
+errO s err2 (err, o) =
+  err ++ errorString (createError o err2 (createInitialState s))
+
+-- | errO but no message after Megaparsec error, i.e. just feed it the empty string as we have no additional error to repot
+errODef :: String -> (String, Int) -> String
+errODef s = errO s ""
 
 scanT :: String -> Either String [T.InnerToken]
 scanT s = fmap reverse (scan s)
 
 -- | putExit: function to output to stderr and exit with return code 1
 putExit :: String -> IO ()
-putExit err = do
-  hPutStrLn stderr err
-  exitFailure
+putExit err = hPutStrLn stderr err >> exitFailure
+
+-- | putSucc: output to stdin and exit with success
+putSucc :: String -> IO ()
+putSucc s = putStrLn s >> exitSuccess
 
 -- | Print result of scan, i.e. tokens or error
 scanP :: String -> IO ()
@@ -171,28 +255,5 @@ scanP s =
 scanC :: String -> IO ()
 scanC s = either putExit (const $ putStrLn "OK" >> exitSuccess) (scan s)
 
--- | Monad types/functions to allow the scanner to interface with the parser
-type P a = T.Alex a
-
-thenP :: P a -> (a -> P b) -> P b
-thenP = (>>=)
-
-returnP :: a -> P a
-returnP = return
-
--- | showError will be passed to happyError and will define behavior on parser errors
-showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
-showError (l, c, _) =
-  T.alexError
-    ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
-
-getPos :: T.Alex T.AlexPosn
-getPos = T.Alex (\s -> Right (s, T.alex_pos s))
-
-happyError :: P a
-happyError = do
-  (T.AlexPn _ l c) <- getPos
-  showError (l, c, Nothing)
-
-lexer :: (T.Token -> P a) -> P a
-lexer s = alexMonadScan >>= s
+lexer :: (T.Token -> T.Alex a) -> T.Alex a
+lexer s = T.alexMonadScan >>= s

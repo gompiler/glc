@@ -1,17 +1,28 @@
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NonEmpty
+import           ErrorBundle
 import           GHC.Exts           (Constraint)
 import           GHC.TypeLits
 
 -- note that I do not classify blank identifiers as a separate type
 -- because we can easily pattern match it already
-type Identifier = String
-
-newtype TODO =
-  TODO String -- temp
+data Identifier =
+  Identifier Offset
+             String
   deriving (Show, Eq)
+
+instance ErrorBreakpoint Identifier where
+  offset (Identifier o _) = o
+
+type Identifiers = NonEmpty Identifier
+
+instance ErrorBreakpoint Identifiers where
+  offset (id :| _) = offset id
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
@@ -47,14 +58,14 @@ data Decl
 -- though we make no guarantees at this AST stage
 -- Should a type be specified, the expression list is optional
 data VarDecl' =
-  VarDecl' (NonEmpty Identifier)
-           (Either (Type, [Expr]) (NonEmpty Expr))
+  VarDecl' Identifiers
+           (Either (Type', [Expr]) (NonEmpty Expr))
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =
   TypeDef' Identifier
-           Type
+           Type'
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -73,13 +84,19 @@ data FuncDecl =
            FuncBody
   deriving (Show, Eq)
 
+instance ErrorBreakpoint FuncDecl where
+  offset (FuncDecl id _ _) = offset id
+
 -- | See https://golang.org/ref/spec#ParameterDecl
 -- Func components
 -- Golite does not support unnamed parameters
 data ParameterDecl =
-  ParameterDecl (NonEmpty Identifier)
-                Type
+  ParameterDecl Identifiers
+                Type'
   deriving (Show, Eq)
+
+instance ErrorBreakpoint ParameterDecl where
+  offset (ParameterDecl ids _) = offset ids
 
 -- | See https://golang.org/ref/spec#Parameters
 -- Variadic parameters aren't supported in golite
@@ -92,7 +109,7 @@ newtype Parameters =
 -- No result type needed
 data Signature =
   Signature Parameters
-            (Maybe Type)
+            (Maybe Type')
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -111,20 +128,32 @@ type FuncBody = Stmt
 data SimpleStmt
   = EmptyStmt
   -- | See https://golang.org/ref/spec#Expression_statements
-  | ExprStmt TODO
+  -- Note that expr must be some function
+  | ExprStmt Expr
   -- | See https://golang.org/ref/spec#IncDecStmt
   -- TODO check if we want to split these or add a new field for inc and dec
-  | Increment Expr
-  | Decrement Expr
+  | Increment Offset
+              Expr
+  | Decrement Offset
+              Expr
   -- | See https://golang.org/ref/spec#Assignments
   -- TODO confirm that expression lists should be equal
-  | Assign AssignOp
+  | Assign Offset
+           AssignOp
            (NonEmpty Expr)
            (NonEmpty Expr)
   -- | See https://golang.org/ref/spec#ShortVarDecl
-  | ShortDeclare (NonEmpty Identifier)
+  | ShortDeclare Identifiers
                  (NonEmpty Expr)
   deriving (Show, Eq)
+
+instance ErrorBreakpoint SimpleStmt where
+  offset EmptyStmt            = error "EmptyStmt has no offset"
+  offset (ExprStmt e)         = offset e
+  offset (Increment o _)      = o
+  offset (Decrement o _)      = o
+  offset (Assign o _ _ _)     = o
+  offset (ShortDeclare ids _) = offset ids
 
 -- | Shortcut for a blank stmt
 blank :: Stmt
@@ -147,19 +176,24 @@ data Stmt
        Stmt
        Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
+  -- | See https://golang.org/ref/spec#ExprSwitchStmt
   -- Golite does not support type switches
   -- Note that there should be at most one default
   -- The next AST model can make that distinction
-  | Switch [SwitchCase]
+  | Switch SimpleStmt
+           (Maybe Expr)
+           [SwitchCase]
   -- | See https://golang.org/ref/spec#For_statements
   | For ForClause
         Stmt
   -- | See https://golang.org/ref/spec#Break_statements
   -- Labels are not supported in Golite
-  | Break
+  | Break Offset
   -- | See https://golang.org/ref/spec#Continue_statements
   -- Labels are not supported in Golite
-  | Continue
+  | Continue Offset
+  -- | See https://golang.org/ref/spec#Fallthrough_statements
+  -- | Fallthrough Offset
   -- | See https://golang.org/ref/spec#Declaration
   | Declare Decl
   -- Golite exclusive
@@ -173,10 +207,16 @@ data Stmt
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
 data SwitchCase
-  = Case (NonEmpty Expr)
+  = Case Offset
+         (NonEmpty Expr)
          Stmt
-  | Default Stmt
+  | Default Offset
+            Stmt
   deriving (Show, Eq)
+
+instance ErrorBreakpoint SwitchCase where
+  offset (Case o _ _)  = o
+  offset (Default o _) = o
 
 -- | See https://golang.org/ref/spec#For_statements
 -- Golite does not support range statement
@@ -195,10 +235,12 @@ data ForClause
 -- We can infer them from the AST
 -- TODO support slices? index?
 data Expr
-  = Unary UnaryOp
+  = Unary Offset
+          UnaryOp
           Expr
-  | Binary Expr
+  | Binary Offset
            BinaryOp
+           Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
@@ -207,38 +249,83 @@ data Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
-  | AppendExpr Expr
+  | AppendExpr Offset
+               Expr
                Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports strings, arrays, and slices
-  | LenExpr Expr
+  | LenExpr Offset
+            Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports arrays and slices
-  | CapExpr Expr
-  | Conversion Type
+  | CapExpr Offset
+            Expr
+  -- | See https://golang.org/ref/spec#Conversions
+  | Conversion Offset
+               Type'
                Expr
+  -- | See https://golang.org/ref/spec#Selector
+  -- Eg a.b
+  | Selector Offset
+             Expr
+             Identifier
+  -- | See https://golang.org/ref/spec#Index
+  -- Eg expr1[expr2]
+  | Index Offset
+          Expr
+          Expr
+  -- | See https://golang.org/ref/spec#TypeAssertion
+  -- Eg expr.(type)
+  | TypeAssertion Offset
+                  Expr
+                  Type'
+  -- | See https://golang.org/ref/spec#Arguments
+  -- Eg expr(expr1, expr2, ...)
+  | Arguments Offset
+              Expr
+              [Expr]
   deriving (Show, Eq)
 
+instance ErrorBreakpoint Expr where
+  offset (Unary o _ _)         = o
+  offset (Binary o _ _ _)      = o
+  offset (Lit l)               = offset l
+  offset (Var id)              = offset id
+  offset (AppendExpr o _ _)    = o
+  offset (LenExpr o _)         = o
+  offset (CapExpr o _)         = o
+  offset (Conversion o _ _)    = o
+  offset (Selector o _ _)      = o
+  offset (Index o _ _)         = o
+  offset (TypeAssertion o _ _) = o
+  offset (Arguments o _ _)     = o
+
 -- | See https://golang.org/ref/spec#Literal
--- TODO do we want to store string and type?
 -- Type can be inferred from string
 -- If we want to keep erroneous states invalid,
 -- we might want just string, or store as int and reformat on pretty print
--- TODO support other literals?
 data Literal
-  = IntLit IntType'
+  = IntLit Offset
+           IntType'
            String
-  | FloatLit Float
-  | RuneLit Char
-  | StringLit StringType'
+  | FloatLit Offset
+             Float
+  | RuneLit Offset
+            Char
+  | StringLit Offset
+              StringType'
               String
-  -- | See https://golang.org/ref/spec#FunctionLit
-  | FuncLit Signature
-            FuncBody
   deriving (Show, Eq)
 
+instance ErrorBreakpoint Literal where
+  offset (IntLit o _ _)    = o
+  offset (FloatLit o _)    = o
+  offset (RuneLit o _)     = o
+  offset (StringLit o _ _) = o
+
+--  offset (StringLit o _ _) = o
 -- | See https://golang.org/ref/spec#binary_op
 -- & See https://golang.org/ref/spec#rel_op
 data BinaryOp
@@ -288,9 +375,13 @@ newtype AssignOp =
   AssignOp (Maybe ArithmOp)
   deriving (Show, Eq)
 
+-- | See https://golang.org/ref/spec#Integer_literals
 data IntType'
+  -- Eg 123
   = Decimal
+  -- Eg 0135
   | Octal
+  -- Eg 0xab90
   | Hexadecimal
   deriving (Show, Eq)
 
@@ -298,6 +389,14 @@ data StringType'
   = Interpreted
   | Raw
   deriving (Show, Eq)
+
+-- | Type with offset value
+-- We do not include offsets within types as
+-- it results in unnecessary nested offsets
+type Type' = (Offset, Type)
+
+instance ErrorBreakpoint Type' where
+  offset (o, _) = o
 
 -- | See https://golang.org/ref/spec#Types
 data Type
@@ -310,21 +409,17 @@ data Type
   -- | See https://golang.org/ref/spec#Struct_types
   | StructType [FieldDecl]
   | PointerType Type
+  -- | See https://golang.org/ref/spec#Function_types
   | FuncType Signature
   | Type Identifier
   deriving (Show, Eq)
 
--- | See https://golang.org/ref/spec#string_lit
--- TODO check if we want to use a data kind and reuse the StringLit constructor within Literals
-data StringLiteral =
-  StringLiteral StringType'
-                String
+-- | See https://golang.org/ref/spec#FieldDecl
+data FieldDecl
+  = FieldDecl Identifiers
+              Type'
+  | EmbeddedField Identifier
   deriving (Show, Eq)
 
-data FieldDecl
-  = FieldDecl (NonEmpty Identifier)
-              Type
-              (Maybe StringLiteral)
-  | EmbeddedField Identifier
-                  (Maybe StringLiteral)
-  deriving (Show, Eq)
+instance ErrorBreakpoint FieldDecl where
+  offset (FieldDecl ids _) = offset ids

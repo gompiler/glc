@@ -15,8 +15,11 @@ cleangen:
 	@rm -f src/generated/Parser.hs
 
 .PHONY: build
-build: src/generated/Tokens.hs src/generated/Parser.hs
+build: gen
 	stack --allow-different-user build
+
+.PHONY: gen
+gen: src/generated/Tokens.hs src/generated/Parser.hs
 
 src/generated/Tokens.hs: golite.x
 	alex $< -g -o $@
@@ -32,6 +35,20 @@ glc: build
 .PHONY: cbuild
 cbuild:
 	stack build  --allow-different-user --file-watch
+
+# Run hspec tests
+.PHONY: test
+test: gen
+	stack test --allow-different-user --coverage
+
+.PHONY: ctest
+ctest: gen
+	stack test --allow-different-user --coverage --file-watch
+
+# Refactor code using hlint, hindent and stylish-haskell
+.PHONY: refactor
+refactor:
+	@find . -name "*.hs" -not -path "./src/generated/*" -not -path "./.stack-work/*" -exec hlint --refactor --refactor-options="--inplace" {} \; -exec hindent {} \; -exec stylish-haskell -i {} \;
 
 # ------------------------------------------------------------
 # |                   Trottier specific                      |
@@ -49,3 +66,9 @@ cleantrot: exT clean
 
 .PHONY: cbuildT
 cbuildT: exT cbuild
+
+.PHONY: testT
+testT: exT test
+
+.PHONY: ctestT
+ctestT: exT ctest
