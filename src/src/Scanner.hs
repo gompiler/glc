@@ -20,10 +20,10 @@ module Scanner
 import           System.Exit
 import           System.IO
 
+import           ErrorBundle
 -- Helper functions for scanning using tokens and also pass relevant things to parser
 import qualified Tokens      as T
-import           ErrorBundle
-  
+
 -- |prettify, takes a token and turn it into a string representing said token
 -- Also makes the tokens look like the expected tTYPE format
 prettify :: T.InnerToken -> String
@@ -206,22 +206,21 @@ humanize t =
     T.TInc            -> "++"
     T.TDInc           -> "--"
     T.TEOF            -> error "TEOF should not be converted into a string"
-    
+
 -- |prettyPrint calls prettify on a list of tokens and then prints each one one a new line
 prettyPrint :: [T.InnerToken] -> IO ()
 prettyPrint = mapM_ (putStrLn . prettify)
-
 
 -- | scan', the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
 scan' :: String -> Either (String, Int) [T.InnerToken]
 scan' s =
   T.runAlex s $ do
-  let loop tokl = do
-        (T.Token _ tok) <- T.alexMonadScan
-        if tok == T.TEOF
-          then return tokl
-          else loop (tok : tokl)
-  loop []
+    let loop tokl = do
+          (T.Token _ tok) <- T.alexMonadScan
+          if tok == T.TEOF
+            then return tokl
+            else loop (tok : tokl)
+    loop []
 
 -- | Helper to process offsets
 scan :: String -> Either String [T.InnerToken]
@@ -229,7 +228,8 @@ scan s = either (Left . errODef s) Right (scan' s)
 
 -- | Convert (String, Int) to String, i.e. err msg + offset to string
 errO :: String -> String -> (String, Int) -> String
-errO s err2 (err, o) = err ++ errorString (createError o err2 (createInitialState s))
+errO s err2 (err, o) =
+  err ++ errorString (createError o err2 (createInitialState s))
 
 -- | errO but no message after Megaparsec error, i.e. just feed it the empty string as we have no additional error to repot
 errODef :: String -> (String, Int) -> String
@@ -248,7 +248,8 @@ putSucc s = putStrLn s >> exitSuccess
 
 -- | Print result of scan, i.e. tokens or error
 scanP :: String -> IO ()
-scanP s = either putExit (\tl -> prettyPrint (reverse tl) >> exitSuccess) (scan s)
+scanP s =
+  either putExit (\tl -> prettyPrint (reverse tl) >> exitSuccess) (scan s)
 
 -- | Check for error, if none will print OK
 scanC :: String -> IO ()

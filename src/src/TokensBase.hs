@@ -131,8 +131,7 @@ instance Applicative Alex where
   fa <*> a = fa <*> a
 
 instance Monad Alex where
-  m >>= k =
-    Alex $ \s -> either Left (\(s', a) -> unAlex (k a) s') (unAlex m s)
+  m >>= k = Alex $ \s -> either Left (\(s', a) -> unAlex (k a) s') (unAlex m s)
   return = App.pure
 
 alexGetInput :: Alex AlexInput
