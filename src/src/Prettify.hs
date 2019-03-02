@@ -220,15 +220,15 @@ instance Prettify StringType' where
 instance Prettify Type' where
   prettify' (_, t) = prettify' t
 
-
 instance Prettify Type where
-  prettify' (ArrayType e t)    = ["[" ++ prettify e ++ "]" ++ prettify t]
+  prettify' (ArrayType e t)   = ["[" ++ prettify e ++ "]" ++ prettify t]
   -- prettify' (StructType [fdl]) = "struct { " ++ prettify fdl ++ "; }"
-  prettify' (StructType fdls)  = "struct {" : tab (fdls >>= prettify') ++ ["}"]
-  prettify' (SliceType t)      = ["[]" ++ prettify t]
-  prettify' (PointerType t)    = ["*" ++ prettify t]
-  prettify' (FuncType s)       = ["func" ++ prettify s]
-  prettify' (Type id)          = [prettify id]
+  prettify' (StructType fdls) = "struct {" : tab (fdls >>= prettify') ++ ["}"]
+  prettify' (SliceType t)     = ["[]" ++ prettify t]
+  prettify' (PointerType t)   = ["*" ++ prettify t]
+  prettify' (FuncType s)      = ["func" ++ prettify s]
+  prettify' (Type id)         = [prettify id]
+  prettify s@StructType {} = intercalate "; " $ prettify' s
   -- prettify' = prettify''
 
 instance Prettify FieldDecl where
