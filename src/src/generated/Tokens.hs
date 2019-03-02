@@ -562,8 +562,8 @@ data InnerToken = TBreak
                 | TDecVal String
                 | TOctVal String
                 | THexVal String
-                | TRuneVal Char
-                | TFloatVal Float
+                | TRuneVal String
+                | TFloatVal String
                 | TStringVal String
                 | TRStringVal String -- Raw String
                 | TIdent String
@@ -630,31 +630,6 @@ tokM f (p, _, _, s) len = return (Token p (f (take len s)))
 -- | Feed function to tokM
 tok :: InnerToken -> (AlexPosn, b, c, [a]) -> Int -> Alex Token
 tok x = tokM $ const x
-
--- | Char
--- tokCInp :: (Char -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
--- Input will *always* be of length 3 as we only feed '@string' to this, where @string is one character corresponding to the string macro
-tokCInp x = andBegin (tokM $ x . \s -> case s!!1 of
-                                            '\\' -> (case s!!2 of
-                                                          'a'  -> '\a'
-                                                          'b'  -> '\b'
-                                                          'f'  -> '\f'
-                                                          'n'  -> '\n'
-                                                          'r'  -> '\r'
-                                                          't'  -> '\t'
-                                                          'v'  -> '\v'
-                                                          '\'' -> '\''
-                                                          '\\' -> '\\')
-                                            c -> c) nl -- Take index 1 of the string that should be 'C' where C is a char or escape character
-                                           -- All literal vals can take optional semicolons, hence the nl
-
--- tokFInp :: (String -> InnerToken) -> (AlexPosn, b, c, [Char]) -> Int -> Alex Token
--- | Floats
-tokFInp x = andBegin (tokM $ x . read . (\s -> case (break (== '.') s) of -- Separate by String by . and check if any side is empty
-                                                 (n, '.':[]) -> s ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
-                                                 ([], '.':n) -> '0' : s -- Prepend 0 because .1 is not a valid Float
-                                                 (_, _)      -> s
-                                                 )) nl -- Lit val
 
 nlTokens  = [TInc, TDInc, TRParen, TRSquareB, TRBrace, TBreak, TContinue, TFallthrough, TReturn]
 
@@ -757,9 +732,9 @@ alex_action_80 =  tokS TCap
 alex_action_81 =  tokSM TOctVal 
 alex_action_82 =  tokSM THexVal 
 alex_action_83 =  tokSM TDecVal 
-alex_action_84 =  tokFInp TFloatVal 
+alex_action_84 =  tokSM TFloatVal 
 alex_action_85 =  tokSM TIdent 
-alex_action_86 =  tokCInp TRuneVal 
+alex_action_86 =  tokSM TRuneVal 
 alex_action_87 =  tokSM TStringVal 
 alex_action_88 =  tokSM TRStringVal 
 {-# LINE 1 "templates/GenericTemplate.hs" #-}

@@ -194,16 +194,17 @@ genCommaList f =
 genEBase :: Gen (String, Expr)
 genEBase =
   oneof
-    [ T.genId >>= \s -> return (s, Var $ Identifier o s)
-    , T.genNum >>= \s -> return (s, Lit $ IntLit o Decimal s)
-    , T.genOct >>= \s -> return (s, Lit $ IntLit o Octal s)
-    , T.genHex >>= \s -> return (s, Lit $ IntLit o Hexadecimal s)
-    , ((arbitrary :: Gen Float) `suchThat` \f -> f > 0.0 && f > 0.1) >>= \f ->
-        return (show f, Lit $ FloatLit o f)
-    , T.genChar' >>= \c -> return ('\'' : c : "'", Lit $ RuneLit o c)
-    , T.genString >>= \s -> return (s, Lit $ StringLit o Interpreted s)
-    , T.genRString >>= \s -> return (s, Lit $ StringLit o Raw s)
+    [ T.genId >>= (toTup $ Var . Identifier o)
+    , T.genNum >>= (toTup $ Lit . IntLit o Decimal)
+    , T.genOct >>= (toTup $ Lit . IntLit o Octal)
+    , T.genHex >>= (toTup $ Lit . IntLit o Hexadecimal)
+    , T.genFloat >>= (toTup $ Lit . FloatLit o)
+    , T.genChar >>= (toTup $ Lit . RuneLit o)
+    , T.genString >>= (toTup $ Lit . StringLit o Interpreted)
+    , T.genRString >>= (toTup $ Lit . StringLit o Raw)
     ]
+    where
+      toTup constr s = return (s, constr s)
 
 genEBin :: Gen (String, Expr)
 genEBin = do
@@ -277,7 +278,7 @@ expectEL :: [(String, [Expr])]
 expectEL =
   [ ( "123, 888"
     , (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
-  , ("123, 88.8", (Lit $ IntLit o Decimal "123") : [Lit $ FloatLit o 88.8])
+  , ("123, 88.8", (Lit $ IntLit o Decimal "123") : [Lit $ FloatLit o "88.8"])
   ]
 
 -- expectDecl :: [(String, Decl)]
