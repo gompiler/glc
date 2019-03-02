@@ -19,7 +19,8 @@ main = do
       case cmd of
         Scan -> scanC
         Tokens -> scanP
-        Parse -> either putExit (const $ putSucc "OK") . (\s -> parse s >>= weed s)
+        Parse ->
+          either putExit (const $ putSucc "OK") . (\s -> parse s >>= weed s)
         Pretty -> either putExit putStrLn . (fmap Prettify.prettify . parse)
         Symbol -> const $ putStrLn "symbol not yet implemented"
         Typecheck -> const $ putStrLn "typecheck not yet implemented"

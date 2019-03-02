@@ -21,7 +21,7 @@ then
     make -C src cleantrot
     make -C src
     # Run executable once because it outputs special text on first run, else we'd fail first test
-    stack --allow-different-user exec -- "src"/scanparse scan -s <<< ""
+    stack --allow-different-user exec -- "src"/glc scan -s <<< ""
 else
     echo "Newer version of Stack (1.9.3) not found, please use any of the cs-x computers at Trottier or any other computer with Stack 1.9.3, as the default version on other computers is too old."
     exit 1

@@ -1,4 +1,6 @@
-module Weeding (weed) where
+module Weeding
+  ( weed
+  ) where
 
 import           Data.List.NonEmpty  (NonEmpty (..))
 import qualified Data.List.NonEmpty  as NonEmpty
@@ -15,14 +17,15 @@ type PureConstraint a = a -> Maybe ErrorBundle'
 weed :: String -> Program -> Either String Program
 weed code program =
   case errorBundle of
-    Just eb -> Left ("Error: weeding error at " ++ (errorString $ eb (createInitialState code)))
+    Just eb ->
+      Left
+        ("Error: weeding error at " ++
+         errorString (eb (createInitialState code)))
     Nothing -> Right program
   where
     errorBundle :: Maybe ErrorBundle'
     errorBundle =
-      (programVerify program) <|>
-      (continueVerify program) <|>
-      (breakVerify program)
+      programVerify program <|> continueVerify program <|> breakVerify program
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
@@ -32,13 +35,15 @@ firstOrNothing (x:_) = Just x
 verifyAll :: PureConstraint a -> [a] -> Maybe ErrorBundle'
 verifyAll constraint items = firstOrNothing $ mapMaybe constraint items
 
-recursiveVerifyAll :: (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
+recursiveVerifyAll ::
+     (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
 recursiveVerifyAll getScopes c = verifyAll $ recursiveVerify getScopes c
 
 -- | Takes a top level statement verifier and applies it to specified scopes
 -- | (based on a passed function which extracts statements from the current
 -- | statement).
-recursiveVerify :: (Stmt -> [Stmt]) -> PureConstraint Stmt -> PureConstraint Stmt
+recursiveVerify ::
+     (Stmt -> [Stmt]) -> PureConstraint Stmt -> PureConstraint Stmt
 recursiveVerify getScopes constraint stmt =
   constraint stmt <|> recursiveVerifyAll getScopes constraint (getScopes stmt)
 
@@ -61,7 +66,8 @@ stmtVerify :: Stmt -> Maybe ErrorBundle'
 stmtVerify (SimpleStmt stmt) =
   case stmt of
     ExprStmt Arguments {} -> Nothing
-    e@(ExprStmt _) -> Just $ createError e "Expression statements must be function calls" -- TODO: OFFSET
+    e@(ExprStmt _) ->
+      Just $ createError e "Expression statements must be function calls" -- TODO: OFFSET
     _ -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
@@ -79,7 +85,8 @@ stmtVerify (Switch s _ cases) =
 stmtVerify (For (ForClause pre _ post) _) =
   stmtVerify (SimpleStmt pre) <|> stmtVerify (SimpleStmt post) <|>
   case post of
-    s@ShortDeclare {} -> Just $ createError s "For post-statement cannot be declaration"
+    s@ShortDeclare {} ->
+      Just $ createError s "For post-statement cannot be declaration"
     _ -> Nothing
 -- TODO
 stmtVerify _ = Nothing
@@ -88,7 +95,10 @@ programVerify :: PureConstraint Program
 programVerify program = firstOrNothing errors
   where
     errors :: [ErrorBundle']
-    errors = mapMaybe (stmtRecursiveVerify stmtVerify) (mapMaybe topToStmt $ topLevels program)
+    errors =
+      mapMaybe
+        (stmtRecursiveVerify stmtVerify)
+        (mapMaybe topToStmt $ topLevels program)
 
 continueRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
 continueRecursiveVerify = recursiveVerify getScopes
@@ -102,15 +112,18 @@ continueRecursiveVerify = recursiveVerify getScopes
         _                -> []
 
 continueConstraint :: Stmt -> Maybe ErrorBundle'
-continueConstraint (Continue o) = Just $ createError o "Continue statement must occur in for loop"
+continueConstraint (Continue o) =
+  Just $ createError o "Continue statement must occur in for loop"
 continueConstraint _ = Nothing
 
 continueVerify :: PureConstraint Program
 continueVerify program = firstOrNothing errors
   where
     errors :: [ErrorBundle']
-    errors = mapMaybe (continueRecursiveVerify continueConstraint) (mapMaybe topToStmt $ topLevels program)
-
+    errors =
+      mapMaybe
+        (continueRecursiveVerify continueConstraint)
+        (mapMaybe topToStmt $ topLevels program)
 
 breakRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
 breakRecursiveVerify = recursiveVerify getScopes
@@ -118,20 +131,24 @@ breakRecursiveVerify = recursiveVerify getScopes
     getScopes :: Stmt -> [Stmt]
     getScopes stmt =
       case stmt of
-        BlockStmt stmts  -> stmts
-        If _ s1 s2       -> [s1, s2]
-        _                -> [] -- Skip for and switch, since breaks can occur there
+        BlockStmt stmts -> stmts
+        If _ s1 s2      -> [s1, s2]
+        _               -> [] -- Skip for and switch, since breaks can occur there
 
 breakConstraint :: Stmt -> Maybe ErrorBundle'
-breakConstraint (Break o) = Just $ createError o "Break statement must occur in for loop or switch statement"
+breakConstraint (Break o) =
+  Just $
+  createError o "Break statement must occur in for loop or switch statement"
 breakConstraint _ = Nothing
 
 breakVerify :: PureConstraint Program
 breakVerify program = firstOrNothing errors
   where
     errors :: [ErrorBundle']
-    errors = mapMaybe (breakRecursiveVerify breakConstraint) (mapMaybe topToStmt $ topLevels program)
-
+    errors =
+      mapMaybe
+        (breakRecursiveVerify breakConstraint)
+        (mapMaybe topToStmt $ topLevels program)
 
 -- Helpers
 -- | Extracts block statements from top-level function declarations

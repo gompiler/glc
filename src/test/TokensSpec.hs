@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE QuasiQuotes           #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
 
 module TokensSpec
   ( spec
@@ -24,18 +23,22 @@ spec = do
   specAll "scanner success" scanSuccess
   specAll "scanner failures" scanFailure
   describe "extra scanner tests" $
-    qcGen "semicolon insertion" False genSemiI (\x -> scanT (x ++ "/* \n */") == scanT (x ++ ";"))
+    qcGen
+      "semicolon insertion"
+      False
+      genSemiI
+      (\x -> scanT (x ++ "/* \n */") == scanT (x ++ ";"))
 
 genId' :: Gen String
-genId' = oneof [choose ('A', 'Z') >>= toRetL, (:) <$> choose ('A', 'Z') <*> genId']
+genId' =
+  oneof [choose ('A', 'Z') >>= toRetL, (:) <$> choose ('A', 'Z') <*> genId']
 
 genId :: Gen String
-genId =
-  frequency [(30, genId'), (1, return "_")]
+genId = frequency [(30, genId'), (1, return "_")]
 
 genNum :: Gen String
-genNum = -- Ensure no octal
-  oneof [choose ('8', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
+genNum -- Ensure no octal
+ = oneof [choose ('8', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
 
 genHex' :: Gen String
 genHex' =
@@ -52,10 +55,11 @@ genHex :: Gen String
 genHex = genHex' >>= (\l -> elements ['x', 'X'] >>= \x -> return $ '0' : x : l)
 
 genOct' :: Gen String
-genOct' = oneof [choose ('0', '7') >>= toRetL, (:) <$> choose ('0', '7') <*> genOct']
+genOct' =
+  oneof [choose ('0', '7') >>= toRetL, (:) <$> choose ('0', '7') <*> genOct']
 
 genOct :: Gen String
-genOct = genOct' >>= \s -> return $ '0':s
+genOct = genOct' >>= \s -> return $ '0' : s
 
 genFloat :: Gen String
 genFloat = do
@@ -113,13 +117,14 @@ genSemiI =
     ]
 
 instance SpecBuilder (String, [InnerToken]) where
-  expectation (input, expected) = it (show $ lines input) $ scanT input `shouldBe` Right expected
+  expectation (input, expected) =
+    it (show $ lines input) $ scanT input `shouldBe` Right expected
 
 instance SpecBuilder (String, String) where
-  expectation (input, failure) = it (show $ lines input) $ scanT input `shouldBe` Left failure
+  expectation (input, failure) =
+    it (show $ lines input) $ scanT input `shouldBe` Left failure
 
 --scanInputs = sndConvert Right scanSuccess ++ sndConvert Left scanFailure
-
 scanSuccess :: [(String, [InnerToken])]
 scanSuccess =
   [ (";", [TSemicolon])
@@ -283,9 +288,16 @@ scanSuccess =
   , ("testid", [TIdent "testid", TSemicolon])
   , ("identttt", [TIdent "identttt", TSemicolon])
   , ("_", [TIdent "_", TSemicolon])
-  , ("a, b, dddd", [TIdent "a", TComma, TIdent "b", TComma, TIdent "dddd", TSemicolon])
+  , ( "a, b, dddd"
+    , [TIdent "a", TComma, TIdent "b", TComma, TIdent "dddd", TSemicolon])
   , ( "weirdsp, _   ,aacing"
-    , [TIdent "weirdsp", TComma, TIdent "_", TComma, TIdent "aacing", TSemicolon])
+    , [ TIdent "weirdsp"
+      , TComma
+      , TIdent "_"
+      , TComma
+      , TIdent "aacing"
+      , TSemicolon
+      ])
   , ( "weirdsp, _   \n,aacing"
     , [ TIdent "weirdsp"
       , TComma
@@ -374,7 +386,4 @@ scanSuccess =
   ]
 
 scanFailure :: [(String, String)]
-scanFailure =
-  [ ( "''"
-    , "Error: lexical error at 1:2:\n  |\n1 | ''\n  |  ^\n\n")
-  ]
+scanFailure = [("''", "Error: lexical error at 1:2:\n  |\n1 | ''\n  |  ^\n\n")]

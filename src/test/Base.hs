@@ -1,8 +1,8 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeApplications      #-}
 
 module Base
   ( SpecBuilder(..)
@@ -26,22 +26,22 @@ module Base
   , scanToP
   ) where
 
-import Control.Monad (unless)
-
-import Control.Applicative
-import Data
-import qualified Data.Either as Either
-import Data.List (intercalate)
-import Data.List.NonEmpty (NonEmpty(..), fromList)
-import Data.Text (Text, unpack)
-import ErrorBundle
-import NeatInterpolation
-import Parser (pDec, pE, pEl, pIDecl, pId, pPar, pSig, pStmt, pT, pTDecl)
-import qualified Parser (parse)
-import Prettify
-import Scanner (Alex(..), runAlex)
-import Test.Hspec
-import Test.QuickCheck
+import           Control.Applicative
+import           Control.Monad       (unless)
+import           Data
+import qualified Data.Either         as Either
+import           Data.List           (intercalate)
+import           Data.List.NonEmpty  (NonEmpty (..), fromList)
+import           Data.Text           (Text, unpack)
+import           ErrorBundle
+import           NeatInterpolation
+import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
+                                      pStmt, pT, pTDecl)
+import qualified Parser              (parse)
+import           Prettify
+import           Scanner             (Alex (..), runAlex)
+import           Test.Hspec
+import           Test.QuickCheck
 
 o :: Offset
 o = Offset 0
@@ -62,7 +62,7 @@ instance Stringable Text where
 -- Name refers to tag from Parsable
 -- Inputs refers to list of inputs
 -- Note that the last two entries are type ambiguous, which is why we need to specify them
--- We order the parameters this way to avoid rewriting them 
+-- We order the parameters this way to avoid rewriting them
 expectBase :: (HasCallStack) => String -> (s -> Expectation) -> (s -> String) -> String -> [s] -> SpecWith ()
 expectBase suffix expectation title name inputs = describe (name ++ " " ++ suffix) $ mapM_ expect inputs
   where
