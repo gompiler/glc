@@ -79,7 +79,6 @@ exprs =
   , (CapExpr o baseExpr, "cap(" ++ baseExpr' ++ ")")
   , (Selector o baseExpr baseId, baseExpr' ++ "." ++ baseId')
   , (Index o baseExpr baseExpr, baseExpr' ++ "[" ++ baseExpr' ++ "]")
-  , (TypeAssertion o baseExpr baseType, baseExpr' ++ ".(" ++ baseType' ++ ")")
   , ( Arguments o baseExpr [baseExpr, baseExpr, baseExpr]
     , baseExpr' ++ "(" ++ baseExpr' ++ ", " ++ baseExpr' ++ ", " ++ baseExpr' ++ ")")
   ]

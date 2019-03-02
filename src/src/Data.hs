@@ -264,11 +264,6 @@ data Expr
   | Index Offset
           Expr
           Expr
-  -- | See https://golang.org/ref/spec#TypeAssertion
-  -- Eg expr.(type)
-  | TypeAssertion Offset
-                  Expr
-                  Type'
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   | Arguments Offset
@@ -286,7 +281,6 @@ instance ErrorBreakpoint Expr where
   offset (CapExpr o _)         = o
   offset (Selector o _ _)      = o
   offset (Index o _ _)         = o
-  offset (TypeAssertion o _ _) = o
   offset (Arguments o _ _)     = o
 
 -- | See https://golang.org/ref/spec#Literal

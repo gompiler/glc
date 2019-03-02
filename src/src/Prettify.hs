@@ -171,7 +171,6 @@ instance Prettify Expr where
   prettify (CapExpr _ e) = "cap(" ++ prettify e ++ ")"
   prettify (Selector _ e i) = prettify e ++ "." ++ prettify i
   prettify (Index _ e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
-  prettify (TypeAssertion _ e t) = prettify e ++ ".(" ++ prettify t ++ ")"
   prettify (Arguments _ e ee) = prettify e ++ "(" ++ commaJoin ee ++ ")"
   prettify' = prettify''
 
