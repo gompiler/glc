@@ -189,6 +189,7 @@ whilst implementing the components for milestone 1.
 - *David Lougheed:* Wrote the bulk of the parser grammar and contributed to
    the weeder. Also wrote 3 of the valid programs and 8 of the
    invalid ones and had minor contributions to miscellaneous other components.
+   Contributed to the testing of the parser and pretty printer.
 - *Allan Wang:* Created the AST and helper classes for pretty printing
    and error handling.  Wrote the base package for testing as well as
    some of the embedded test cases within ~hspec~.  Added integrations
