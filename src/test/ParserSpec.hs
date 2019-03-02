@@ -1,5 +1,5 @@
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TypeApplications      #-}
 
 module ParserSpec
