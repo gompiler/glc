@@ -1,8 +1,8 @@
-.PHONY: all
+.PHONY: allT
 all: glcT
 
 # local build
-.PHONY: allL
+.PHONY: all
 allL: glc
 
 .PHONY: clean

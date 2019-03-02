@@ -14,7 +14,9 @@ before_install:
 install:
 - cd src && stack --no-terminal --install-ghc test --only-dependencies
 script:
-- cd src && stack test
+- cd $TRAVIS_BUILD_DIR
+- chmod +x ./travis_test.sh
+- ./travis_test.sh
 notifications:
   email: false
   slack:
