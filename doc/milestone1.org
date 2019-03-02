@@ -110,11 +110,13 @@ whilst implementing the components for milestone 1.
 * Parser
 ** Grammar
    Many of our difficulties in the grammar were associated with identifier and
-   expression lists.
+   expression lists. Two constructs in the Go (and GoLite) spec are identifier
+   lists, used in declarations and function signatures, and expression lists,
+   used in assignment and function signatures. The grammar was refactored to
+   avoid this problem by allowing identifier lists to become expression lists
+   if needed in a way which avoided introducing other conflicts.
 
-   TODO: MORE ABOUT AMBIGUITY
-
-   Another list difficulty we had was with list ordering. LR parsers
+   Another difficulty we had was with list ordering. LR parsers
    work more intuitively with rules that put the newly-created terminal
    after the recursively-expanding non-terminal However, since Haskell
    uses recursive lists defined in the opposite way, it is significantly
