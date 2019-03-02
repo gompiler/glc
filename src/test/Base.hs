@@ -23,6 +23,7 @@ module Base
   , module Test.QuickCheck
   , toRetL
   , qcGen
+  , scanToP
   ) where
 
 import Control.Monad (unless)
@@ -205,7 +206,7 @@ instance Parsable Identifiers where
   expectAst = expectAstBase (tag @Identifiers)
 
 scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
-scanToP f s = runAlex s f
+scanToP f s = either (\(err, o) -> Left err) Right (runAlex s f)
 
 pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
 pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))

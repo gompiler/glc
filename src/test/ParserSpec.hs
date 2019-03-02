@@ -247,8 +247,6 @@ expectEL =
 --            ]
 -- expectIDecl :: [(String, VarDecl')]
 -- expectIDecl = [ ("= 5", VarDecl' (Left (Type "aaaaa")) (NonEmpty $ Lit $ IntLit Decimal "123"))]
-scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
-scanToP f s = runAlex s f
 
 intExamples = ["0", "1", "-123", "1234567890", "42", "0600", "0xBadFace", "170141183460469231731687303715884105727"]
 
