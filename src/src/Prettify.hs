@@ -13,7 +13,7 @@ import           Data.Text          (strip)
 import           GHC.Unicode        (isSpace)
 
 tab :: [String] -> [String]
-tab = map ("\t" ++)
+tab = map ("    " ++)
 
 commaJoin :: Prettify a => [a] -> String
 commaJoin p = intercalate ", " $ map prettify p
@@ -127,7 +127,7 @@ instance Prettify Stmt where
   prettify' (Declare d) = prettify' d
   prettify' (Print es) = ["print(" ++ intercalate ", " (es >>= prettify') ++ ")"]
   prettify' (Println es) = ["println(" ++ intercalate ", " (es >>= prettify') ++ ")"]
-  prettify' (Return m) = ["return"] `skipNewLine` maybe [] (prettify') m
+  prettify' (Return m) = ["return"] `skipNewLine` maybe [] prettify' m
 
 instance Prettify SwitchCase where
   prettify' (Case _ e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)
@@ -222,16 +222,13 @@ instance Prettify Type' where
 
 instance Prettify Type where
   prettify' (ArrayType e t)   = ["[" ++ prettify e ++ "]" ++ prettify t]
-  -- prettify' (StructType [fdl]) = "struct { " ++ prettify fdl ++ "; }"
   prettify' (StructType fdls) = "struct {" : tab (fdls >>= prettify') ++ ["}"]
   prettify' (SliceType t)     = ["[]" ++ prettify t]
   prettify' (PointerType t)   = ["*" ++ prettify t]
   prettify' (FuncType s)      = ["func" ++ prettify s]
   prettify' (Type id)         = [prettify id]
-  prettify s@StructType {} = intercalate "; " $ prettify' s
-  -- prettify' = prettify''
+--  prettify s@StructType {} = intercalate "; " $ prettify' s
 
 instance Prettify FieldDecl where
-  prettify (FieldDecl ids t)   = prettify ids ++ " " ++ prettify t
-  prettify (EmbeddedField ids) = prettify ids
-  prettify' = prettify''
+  prettify' (FieldDecl ids t) = [prettify ids] `skipNewLine` prettify' t
+  prettify' (EmbeddedField ids) = [prettify ids]

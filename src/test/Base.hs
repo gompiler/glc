@@ -19,6 +19,7 @@ module Base
   , Parsable(..)
   , strData'
   , cartP
+  , printError
   , module Test.Hspec
   , module Test.QuickCheck
   , toRetL
@@ -54,6 +55,10 @@ instance Stringable String where
 
 instance Stringable Text where
   toString = unpack
+
+printError :: Either String String -> SpecWith ()
+printError (Right s) = describe "print" $ it "right error" $ expectationFailure s
+printError (Left s)  = describe "print" $ it "left error" $ expectationFailure s
 
 -- | Relatively complex base expectation
 -- Suffix is a tag for the description
@@ -110,7 +115,14 @@ expectAstBase =
 expectPrettyInvarBase ::
      (Parsable a, Prettify a, Stringable s) => String -> (String -> Either String a) -> [s] -> SpecWith ()
 expectPrettyInvarBase tag parse =
-  expectBase "pretty invar" (\s -> either expectationFailure (const $ return ()) (multiPass $ toString s)) toString tag
+  expectBase
+    "pretty invar"
+    (\s ->
+       case multiPass $ toString s of
+         Left err -> expectationFailure $ "Invalid prettify for:\n\n" ++ toString s ++ "\n\nfailed with\n\n" ++ err
+         Right _ -> return ())
+    toString
+    tag
   where
     multiPass input = do
       ast1 <- parse input

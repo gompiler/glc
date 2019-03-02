@@ -11,12 +11,38 @@ import           NeatInterpolation
 
 import           Base
 import           Data
+import           Debug.Trace       (trace)
 import           Prettify
 
 spec :: Spec
 spec = do
   expectPrettyInvar @Identifiers ["a, b"]
   expectPrettyInvar @Expr ["1 + 2 * 3", "(((2))) * abc - _s", "index[0]", "-a"]
+  expectPrettyInvar @Type' ["asdf", "struct {a int; b int;}"]
+  expectPrettyInvar
+    @TopDecl
+    [ [text|
+      type bb struct {
+        b int
+        c, d float64
+        e struct {
+          f int
+          g, h int
+        }
+      }
+      |],
+      [text|
+      func whatever() struct { int n; } {
+      }
+      |]
+    ]
+  printError $
+    prettify <$>
+    parse
+      @TopDecl
+      [text|
+      func whatever() struct { int n; } { }
+      |]
 
 intLit = map (\(i, e) -> (IntLit o i e, e)) [(Decimal, "12"), (Hexadecimal, "0xCAFEBABE"), (Octal, "01001")]
 
