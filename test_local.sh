@@ -85,7 +85,7 @@ do
 			COUNT=0
 			COUNT_PASSED=0
 
-			TESTS=`find $DIR_TYPE -type f \( -name "*.min" \)`
+			TESTS=`find $DIR_TYPE -type f \( -name "*.go" \)`
 
 			for TEST in $TESTS
 			do
