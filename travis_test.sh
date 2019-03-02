@@ -2,5 +2,5 @@
 
 (cd src && stack test)
 
-chmod +x ./test_local.sh
-./test_local.sh 
+chmod +x ./test_custom.sh
+./test_custom.sh 
