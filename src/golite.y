@@ -132,7 +132,7 @@ import qualified Data.List.NonEmpty as NonEmpty
     default                             { Token _ TDefault }
     defer                               { Token _ TDefer }            {- unsupported -}
     else                                { Token _ TElse }
-    fallthrough                         { Token _ TFallthrough }
+    fallthrough                         { Token _ TFallthrough }      {- unsupported -}
     for                                 { Token _ TFor }
     func                                { Token _ TFunc }
     go                                  { Token _ TGo }               {- unsupported -}
@@ -227,7 +227,6 @@ Stmt        : BlockStmt ';'                                 { $1 }
             | SwitchStmt ';'                                { $1 }
             | break ';'                                     { Break $ getOffset $1 }
             | continue ';'                                  { Continue $ getOffset $1 }
-            | fallthrough ';'                               { Fallthrough $ getOffset $1 }
             | Decl                                          { Declare $1 } {- decl includes semicolon -}
 
             | print '(' EIList ')' ';'                      { Print $3 }
