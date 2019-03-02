@@ -32,8 +32,6 @@ a `skipNewLine` [] = a
 prettify'' :: Prettify a => a -> [String]
 prettify'' item = [prettify item]
 
--- | TODO: Replace this
-
 class Prettify a where
   prettify :: a -> String
   prettify = intercalate "\n" . prettify'
@@ -49,7 +47,7 @@ instance Prettify Identifiers where
 
 instance Prettify Program where
   prettify' Program {package = package, topLevels = topLevels} =
-    ("package " ++ package ++ "\n") : (topLevels >>= prettify')
+    ("package " ++ package ++ "\n") : (topLevels >>= (("" :) . prettify'))
 
 instance Prettify TopDecl where
   prettify' (TopDecl decl)     = prettify' decl
@@ -77,7 +75,7 @@ instance Prettify TypeDef' where
 
 instance Prettify FuncDecl where
   prettify' (FuncDecl id sig body) =
-    [("func " ++ prettify id)] `skipNewLine` (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
+    ["func " ++ prettify id] `skipNewLine` (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
 
 instance Prettify ParameterDecl where
   prettify (ParameterDecl ids t) = prettify ids ++ " " ++ prettify t
@@ -107,9 +105,9 @@ instance Prettify Stmt where
       i' = tab $ prettify' i
       e' =
         case e of
-          If {} -> ["} else"] `skipNewLine` prettify' e -- Else If
+          If {}                -> ["} else"] `skipNewLine` prettify' e -- Else If
           SimpleStmt EmptyStmt -> ["}"] -- No real else block, don't print anything
-          _     -> "} else {" : tab (prettify' e) ++ ["}"]
+          _                    -> "} else {" : tab (prettify' e) ++ ["}"]
   prettify' (Switch ss se cases) = ("switch " ++ ss' ++ "{") : tab (cases >>= prettify') ++ ["}"]
     where
       ss' =
@@ -121,8 +119,8 @@ instance Prettify Stmt where
   prettify' (Continue _) = ["continue"]
   prettify' (Fallthrough _) = ["fallthrough"]
   prettify' (Declare d) = prettify' d
-  prettify' (Print es) = ["print(" ++ concat(intersperse ", " (es >>= prettify')) ++ ")"]
-  prettify' (Println es) = ["println(" ++ concat(intersperse ", " (es >>= prettify')) ++ ")"]
+  prettify' (Print es) = ["print(" ++ concat (intersperse ", " (es >>= prettify')) ++ ")"]
+  prettify' (Println es) = ["println(" ++ concat (intersperse ", " (es >>= prettify')) ++ ")"]
   prettify' (Return m) = ["return"] `skipNewLine` (maybe [] (prettify') m)
 
 instance Prettify SwitchCase where
@@ -135,8 +133,8 @@ instance Prettify (SimpleStmt, Expr) where
   prettify' = prettify''
 
 instance Prettify ForClause where
-  prettify ForInfinite         = ""
-  prettify (ForCond e)         = prettify e
+  prettify ForInfinite = ""
+  prettify (ForCond e) = prettify e
   prettify (ForClause cs ce s) = (prettify cs) ++ "; " ++ (prettify ce) ++ "; " ++ (prettify s)
   prettify' = prettify''
 
