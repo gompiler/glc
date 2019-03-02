@@ -51,8 +51,8 @@ instance Stringable String where
 instance Stringable Text where
   toString = unpack
 
-expectPassBase :: Parsable a => String -> (String -> Either String a) -> [String] -> SpecWith ()
-expectPassBase name parse inputs = describe (name ++ " success") $ mapM_ expect inputs
+expectPassBase :: (Parsable a, Stringable s) => String -> (String -> Either String a) -> [s] -> SpecWith ()
+expectPassBase name parse inputs = describe (name ++ " success") $ mapM_ (expect . toString) inputs
   where
     expect input = it (show $ lines input) $ parse input `shouldSatisfy` Either.isRight
 
@@ -60,67 +60,69 @@ class (Show a, Eq a) =>
       Parsable a
   where
   tag :: String
-  parse :: String -> Either String a
+  parse :: Stringable s => s -> Either String a
+  parse s = parse' $ toString s
+  parse' :: String -> Either String a
   placeholder :: a
-  expectPass :: [String] -> SpecWith ()
+  expectPass :: Stringable s => [s] -> SpecWith ()
 
 instance Parsable Program where
   tag = "program"
-  parse = Parser.parse
+  parse' = Parser.parse
   placeholder = Program {package = "temp", topLevels = []}
   expectPass = expectPassBase (tag @Program) (parse @Program)
 
 instance Parsable Stmt where
   tag = "stmt"
-  parse = scanToP pStmt
+  parse' = scanToP pStmt
   placeholder = blank
   expectPass = expectPassBase (tag @Stmt) (parse @Stmt)
 
 instance Parsable TopDecl where
   tag = "topDecl"
-  parse = scanToP pTDecl
+  parse' = scanToP pTDecl
   placeholder = TopDecl $ VarDecl [placeholder]
   expectPass = expectPassBase (tag @TopDecl) (parse @TopDecl)
 
 instance Parsable Signature where
   tag = "signature"
-  parse = scanToP pSig
+  parse' = scanToP pSig
   placeholder = Signature (Parameters placeholder) Nothing
   expectPass = expectPassBase (tag @Signature) (parse @Signature)
 
 instance Parsable [ParameterDecl] where
   tag = "parameterDecls"
-  parse = scanToP pPar
+  parse' = scanToP pPar
   placeholder = [ParameterDecl placeholder placeholder]
   expectPass = expectPassBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
 
 instance Parsable Type' where
   tag = "type"
-  parse = scanToP pT
+  parse' = scanToP pT
   placeholder = (o, Type $ Identifier o "temp")
   expectPass = expectPassBase (tag @Type') (parse @Type')
 
 instance Parsable Decl where
   tag = "decl"
-  parse = scanToP pDec
+  parse' = scanToP pDec
   placeholder = VarDecl [placeholder]
   expectPass = expectPassBase (tag @Decl) (parse @Decl)
 
 instance Parsable [Expr] where
   tag = "exprs"
-  parse = scanToP pEl
+  parse' = scanToP pEl
   placeholder = [placeholder]
   expectPass = expectPassBase (tag @[Expr]) (parse @[Expr])
 
 instance Parsable Expr where
   tag = "expr"
-  parse = scanToP pE
+  parse' = scanToP pE
   placeholder = Lit $ StringLit o Raw "`temp`"
   expectPass = expectPassBase (tag @Expr) (parse @Expr)
 
 instance Parsable VarDecl' where
   tag = "varDecl"
-  parse = scanToP pIDecl
+  parse' = scanToP pIDecl
   placeholder = VarDecl' placeholder (Right $ placeholder :| [])
   expectPass = expectPassBase (tag @VarDecl') (parse @VarDecl')
 
