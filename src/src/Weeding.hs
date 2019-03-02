@@ -32,22 +32,28 @@ verifyAll constraint items = firstOrNothing $ mapMaybe constraint items
 stmtRecursiveVerifyAll :: PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
 stmtRecursiveVerifyAll c = verifyAll $ stmtRecursiveVerify c
 
+recursiveVerifyAll :: (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
+recursiveVerifyAll getScopes c = verifyAll $ recursiveVerify getScopes c
+
+-- | Takes a top level statement verifier and applies it to specified scopes
+-- | (based on a passed function which extracts statements from the current
+-- | statement).
+recursiveVerify :: (Stmt -> [Stmt]) -> PureConstraint Stmt -> PureConstraint Stmt
+recursiveVerify getScopes constraint stmt =
+  constraint stmt <|> recursiveVerifyAll getScopes constraint (getScopes stmt)
+
 -- | Takes a top level statement verifier and applies it to all scopes
 stmtRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
-stmtRecursiveVerify constraint stmt =
-  constraint stmt <|>
-  stmtRecursiveVerifyAll
-    constraint
-    (case stmt of
-       BlockStmt stmts  -> stmts
-       If _ s1 s2       -> [s1, s2]
-       For _ s          -> [s]
-       Switch _ _ cases -> map stmtFromCase cases
-       _                -> [])
+stmtRecursiveVerify = recursiveVerify getScopes
   where
-    stmtFromCase :: SwitchCase -> Stmt
-    stmtFromCase (Case _ _ stmt)  = stmt
-    stmtFromCase (Default _ stmt) = stmt
+    getScopes :: Stmt -> [Stmt]
+    getScopes stmt =
+      case stmt of
+        BlockStmt stmts  -> stmts
+        If _ s1 s2       -> [s1, s2]
+        For _ s          -> [s]
+        Switch _ _ cases -> map stmtFromCase cases
+        _                -> []
 
 -- | Verification rules for specific statements
 stmtVerify :: Stmt -> Maybe ErrorBundle'
@@ -88,20 +94,16 @@ continueRecursiveVerifyAll :: PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle
 continueRecursiveVerifyAll c = verifyAll $ continueRecursiveVerify c
 
 continueRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
-continueRecursiveVerify constraint stmt =
-  constraint stmt <|>
-  continueRecursiveVerifyAll
-    constraint
-    (case stmt of
-       BlockStmt stmts  -> stmts
-       If _ s1 s2       -> [s1, s2]
-       For _ s          -> [] -- Skip for, since continues can occur there
-       Switch _ _ cases -> map stmtFromCase cases
-       _                -> [])
+continueRecursiveVerify = recursiveVerify getScopes
   where
-    stmtFromCase :: SwitchCase -> Stmt
-    stmtFromCase (Case _ _ stmt)  = stmt
-    stmtFromCase (Default _ stmt) = stmt
+    getScopes :: Stmt -> [Stmt]
+    getScopes stmt =
+      case stmt of
+        BlockStmt stmts  -> stmts
+        If _ s1 s2       -> [s1, s2]
+        For _ s          -> [] -- Skip for, since continues can occur there
+        Switch _ _ cases -> map stmtFromCase cases
+        _                -> []
 
 continueConstraint :: Stmt -> Maybe ErrorBundle'
 continueConstraint (Continue o) = Just $ createError o "Continue statement must occur in for loop"
@@ -118,3 +120,7 @@ continueVerify program = firstOrNothing errors
 topToStmt :: TopDecl -> Maybe Stmt
 topToStmt (TopFuncDecl (FuncDecl _ _ stmt)) = Just stmt
 topToStmt _                                 = Nothing
+
+stmtFromCase :: SwitchCase -> Stmt
+stmtFromCase (Case _ _ stmt)  = stmt
+stmtFromCase (Default _ stmt) = stmt
