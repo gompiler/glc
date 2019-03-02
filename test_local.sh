@@ -3,6 +3,7 @@
 LOG=0
 VERBOSE=0
 VERIFY=1
+RESULT=0
 
 while getopts ":lvc" opt; do
 	case $opt in
@@ -157,11 +158,13 @@ do
 					else
 						STATUS_TEXT="fail"
 						STATUS_COLOUR="31"
+                                                RESULT=1
 					fi
 
 				else
 					STATUS_TEXT="failed previous"
 					STATUS_COLOUR="31"
+                                        RESULT=1
 				fi
 
 				if [ ! -z "$STATUS_TEXT" ]
@@ -218,3 +221,5 @@ echo -e "\033[0m"
 for i in ${!RESULTS[*]}; do
 	echo -e ${RESULTS[$i]}
 done
+
+exit $RESULT
