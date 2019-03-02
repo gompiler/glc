@@ -232,8 +232,10 @@ Stmt        : BlockStmt ';'                                 { $1 }
 
             | print '(' EIList ')' ';'                      { Print $3 }
             | print '(' Expr ')' ';'                        { Print [$3] }
+            | print '(' ')' ';'                             { Print [] }
             | println '(' EIList ')' ';'                    { Println $3 }
             | println '(' Expr ')' ';'                      { Println [$3] }
+            | println '(' ')' ';'                           { Println [] }
 
             | return Expr ';'                               { Return $ Just $2 }
             | return ';'                                    { Return Nothing }
@@ -342,8 +344,9 @@ NIExpr      : '+' Expr %prec POS                            { Unary (getOffset $
             | append '(' Expr ',' Expr ')'                  { AppendExpr (getOffset $1) $3 $5 }
             | len '(' Expr ')'                              { LenExpr (getOffset $1) $3 }
             | cap '(' Expr ')'                              { CapExpr (getOffset $1) $3 }
-            | Expr '(' Expr ')'                             { Arguments (getOffset $2) $1 [$3] }
-            | Expr '(' EIList ')'                           { Arguments (getOffset $2) $1 $3 }
+            | Expr '(' ')'                                  { Arguments (getOffset $2) $1 [] } -- No arguments
+            | Expr '(' Expr ')'                             { Arguments (getOffset $2) $1 [$3] } -- One argument
+            | Expr '(' EIList ')'                           { Arguments (getOffset $2) $1 $3 } -- >= 2 arguments
 
 {-
   Spec: https://golang.org/ref/spec#ExpressionList
