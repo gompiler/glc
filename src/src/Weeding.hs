@@ -19,7 +19,10 @@ weed code program =
     Nothing -> Right program
   where
     errorBundle :: Maybe ErrorBundle'
-    errorBundle = (programVerify program) <|> (continueVerify program)
+    errorBundle =
+      (programVerify program) <|>
+      (continueVerify program) <|>
+      (breakVerify program)
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
@@ -28,9 +31,6 @@ firstOrNothing (x:_) = Just x
 
 verifyAll :: PureConstraint a -> [a] -> Maybe ErrorBundle'
 verifyAll constraint items = firstOrNothing $ mapMaybe constraint items
-
-stmtRecursiveVerifyAll :: PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
-stmtRecursiveVerifyAll c = verifyAll $ stmtRecursiveVerify c
 
 recursiveVerifyAll :: (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
 recursiveVerifyAll getScopes c = verifyAll $ recursiveVerify getScopes c
@@ -90,9 +90,6 @@ programVerify program = firstOrNothing errors
     errors :: [ErrorBundle']
     errors = mapMaybe (stmtRecursiveVerify stmtVerify) (mapMaybe topToStmt $ topLevels program)
 
-continueRecursiveVerifyAll :: PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
-continueRecursiveVerifyAll c = verifyAll $ continueRecursiveVerify c
-
 continueRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
 continueRecursiveVerify = recursiveVerify getScopes
   where
@@ -101,7 +98,6 @@ continueRecursiveVerify = recursiveVerify getScopes
       case stmt of
         BlockStmt stmts  -> stmts
         If _ s1 s2       -> [s1, s2]
-        For _ s          -> [] -- Skip for, since continues can occur there
         Switch _ _ cases -> map stmtFromCase cases
         _                -> []
 
@@ -114,6 +110,28 @@ continueVerify program = firstOrNothing errors
   where
     errors :: [ErrorBundle']
     errors = mapMaybe (continueRecursiveVerify continueConstraint) (mapMaybe topToStmt $ topLevels program)
+
+
+breakRecursiveVerify :: PureConstraint Stmt -> PureConstraint Stmt
+breakRecursiveVerify = recursiveVerify getScopes
+  where
+    getScopes :: Stmt -> [Stmt]
+    getScopes stmt =
+      case stmt of
+        BlockStmt stmts  -> stmts
+        If _ s1 s2       -> [s1, s2]
+        _                -> [] -- Skip for and switch, since breaks can occur there
+
+breakConstraint :: Stmt -> Maybe ErrorBundle'
+breakConstraint (Break o) = Just $ createError o "Break statement must occur in for loop or switch statement"
+breakConstraint _ = Nothing
+
+breakVerify :: PureConstraint Program
+breakVerify program = firstOrNothing errors
+  where
+    errors :: [ErrorBundle']
+    errors = mapMaybe (breakRecursiveVerify breakConstraint) (mapMaybe topToStmt $ topLevels program)
+
 
 -- Helpers
 -- | Extracts block statements from top-level function declarations
