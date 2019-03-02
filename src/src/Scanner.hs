@@ -184,7 +184,7 @@ scanC s = either putExit (const $ putStrLn "OK" >> exitSuccess) (scan s)
 
 -- | showError will be passed to happyError and will define behavior on parser errors
 showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
-showError (l, c, _) = T.alexError ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
+showError (_, l, c) = T.alexError ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
 
 getPos :: T.Alex T.AlexPosn
 getPos = T.Alex (\s -> Right (s, T.alex_pos s))
