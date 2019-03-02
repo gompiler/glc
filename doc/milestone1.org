@@ -87,28 +87,37 @@ whilst implementing the components for milestone 1.
    block comment, and we insert a semicolon if the start code is
    $nl$, the aforementioned newline insertion state.
 *** Adding newlines at the end of the file if they aren't present already
-    ~Go~ adds a semicolon at the end of a file even if there's no
-    newline at the end of the file for semicolon insertion. In order
-    to enforce this, we simply make sure every program scanned ends
-    with a newline, by appending a newline if it doesn't already end
-    with a newline (preprocess string input before scanning). This was
-    the easiest solution as otherwise we'd have to try and insert a
-    semicolon if we were in the $nl$ state when we encounter an ~EOF~
-    (but we have to return an ~EOF~ and couldn't return a semicolon
-    and an ~EOF~).
+    ~Go~ requires a semicolon or newline at the end of function
+    declarations. Sometimes, there may not be a newline at the end of
+    a file, so no semicolon insertion occurs.
+
+    In order to correct for this type of file, we enforce a final
+    newline by appending one if necessary. To do this, the code string
+    is preprocessed prior to scanning. This was the easiest solution
+    as otherwise we'd have to try and insert a semicolon if we were in
+    the $nl$ state when we encounter an ~EOF~, while also making sure
+    to return an ~EOF~. This would be difficult without additional
+    context information.
 ** Nicer error messages
    We decided to use ~ErrorBundle~ from ~Megaparsec~ in order to
-   output nicer error messages. While we did have access to character offset,
-   line, and column when generating error messages, we did not have
-   access to the entire source file string (the scanner would not keep
-   it at each step). In order to generate a contextual message showing
-   where the error is in the source file, we modified the ~monad~
+   output nicer error messages, with program context for easier
+   debugging from an end-user programming perspective:
+
+   TODO: IMAGE OF MEGAPARSEC ERROR
+
+   While we did have access to character offset, line, and column when
+   generating error messages, we did not have access to the entire
+   source file string, as the default behaviour of the scanner is to not
+   keep the entire string at each step.
+
+   In order to generate the contextual message, we modified the ~monad~
    wrapper provided with ~Alex~ (see ~TokensBase.hs~) and changed the
    ~Alex~ monad to wrap over a ~Either (String, Int) a~ instead of
-   ~Either String a~, i.e. instead of just an error message on the
-   left side we also carry an ~Int~ which represents the offset of the
-   error so that when we want to print the error message at the end we
-   can append the part in the source file where the error occurred.
+   ~Either String a~, i.e. in addition to storing an error message on
+   the left side of the monad we also carry an ~Int~ which represents
+   the offset of the error, so that when we want to print the error
+   message at the end we can append the part in the source file where
+   the error occurred.
 * Parser
 ** Grammar
    Many of our difficulties in the grammar were associated with identifier and
