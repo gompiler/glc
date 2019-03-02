@@ -295,6 +295,7 @@ ForStmt     : for BlockStmt                                 { For ForInfinite $2
 SwitchStmt  : switch SimpleStmt ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) (reverse $6) }
             | switch SimpleStmt ';' '{' SwitchBody '}'      { Switch $2 Nothing (reverse $5) }
             | switch Expr '{' SwitchBody '}'                { Switch EmptyStmt (Just $2) (reverse $4) }
+            | switch '{' SwitchBody '}'                     { Switch EmptyStmt Nothing (reverse $3) }
 
 {- SwitchBody is in reverse order -}
 SwitchBody  : SwitchBody case EIList ':' Stmts              { (Case (getOffset $2) (nonEmpty $3) (BlockStmt $ reverse $5)) : $1 }
