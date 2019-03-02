@@ -35,10 +35,36 @@ spec = do
     qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == Right out)
     qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == Right out)
   -- Though a single identifier is valid, we parse it without going through the identifiers type
-  expectPass @Identifiers ["a, b", "a, b, c, d, e"]
-  expectFail @Identifiers ["", ",", "a,", ",b", "a,,c"]
+  expectPass
+    @Identifiers
+    -- Basic
+    ["a, b", "a, b, c, d, e"]
+  expectFail @Identifiers ["", ",", "a,", ",b", "a,,c", "0"]
   expectPass @Type' ["asdf", "int", "a0", "_0a"]
   expectFail @Type' ["0", "-", "*"]
+  expectPass
+    @TopDecl
+    -- Basic
+    [ "var a string"
+    , "var int a"
+    , "var ()"
+    , "var(\n\n\n\t)"
+    , "type a b"
+    , "type (a int)"
+    , "type ( a b; c d)"
+    , "func f(a, b, c string) { }"
+    ]
+  expectFail
+    @TopDecl
+    [ "var a"
+    , "type a = b"
+    -- Must have type
+    , "func (a, b, c) { }"
+    -- Must have body
+    , "func (a, b)"
+    -- No variadic types
+    , "func (a, b, c ...int)"
+    ]
   expectPass @Stmt ["if true { }"]
   expectPass
     @Expr
@@ -57,15 +83,33 @@ spec = do
     -- Advanced
     , "a.b(a[0] + c.d, 0, \"asdf\", 'a')[0]"
     ]
-  expectFail @Expr ["append(a, b, c)", "a[[]", "'aa'"]
+  expectAst
+    @Expr
+    [ ( "1 + 2 * 3"
+      , Binary
+          o
+          (Arithm Add)
+          (Lit (IntLit o Decimal "1"))
+          (Binary o (Arithm Multiply) (Lit (IntLit o Decimal "2")) (Lit (IntLit o Decimal "3"))))
+    , ( "1 * (2 + 3)"
+      , Binary
+          o
+          (Arithm Multiply)
+          (Lit (IntLit o Decimal "1"))
+          (Binary o (Arithm Add) (Lit (IntLit o Decimal "2")) (Lit (IntLit o Decimal "3"))))
+    ]
+  expectFail
+    @Expr
+    -- Two inputs only; no override
+    [ "append(a, b, c)"
+    , "a[[]"
+    -- One char only in rune
+    , "'aa'"
+    ]
   where
     blankExpr = Var $ Identifier o "temp"
     blankStmt = blank
 
---  expectSuccess parseExpr ["a", "2", "1.0", "1 + 2", "append(a, b)"]
---  expectSuccess parseStmt ["if (a) { }"]
---  expectAst parseExpr [("a", Var (Identifier o "a"))]
---      Right (Left (Type (Identifier o "int"), [Lit (IntLit o Decimal "5")]))
 programMain :: [(String, FuncBody)]
 programMain = [("", BlockStmt [])]
 

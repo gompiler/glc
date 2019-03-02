@@ -95,8 +95,13 @@ expectAstBase =
   expectBase
     "ast"
     (\(s, e) ->
-       unless (parse s == Right e) . expectationFailure $
-       "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e)
+       case parse s of
+         Left err ->
+           expectationFailure $
+           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut failed with\n\n" ++ err
+         Right a ->
+           unless (e == a) . expectationFailure $
+           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
     (toString . fst)
 
 class (Show a, Eq a) =>
