@@ -77,7 +77,6 @@ exprs =
   , (AppendExpr o baseExpr baseExpr, "append(" ++ baseExpr' ++ ", " ++ baseExpr' ++ ")")
   , (LenExpr o baseExpr, "len(" ++ baseExpr' ++ ")")
   , (CapExpr o baseExpr, "cap(" ++ baseExpr' ++ ")")
-  , (Conversion o baseType baseExpr, baseType' ++ "(" ++ baseExpr' ++ ")")
   , (Selector o baseExpr baseId, baseExpr' ++ "." ++ baseId')
   , (Index o baseExpr baseExpr, baseExpr' ++ "[" ++ baseExpr' ++ "]")
   , (TypeAssertion o baseExpr baseType, baseExpr' ++ ".(" ++ baseType' ++ ")")

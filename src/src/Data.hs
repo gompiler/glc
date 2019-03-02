@@ -254,10 +254,6 @@ data Expr
   -- Supports arrays and slices
   | CapExpr Offset
             Expr
-  -- | See https://golang.org/ref/spec#Conversions
-  | Conversion Offset
-               Type'
-               Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
   | Selector Offset
@@ -288,7 +284,6 @@ instance ErrorBreakpoint Expr where
   offset (AppendExpr o _ _)    = o
   offset (LenExpr o _)         = o
   offset (CapExpr o _)         = o
-  offset (Conversion o _ _)    = o
   offset (Selector o _ _)      = o
   offset (Index o _ _)         = o
   offset (TypeAssertion o _ _) = o

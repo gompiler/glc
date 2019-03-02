@@ -169,7 +169,6 @@ instance Prettify Expr where
   prettify (AppendExpr _ e1 e2) = "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
   prettify (LenExpr _ e) = "len(" ++ prettify e ++ ")"
   prettify (CapExpr _ e) = "cap(" ++ prettify e ++ ")"
-  prettify (Conversion _ t e) = prettify t ++ "(" ++ prettify e ++ ")"
   prettify (Selector _ e i) = prettify e ++ "." ++ prettify i
   prettify (Index _ e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
   prettify (TypeAssertion _ e t) = prettify e ++ ".(" ++ prettify t ++ ")"
