@@ -2,6 +2,7 @@
 
 module Prettify
   ( Prettify(..)
+  , checkPrettifyInvariance
   ) where
 
 import           Data
@@ -11,6 +12,18 @@ import           Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Maybe         as Maybe
 import           Data.Text          (strip)
 import           GHC.Unicode        (isSpace)
+import           Parser             (parse)
+
+checkPrettifyInvariance :: String -> Either String String
+checkPrettifyInvariance input = do
+  ast1 <- parse input
+  let pretty1 = prettify ast1
+  ast2 <- parse input
+  let pretty2 = prettify ast2
+  case (ast1 == ast2, pretty1 == pretty2) of
+    (False, _) -> Left "AST mismatch:\n\n" ++ show ast1 + "\n\n" ++ show ast2
+    (_, False) -> Left "Prettify mismatch" ++ pretty1 ++ "\n\n" ++ pretty2
+    _          -> Right pretty2
 
 tab :: [String] -> [String]
 tab = map ("    " ++)
@@ -227,8 +240,8 @@ instance Prettify Type where
   prettify' (PointerType t)   = ["*" ++ prettify t]
   prettify' (FuncType s)      = ["func" ++ prettify s]
   prettify' (Type id)         = [prettify id]
---  prettify s@StructType {} = intercalate "; " $ prettify' s
 
+--  prettify s@StructType {} = intercalate "; " $ prettify' s
 instance Prettify FieldDecl where
-  prettify' (FieldDecl ids t) = [prettify ids] `skipNewLine` prettify' t
+  prettify' (FieldDecl ids t)   = [prettify ids] `skipNewLine` prettify' t
   prettify' (EmbeddedField ids) = [prettify ids]
