@@ -237,7 +237,6 @@ instance Prettify Type where
   prettify' (ArrayType e t)   = ["[" ++ prettify e ++ "]" ++ prettify t]
   prettify' (StructType fdls) = "struct {" : tab (fdls >>= prettify') ++ ["}"]
   prettify' (SliceType t)     = ["[]" ++ prettify t]
-  prettify' (PointerType t)   = ["*" ++ prettify t]
   prettify' (FuncType s)      = ["func" ++ prettify s]
   prettify' (Type id)         = [prettify id]
 
