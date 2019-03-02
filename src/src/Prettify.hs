@@ -187,7 +187,7 @@ instance Prettify Literal where
 
 instance Prettify BinaryOp where
   prettify Or         = "||"
-  prettify And        = "||"
+  prettify And        = "&&"
   prettify (Arithm o) = prettify o
   prettify Data.EQ    = "=="
   prettify NEQ        = "!="
