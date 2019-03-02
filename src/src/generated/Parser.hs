@@ -2505,7 +2505,7 @@ happySeq = happyDontSeq
 
 -- Helper functions
 getOffset :: Token -> Offset
-getOffset (Token (AlexPn _ _ o) _) = Offset o
+getOffset (Token (AlexPn o _ _) _) = Offset o
 
 nonEmpty :: [a] -> NonEmpty a
 nonEmpty l = NonEmpty.fromList l
