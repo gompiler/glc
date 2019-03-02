@@ -23,7 +23,7 @@ checkPrettifyInvariance input = do
   case (ast1 == ast2, pretty1 == pretty2) of
     (False, _) -> Left $ "AST mismatch:\n\n" ++ show ast1 ++ "\n\n" ++ show ast2
     (_, False) -> Left $ "Prettify mismatch" ++ pretty1 ++ "\n\n" ++ pretty2
-    _          -> Right pretty2
+    _ -> Right pretty2
 
 tab :: [String] -> [String]
 tab = map ("    " ++)
@@ -240,5 +240,4 @@ instance Prettify Type where
 
 --  prettify s@StructType {} = intercalate "; " $ prettify' s
 instance Prettify FieldDecl where
-  prettify' (FieldDecl ids t)   = [prettify ids] `skipNewLine` prettify' t
-  prettify' (EmbeddedField ids) = [prettify ids]
+  prettify' (FieldDecl ids t) = [prettify ids] `skipNewLine` prettify' t
