@@ -194,7 +194,7 @@ data Stmt
   -- Labels are not supported in Golite
   | Continue Offset
   -- | See https://golang.org/ref/spec#Fallthrough_statements
-  | Fallthrough Offset
+  -- | Fallthrough Offset
   -- | See https://golang.org/ref/spec#Declaration
   | Declare Decl
   -- Golite exclusive

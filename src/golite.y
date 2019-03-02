@@ -38,7 +38,6 @@ import qualified Data.List.NonEmpty as NonEmpty
 %tokentype { Token }
 %monad { Alex } { >>= } { return }
 %lexer { lexer } { Token _ TEOF }
-%errorhandlertype explist
 %error { parseError }
 
 -- Other partial parsers for testing
@@ -132,7 +131,7 @@ import qualified Data.List.NonEmpty as NonEmpty
     default                             { Token _ TDefault }
     defer                               { Token _ TDefer }            {- unsupported -}
     else                                { Token _ TElse }
-    fallthrough                         { Token _ TFallthrough }
+    fallthrough                         { Token _ TFallthrough }      {- unsupported -}
     for                                 { Token _ TFor }
     func                                { Token _ TFunc }
     go                                  { Token _ TGo }               {- unsupported -}
@@ -227,7 +226,6 @@ Stmt        : BlockStmt ';'                                 { $1 }
             | SwitchStmt ';'                                { $1 }
             | break ';'                                     { Break $ getOffset $1 }
             | continue ';'                                  { Continue $ getOffset $1 }
-            | fallthrough ';'                               { Fallthrough $ getOffset $1 }
             | Decl                                          { Declare $1 } {- decl includes semicolon -}
 
             | print '(' EIList ')' ';'                      { Print $3 }
@@ -292,14 +290,15 @@ ForStmt     : for BlockStmt                                 { For ForInfinite $2
             | for SimpleStmt Expr ';' Expr BlockStmt        { For (ForClause $2 $3 (ExprStmt $5)) $6 }
 
 {- Spec: https://golang.org/ref/spec#Switch_statements -}
-SwitchStmt  : switch SimpleStmt ';' Expr '{' SwitchBody '}' { Switch $2 (Just $4) (reverse $6) }
-            | switch SimpleStmt ';' '{' SwitchBody '}'      { Switch $2 Nothing (reverse $5) }
+SwitchStmt  : switch SimpleStmt Expr '{' SwitchBody '}'     { Switch $2 (Just $3) (reverse $5) }
+            | switch SimpleStmt '{' SwitchBody '}'          { Switch $2 Nothing (reverse $4) }
             | switch Expr '{' SwitchBody '}'                { Switch EmptyStmt (Just $2) (reverse $4) }
+            | switch '{' SwitchBody '}'                     { Switch EmptyStmt Nothing (reverse $3) }
 
 {- SwitchBody is in reverse order -}
 SwitchBody  : SwitchBody case EIList ':' Stmts              { (Case (getOffset $2) (nonEmpty $3) (BlockStmt $ reverse $5)) : $1 }
             | SwitchBody case Expr ':' Stmts                { (Case (getOffset $2) (nonEmpty [$3]) (BlockStmt $ reverse $5)) : $1 }
-            | SwitchBody default Stmts                      { (Default (getOffset $2) $ BlockStmt (reverse $3)) : $1 }
+            | SwitchBody default ':' Stmts                  { (Default (getOffset $2) $ BlockStmt (reverse $4)) : $1 }
             | {- empty -}                                   { [] }
 
 
@@ -396,15 +395,13 @@ getInnerChar (Token _ (TRuneVal val)) = val
 
 -- Main parse function
 parse :: String -> Either String Program
-parse s = runAlex s $ hparse
+parse s = either (Left . errODef s) Right (runAlex s $ hparse)
 
 -- Extract posn only
 ptokl t = case t of
           Token pos _ -> pos
 
--- parseError function for better error messages
-parseError :: (Token, [String]) -> Alex a
-parseError (Token (AlexPn _ l c) t, strs) =                                           -- Megaparsec error reporting here
-  alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ " at line " ++ show l ++ " column " ++ show c ++ ", expecting " ++ show strs)
-
+parseError :: (Token) -> Alex a
+parseError (Token (AlexPn o l c) t) =
+           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at: ", o)
 }

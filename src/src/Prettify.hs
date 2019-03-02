@@ -117,7 +117,7 @@ instance Prettify Stmt where
   prettify' (For fc s) = ("for " ++ (prettify fc) ++ " {") : (tab $ prettify' s) ++ ["}"]
   prettify' (Break _) = ["break"]
   prettify' (Continue _) = ["continue"]
-  prettify' (Fallthrough _) = ["fallthrough"]
+  -- prettify' (Fallthrough _) = ["fallthrough"]
   prettify' (Declare d) = prettify' d
   prettify' (Print es) = ["print(" ++ concat (intersperse ", " (es >>= prettify')) ++ ")"]
   prettify' (Println es) = ["println(" ++ concat (intersperse ", " (es >>= prettify')) ++ ")"]

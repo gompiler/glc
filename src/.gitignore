@@ -16,3 +16,4 @@ glc.cabal
 .DS_Store
 
 out/
+.vscode/

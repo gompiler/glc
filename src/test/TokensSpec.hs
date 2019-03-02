@@ -21,12 +21,13 @@ import           Scanner
 
 spec :: Spec
 spec = do
-  specAll "scanner" scanInputs
+  specAll "scanner success" scanSuccess
+  specAll "scanner failures" scanFailure
   describe "extra scanner tests" $
     qcGen "semicolon insertion" False genSemiI (\x -> scanT (x ++ "/* \n */") == scanT (x ++ ";"))
 
 genId' :: Gen String
-genId' = oneof $ [choose ('A', 'Z') >>= toRetL, (:) <$> choose ('A', 'Z') <*> genId']
+genId' = oneof [choose ('A', 'Z') >>= toRetL, (:) <$> choose ('A', 'Z') <*> genId']
 
 genId :: Gen String
 genId =
@@ -111,11 +112,13 @@ genSemiI =
     , genRString
     ]
 
-instance SpecBuilder String (Either String [InnerToken]) () where
-  expectation input output =
-    it (show $ lines input) $ scanT input `shouldBe` output
+instance SpecBuilder (String, [InnerToken]) where
+  expectation (input, expected) = it (show $ lines input) $ scanT input `shouldBe` Right expected
 
-scanInputs = sndConvert Right scanSuccess ++ sndConvert Left scanFailure
+instance SpecBuilder (String, String) where
+  expectation (input, failure) = it (show $ lines input) $ scanT input `shouldBe` Left failure
+
+--scanInputs = sndConvert Right scanSuccess ++ sndConvert Left scanFailure
 
 scanSuccess :: [(String, [InnerToken])]
 scanSuccess =
@@ -373,5 +376,5 @@ scanSuccess =
 scanFailure :: [(String, String)]
 scanFailure =
   [ ( "''"
-    , "Error: lexical error at line 1, column 2. Previous character: '\\\'', current string: '\n")
+    , "Error: lexical error at 1:2:\n  |\n1 | ''\n  |  ^\n\n")
   ]
