@@ -1,40 +1,41 @@
 
 # Table of Contents
 
-1.  [Introduction](#org6456dc2)
-    1.  [Implementation Language](#org8e517b4)
-    2.  [Tools](#org4b58c0e)
-    3.  [Miscellaneous](#orga195a26)
-        1.  [Continuous Integration](#org58d1b70)
-        2.  [File Organization](#org46dab3a)
-2.  [Scanner](#org181cfe2)
-    1.  [Semicolon Insertion](#org1a259b3)
-    2.  [Block comment support](#org454f046)
-        1.  [Adding newlines at the end of the file if they aren't present already](#org4b28057)
-        2.  [Niche Cases](#orgd4fc8a5)
-3.  [Parser](#org317b083)
-    1.  [Grammar](#orga4676d2)
-    2.  [AST](#org4db66d9)
-        1.  [Accurate Type Representation](#org668e4b1)
-        2.  [Simplified Data Type Categories](#org8643b4a)
-        3.  [Format Preservation](#org8322498)
-        4.  [Structure Simplification](#org819d300)
-    3.  [Weeding](#orgda6bc9c)
-4.  [Pretty Printer](#orgdddc581)
-5.  [Team](#org6bb3745)
-    1.  [Team Organization](#orgda50f3c)
-    2.  [Contributions](#org49b7340)
+1.  [Introduction](#org7420c89)
+    1.  [Implementation Language](#orgbac40ce)
+    2.  [Tools](#orgeffc2aa)
+    3.  [Miscellaneous](#org606bb93)
+        1.  [Continuous Integration](#org1c941c1)
+        2.  [File Organization](#orge0cfeb3)
+2.  [Scanner](#orga630f2c)
+    1.  [Semicolon Insertion](#org71d7685)
+    2.  [Block comment support](#orgfbc9c3f)
+        1.  [Adding newlines at the end of the file if they aren't present already](#org6b02a70)
+        2.  [Niche Cases](#org5477512)
+    3.  [Nicer error messages](#org131aa28)
+3.  [Parser](#org7cb746b)
+    1.  [Grammar](#org851ef9e)
+    2.  [AST](#orgbef7a6a)
+        1.  [Accurate Type Representation](#orgc5aa84f)
+        2.  [Simplified Data Type Categories](#org0268c30)
+        3.  [Format Preservation](#orga3d2fd6)
+        4.  [Structure Simplification](#org062e7e5)
+    3.  [Weeding](#orge13792d)
+4.  [Pretty Printer](#org6fbc0c2)
+5.  [Team](#org2de0699)
+    1.  [Team Organization](#orgc9763f4)
+    2.  [Contributions](#org1e67704)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 
 
-<a id="org6456dc2"></a>
+<a id="org7420c89"></a>
 
 # Introduction
 
 
-<a id="org8e517b4"></a>
+<a id="orgbac40ce"></a>
 
 ## Implementation Language
 
@@ -44,7 +45,7 @@ more naturally (i.e. tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 
 
-<a id="org4b58c0e"></a>
+<a id="orgeffc2aa"></a>
 
 ## Tools
 
@@ -66,12 +67,12 @@ respective projects and tests, additional tests which we implemented
 using the `hspec` package.
 
 
-<a id="orga195a26"></a>
+<a id="org606bb93"></a>
 
 ## Miscellaneous
 
 
-<a id="org58d1b70"></a>
+<a id="org1c941c1"></a>
 
 ### Continuous Integration
 
@@ -79,7 +80,7 @@ We used Travis CI to build our project on every push, as well as
 run our tests to make sure that pushes kept things working.
 
 
-<a id="org46dab3a"></a>
+<a id="orge0cfeb3"></a>
 
 ### File Organization
 
@@ -104,7 +105,7 @@ run our tests to make sure that pushes kept things working.
     -   `Base.hs` (base module helper for test modules)
 
 
-<a id="org181cfe2"></a>
+<a id="orga630f2c"></a>
 
 # Scanner
 
@@ -115,7 +116,7 @@ the quirks/more complicated things relating to `GoLite` compared to
 something simple like `MiniLang`.
 
 
-<a id="org1a259b3"></a>
+<a id="org71d7685"></a>
 
 ## Semicolon Insertion
 
@@ -145,7 +146,7 @@ certain scenarios (rather than arbitrarily inserting semicolons
 when given some situations).
 
 
-<a id="org454f046"></a>
+<a id="orgfbc9c3f"></a>
 
 ## Block comment support
 
@@ -171,7 +172,7 @@ and then we were able to insert a semicolon if the start code was
 \(nl\), which was conveniently available for us.
 
 
-<a id="org4b28057"></a>
+<a id="org6b02a70"></a>
 
 ### Adding newlines at the end of the file if they aren't present already
 
@@ -186,7 +187,7 @@ semicolon if we were in the \(nl\) state when we encounter an `EOF`
 and an `EOF`).
 
 
-<a id="orgd4fc8a5"></a>
+<a id="org5477512"></a>
 
 ### Niche Cases
 
@@ -204,12 +205,31 @@ we matched on the input of these cases and would return the
 respective escape sequence requested.
 
 
-<a id="org317b083"></a>
+<a id="org131aa28"></a>
+
+## Nicer error messages
+
+We decided to use `ErrorBundle` from `Megaparsec` in order to
+output nicer error messages. While we did have access to offset,
+line and column when generating error messages, we did not have
+access to the entire source file string (the scanner would not keep
+it at each step). So, in order to generate the contextual part of
+the source file showing where the error is, we modified the `monad`
+wrapper provided with `Alex` (see `TokensBase.hs`) and changed the
+`Alex` monad to wrap over a `Either (String, Int) a` instead of
+`Either String a`, i.e. instead of just an error message on the
+left side we also carry an `Int` which represents the offset of the
+error so that when we want to print the error message at the end we
+can append
+the part in the source file where the error occured.
+
+
+<a id="org7cb746b"></a>
 
 # Parser
 
 
-<a id="orga4676d2"></a>
+<a id="org851ef9e"></a>
 
 ## Grammar
 
@@ -223,7 +243,7 @@ TODO: Issues with reversing, original solution and realization about
 non-terminals&#x2026;
 
 
-<a id="org4db66d9"></a>
+<a id="orgbef7a6a"></a>
 
 ## AST
 
@@ -233,7 +253,7 @@ parts we don't support removed and additional parts for Golite added.
 In some cases, there are minor deviations from the CFG.
 
 
-<a id="org668e4b1"></a>
+<a id="orgc5aa84f"></a>
 
 ### Accurate Type Representation
 
@@ -246,7 +266,7 @@ optional. While a direct translation would be `Maybe (NonEmpty a)`,
 we choose to make it `[a]` as it makes more sense.
 
 
-<a id="org8643b4a"></a>
+<a id="org0268c30"></a>
 
 ### Simplified Data Type Categories
 
@@ -264,7 +284,7 @@ so we can treat the else body exclusively as `Stmt` vs `Either
     Block IfStmt`
 
 
-<a id="org8322498"></a>
+<a id="orga3d2fd6"></a>
 
 ### Format Preservation
 
@@ -275,7 +295,7 @@ the input, even though we can convert them all to a single type
 (eg dec and interpreted)
 
 
-<a id="org819d300"></a>
+<a id="org062e7e5"></a>
 
 ### Structure Simplification
 
@@ -290,31 +310,31 @@ identifiers matches the number of values. This would have to be
 checked at a later stage
 
 
-<a id="orgda6bc9c"></a>
+<a id="orge13792d"></a>
 
 ## Weeding
 
 TODO
 
 
-<a id="orgdddc581"></a>
+<a id="org6fbc0c2"></a>
 
 # Pretty Printer
 
 
-<a id="org6bb3745"></a>
+<a id="org2de0699"></a>
 
 # Team
 
 
-<a id="orgda50f3c"></a>
+<a id="orgc9763f4"></a>
 
 ## Team Organization
 
 TODO
 
 
-<a id="org49b7340"></a>
+<a id="org1e67704"></a>
 
 ## Contributions
 
