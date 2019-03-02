@@ -1,8 +1,8 @@
 {
 module Tokens where
+import TokensBase
 }
 
-%wrapper "monadUserState"
 
 -- Macro helper definitions
 $digit = 0-9
