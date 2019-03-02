@@ -2,6 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE QuasiQuotes           #-}
 
 module ParserSpec
   ( spec
@@ -33,8 +34,9 @@ spec = do
     qcGen "basic expressions" False genEBase (\(s, out) -> scanToP pE s == Right out)
     qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == Right out)
     qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == Right out)
-  expectPass @Type' ["asdf"]
-  expectPass @Stmt ["if (a) { }"]
+  expectPass @Type' ["asdf", "int", "a0"]
+  expectFail @Type' ["0", "-", "*", "as"]
+  expectPass @Stmt ["if true { }"]
   expectPass @Expr ["a"]
   where
     blankExpr = Var $ Identifier o "temp"
