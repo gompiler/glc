@@ -55,7 +55,7 @@ stmtVerify :: Stmt -> Maybe ErrorBundle'
 stmtVerify (SimpleStmt stmt) =
   case stmt of
     ExprStmt Arguments {} -> Nothing
-    ExprStmt _ -> Just $ createError (Offset 0) "Expression statements must be function calls" -- TODO: OFFSET
+    e@(ExprStmt _) -> Just $ createError e "Expression statements must be function calls" -- TODO: OFFSET
     _ -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
