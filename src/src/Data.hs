@@ -114,14 +114,6 @@ data Signature =
 
 ----------------------------------------------------------------------
 -- Func body/statements
--- Just a test; not necessary
-data Scope
-  = UniverseScope
-  | PackageScope
-  | FuncScope
-  | StmtScope
-  deriving (Show, Eq)
-
 type FuncBody = Stmt
 
 -- | See https://golang.org/ref/spec#SimpleStmt
