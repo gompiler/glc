@@ -16,9 +16,6 @@ import           GHC.Unicode        (isSpace)
 tab :: [String] -> [String]
 tab = map ("\t" ++)
 
-tabP :: Prettify a => a -> String
-tabP a = "\t" ++ prettify a
-
 commaJoin :: Prettify a => [a] -> String
 commaJoin p = intercalate ", " $ map prettify p
 
@@ -50,7 +47,7 @@ instance Prettify Identifiers where
 
 instance Prettify Program where
   prettify' Program {package = package, topLevels = topLevels} =
-    ("package " ++ package ++ "\n") : intersperse "\n" (topLevels >>= prettify')
+    ("package " ++ package) : (topLevels >>= (("" :) . prettify'))
 
 instance Prettify TopDecl where
   prettify' (TopDecl decl)     = prettify' decl
@@ -78,7 +75,7 @@ instance Prettify TypeDef' where
 
 instance Prettify FuncDecl where
   prettify' (FuncDecl id sig body) =
-    ("func " ++ prettify id) : (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
+    ["func " ++ prettify id] `skipNewLine` (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
 
 instance Prettify ParameterDecl where
   prettify (ParameterDecl ids t) = prettify ids ++ " " ++ prettify t
@@ -103,19 +100,28 @@ instance Prettify SimpleStmt where
 instance Prettify Stmt where
   prettify' (BlockStmt stmts) = stmts >>= prettify'
   prettify' (SimpleStmt s) = prettify' s
-  prettify' (If c i e) = ("if " ++ prettify c ++ "{") : i' ++ e'
+  prettify' (If c i e) = ("if " ++ prettify c ++ " {") : i' ++ e'
     where
       i' = tab $ prettify' i
       e' =
         case e of
-          If {} -> ["} else"] `skipNewLine` prettify' e ++ ["}"]
-          _     -> "} else {" : tab (prettify' e) ++ ["}"]
+          If {}                -> ["} else"] `skipNewLine` prettify' e -- Else If
+          SimpleStmt EmptyStmt -> ["}"] -- No real else block, don't print anything
+          _                    -> "} else {" : tab (prettify' e) ++ ["}"]
   prettify' (Switch ss se cases) = ("switch " ++ ss' ++ "{") : tab (cases >>= prettify') ++ ["}"]
     where
       ss' =
         case se of
           Just se' -> prettify (ss, se')
           Nothing  -> prettify ss
+  prettify' (For fc s) = ("for " ++ (prettify fc) ++ " {") : (tab $ prettify' s) ++ ["}"]
+  prettify' (Break _) = ["break"]
+  prettify' (Continue _) = ["continue"]
+  prettify' (Fallthrough _) = ["fallthrough"]
+  prettify' (Declare d) = prettify' d
+  prettify' (Print es) = ["print(" ++ concat (intersperse ", " (es >>= prettify')) ++ ")"]
+  prettify' (Println es) = ["println(" ++ concat (intersperse ", " (es >>= prettify')) ++ ")"]
+  prettify' (Return m) = ["return"] `skipNewLine` (maybe [] (prettify') m)
 
 instance Prettify SwitchCase where
   prettify' (Case _ e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)
@@ -127,9 +133,9 @@ instance Prettify (SimpleStmt, Expr) where
   prettify' = prettify''
 
 instance Prettify ForClause where
-  prettify ForInfinite         = ""
-  prettify (ForCond e)         = prettify e
-  prettify (ForClause cs ce s) = []
+  prettify ForInfinite = ""
+  prettify (ForCond e) = prettify e
+  prettify (ForClause cs ce s) = (prettify cs) ++ "; " ++ (prettify ce) ++ "; " ++ (prettify s)
   prettify' = prettify''
 
 instance Prettify (NonEmpty Expr) where
@@ -141,31 +147,26 @@ instance Prettify Expr where
   prettify (Binary _ o e1 e2) = "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
   prettify (Lit l) = prettify l
   prettify (Var i) = prettify i
-  prettify (AppendExpr e1 e2) = "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
-  prettify (LenExpr e) = "len(" ++ prettify e ++ ")"
-  prettify (CapExpr e) = "cap(" ++ prettify e ++ ")"
-  prettify (Conversion t e) = prettify t ++ "(" ++ prettify e ++ ")"
-  prettify (Selector e i) = prettify e ++ "." ++ prettify i
-  prettify (Index e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
-  prettify (Slice e r) = prettify e ++ "[" ++ prettify r ++ "]"
-  prettify (TypeAssertion e _ t) = prettify e ++ ".(" ++ prettify t ++ ")"
-  prettify (Arguments e ee) = prettify e ++ "(" ++ commaJoin ee ++ ")"
-  prettify' = prettify''
-
-instance Prettify SliceRange where
-  prettify (SliceSimple e1 e2) = Maybe.maybe "" prettify e1 ++ ":" ++ Maybe.maybe "" prettify e2
-  prettify (SliceFull e1 e2 e3) = Maybe.maybe "" prettify e1 ++ ":" ++ prettify e2 ++ ":" ++ prettify e3
+  prettify (AppendExpr _ e1 e2) = "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
+  prettify (LenExpr _ e) = "len(" ++ prettify e ++ ")"
+  prettify (CapExpr _ e) = "cap(" ++ prettify e ++ ")"
+  prettify (Conversion _ t e) = prettify t ++ "(" ++ prettify e ++ ")"
+  prettify (Selector _ e i) = prettify e ++ "." ++ prettify i
+  prettify (Index _ e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
+  prettify (TypeAssertion _ e t) = prettify e ++ ".(" ++ prettify t ++ ")"
+  prettify (Arguments _ e ee) = prettify e ++ "(" ++ commaJoin ee ++ ")"
   prettify' = prettify''
 
 instance Prettify Literal where
-  prettify (IntLit _ _ i) = i
-  prettify (FloatLit _ f) = show f
-  prettify (RuneLit _ c)  = "'" ++ [c] ++ "'"
-  prettify (StringLit _ Interpreted s) = "\"" ++ s ++ "\""
-  prettify (StringLit _ Raw s)         = "`" ++ s ++ "`"
+  prettify (IntLit _ _ i)              = i
+  prettify (FloatLit _ f)              = show f
+  prettify (RuneLit _ c)               = "'" ++ [c] ++ "'"
+  -- Quotes within string s
+  prettify (StringLit _ Interpreted s) = s
+  -- Quotes within string s
+  prettify (StringLit _ Raw s)         = s
   prettify' = prettify''
 
---  prettify' (FuncLit sig body)         = ["func" ++ prettify sig]
 instance Prettify BinaryOp where
   prettify Or         = "||"
   prettify And        = "||"
@@ -214,13 +215,13 @@ instance Prettify Type' where
   prettify' = prettify''
 
 instance Prettify Type where
-  prettify (ArrayType e t) = "[" ++ prettify e ++ "]" ++ prettify t
+  prettify (ArrayType e t)    = "[" ++ prettify e ++ "]" ++ prettify t
   prettify (StructType [fdl]) = "struct {" ++ prettify fdl ++ "}"
   -- prettify' (StructType fdls) = "struct {" : tab (map prettify fdls) ++ "}"
-  prettify (SliceType t)   = "[]" ++ prettify t
-  prettify (PointerType t) = "*" ++ prettify t
-  prettify (FuncType s)    = "func" ++ prettify s
-  prettify (Type id)       = prettify id
+  prettify (SliceType t)      = "[]" ++ prettify t
+  prettify (PointerType t)    = "*" ++ prettify t
+  prettify (FuncType s)       = "func" ++ prettify s
+  prettify (Type id)          = prettify id
   prettify' = prettify''
 
 instance Prettify FieldDecl where

@@ -19,6 +19,8 @@ module Base
   , module Test.QuickCheck
   , toRetL
   , qcGen
+  , isLeft
+  , isRight
   ) where
 
 import           Control.Applicative
@@ -37,6 +39,7 @@ pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))
 fstConvert :: (a -> a') -> [(a, b')] -> [(a', b')]
 fstConvert f = pairConvert f id
 
+sndConvert :: (b -> b') -> [(a, b)] -> [(a, b')]
 sndConvert = pairConvert id
 
 class SpecBuilder a b c where
@@ -44,24 +47,7 @@ class SpecBuilder a b c where
   specAll :: String -> [(a, b)] -> SpecWith c
   specAll name items = describe name $ mapM_ (uncurry expectation) items
   specOne :: (a,b) -> SpecWith c
-  specOne item = uncurry expectation item
-
---spec :: Spec
---spec =
---  describe "scanT" $ do
---    specWithScanT (";", Right ([TSemicolon]))
---    mapM_ specWithScanT expectScanT
---
----- | Generate a SpecWith using the scan function
---specWithScanT :: (String, Either String [InnerToken]) -> SpecWith ()
---specWithScanT (input, output) = it ("given \n" ++ input ++ "\nreturns " ++ show output) $ scanT input `shouldBe` output
-
-expectG ::
-     (Show a, Eq a)
-  => (String -> Either String a)
-  -> (String, Either String a)
-  -> Expectation
-expectG f (inp, out) = f inp `shouldBe` out
+  specOne = uncurry expectation
 
 -- | Generate Either given a string and feed this to constructor
 strData :: String -> (String -> a) -> (String, a)
@@ -80,3 +66,10 @@ toRetL e = return [e]
 qcGen :: (Show a, Testable prop) => String -> Bool -> Gen a -> (a -> prop) -> SpecWith (Arg Property)
 qcGen desc verb g p = it desc $ property $ if verb then verbose (forAll g p)
                                            else forAll g p
+
+-- | Returns true if the Either is Left
+isLeft :: (Either a b) -> Bool
+isLeft = either (const True) (const False)
+
+isRight :: (Either a b) -> Bool
+isRight = either (const False) (const True)

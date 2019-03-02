@@ -326,7 +326,7 @@ genEUn2 :: Gen (String, Expr)
 genEUn2 = do
   (s, e) <- genEBase
   (sop, op) <- elements [("len (", LenExpr), ("cap (", CapExpr)]
-  return (sop ++ s ++ ")", op e)
+  return (sop ++ s ++ ")", op o e)
 
 genEUn :: Gen (String, Expr)
 genEUn =
@@ -336,7 +336,7 @@ genEUn =
     , (1, genEBase >>= \(s, e) -> return ('(' : s ++ ")", e))
     , ( 1
       , T.genId >>= \id1 ->
-          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector (Var $ Identifier o id1) $ Identifier o id2))
+          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector o (Var $ Identifier o id1) $ Identifier o id2))
     ]
 
 genE :: Gen (String, Expr)
