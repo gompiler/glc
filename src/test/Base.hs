@@ -22,6 +22,7 @@ module Base
   , cartP
   , printError
   , module Test.Hspec
+  , module Examples
   , module Test.QuickCheck
   , toRetL
   , qcGen
@@ -29,6 +30,7 @@ module Base
   ) where
 
 import           Control.Applicative
+import Examples
 import           Control.Monad       (unless)
 import           Data
 import qualified Data.Either         as Either
