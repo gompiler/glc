@@ -8,21 +8,16 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 csstack="/usr/local/pkgs/haskell/stack-1.9.3-linux-x86_64"
 
 # If first arg is loc or local (casing does not matter), compile locally without specifying trottier args
-if [ "${1^^}" == "LOC" ] || [ "${1^^}" == "LOCAL" ]
-then
-    make -C src clean
-    make -C src scanparse
-elif [ -d "$csstack" ]
+if [ -d "$csstack" ] && [ -d "/mnt/local"]
 then
     PATH=$csstack:$PATH
     STACK_ROOT=/mnt/local
     export STACK_ROOT
     
     make -C src cleantrot
-    make -C src
-    # Run executable once because it outputs special text on first run, else we'd fail first test
-    stack --allow-different-user exec -- "src"/glc scan -s <<< ""
+    make -C src allT
 else
-    echo "Newer version of Stack (1.9.3) not found, please use any of the cs-x computers at Trottier or any other computer with Stack 1.9.3, as the default version on other computers is too old."
-    exit 1
+    echo "Did not find /usr/local/pkgs/haskell/stack-1.9.3-linux-x86_64 and /mnt/local, assuming we are running this locally (not on Trottier), otherwise please use a cs-x.cs.mcgill.ca computer."
+    make -C src clean
+    make -C src
 fi
