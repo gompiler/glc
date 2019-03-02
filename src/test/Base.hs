@@ -58,7 +58,7 @@ instance Stringable Text where
 
 printError :: Either String String -> SpecWith ()
 printError (Right s) = describe "print" $ it "right error" $ expectationFailure s
-printError (Left s)  = describe "print" $ it "left error" $ expectationFailure s
+printError (Left s) = describe "print" $ it "left error" $ expectationFailure s
 
 -- | Relatively complex base expectation
 -- Suffix is a tag for the description
@@ -120,7 +120,7 @@ expectPrettyInvarBase tag parse =
     (\s ->
        case multiPass $ toString s of
          Left err -> expectationFailure $ "Invalid prettify for:\n\n" ++ toString s ++ "\n\nfailed with\n\n" ++ err
-         Right _ -> return ())
+         Right p -> return ())
     toString
     tag
   where
@@ -132,7 +132,7 @@ expectPrettyInvarBase tag parse =
       case (ast1 == ast2, pretty1 == pretty2) of
         (False, _) -> Left $ "AST mismatch: First\n\n" ++ show ast1 ++ "\n\nSecond\n\n" ++ show ast2
         (_, False) -> Left $ "Prettify mismatch: First\n\n" ++ pretty1 ++ "\n\nSecond\n\n" ++ pretty2
-        _ -> Right ast2
+        _ -> Right pretty2
 
 class (Show a, Eq a) =>
       Parsable a

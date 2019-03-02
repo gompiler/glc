@@ -36,13 +36,13 @@ spec = do
       }
       |]
     ]
-  printError $
-    prettify <$>
-    parse
-      @TopDecl
-      [text|
-      func whatever() struct { int n; } { }
-      |]
+--  printError $
+--    prettify <$>
+--    parse
+--      @TopDecl
+--      [text|
+--      func whatever() struct { int n; } { }
+--      |]
 
 intLit = map (\(i, e) -> (IntLit o i e, e)) [(Decimal, "12"), (Hexadecimal, "0xCAFEBABE"), (Octal, "01001")]
 
