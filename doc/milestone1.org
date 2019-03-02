@@ -73,7 +73,7 @@ whilst implementing the components for milestone 1.
    comments that span over newlines should also insert semicolons when
    they're optional). Another thing is that using a state approach
    made it harder to catch the error of an unclosed comment block.
-   
+
    In our solution we iterate through the scanner's input once we
    receive an open comment block and ignore everything until we close
    the block comment and if we never reach a close then we can easily
@@ -109,16 +109,23 @@ whilst implementing the components for milestone 1.
    can append the part in the source file where the error occurred.
 * Parser
 ** Grammar
-   Certain productions match a list and an item of that list,
-   resulting in a new list. Because our lists our immutable, we
-   decided to prepend the items to our list and reverse them in
-   another production that uses said list, as appending each time
-   would have been a lot more costly in terms of speed.
+   Many of our difficulties in the grammar were associated with identifier and
+   expression lists.
 
-   With regards to the parsing rules, we initially wanted to avoid 
-   reversing ourselves with each usage. However, we noticed that adding 
-   an extra non terminal to manage reversals for each list made our 
-   generated module notably more compelx, so we decided against it.
+   TODO: MORE ABOUT AMBIGUITY
+
+   Another list difficulty we had was with list ordering. LR parsers
+   work more intuitively with rules that put the newly-created terminal
+   after the recursively-expanding non-terminal However, since Haskell
+   uses recursive lists defined in the opposite way, it is significantly
+   faster to prepend items rather than append them. Although more
+   performant, this prepending results in a reversed ordering, which
+   must be handled after the list is 'complete'.
+
+   We initially wanted to avoid reversing the lists ourselves with each usage.
+   However, adding an extra non terminal to manage reversals for each list made
+   our generated module notably more complex and needlessly increased our
+   grammar size, so we decided against it.
 ** AST
    The AST is largely a one to one mapping of the Golang specs, with
    parts we don't support removed and additional parts for Golite added.
@@ -152,7 +159,7 @@ whilst implementing the components for milestone 1.
     the input, even though we can convert them all to a single type
     (eg dec and interpreted).
 *** Structure Simplification
-    For var and type declaration, we make no distinction between
+    For ~var~ and ~type~ declaration, we make no distinction between
     single declaration (exactly one) and block declaration (0 or
     more). Unlike types, which produce different formats, we decide to
     enforce all declarations of one var to be single declaration. In
@@ -162,13 +169,13 @@ whilst implementing the components for milestone 1.
     identifiers matches the number of values. This would have to be
     checked at a later stage
 ** Weeding
-    In our first stage, our weeding operations are simple, and don't rely 
-    on context outside of the statement we are verifying. As a result, 
-    we were able to define recursive traversal methods to verify relevant 
+    In our first stage, our weeding operations are simple, and don't rely
+    on context outside of the statement we are verifying. As a result,
+    we were able to define recursive traversal methods to verify relevant
     statements, and create verifiers that validate at a single level.
-    Haskell helped immensely here, as we were able to use pattern matching 
+    Haskell helped immensely here, as we were able to use pattern matching
     to produce performant and independent functions.
-    Each verifier returns an optional error, and we are able to map the results 
+    Each verifier returns an optional error, and we are able to map the results
     and return the first error, if any.
 * Pretty Printer
 * Team
