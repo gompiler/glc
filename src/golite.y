@@ -247,8 +247,8 @@ BlockStmt   : '{' Stmts '}'                                 { BlockStmt (reverse
 
 {- Spec: https://golang.org/ref/spec#SimpleStmt -}
 SimpleStNE  : {- empty -}                                   { EmptyStmt }
-            | ident "++"                                    { Increment (getOffset $2) $ Var (getIdent $1) }
-            | ident "--"                                    { Decrement (getOffset $2) $ Var (getIdent $1) }
+            | Expr "++"                                     { Increment (getOffset $2) $ Var (getIdent $1) } {- Typecheck for identifiers -}
+            | Expr "--"                                     { Decrement (getOffset $2) $ Var (getIdent $1) } {- Typecheck for identifiers -}
 
             | EIList '=' EIList                             { Assign (getOffset $2) (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
 
