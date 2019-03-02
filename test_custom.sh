@@ -175,8 +175,8 @@ do
 						echo
 						echo -n "$TEST: "
 					fi
-					echo "$OUTPUT0" | tr -d '\n'
-					echo "$OUTPUT1" | tr -d '\n'
+					echo "$OUTPUT0"
+					echo "$OUTPUT1"
 					echo -n -e " \033[0;${STATUS_COLOUR}m[$STATUS_TEXT]\033[0m"
 					if [ ! -z "$VERIFY_OUTPUT" ]
 					then
