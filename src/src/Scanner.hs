@@ -126,10 +126,10 @@ alexMonadScan = do
   sc <- T.alexGetStartCode
   case T.alexScan inp__ sc of
     T.AlexEOF -> T.alexEOF
-    T.AlexError (T.AlexPn _ line column, prev, _, s) ->
-      T.alexError $
-      "Error: lexical error at line " ++
-      show line ++ ", column " ++ show column ++ ". Previous character: " ++ show prev ++ ", current string: " ++ s
+    T.AlexError (T.AlexPn o line column, prev, _, s) ->
+      do T.AlexUserState inp <- T.alexGetUserState
+         T.alexError $
+           "Error: lexical error at " ++ errorPos o inp ""
     T.AlexSkip inp__' _len -> do
       T.alexSetInput inp__'
       alexMonadScan
@@ -148,9 +148,19 @@ inpNLR s r = case s of
                h:t -> inpNLR t (h:r)
 
 
--- | Wrapper for runAlex to process output through inpNL
+-- | Wrapper for runAlex to process output through inpNL and also initialize AlexUserState
 runAlex :: String -> T.Alex a -> Either String a
-runAlex s = T.runAlex (inpNL s)
+runAlex s (T.Alex f) = let inp = inpNL s in
+    case f (T.AlexState {T.alex_pos = T.alexStartPos,
+                          T.alex_inp = inp,
+                          T.alex_chr = '\n',
+                          T.alex_bytes = [],
+                          
+                          T.alex_ust = T.AlexUserState inp,
+                          -- Theoretically if we got the offset here we could just append the errorBundle here
+                          T.alex_scd = 0}) of Left msg -> Left msg -- ++ errorPos 0 input__
+                                              Right ( _, a ) -> Right a
+
 
 -- | scan, the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
 scan :: String -> Either String [T.InnerToken]

@@ -55,5 +55,5 @@ instance ErrorBreakpoint Int where
   offset = Offset
 
 -- | errorBundlePretty from offset and String
-errorPos :: Int -> String -> String
-errorPos o inp = errorString $ createError o inp (createInitialState inp)
+errorPos :: Int -> String -> String -> String
+errorPos o inp err = errorString $ createError o err (createInitialState inp)
