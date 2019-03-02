@@ -247,9 +247,23 @@ expectEL =
 --            ]
 -- expectIDecl :: [(String, VarDecl')]
 -- expectIDecl = [ ("= 5", VarDecl' (Left (Type "aaaaa")) (NonEmpty $ Lit $ IntLit Decimal "123"))]
-intExamples = ["0", "1", "-123", "1234567890", "42", "0600", "0xBadFace", "170141183460469231731687303715884105727"]
+intExamples = ["0", "1", "-123", "1234567890", "42", "0600", "0xBadFace", "000", "170141183460469231731687303715884105727"]
 
-floatExamples = [".1234567890", "0.", "72.40", "072.40", "2.71828", "1.e+0", "6.67428e-11", "1E6", ".25", ".12345E+5"]
+floatExamples =
+  [ ".1234567890"
+  , "0."
+  , "0.0"
+  , "0.00"
+  , "0123.3210"
+  , "72.40"
+  , "072.40"
+  , "2.71828"
+  , "1."
+  , "0.00000667428"
+  , "10000"
+  , ".25"
+  , "12345"
+  ]
 
 runeExamples = ["a", "b", "c", "\\a", "\\b", "\\f", "\\n", "\\r", "\\t", "\\v", "\\\\", "\\'", "\""]
   -- specAll "Types" (sndConvert Right expectT :: [(String, Either String (Offset, Type))])
