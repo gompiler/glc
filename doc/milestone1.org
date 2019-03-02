@@ -123,6 +123,20 @@ whilst implementing the components for milestone 1.
     after scanning are two ~Char~ s, i.e. ~\~ and something else. So
     we matched on the input of these cases and would return the
     respective escape sequence requested.
+** Nicer error messages
+   We decided to use ~ErrorBundle~ from ~Megaparsec~ in order to
+   output nicer error messages. While we did have access to offset,
+   line and column when generating error messages, we did not have
+   access to the entire source file string (the scanner would not keep
+   it at each step). So, in order to generate the contextual part of
+   the source file showing where the error is, we modified the ~monad~
+   wrapper provided with ~Alex~ (see ~TokensBase.hs~) and changed the
+   ~Alex~ monad to wrap over a ~Either (String, Int) a~ instead of
+   ~Either String a~, i.e. instead of just an error message on the
+   left side we also carry an ~Int~ which represents the offset of the
+   error so that when we want to print the error message at the end we
+   can append
+   the part in the source file where the error occured.
 * Parser
 ** Grammar
    Certain productions match a list and an item of that list,

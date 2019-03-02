@@ -1,4 +1,4 @@
-% Created 2019-03-01 Fri 20:57
+% Created 2019-03-02 Sat 13:53
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -31,15 +31,15 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 \section{Introduction}
-\label{sec:orgb562619}
+\label{sec:org6458650}
 \subsection{Implementation Language}
-\label{sec:orge0d3365}
+\label{sec:orgddfcda9}
 For our \texttt{GoLite} compiler, we decided to use \texttt{Haskell} as the
 implementation language, as many of the required tasks can be done
 more naturally (i.e. tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 \subsection{Tools}
-\label{sec:orgf33f4c5}
+\label{sec:org3d696f6}
 For scanning, we use the program \texttt{Alex}, which is very similar to \texttt{flex}
 but produces \texttt{Haskell} code instead. Additionally, we use \texttt{Happy} for
 parsing which resembles \texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be interlinked
@@ -57,13 +57,13 @@ We use \texttt{stack} to manage our Haskell project, including \texttt{GHC}, the
 respective projects and tests, additional tests which we implemented
 using the \texttt{hspec} package.
 \subsection{Miscellaneous}
-\label{sec:org2850819}
+\label{sec:orgcbf3ac3}
 \subsubsection{Continuous Integration}
-\label{sec:org027af1f}
+\label{sec:orgd94828c}
 We used Travis CI to build our project on every push, as well as
 run our tests to make sure that pushes kept things working.
 \subsubsection{File Organization}
-\label{sec:org7931b2d}
+\label{sec:org1a1231a}
 \begin{itemize}
 \item \texttt{src/}
 \begin{itemize}
@@ -94,14 +94,14 @@ function we want)
 \end{itemize}
 \end{itemize}
 \section{Scanner}
-\label{sec:org302106b}
+\label{sec:org33a86f1}
 The first step of this milestone was to scan user input into
 tokens. Most of the tokens we had to account for were straightforward
 and similar to the assignments, however we had to encompass a few of
 the quirks/more complicated things relating to \texttt{GoLite} compared to
 something simple like \texttt{MiniLang}.
 \subsection{Semicolon Insertion}
-\label{sec:orge8a0062}
+\label{sec:org9f3e72d}
 The first hurdle of scanning was semicolon insertion. We first
 thought of doing a second pass of the token list resulting from the
 scan, but this seemed expensive and because of our types, harder
@@ -127,7 +127,7 @@ handle such situations and to replace newlines by semicolons in
 certain scenarios (rather than arbitrarily inserting semicolons
 when given some situations).
 \subsection{Block comment support}
-\label{sec:orgb3ae4ad}
+\label{sec:orgc9aa876}
 Block comments cannot be easily scanned using only regular
 expressions. One potential solution was to use start codes again
 (changing state upon opening a comment), although that would
@@ -149,7 +149,7 @@ encountered any new line in the characters inside the block comment
 and then we were able to insert a semicolon if the start code was
 \(nl\), which was conveniently available for us.
 \subsubsection{Adding newlines at the end of the file if they aren't present already}
-\label{sec:org8f021de}
+\label{sec:orgd656717}
 \texttt{Go} adds a semicolon at the end of a file even if there's no
 newline at the end of the file for semicolon insertion. In order
 to enforce this, we simply make sure every program scanned ends
@@ -160,7 +160,7 @@ semicolon if we were in the \(nl\) state when we encounter an \texttt{EOF}
 (but we have to return an \texttt{EOF} and couldn't return a semicolon
 and an \texttt{EOF}).
 \subsubsection{Niche Cases}
-\label{sec:org478e42a}
+\label{sec:org4368754}
 Floats accepted by \texttt{GoLite} are a superset of the floats accepted
 by \texttt{Haskell}, so we couldn't just read in the float. \(1.\) and
 \(.1\) wouldn't be recognized as floats and so we append a \(0\) on
@@ -173,10 +173,25 @@ we extract the \texttt{Char} in between the \texttt{' '}, but escape characters
 after scanning are two \texttt{Char} s, i.e. \texttt{\textbackslash{}} and something else. So
 we matched on the input of these cases and would return the
 respective escape sequence requested.
+\subsection{Nicer error messages}
+\label{sec:org386b970}
+We decided to use \texttt{ErrorBundle} from \texttt{Megaparsec} in order to
+output nicer error messages. While we did have access to offset,
+line and column when generating error messages, we did not have
+access to the entire source file string (the scanner would not keep
+it at each step). So, in order to generate the contextual part of
+the source file showing where the error is, we modified the \texttt{monad}
+wrapper provided with \texttt{Alex} (see \texttt{TokensBase.hs}) and changed the
+\texttt{Alex} monad to wrap over a \texttt{Either (String, Int) a} instead of
+\texttt{Either String a}, i.e. instead of just an error message on the
+left side we also carry an \texttt{Int} which represents the offset of the
+error so that when we want to print the error message at the end we
+can append
+the part in the source file where the error occured.
 \section{Parser}
-\label{sec:orgea87387}
+\label{sec:org15254e2}
 \subsection{Grammar}
-\label{sec:org366bf10}
+\label{sec:orgc618b4a}
 Certain productions match a list and an item of that list,
 resulting in a new list. Because our lists our immutable, we
 decided to prepend the items to our list and reverse them in
@@ -186,13 +201,13 @@ would have been a lot more costly in terms of speed.
 TODO: Issues with reversing, original solution and realization about
 non-terminals\ldots{}
 \subsection{AST}
-\label{sec:orgbe36410}
+\label{sec:orge28ec60}
 The AST is largely a one to one mapping of the Golang specs, with
 parts we don't support removed and additional parts for Golite added.
 
 In some cases, there are minor deviations from the CFG.
 \subsubsection{Accurate Type Representation}
-\label{sec:orga87e247}
+\label{sec:orgaece341}
 We model our ast as accurately as possible, such that impossible
 states are forbidden. We lack any checks for compatible types at
 this stage, but we can match the definition for 'exactly one', 'one
@@ -201,7 +216,7 @@ one or more (haskell \texttt{NonEmpty}), yet many locations make it
 optional. While a direct translation would be \texttt{Maybe (NonEmpty a)},
 we choose to make it \texttt{[a]} as it makes more sense.
 \subsubsection{Simplified Data Type Categories}
-\label{sec:org36f926b}
+\label{sec:orgd021150}
 Some splits, such as \texttt{add\_op} and \texttt{mul\_op} are distinguished
 purely to demonstrate precedence. They are in fact only used once,
 so we decide to merge them directly in our \texttt{ArithmOp}
@@ -215,14 +230,14 @@ braces). However, in our case, we don't need to model the braces,
 so we can treat the else body exclusively as \texttt{Stmt} vs \texttt{Either
     Block IfStmt}
 \subsubsection{Format Preservation}
-\label{sec:orgc5abd08}
+\label{sec:org860873e}
 By design, our types for \texttt{int} and \texttt{string} specify whether they
 are hex/octal/dec or raw/interpreted respectively. We kept this
 information so that our pretty print would accurately represent
 the input, even though we can convert them all to a single type
 (eg dec and interpreted)
 \subsubsection{Structure Simplification}
-\label{sec:org09a1f3b}
+\label{sec:org99a1336}
 For var and type declaration, we make no distinction between
 single declaration (exactly one) and block declaration (0 or
 more). Unlike types, which produce different formats, we decide to
@@ -233,17 +248,17 @@ we cannot further simplify group declarations \texttt{var ( a, b = 2,
 identifiers matches the number of values. This would have to be
 checked at a later stage
 \subsection{Weeding}
-\label{sec:org83e25d2}
+\label{sec:org411e06f}
 TODO
 \section{Pretty Printer}
-\label{sec:org301d7ec}
+\label{sec:orgea0d612}
 \section{Team}
-\label{sec:org5a7fc3f}
+\label{sec:org16693aa}
 \subsection{Team Organization}
-\label{sec:org10cf341}
+\label{sec:org8a62e4b}
 TODO
 \subsection{Contributions}
-\label{sec:orge305ec4}
+\label{sec:org4adb7eb}
 \textbf{Julian Lore} Wrote the majority of the scanner and handled weird
 cases, wrote a large amount of valid/invalid programs, implemented
 many other tests (\texttt{hspec} or small tests in our program) and looked
