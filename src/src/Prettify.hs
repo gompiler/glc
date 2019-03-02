@@ -26,6 +26,13 @@ a `skipNewLine` [] = a
 [a] `skipNewLine` (b:b') = (a ++ " " ++ b) : b'
 (a:a') `skipNewLine` b = a : a' `skipNewLine` b
 
+-- | Joins last line of first list with first line of last list with a semicolon and space
+skipNewLineSemi :: [String] -> [String] -> [String]
+[] `skipNewLineSemi` a = a
+a `skipNewLineSemi` [] = a
+[a] `skipNewLineSemi` (b:b') = (a ++ "; " ++ b) : b'
+(a:a') `skipNewLineSemi` b = a : a' `skipNewLine` b
+
 -- | Some prettified components span a single line
 -- In that case, we can implement prettify by default
 -- And use this function to derive the list format from the string format
@@ -56,7 +63,7 @@ instance Prettify TopDecl where
 instance Prettify Decl where
   prettify' (VarDecl [decl]) = ["var " ++ prettify decl]
   prettify' (VarDecl decls)  = "var (" : tab (map prettify decls) ++ [")"]
-  prettify' (TypeDef [def])  = ["type " ++ prettify def]
+  prettify' (TypeDef [def])  = ["type"] `skipNewLine` (prettify' def)
   prettify' (TypeDef defs)   = "type (" : tab (map prettify defs) ++ [")"]
 
 instance Prettify VarDecl' where
@@ -70,7 +77,7 @@ instance Prettify VarDecl' where
   prettify' = prettify''
 
 instance Prettify TypeDef' where
-  prettify (TypeDef' id t) = prettify id ++ " = " ++ prettify t
+  prettify (TypeDef' id t) = prettify id ++ " " ++ prettify t
   prettify' = prettify''
 
 instance Prettify FuncDecl where
@@ -86,7 +93,7 @@ instance Prettify Parameters where
   prettify' = prettify''
 
 instance Prettify Signature where
-  prettify' (Signature params t) = ["(" ++ prettify params ++ ")" ++ Maybe.maybe "" prettify t]
+  prettify' (Signature params t) = ["(" ++ prettify params ++ ")" ++ Maybe.maybe "" ((' ' :) . prettify) t]
 
 --instance Prettify Scope
 instance Prettify SimpleStmt where
@@ -211,18 +218,18 @@ instance Prettify StringType' where
   prettify' _ = []
 
 instance Prettify Type' where
-  prettify (_, t) = prettify t
-  prettify' = prettify''
+  prettify' (_, t) = prettify' t
+
 
 instance Prettify Type where
-  prettify (ArrayType e t)    = "[" ++ prettify e ++ "]" ++ prettify t
-  prettify (StructType [fdl]) = "struct {" ++ prettify fdl ++ "}"
-  -- prettify' (StructType fdls) = "struct {" : tab (map prettify fdls) ++ "}"
-  prettify (SliceType t)      = "[]" ++ prettify t
-  prettify (PointerType t)    = "*" ++ prettify t
-  prettify (FuncType s)       = "func" ++ prettify s
-  prettify (Type id)          = prettify id
-  prettify' = prettify''
+  prettify' (ArrayType e t)    = ["[" ++ prettify e ++ "]" ++ prettify t]
+  -- prettify' (StructType [fdl]) = "struct { " ++ prettify fdl ++ "; }"
+  prettify' (StructType fdls)  = "struct {" : tab (fdls >>= prettify') ++ ["}"]
+  prettify' (SliceType t)      = ["[]" ++ prettify t]
+  prettify' (PointerType t)    = ["*" ++ prettify t]
+  prettify' (FuncType s)       = ["func" ++ prettify s]
+  prettify' (Type id)          = [prettify id]
+  -- prettify' = prettify''
 
 instance Prettify FieldDecl where
   prettify (FieldDecl ids t)   = prettify ids ++ " " ++ prettify t
