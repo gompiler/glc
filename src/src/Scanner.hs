@@ -1,14 +1,12 @@
 module Scanner
-  ( P
-  , thenP
-  , returnP
-  , parseError
+  ( showError
   , getPos
   , lexer
   , scanT
   , scanP
   , scanC
   , putExit
+  , putSucc
   , prettify
   , T.Token(..)
   , T.InnerToken(..)
@@ -128,10 +126,10 @@ alexMonadScan = do
   sc <- T.alexGetStartCode
   case T.alexScan inp__ sc of
     T.AlexEOF -> T.alexEOF
-    T.AlexError (T.AlexPn o line column, _, _, _) ->
-      do T.AlexUserState inp <- T.alexGetUserState
-         T.alexError $ 
-           "Error: lexical error at " ++ errorPos o inp
+    T.AlexError (T.AlexPn _ line column, prev, _, s) ->
+      T.alexError $
+      "Error: lexical error at line " ++
+      show line ++ ", column " ++ show column ++ ". Previous character: " ++ show prev ++ ", current string: " ++ s
     T.AlexSkip inp__' _len -> do
       T.alexSetInput inp__'
       alexMonadScan
@@ -139,18 +137,20 @@ alexMonadScan = do
       T.alexSetInput inp__'
       action (T.ignorePendingBytes inp__) len
 
--- | Overload runAlex to make our own 
+-- | inpNL, input new line if input does not end with a newline
+inpNL :: String -> String
+inpNL s = reverse $ inpNLR s []
+
+inpNLR :: String -> String -> String
+inpNLR s r = case s of
+               "\n" -> '\n':r
+               [] -> '\n':r
+               h:t -> inpNLR t (h:r)
+
+
+-- | Wrapper for runAlex to process output through inpNL
 runAlex :: String -> T.Alex a -> Either String a
-runAlex input__ (T.Alex f)
-  = case f (T.AlexState {T.alex_pos = T.alexStartPos,
-                         T.alex_inp = input__,
-                         T.alex_chr = '\n',
-                         T.alex_bytes = [],
-                         
-                         T.alex_ust = T.AlexUserState input__,
-                                                                    -- Theoretically if we got the offset here we could just append the errorBundle here
-                         T.alex_scd = 0}) of Left msg -> Left $ msg -- ++ errorPos 0 input__
-                                             Right ( _, a ) -> Right a
+runAlex s = T.runAlex (inpNL s)
 
 -- | scan, the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
 scan :: String -> Either String [T.InnerToken]
@@ -168,35 +168,31 @@ scanT s = fmap reverse (scan s)
 
 -- | putExit: function to output to stderr and exit with return code 1
 putExit :: String -> IO ()
-putExit err = do
-  hPutStrLn stderr err
-  exitFailure
+putExit err = hPutStrLn stderr err >> exitFailure
+
+-- | putSucc: output to stdin and exit with success
+putSucc :: String -> IO ()
+putSucc s = putStrLn s >> exitSuccess
 
 -- | Print result of scan, i.e. tokens or error
 scanP :: String -> IO ()
-scanP s =
-  either putExit (\tl -> prettyPrint (reverse tl) >> exitSuccess) (scan s)
+scanP s = either putExit (\tl -> prettyPrint (reverse tl) >> exitSuccess) (scan s)
 
 -- | Check for error, if none will print OK
 scanC :: String -> IO ()
 scanC s = either putExit (const $ putStrLn "OK" >> exitSuccess) (scan s)
 
--- | Monad types/functions to allow the scanner to interface with the parser
-type P a = T.Alex a
-
-thenP :: P a -> (a -> P b) -> P b
-thenP = (>>=)
-
-returnP :: a -> P a
-returnP = return
-
--- parseError function for better error messages
-parseError :: (T.Token, [String]) -> T.Alex a
-parseError (T.Token (T.AlexPn _ l c) t, strs) =                                                 -- Megaparsec error reporting here
-  T.alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ " at line " ++ show l ++ " column " ++ show c ++ ", expecting " ++ show strs) 
+-- | showError will be passed to happyError and will define behavior on parser errors
+showError :: (Show a, Show b) => (a, b, Maybe String) -> T.Alex c
+showError (_, l, c) = T.alexError ("Error: parsing error at line " ++ show l ++ " column " ++ show c)
 
 getPos :: T.Alex T.AlexPosn
 getPos = T.Alex (\s -> Right (s, T.alex_pos s))
 
-lexer :: (T.Token -> P a) -> P a
+happyError :: T.Alex a
+happyError = do
+  (T.AlexPn _ l c) <- getPos
+  showError (l, c, Nothing)
+
+lexer :: (T.Token -> T.Alex a) -> T.Alex a
 lexer s = alexMonadScan >>= s

@@ -8,8 +8,16 @@ import qualified Tokens as T
 
 type ErrorBundle = ParseErrorBundle String Void
 
+type ErrorBundle' = PosState String -> ErrorBundle
+
 newtype Offset =
   Offset Int
+
+instance Show Offset where
+  show _ = "o"
+
+instance Eq Offset where
+  (==) _ _ = True
 
 -- | Class containing an offset, which is used to create error messages
 class ErrorBreakpoint a where
@@ -21,6 +29,9 @@ class ErrorBreakpoint a where
           { bundleErrors = NonEmpty.fromList [FancyError o (Set.singleton $ ErrorFail msg)]
           , bundlePosState = initialState
           }
+
+instance ErrorBreakpoint Offset where
+  offset = id
 
 -- | Pass string, where first character marks offset 1
 createInitialState :: String -> PosState String
