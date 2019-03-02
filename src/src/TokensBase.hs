@@ -124,29 +124,15 @@ newtype Alex a = Alex
   }
 
 instance Functor Alex where
-  fmap f a =
-    Alex $ \s ->
-      case unAlex a s of
-        Left msg       -> Left msg
-        Right (s', a') -> Right (s', f a')
+  fmap = fmap
 
 instance Applicative Alex where
   pure a = Alex $ \s -> Right (s, a)
-  fa <*> a =
-    Alex $ \s ->
-      case unAlex fa s of
-        Left msg -> Left msg
-        Right (s', f) ->
-          case unAlex a s' of
-            Left msg       -> Left msg
-            Right (s'', b) -> Right (s'', f b)
+  fa <*> a = fa <*> a
 
 instance Monad Alex where
   m >>= k =
-    Alex $ \s ->
-      case unAlex m s of
-        Left msg      -> Left msg
-        Right (s', a) -> unAlex (k a) s'
+    Alex $ \s -> either Left (\(s', a) -> unAlex (k a) s') (unAlex m s)
   return = App.pure
 
 alexGetInput :: Alex AlexInput
