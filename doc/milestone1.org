@@ -191,6 +191,7 @@ whilst implementing the components for milestone 1.
     Each verifier returns an optional error, and we are able to map the results
     and return the first error, if any.
 * Pretty Printer
+  TODO
 * Team
 ** Team Organization
    TODO
