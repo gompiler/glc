@@ -16,9 +16,6 @@ import           GHC.Unicode        (isSpace)
 tab :: [String] -> [String]
 tab = map ("\t" ++)
 
-tabP :: Prettify a => a -> String
-tabP a = "\t" ++ prettify a
-
 commaJoin :: Prettify a => [a] -> String
 commaJoin p = intercalate ", " $ map prettify p
 
@@ -39,14 +36,6 @@ prettify'' item = [prettify item]
 
 class Prettify a where
   prettify :: a -> String
-  pCoupler :: (String -> Either String a) -> String -> String
-  pCoupler parser code =
-    case ppResult of
-      Left err -> err
-      Right pretty -> pretty
-    where
-      ppResult :: Either String String
-      ppResult = either Left (Right . prettify) (parser code)
   prettify = intercalate "\n" . prettify'
   prettify' :: a -> [String]
 
