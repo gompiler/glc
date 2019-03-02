@@ -103,7 +103,12 @@ whilst implementing the components for milestone 1.
    output nicer error messages, with program context for easier
    debugging from an end-user programming perspective:
 
-   TODO: IMAGE OF MEGAPARSEC ERROR
+#+BEGIN_SRC
+Error: parsing error, unexpected ) at 5:22:                                                                
+  |
+5 | func abstract(a, b, c) {
+  |                      ^
+#+END_SRC
 
    While we did have access to character offset, line, and column when
    generating error messages, we did not have access to the entire
