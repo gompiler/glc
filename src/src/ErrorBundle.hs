@@ -4,7 +4,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Set           as Set
 import           Data.Void
 import           Text.Megaparsec
-import qualified TokensBase as T 
+import qualified TokensBase         as T
 
 type ErrorBundle = ParseErrorBundle String Void
 
@@ -26,7 +26,8 @@ class ErrorBreakpoint a where
   createError breakpoint msg initialState =
     let (Offset o) = offset breakpoint
      in ParseErrorBundle
-          { bundleErrors = NonEmpty.fromList [FancyError o (Set.singleton $ ErrorFail msg)]
+          { bundleErrors =
+              NonEmpty.fromList [FancyError o (Set.singleton $ ErrorFail msg)]
           , bundlePosState = initialState
           }
 

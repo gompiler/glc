@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE QuasiQuotes           #-}
 {-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
 
 module ParserSpec
   ( spec
@@ -29,11 +27,24 @@ spec = do
       "ident list"
       False
       (genCommaList T.genId)
-      (\x -> scanToP pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
+      (\x ->
+         scanToP pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
-    qcGen "basic expressions" False genEBase (\(s, out) -> scanToP pE s == Right out)
-    qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == Right out)
-    qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == Right out)
+    qcGen
+      "basic expressions"
+      False
+      genEBase
+      (\(s, out) -> scanToP pE s == Right out)
+    qcGen
+      "binary expressions"
+      False
+      genEBin
+      (\(s, out) -> scanToP pE s == Right out)
+    qcGen
+      "unary expressions"
+      False
+      genEUn
+      (\(s, out) -> scanToP pE s == Right out)
   -- Though a single identifier is valid, we parse it without going through the identifiers type
   expectPass
     @Identifiers
@@ -92,13 +103,21 @@ spec = do
           o
           (Arithm Add)
           (Lit (IntLit o Decimal "1"))
-          (Binary o (Arithm Multiply) (Lit (IntLit o Decimal "2")) (Lit (IntLit o Decimal "3"))))
+          (Binary
+             o
+             (Arithm Multiply)
+             (Lit (IntLit o Decimal "2"))
+             (Lit (IntLit o Decimal "3"))))
     , ( "1 * (2 + 3)"
       , Binary
           o
           (Arithm Multiply)
           (Lit (IntLit o Decimal "1"))
-          (Binary o (Arithm Add) (Lit (IntLit o Decimal "2")) (Lit (IntLit o Decimal "3"))))
+          (Binary
+             o
+             (Arithm Add)
+             (Lit (IntLit o Decimal "2"))
+             (Lit (IntLit o Decimal "3"))))
     ]
   expectFail
     @Expr
@@ -108,8 +127,8 @@ spec = do
     -- One char only in rune
     , "'aa'"
     ]
-  expectPass 
-    @Stmt 
+  expectPass
+    @Stmt
     [ "{}"
     -- , "{{{}}}"
     -- , "{{{/* nested */}}}"
@@ -138,12 +157,21 @@ programE =
        ( "package main; func main(){" ++ s ++ "}"
        , Program
            { package = "main"
-           , topLevels = [TopFuncDecl (FuncDecl (Identifier o "main") (Signature (Parameters []) Nothing) body)]
+           , topLevels =
+               [ TopFuncDecl
+                   (FuncDecl
+                      (Identifier o "main")
+                      (Signature (Parameters []) Nothing)
+                      body)
+               ]
            }))
     programMain
 
 programEL :: [(String, String)]
-programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
+programEL =
+  map
+    (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err))
+    programMainL
 
 --expectSuccess :: (Stringable a, Parsable b) => SpecParser a -> [String] -> SpecWith ()
 --expectSuccess (SpecParser tag parse') inputs = describe (tag ++ " success") $ mapM_ expectation inputs
@@ -157,7 +185,11 @@ programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) p
 genCommaList ::
      Gen String -- ^ What we will be comma separating
   -> Gen String
-genCommaList f = oneof [f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',' : s2, (++) <$> f <*> genCommaList f]
+genCommaList f =
+  oneof
+    [ f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',' : s2
+    , (++) <$> f <*> genCommaList f
+    ]
 
 genEBase :: Gen (String, Expr)
 genEBase =
@@ -166,7 +198,8 @@ genEBase =
     , T.genNum >>= \s -> return (s, Lit $ IntLit o Decimal s)
     , T.genOct >>= \s -> return (s, Lit $ IntLit o Octal s)
     , T.genHex >>= \s -> return (s, Lit $ IntLit o Hexadecimal s)
-    , ((arbitrary :: Gen Float) `suchThat` \f -> f > 0.0 && f > 0.1) >>= \f -> return (show f, Lit $ FloatLit o f)
+    , ((arbitrary :: Gen Float) `suchThat` \f -> f > 0.0 && f > 0.1) >>= \f ->
+        return (show f, Lit $ FloatLit o f)
     , T.genChar' >>= \c -> return ('\'' : c : "'", Lit $ RuneLit o c)
     , T.genString >>= \s -> return (s, Lit $ StringLit o Interpreted s)
     , T.genRString >>= \s -> return (s, Lit $ StringLit o Raw s)
@@ -203,7 +236,8 @@ genEBin = do
 genEUn1 :: Gen (String, Expr)
 genEUn1 = do
   (s, e) <- genEBase
-  (sop, op) <- elements [("+", Pos), ("-", Neg), ("!", Not), ("^", BitComplement)]
+  (sop, op) <-
+    elements [("+", Pos), ("-", Neg), ("!", Not), ("^", BitComplement)]
   return (sop ++ s, Unary o op e)
 
 genEUn2 :: Gen (String, Expr)
@@ -220,7 +254,10 @@ genEUn =
     , (1, genEBase >>= \(s, e) -> return ('(' : s ++ ")", e))
     , ( 1
       , T.genId >>= \id1 ->
-          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector o (Var $ Identifier o id1) $ Identifier o id2))
+          T.genId >>= \id2 ->
+            return
+              ( id1 ++ '.' : id2
+              , Selector o (Var $ Identifier o id1) $ Identifier o id2))
     ]
 
 genE :: Gen (String, Expr)
@@ -238,7 +275,8 @@ genE = oneof [genEBase, genEUn, genEBin]
 -- genETypeBase = oneof [T.genId >>= genEBase >>= \i -> "[" ++  ++ "] " ++ id, ArrayType ]
 expectEL :: [(String, [Expr])]
 expectEL =
-  [ ("123, 888", (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
+  [ ( "123, 888"
+    , (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
   , ("123, 88.8", (Lit $ IntLit o Decimal "123") : [Lit $ FloatLit o 88.8])
   ]
 
@@ -247,12 +285,32 @@ expectEL =
 --            ]
 -- expectIDecl :: [(String, VarDecl')]
 -- expectIDecl = [ ("= 5", VarDecl' (Left (Type "aaaaa")) (NonEmpty $ Lit $ IntLit Decimal "123"))]
+intExamples =
+  [ "0"
+  , "1"
+  , "-123"
+  , "1234567890"
+  , "42"
+  , "0600"
+  , "0xBadFace"
+  , "170141183460469231731687303715884105727"
+  ]
 
-intExamples = ["0", "1", "-123", "1234567890", "42", "0600", "0xBadFace", "170141183460469231731687303715884105727"]
+floatExamples =
+  [ ".1234567890"
+  , "0."
+  , "72.40"
+  , "072.40"
+  , "2.71828"
+  , "1.e+0"
+  , "6.67428e-11"
+  , "1E6"
+  , ".25"
+  , ".12345E+5"
+  ]
 
-floatExamples = [".1234567890", "0.", "72.40", "072.40", "2.71828", "1.e+0", "6.67428e-11", "1E6", ".25", ".12345E+5"]
-
-runeExamples = ['a', 'b', 'c', '\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'', '\"']
+runeExamples =
+  ['a', 'b', 'c', '\a', '\b', '\f', '\n', '\r', '\t', '\v', '\\', '\'', '\"']
   -- specAll "Types" (sndConvert Right expectT :: [(String, Either String (Offset, Type))])
   -- specAll
   --   "Expression Lists"

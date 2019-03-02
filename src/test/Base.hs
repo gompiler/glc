@@ -1,8 +1,8 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeApplications      #-}
 
 module Base
   ( SpecBuilder(..)
@@ -26,20 +26,21 @@ module Base
   , scanToP
   ) where
 
-import Control.Monad (unless)
+import           Control.Monad       (unless)
 
-import Control.Applicative
-import Data
-import qualified Data.Either as Either
-import Data.List.NonEmpty (NonEmpty(..), fromList)
-import Data.Text (Text, unpack)
-import ErrorBundle
-import NeatInterpolation
-import Parser (pDec, pE, pEl, pIDecl, pId, pPar, pSig, pStmt, pT, pTDecl)
-import qualified Parser (parse)
-import Scanner (Alex(..), runAlex)
-import Test.Hspec
-import Test.QuickCheck
+import           Control.Applicative
+import           Data
+import qualified Data.Either         as Either
+import           Data.List.NonEmpty  (NonEmpty (..), fromList)
+import           Data.Text           (Text, unpack)
+import           ErrorBundle
+import           NeatInterpolation
+import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
+                                      pStmt, pT, pTDecl)
+import qualified Parser              (parse)
+import           Scanner             (Alex (..), runAlex)
+import           Test.Hspec
+import           Test.QuickCheck
 
 o :: Offset
 o = Offset 0
@@ -60,25 +61,45 @@ instance Stringable Text where
 -- Name refers to tag from Parsable
 -- Inputs refers to list of inputs
 -- Note that the last two entries are type ambiguous, which is why we need to specify them
--- We order the parameters this way to avoid rewriting them 
-expectBase :: (HasCallStack) => String -> (s -> Expectation) -> (s -> String) -> String -> [s] -> SpecWith ()
-expectBase suffix expectation title name inputs = describe (name ++ " " ++ suffix) $ mapM_ expect inputs
+-- We order the parameters this way to avoid rewriting them
+expectBase ::
+     (HasCallStack)
+  => String
+  -> (s -> Expectation)
+  -> (s -> String)
+  -> String
+  -> [s]
+  -> SpecWith ()
+expectBase suffix expectation title name inputs =
+  describe (name ++ " " ++ suffix) $ mapM_ expect inputs
   where
     expect input = it (show $ lines $ title input) $ expectation input
 
-expectPassBase :: (Parsable a, Stringable s) => String -> (s -> Either String a) -> [s] -> SpecWith ()
+expectPassBase ::
+     (Parsable a, Stringable s)
+  => String
+  -> (s -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectPassBase tag parse =
   expectBase
     "success"
     (\s ->
        case parse s of
          Left error ->
-           expectationFailure $ "Expected parse success on:\n\n" ++ toString s ++ "\n\nbut failed with\n\n" ++ error
+           expectationFailure $
+           "Expected parse success on:\n\n" ++
+           toString s ++ "\n\nbut failed with\n\n" ++ error
          _ -> return ())
     toString
     tag
 
-expectFailBase :: (Parsable a, Stringable s) => String -> (s -> Either String a) -> [s] -> SpecWith ()
+expectFailBase ::
+     (Parsable a, Stringable s)
+  => String
+  -> (s -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectFailBase tag parse =
   expectBase
     "success"
@@ -86,7 +107,8 @@ expectFailBase tag parse =
        case parse s of
          Right ast ->
            expectationFailure $
-           "Expected parse failure on:\n\n" ++ toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
+           "Expected parse failure on:\n\n" ++
+           toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
          _ -> return ())
     toString
     tag
@@ -99,10 +121,14 @@ expectAstBase =
        case parse s of
          Left err ->
            expectationFailure $
-           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut failed with\n\n" ++ err
+           "Invalid ast for:\n\n" ++
+           toString s ++
+           "\n\nexpected\n\n" ++ show e ++ "\n\nbut failed with\n\n" ++ err
          Right a ->
            unless (e == a) . expectationFailure $
-           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
+           "Invalid ast for:\n\n" ++
+           toString s ++
+           "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
     (toString . fst)
 
 class (Show a, Eq a) =>
@@ -236,7 +262,13 @@ cartP = liftA2 (,)
 toRetL :: Monad m => a -> m [a]
 toRetL e = return [e]
 
-qcGen :: (Show a, Testable prop) => String -> Bool -> Gen a -> (a -> prop) -> SpecWith (Arg Property)
+qcGen ::
+     (Show a, Testable prop)
+  => String
+  -> Bool
+  -> Gen a
+  -> (a -> prop)
+  -> SpecWith (Arg Property)
 qcGen desc verb g p =
   it desc $
   property $
