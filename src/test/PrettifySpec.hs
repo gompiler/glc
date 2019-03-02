@@ -11,12 +11,38 @@ import           NeatInterpolation
 
 import           Base
 import           Data
+import           Debug.Trace       (trace)
 import           Prettify
 
 spec :: Spec
 spec = do
   expectPrettyInvar @Identifiers ["a, b"]
   expectPrettyInvar @Expr ["1 + 2 * 3", "(((2))) * abc - _s", "index[0]", "-a"]
+  expectPrettyInvar @Type' ["asdf", "struct {a int; b int;}", "[0][0]a"]
+  expectPrettyInvar
+    @TopDecl
+    [ [text|
+      type bb struct {
+        b int
+        c, d float64
+        e struct {
+          f int
+          g, h int
+        }
+      }
+      |],
+      [text|
+      func whatever() struct { int n; } {
+      }
+      |]
+    ]
+--  printError $
+--    prettify <$>
+--    parse
+--      @TopDecl
+--      [text|
+--      func whatever() struct { int n; } { }
+--      |]
 
 intLit = map (\(i, e) -> (IntLit o i e, e)) [(Decimal, "12"), (Hexadecimal, "0xCAFEBABE"), (Octal, "01001")]
 
@@ -51,10 +77,8 @@ exprs =
   , (AppendExpr o baseExpr baseExpr, "append(" ++ baseExpr' ++ ", " ++ baseExpr' ++ ")")
   , (LenExpr o baseExpr, "len(" ++ baseExpr' ++ ")")
   , (CapExpr o baseExpr, "cap(" ++ baseExpr' ++ ")")
-  , (Conversion o baseType baseExpr, baseType' ++ "(" ++ baseExpr' ++ ")")
   , (Selector o baseExpr baseId, baseExpr' ++ "." ++ baseId')
   , (Index o baseExpr baseExpr, baseExpr' ++ "[" ++ baseExpr' ++ "]")
-  , (TypeAssertion o baseExpr baseType, baseExpr' ++ ".(" ++ baseType' ++ ")")
   , ( Arguments o baseExpr [baseExpr, baseExpr, baseExpr]
     , baseExpr' ++ "(" ++ baseExpr' ++ ", " ++ baseExpr' ++ ", " ++ baseExpr' ++ ")")
   ]

@@ -114,14 +114,6 @@ data Signature =
 
 ----------------------------------------------------------------------
 -- Func body/statements
--- Just a test; not necessary
-data Scope
-  = UniverseScope
-  | PackageScope
-  | FuncScope
-  | StmtScope
-  deriving (Show, Eq)
-
 type FuncBody = Stmt
 
 -- | See https://golang.org/ref/spec#SimpleStmt
@@ -262,10 +254,6 @@ data Expr
   -- Supports arrays and slices
   | CapExpr Offset
             Expr
-  -- | See https://golang.org/ref/spec#Conversions
-  | Conversion Offset
-               Type'
-               Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
   | Selector Offset
@@ -276,11 +264,6 @@ data Expr
   | Index Offset
           Expr
           Expr
-  -- | See https://golang.org/ref/spec#TypeAssertion
-  -- Eg expr.(type)
-  | TypeAssertion Offset
-                  Expr
-                  Type'
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   | Arguments Offset
@@ -289,18 +272,16 @@ data Expr
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
-  offset (Unary o _ _)         = o
-  offset (Binary o _ _ _)      = o
-  offset (Lit l)               = offset l
-  offset (Var id)              = offset id
-  offset (AppendExpr o _ _)    = o
-  offset (LenExpr o _)         = o
-  offset (CapExpr o _)         = o
-  offset (Conversion o _ _)    = o
-  offset (Selector o _ _)      = o
-  offset (Index o _ _)         = o
-  offset (TypeAssertion o _ _) = o
-  offset (Arguments o _ _)     = o
+  offset (Unary o _ _)      = o
+  offset (Binary o _ _ _)   = o
+  offset (Lit l)            = offset l
+  offset (Var id)           = offset id
+  offset (AppendExpr o _ _) = o
+  offset (LenExpr o _)      = o
+  offset (CapExpr o _)      = o
+  offset (Selector o _ _)   = o
+  offset (Index o _ _)      = o
+  offset (Arguments o _ _)  = o
 
 -- | See https://golang.org/ref/spec#Literal
 -- Type can be inferred from string
@@ -408,17 +389,16 @@ data Type
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
   | StructType [FieldDecl]
-  | PointerType Type
   -- | See https://golang.org/ref/spec#Function_types
   | FuncType Signature
   | Type Identifier
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl
-data FieldDecl
-  = FieldDecl Identifiers
-              Type'
-  | EmbeddedField Identifier
+-- Golite does not support embedded fields
+data FieldDecl =
+  FieldDecl Identifiers
+            Type'
   deriving (Show, Eq)
 
 instance ErrorBreakpoint FieldDecl where
