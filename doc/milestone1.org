@@ -1,4 +1,6 @@
 #+TITLE: Design Document for Milestone 1
+#+AUTHOR: Lore, J., Lougheed D., Wang A.
+#+LATEX_HEADER: \usepackage[margin=1in]{geometry}
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 * Introduction
@@ -48,30 +50,20 @@ whilst implementing the components for milestone 1.
   the quirks/more complicated things relating to ~GoLite~ compared to
   something simple like ~MiniLang~.
 ** Semicolon Insertion
-   The first hurdle of scanning was semicolon insertion. We first
-   thought of doing a second pass of the token list resulting from the
-   scan, but this seemed expensive and because of our types, harder
-   than it looked at first glance.
-
-   Our scanner is encompassed completely by ~alexMonadScan~
-   and is interwoven with our parser with the ~lexer~ function in
-   ~Scanner.hs~ (all information is kept in a state monad and the
-   parser can request each token one at a time and do things lazily),
-   therefore it was not feasible to do a second pass of the resulting tokens as
-   we don't get them in list form before passing them to the
-   parser. Instead, we use start codes in Alex and have
-   special rules for certain states, i.e. if the last token we scanned
-   was something that can take an optional semicolon, we'd enter the
-   $nl$ state and encountering a newline in said state would scan the
-   newline to a semicolon, otherwise scanning anything else (that
-   isn't whitespace/ignored), would return to the default state ($0$),
-   where newlines are just ignored. This seems to be a nice/elegant
-   solution as we don't have to traverse the whole list or get any
-   context of any sort, other than the start code which is a feature
-   built in to Alex. It also makes a lot more sense to let the scanner
-   handle such situations and to replace newlines by semicolons in
-   certain scenarios (rather than arbitrarily inserting semicolons
-   when given some situations).
+   The first hurdle of scanning was semicolon insertion. To solve
+   this, we use start codes in ~Alex~ and have special rules for
+   certain states, i.e. if the last token we scanned was something
+   that can take an optional semicolon, we'd enter the $nl$ state and
+   encountering a newline in said state would scan the newline to a
+   semicolon, otherwise scanning anything else (that isn't
+   whitespace/ignored), would return to the default state ($0$), where
+   newlines are just ignored. This seems to be a nice/elegant solution
+   as we don't have to traverse the whole list or get any context of
+   any sort, other than the start code which is a feature built in to
+   ~Alex~. It also makes a lot more sense to let the scanner handle
+   such situations and to replace newlines by semicolons in certain
+   scenarios (rather than arbitrarily inserting semicolons when given
+   some situations).
 ** Block comment support
    Block comments cannot be easily scanned using only regular
    expressions. One potential solution was to use start codes again
@@ -82,16 +74,15 @@ whilst implementing the components for milestone 1.
    they're optional). Another thing is that using a state approach
    made it harder to catch the error of an unclosed comment block.
    
-   Therefore ~checkBlk~ was implemented to iterate through the
-   scanner's input once we receive an open comment block and ignore
-   everything until we close the block comment and if we never reach a
-   close then we can easily emit an error.
+   In our solution we iterate through the scanner's input once we
+   receive an open comment block and ignore everything until we close
+   the block comment and if we never reach a close then we can easily
+   emit an error.
 
    In addition, we had to account for semicolon insertion with block
-   comments, which we were able to do by adding a new case in
-   ~checkBlk~ that would set a semicolon flag to true if it
-   encountered any new line in the characters inside the block comment
-   and then we were able to insert a semicolon if the start code was
+   comments, which we were able to do by setting a semicolon flag to
+   true if we encounter any new line in the characters inside the
+   block comment and then we insert a semicolon if the start code is
    $nl$, which was conveniently available for us.
 *** Adding newlines at the end of the file if they aren't present already
     ~Go~ adds a semicolon at the end of a file even if there's no
@@ -103,19 +94,6 @@ whilst implementing the components for milestone 1.
     semicolon if we were in the $nl$ state when we encounter an ~EOF~
     (but we have to return an ~EOF~ and couldn't return a semicolon
     and an ~EOF~).
-*** Niche Cases
-    Floats accepted by ~GoLite~ are a superset of the floats accepted
-    by ~Haskell~, so we couldn't just read in the float. \(1.\) and
-    \(.1\) wouldn't be recognized as floats and so we append a $0$ on
-    the side that doesn't have any numbers to ensure our program can
-    read the float.
-
-    Escape characters for literal runes had to be accounted for
-    separately compared to normal strings because to extract the rune
-    we extract the ~Char~ in between the ~' '~, but escape characters
-    after scanning are two ~Char~ s, i.e. ~\~ and something else. So
-    we matched on the input of these cases and would return the
-    respective escape sequence requested.
 ** Nicer error messages
    We decided to use ~ErrorBundle~ from ~Megaparsec~ in order to
    output nicer error messages. While we did have access to offset,
@@ -128,8 +106,7 @@ whilst implementing the components for milestone 1.
    ~Either String a~, i.e. instead of just an error message on the
    left side we also carry an ~Int~ which represents the offset of the
    error so that when we want to print the error message at the end we
-   can append
-   the part in the source file where the error occured.
+   can append the part in the source file where the error occurred.
 * Parser
 ** Grammar
    Certain productions match a list and an item of that list,
@@ -198,15 +175,16 @@ whilst implementing the components for milestone 1.
 ** Team Organization
    TODO
 ** Contributions
-   *Julian Lore* Wrote the majority of the scanner and handled weird
+   - *Julian Lore* Wrote the majority of the scanner and handled weird
    cases, wrote a large amount of valid/invalid programs, implemented
    many other tests (~hspec~ or small tests in our program) and looked
    over the parser, contributing a few things to it as well.
 
-   *David Lougheed:* Wrote the bulk of the parser grammar and contributed to
+   - *David Lougheed:* Wrote the bulk of the parser grammar and contributed to
    the weeder. Also wrote 3 of the valid programs and 8 of the
    invalid ones and had minor contributions to miscellaneous other components.
 
-   *Allan Wang* Created the AST and helper classes for pretty printing and error handling.
-   Wrote the base package for testing as well as some of the embedded test cases within ~hspec~.
-   Added integrations (Travis + Slack), and gave code reviews to the other components.
+   - *Allan Wang* Created the AST and helper classes for pretty printing
+   and error handling.  Wrote the base package for testing as well as
+   some of the embedded test cases within ~hspec~.  Added integrations
+   (Travis + Slack), and gave code reviews to the other components.
