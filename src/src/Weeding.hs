@@ -15,7 +15,7 @@ type PureConstraint a = a -> Maybe ErrorBundle'
 weed :: String -> Program -> Either String Program
 weed code program =
   case errorBundle of
-    Just eb -> Left $ errorString $ eb (createInitialState code)
+    Just eb -> Left ("Error: weeding error at " ++ (errorString $ eb (createInitialState code)))
     Nothing -> Right program
   where
     errorBundle :: Maybe ErrorBundle'
