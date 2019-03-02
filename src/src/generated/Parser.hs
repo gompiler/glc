@@ -2072,7 +2072,7 @@ ptokl t = case t of
 --           alexError ("Error: parsing error, unexpected " ++ (prettify t) ++ ", expecting " ++ show strs, o)
 parseError :: (Token) -> Alex a
 parseError (Token (AlexPn o l c) t) =
-           alexError ("Error: parsing error, unexpected " ++ (prettify t), o)
+           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at: ", o)
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
