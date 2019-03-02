@@ -1,4 +1,4 @@
-% Created 2019-03-02 Sat 14:57
+% Created 2019-03-02 Sat 15:01
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -33,15 +33,15 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 \section{Introduction}
-\label{sec:orgbdd7dd0}
+\label{sec:orgc165de5}
 \subsection{Implementation Language}
-\label{sec:orgb43b37d}
+\label{sec:org2007130}
 For our \texttt{GoLite} compiler, we decided to use \texttt{Haskell} as the
 implementation language, as many of the required tasks can be done
 more naturally (i.e. tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 \subsection{Tools}
-\label{sec:org4ef7ebf}
+\label{sec:orge14a0c9}
 For scanning, we use the program \texttt{Alex}, which is very similar to \texttt{flex}
 but produces \texttt{Haskell} code instead. Additionally, we use \texttt{Happy} for
 parsing which resembles \texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be interlinked
@@ -59,13 +59,13 @@ We use \texttt{stack} to manage our Haskell project, including \texttt{GHC}, the
 respective projects and tests, additional tests which we implemented
 using the \texttt{hspec} package.
 \subsection{Miscellaneous}
-\label{sec:orgc42870c}
+\label{sec:org4c3026d}
 \subsubsection{Continuous Integration}
-\label{sec:org1bc9ef1}
+\label{sec:orgc9bb068}
 We used Travis CI to build our project on every push, as well as
 run our tests to make sure that pushes kept things working.
 \subsubsection{File Organization}
-\label{sec:orgb654ad6}
+\label{sec:org3a1ae13}
 \begin{itemize}
 \item \texttt{src/}
 \begin{itemize}
@@ -89,14 +89,14 @@ function we want)
 \end{itemize}
 \end{itemize}
 \section{Scanner}
-\label{sec:orged9bfb2}
+\label{sec:org85caafd}
 The first step of this milestone was to scan user input into
 tokens. Most of the tokens we had to account for were straightforward
 and similar to the assignments, however we had to encompass a few of
 the quirks/more complicated things relating to \texttt{GoLite} compared to
 something simple like \texttt{MiniLang}.
 \subsection{Semicolon Insertion}
-\label{sec:orgd8a7f1d}
+\label{sec:orge6eaed1}
 The first hurdle of scanning was semicolon insertion. To solve
 this, we use start codes in \texttt{Alex} and have special rules for
 certain states, i.e. if the last token we scanned was something
@@ -112,7 +112,7 @@ such situations and to replace newlines by semicolons in certain
 scenarios (rather than arbitrarily inserting semicolons when given
 some situations).
 \subsection{Block comment support}
-\label{sec:orgf31f629}
+\label{sec:org5c6273f}
 Block comments cannot be easily scanned using only regular
 expressions. One potential solution was to use start codes again
 (changing state upon opening a comment), although that would
@@ -133,7 +133,7 @@ true if we encounter any new line in the characters inside the
 block comment and then we insert a semicolon if the start code is
 \(nl\), which was conveniently available for us.
 \subsubsection{Adding newlines at the end of the file if they aren't present already}
-\label{sec:org7941711}
+\label{sec:org5026cd4}
 \texttt{Go} adds a semicolon at the end of a file even if there's no
 newline at the end of the file for semicolon insertion. In order
 to enforce this, we simply make sure every program scanned ends
@@ -144,7 +144,7 @@ semicolon if we were in the \(nl\) state when we encounter an \texttt{EOF}
 (but we have to return an \texttt{EOF} and couldn't return a semicolon
 and an \texttt{EOF}).
 \subsection{Nicer error messages}
-\label{sec:org3cecdaa}
+\label{sec:orgf9ef75c}
 We decided to use \texttt{ErrorBundle} from \texttt{Megaparsec} in order to
 output nicer error messages. While we did have access to offset,
 line and column when generating error messages, we did not have
@@ -158,9 +158,9 @@ left side we also carry an \texttt{Int} which represents the offset of the
 error so that when we want to print the error message at the end we
 can append the part in the source file where the error occurred.
 \section{Parser}
-\label{sec:orga40ab98}
+\label{sec:org94d8946}
 \subsection{Grammar}
-\label{sec:org6794199}
+\label{sec:org8e85bcb}
 Certain productions match a list and an item of that list,
 resulting in a new list. Because our lists our immutable, we
 decided to prepend the items to our list and reverse them in
@@ -172,13 +172,13 @@ reversing ourselves with each usage. However, we noticed that adding
 an extra non terminal to manage reversals for each list made our 
 generated module notably more compelx, so we decided against it.
 \subsection{AST}
-\label{sec:org01c20d9}
+\label{sec:org47319f3}
 The AST is largely a one to one mapping of the Golang specs, with
 parts we don't support removed and additional parts for Golite added.
 
 In some cases, there are minor deviations from the CFG.
 \subsubsection{Accurate Type Representation}
-\label{sec:orge3165c3}
+\label{sec:orga9a087e}
 We model our ast as accurately as possible, such that impossible
 states are forbidden. We lack any checks for compatible types at
 this stage, but we can match the definition for 'exactly one', 'one
@@ -187,7 +187,7 @@ one or more (haskell \texttt{NonEmpty}), yet many locations make it
 optional. While a direct translation would be \texttt{Maybe (NonEmpty a)},
 we choose to make it \texttt{[a]} as it makes more sense.
 \subsubsection{Simplified Data Type Categories}
-\label{sec:org1617070}
+\label{sec:org82fe9ac}
 Some splits, such as \texttt{add\_op} and \texttt{mul\_op} are distinguished
 purely to demonstrate precedence; they are in fact only used once
 in the specs, so we decide to merge them directly in our \texttt{ArithmOp}
@@ -201,14 +201,14 @@ braces). However, in our case, we don't need to model the braces,
 so we can treat the else body exclusively as \texttt{Stmt} vs \texttt{Either
     Block IfStmt}.
 \subsubsection{Format Preservation}
-\label{sec:orgf4a52da}
+\label{sec:org899f7a6}
 By design, our types for \texttt{int} and \texttt{string} specify whether they
 are hex/octal/dec or raw/interpreted respectively. We kept this
 information so that our pretty print would accurately represent
 the input, even though we can convert them all to a single type
 (eg dec and interpreted).
 \subsubsection{Structure Simplification}
-\label{sec:org16ea6c7}
+\label{sec:orgbde0cd8}
 For var and type declaration, we make no distinction between
 single declaration (exactly one) and block declaration (0 or
 more). Unlike types, which produce different formats, we decide to
@@ -219,7 +219,7 @@ we cannot further simplify group declarations \texttt{var ( a, b = 2,
 identifiers matches the number of values. This would have to be
 checked at a later stage
 \subsection{Weeding}
-\label{sec:org262627f}
+\label{sec:org0aa9e52}
 In our first stage, our weeding operations are simple, and don't rely 
 on context outside of the statement we are verifying. As a result, 
 we were able to define recursive traversal methods to verify relevant 
@@ -229,31 +229,25 @@ to produce performant and independent functions.
 Each verifier returns an optional error, and we are able to map the results 
 and return the first error, if any.
 \section{Pretty Printer}
-\label{sec:org095a18c}
+\label{sec:org115d519}
 \section{Team}
-\label{sec:orgf67c24e}
+\label{sec:org40d12e7}
 \subsection{Team Organization}
-\label{sec:org67424ef}
+\label{sec:org4d4f2f8}
 TODO
 \subsection{Contributions}
-\label{sec:org61ac01d}
+\label{sec:orgea5959b}
 \begin{itemize}
-\item \textbf{Julian Lore} Wrote the majority of the scanner and handled weird
-\end{itemize}
+\item \textbf{Julian Lore:} Wrote the majority of the scanner and handled weird
 cases, wrote a large amount of valid/invalid programs, implemented
 many other tests (\texttt{hspec} or small tests in our program) and looked
 over the parser, contributing a few things to it as well.
-
-\begin{itemize}
 \item \textbf{David Lougheed:} Wrote the bulk of the parser grammar and contributed to
-\end{itemize}
 the weeder. Also wrote 3 of the valid programs and 8 of the
 invalid ones and had minor contributions to miscellaneous other components.
-
-\begin{itemize}
-\item \textbf{Allan Wang} Created the AST and helper classes for pretty printing
-\end{itemize}
+\item \textbf{Allan Wang:} Created the AST and helper classes for pretty printing
 and error handling.  Wrote the base package for testing as well as
 some of the embedded test cases within \texttt{hspec}.  Added integrations
 (Travis + Slack), and gave code reviews to the other components.
+\end{itemize}
 \end{document}

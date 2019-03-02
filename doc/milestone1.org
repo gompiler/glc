@@ -175,16 +175,14 @@ whilst implementing the components for milestone 1.
 ** Team Organization
    TODO
 ** Contributions
-   - *Julian Lore* Wrote the majority of the scanner and handled weird
+- *Julian Lore:* Wrote the majority of the scanner and handled weird
    cases, wrote a large amount of valid/invalid programs, implemented
    many other tests (~hspec~ or small tests in our program) and looked
    over the parser, contributing a few things to it as well.
-
-   - *David Lougheed:* Wrote the bulk of the parser grammar and contributed to
+- *David Lougheed:* Wrote the bulk of the parser grammar and contributed to
    the weeder. Also wrote 3 of the valid programs and 8 of the
    invalid ones and had minor contributions to miscellaneous other components.
-
-   - *Allan Wang* Created the AST and helper classes for pretty printing
+- *Allan Wang:* Created the AST and helper classes for pretty printing
    and error handling.  Wrote the base package for testing as well as
    some of the embedded test cases within ~hspec~.  Added integrations
    (Travis + Slack), and gave code reviews to the other components.

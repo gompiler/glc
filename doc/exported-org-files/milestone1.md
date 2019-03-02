@@ -1,40 +1,40 @@
 
 # Table of Contents
 
-1.  [Introduction](#org2e315ad)
-    1.  [Implementation Language](#orga796869)
-    2.  [Tools](#orge976de8)
-    3.  [Miscellaneous](#org77bd4b2)
-        1.  [Continuous Integration](#org4903363)
-        2.  [File Organization](#orgc8748f1)
-2.  [Scanner](#orgebcdb11)
-    1.  [Semicolon Insertion](#orgfa9ddbd)
-    2.  [Block comment support](#orge741fe5)
-        1.  [Adding newlines at the end of the file if they aren't present already](#orgf39e453)
-    3.  [Nicer error messages](#org647eec2)
-3.  [Parser](#org975dc2e)
-    1.  [Grammar](#orgebb05cc)
-    2.  [AST](#org4a13fc0)
-        1.  [Accurate Type Representation](#orge06bc72)
-        2.  [Simplified Data Type Categories](#org32c225e)
-        3.  [Format Preservation](#orgf24b8a6)
-        4.  [Structure Simplification](#org9d50514)
-    3.  [Weeding](#orgbcc9487)
-4.  [Pretty Printer](#orgd98ae0b)
-5.  [Team](#org714e0f5)
-    1.  [Team Organization](#org670be79)
-    2.  [Contributions](#org6e0cfe2)
+1.  [Introduction](#org3056a1e)
+    1.  [Implementation Language](#org0cacf50)
+    2.  [Tools](#org0289a57)
+    3.  [Miscellaneous](#orgd4f9661)
+        1.  [Continuous Integration](#org261a3d9)
+        2.  [File Organization](#org07142cb)
+2.  [Scanner](#orgceccffb)
+    1.  [Semicolon Insertion](#org1f091aa)
+    2.  [Block comment support](#org01ee030)
+        1.  [Adding newlines at the end of the file if they aren't present already](#org891e583)
+    3.  [Nicer error messages](#orgf310f40)
+3.  [Parser](#org0e15948)
+    1.  [Grammar](#org243e3c2)
+    2.  [AST](#orgf3b1928)
+        1.  [Accurate Type Representation](#org0a91faa)
+        2.  [Simplified Data Type Categories](#orge8b0247)
+        3.  [Format Preservation](#orgf3228ce)
+        4.  [Structure Simplification](#orgbba03c6)
+    3.  [Weeding](#org2167692)
+4.  [Pretty Printer](#org4c4a2c5)
+5.  [Team](#org73181ea)
+    1.  [Team Organization](#org7dff165)
+    2.  [Contributions](#org6f777eb)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 
 
-<a id="org2e315ad"></a>
+<a id="org3056a1e"></a>
 
 # Introduction
 
 
-<a id="orga796869"></a>
+<a id="org0cacf50"></a>
 
 ## Implementation Language
 
@@ -44,7 +44,7 @@ more naturally (i.e. tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 
 
-<a id="orge976de8"></a>
+<a id="org0289a57"></a>
 
 ## Tools
 
@@ -66,12 +66,12 @@ respective projects and tests, additional tests which we implemented
 using the `hspec` package.
 
 
-<a id="org77bd4b2"></a>
+<a id="orgd4f9661"></a>
 
 ## Miscellaneous
 
 
-<a id="org4903363"></a>
+<a id="org261a3d9"></a>
 
 ### Continuous Integration
 
@@ -79,7 +79,7 @@ We used Travis CI to build our project on every push, as well as
 run our tests to make sure that pushes kept things working.
 
 
-<a id="orgc8748f1"></a>
+<a id="org07142cb"></a>
 
 ### File Organization
 
@@ -97,7 +97,7 @@ run our tests to make sure that pushes kept things working.
     -   Spec modules, each exposing a test suite
 
 
-<a id="orgebcdb11"></a>
+<a id="orgceccffb"></a>
 
 # Scanner
 
@@ -108,7 +108,7 @@ the quirks/more complicated things relating to `GoLite` compared to
 something simple like `MiniLang`.
 
 
-<a id="orgfa9ddbd"></a>
+<a id="org1f091aa"></a>
 
 ## Semicolon Insertion
 
@@ -128,7 +128,7 @@ scenarios (rather than arbitrarily inserting semicolons when given
 some situations).
 
 
-<a id="orge741fe5"></a>
+<a id="org01ee030"></a>
 
 ## Block comment support
 
@@ -153,7 +153,7 @@ block comment and then we insert a semicolon if the start code is
 \(nl\), which was conveniently available for us.
 
 
-<a id="orgf39e453"></a>
+<a id="org891e583"></a>
 
 ### Adding newlines at the end of the file if they aren't present already
 
@@ -168,7 +168,7 @@ semicolon if we were in the \(nl\) state when we encounter an `EOF`
 and an `EOF`).
 
 
-<a id="org647eec2"></a>
+<a id="orgf310f40"></a>
 
 ## Nicer error messages
 
@@ -186,12 +186,12 @@ error so that when we want to print the error message at the end we
 can append the part in the source file where the error occurred.
 
 
-<a id="org975dc2e"></a>
+<a id="org0e15948"></a>
 
 # Parser
 
 
-<a id="orgebb05cc"></a>
+<a id="org243e3c2"></a>
 
 ## Grammar
 
@@ -207,7 +207,7 @@ an extra non terminal to manage reversals for each list made our
 generated module notably more compelx, so we decided against it.
 
 
-<a id="org4a13fc0"></a>
+<a id="orgf3b1928"></a>
 
 ## AST
 
@@ -217,7 +217,7 @@ parts we don't support removed and additional parts for Golite added.
 In some cases, there are minor deviations from the CFG.
 
 
-<a id="orge06bc72"></a>
+<a id="org0a91faa"></a>
 
 ### Accurate Type Representation
 
@@ -230,7 +230,7 @@ optional. While a direct translation would be `Maybe (NonEmpty a)`,
 we choose to make it `[a]` as it makes more sense.
 
 
-<a id="org32c225e"></a>
+<a id="orge8b0247"></a>
 
 ### Simplified Data Type Categories
 
@@ -248,7 +248,7 @@ so we can treat the else body exclusively as `Stmt` vs `Either
     Block IfStmt`.
 
 
-<a id="orgf24b8a6"></a>
+<a id="orgf3228ce"></a>
 
 ### Format Preservation
 
@@ -259,7 +259,7 @@ the input, even though we can convert them all to a single type
 (eg dec and interpreted).
 
 
-<a id="org9d50514"></a>
+<a id="orgbba03c6"></a>
 
 ### Structure Simplification
 
@@ -274,7 +274,7 @@ identifiers matches the number of values. This would have to be
 checked at a later stage
 
 
-<a id="orgbcc9487"></a>
+<a id="org2167692"></a>
 
 ## Weeding
 
@@ -288,41 +288,36 @@ Each verifier returns an optional error, and we are able to map the results
 and return the first error, if any.
 
 
-<a id="orgd98ae0b"></a>
+<a id="org4c4a2c5"></a>
 
 # Pretty Printer
 
 
-<a id="org714e0f5"></a>
+<a id="org73181ea"></a>
 
 # Team
 
 
-<a id="org670be79"></a>
+<a id="org7dff165"></a>
 
 ## Team Organization
 
 TODO
 
 
-<a id="org6e0cfe2"></a>
+<a id="org6f777eb"></a>
 
 ## Contributions
 
--   **Julian Lore** Wrote the majority of the scanner and handled weird
-
-cases, wrote a large amount of valid/invalid programs, implemented
-many other tests (`hspec` or small tests in our program) and looked
-over the parser, contributing a few things to it as well.
-
+-   **Julian Lore:** Wrote the majority of the scanner and handled weird
+    cases, wrote a large amount of valid/invalid programs, implemented
+    many other tests (`hspec` or small tests in our program) and looked
+    over the parser, contributing a few things to it as well.
 -   **David Lougheed:** Wrote the bulk of the parser grammar and contributed to
-
-the weeder. Also wrote 3 of the valid programs and 8 of the
-invalid ones and had minor contributions to miscellaneous other components.
-
--   **Allan Wang** Created the AST and helper classes for pretty printing
-
-and error handling.  Wrote the base package for testing as well as
-some of the embedded test cases within `hspec`.  Added integrations
-(Travis + Slack), and gave code reviews to the other components.
+    the weeder. Also wrote 3 of the valid programs and 8 of the
+    invalid ones and had minor contributions to miscellaneous other components.
+-   **Allan Wang:** Created the AST and helper classes for pretty printing
+    and error handling.  Wrote the base package for testing as well as
+    some of the embedded test cases within `hspec`.  Added integrations
+    (Travis + Slack), and gave code reviews to the other components.
 
