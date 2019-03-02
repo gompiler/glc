@@ -1,5 +1,4 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Prettify
   ( Prettify(..)
@@ -121,14 +120,14 @@ instance Prettify Stmt where
         case se of
           Just se' -> prettify (ss, se')
           Nothing  -> prettify ss
-  prettify' (For fc s) = ("for " ++ (prettify fc) ++ " {") : (tab $ prettify' s) ++ ["}"]
+  prettify' (For fc s) = ("for " ++ prettify fc ++ " {") : tab (prettify' s) ++ ["}"]
   prettify' (Break _) = ["break"]
   prettify' (Continue _) = ["continue"]
   -- prettify' (Fallthrough _) = ["fallthrough"]
   prettify' (Declare d) = prettify' d
-  prettify' (Print es) = ["print(" ++ concat (intersperse ", " (es >>= prettify')) ++ ")"]
-  prettify' (Println es) = ["println(" ++ concat (intersperse ", " (es >>= prettify')) ++ ")"]
-  prettify' (Return m) = ["return"] `skipNewLine` (maybe [] (prettify') m)
+  prettify' (Print es) = ["print(" ++ intercalate ", " (es >>= prettify') ++ ")"]
+  prettify' (Println es) = ["println(" ++ intercalate ", " (es >>= prettify') ++ ")"]
+  prettify' (Return m) = ["return"] `skipNewLine` maybe [] (prettify') m
 
 instance Prettify SwitchCase where
   prettify' (Case _ e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)
@@ -142,7 +141,7 @@ instance Prettify (SimpleStmt, Expr) where
 instance Prettify ForClause where
   prettify ForInfinite = ""
   prettify (ForCond e) = prettify e
-  prettify (ForClause cs ce s) = (prettify cs) ++ "; " ++ (prettify ce) ++ "; " ++ (prettify s)
+  prettify (ForClause cs ce s) = prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s
   prettify' = prettify''
 
 instance Prettify (NonEmpty Expr) where
@@ -166,8 +165,9 @@ instance Prettify Expr where
 
 instance Prettify Literal where
   prettify (IntLit _ _ i)              = i
-  prettify (FloatLit _ f)              = show f
-  prettify (RuneLit _ c)               = "'" ++ [c] ++ "'"
+  prettify (FloatLit _ f)              = f
+  -- Quotes within string s
+  prettify (RuneLit _ s)               = s
   -- Quotes within string s
   prettify (StringLit _ Interpreted s) = s
   -- Quotes within string s

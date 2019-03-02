@@ -336,8 +336,8 @@ NIExpr      : '+' Expr %prec POS                            { Unary (getOffset $
             | decv                                          { Lit (IntLit (getOffset $1) Decimal $ getInnerString $1) }
             | octv                                          { Lit (IntLit (getOffset $1) Octal $ getInnerString $1) }
             | hexv                                          { Lit (IntLit (getOffset $1) Hexadecimal $ getInnerString $1) }
-            | fv                                            { Lit (FloatLit (getOffset $1) $ getInnerFloat $1) }
-            | rv                                            { Lit (RuneLit (getOffset $1) $ getInnerChar $1) }
+            | fv                                            { Lit (FloatLit (getOffset $1) $ getInnerString $1) }
+            | rv                                            { Lit (RuneLit (getOffset $1) $ getInnerString $1) }
             | sv                                            { Lit (StringLit (getOffset $1) Interpreted $ getInnerString $1) }
             | rsv                                           { Lit (StringLit (getOffset $1) Raw $ getInnerString $1) }
             | append '(' Expr ',' Expr ')'                  { AppendExpr (getOffset $1) $3 $5 }
@@ -382,16 +382,11 @@ getInnerString t = case t of
   Token _ (TDecVal val) -> val
   Token _ (TOctVal val) -> val
   Token _ (THexVal val) -> val
-  Token _ (THexVal val) -> val
+  Token _ (TFloatVal val) -> val
+  Token _ (TRuneVal val) -> val
   Token _ (TStringVal val) -> val
   Token _ (TRStringVal val) -> val
   Token _ (TIdent val) -> val
-
-getInnerFloat :: Token -> Float
-getInnerFloat (Token _ (TFloatVal val)) = val
-
-getInnerChar :: Token -> Char
-getInnerChar (Token _ (TRuneVal val)) = val
 
 -- Main parse function
 parse :: String -> Either String Program
@@ -403,5 +398,5 @@ ptokl t = case t of
 
 parseError :: (Token) -> Alex a
 parseError (Token (AlexPn o l c) t) =
-           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at ", o)
+           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at: ", o)
 }
