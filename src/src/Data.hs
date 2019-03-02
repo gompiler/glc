@@ -311,9 +311,9 @@ data Literal
            IntType'
            String
   | FloatLit Offset
-             Float
+             String
   | RuneLit Offset
-            Char
+            String
   | StringLit Offset
               StringType'
               String

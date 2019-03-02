@@ -171,8 +171,9 @@ instance Prettify Expr where
 
 instance Prettify Literal where
   prettify (IntLit _ _ i)              = i
-  prettify (FloatLit _ f)              = show f
-  prettify (RuneLit _ c)               = "'" ++ [c] ++ "'"
+  prettify (FloatLit _ f)              = f
+  -- Quotes within string s
+  prettify (RuneLit _ s)               = s
   -- Quotes within string s
   prettify (StringLit _ Interpreted s) = s
   -- Quotes within string s

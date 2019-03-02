@@ -1694,14 +1694,14 @@ happyReduce_152 = happySpecReduce_1  29# happyReduction_152
 happyReduction_152 happy_x_1
 	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
 	happyIn55
-		 (Lit (FloatLit (getOffset happy_var_1) $ getInnerFloat happy_var_1)
+		 (Lit (FloatLit (getOffset happy_var_1) $ getInnerString happy_var_1)
 	)}
 
 happyReduce_153 = happySpecReduce_1  29# happyReduction_153
 happyReduction_153 happy_x_1
 	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
 	happyIn55
-		 (Lit (RuneLit (getOffset happy_var_1) $ getInnerChar happy_var_1)
+		 (Lit (RuneLit (getOffset happy_var_1) $ getInnerString happy_var_1)
 	)}
 
 happyReduce_154 = happySpecReduce_1  29# happyReduction_154
@@ -2050,16 +2050,11 @@ getInnerString t = case t of
   Token _ (TDecVal val) -> val
   Token _ (TOctVal val) -> val
   Token _ (THexVal val) -> val
-  Token _ (THexVal val) -> val
+  Token _ (TFloatVal val) -> val
+  Token _ (TRuneVal val) -> val
   Token _ (TStringVal val) -> val
   Token _ (TRStringVal val) -> val
   Token _ (TIdent val) -> val
-
-getInnerFloat :: Token -> Float
-getInnerFloat (Token _ (TFloatVal val)) = val
-
-getInnerChar :: Token -> Char
-getInnerChar (Token _ (TRuneVal val)) = val
 
 -- Main parse function
 parse :: String -> Either String Program
@@ -2071,7 +2066,7 @@ ptokl t = case t of
 
 parseError :: (Token) -> Alex a
 parseError (Token (AlexPn o l c) t) =
-           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at: ", o)
+           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at ", o)
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
