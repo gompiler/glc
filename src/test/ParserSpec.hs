@@ -50,8 +50,8 @@ spec = do
     , "var ()"
     , "var(\n\n\n\t)"
     , "type a b"
-    , "type (a int)"
-    , "type ( a b; c d)"
+    , "type (a int\n)"
+    , "type ( a b; c d\n)"
     , "func f(a, b, c string) { }"
     ]
   expectFail
@@ -64,6 +64,8 @@ spec = do
     , "func (a, b)"
     -- No variadic types
     , "func (a, b, c ...int)"
+    -- No need for semicolon rule 2
+    , "type (a b)"
     ]
   expectPass @Stmt ["if true { }"]
   expectPass
@@ -105,6 +107,19 @@ spec = do
     , "a[[]"
     -- One char only in rune
     , "'aa'"
+    ]
+  expectPass 
+    @Stmt 
+    [ "{}"
+    -- , "{{{}}}"
+    -- , "{{{/* nested */}}}"
+    , "var a string"
+    , "a++"
+    , "b--"
+    , "c := 2"
+    , "c := 2;; (a + b)++"
+    , "if a { c++ \n}"
+    , "if a := 2; b { } else if 0 < 1 { c-- \n}"
     ]
   where
     blankExpr = Var $ Identifier o "temp"
