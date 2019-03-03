@@ -1,40 +1,39 @@
 
 # Table of Contents
 
-1.  [Introduction](#orgf442834)
-    1.  [Implementation Language](#org6dc18f1)
-    2.  [Tools](#org3ad19de)
-    3.  [Miscellaneous](#orgfa47caa)
-        1.  [Continuous Integration](#orgf4a87b8)
-        2.  [File Organization](#org67e3609)
-2.  [Scanner](#orgb57ecd8)
-    1.  [Semicolon Insertion](#org49a4115)
-    2.  [Block comment support](#org70a767a)
-        1.  [Adding newlines at the end of the file if they aren't present already](#org20b78df)
-    3.  [Nicer error messages](#org28c79e1)
-3.  [Parser](#org49d3903)
-    1.  [Grammar](#orgb664415)
-    2.  [AST](#org7f912b0)
-        1.  [Accurate Type Representation](#org4819e63)
-        2.  [Simplified Data Type Categories](#org75b36e4)
-        3.  [Format Preservation](#org9639202)
-        4.  [Structure Simplification](#orga4d23ba)
-    3.  [Weeding](#orgcb096dc)
-4.  [Pretty Printer](#org332dfb4)
-5.  [Team](#orgb18ba63)
-    1.  [Team Organization](#org0819393)
-    2.  [Contributions](#org9493526)
+1.  [Introduction](#orgfe0e625)
+    1.  [Implementation Language](#org05442dd)
+    2.  [Tools](#orga98983a)
+    3.  [Miscellaneous](#org3357b85)
+        1.  [Continuous Integration](#org5aedcbc)
+        2.  [File Organization](#orgf169035)
+2.  [Scanner](#org34360f8)
+    1.  [Semicolon Insertion](#org5b44b6c)
+    2.  [Block comment support](#org5e45781)
+        1.  [Adding newlines at the end of the file if they aren't present already](#org0a2c94b)
+    3.  [Nicer error messages](#org020dbbf)
+3.  [Parser](#orgb6738dc)
+    1.  [Grammar](#org0e222ae)
+    2.  [AST](#org89125a6)
+        1.  [Accurate Type Representation](#orgd60a6d3)
+        2.  [Simplified Data Type Categories](#org931b04c)
+        3.  [Structure Simplification](#org648af27)
+    3.  [Weeding](#orge06f9fd)
+4.  [Pretty Printer](#orgf01140e)
+5.  [Team](#orgcbfd00e)
+    1.  [Team Organization](#org4ec166d)
+    2.  [Contributions](#org024b5b4)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 
 
-<a id="orgf442834"></a>
+<a id="orgfe0e625"></a>
 
 # Introduction
 
 
-<a id="org6dc18f1"></a>
+<a id="org05442dd"></a>
 
 ## Implementation Language
 
@@ -44,43 +43,42 @@ more naturally (i.e. tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 
 
-<a id="org3ad19de"></a>
+<a id="orga98983a"></a>
 
 ## Tools
 
-For scanning, we use the program `Alex`, which is very similar to `flex`
-but produces `Haskell` code instead. Additionally, we use `Happy` for
-parsing, which resembles `bison/yacc`. `Alex` and `Happy` can be interlinked
-quite nicely, passing on useful information (encompassed
-through a state monad) like the line number, column number, character
-offset in file, and error messages (which can be propagated in a pure manner
+For scanning, we use the program `Alex`, which is similar to `flex`
+but produces `Haskell` code instead. We use `Happy` for parsing,
+which resembles `bison/yacc`. `Alex` and `Happy` can be interlinked
+nicely, passing on useful information (encompassed through a state monad)
+such as the line number, column number, character offset in file, and
+error messages (which are propagated in a pure manner
 without having to raise exceptions).
 
-There are several other good scanning/parsing options to use with
-Haskell, such as `Megaparsec`, however, we stuck with `Alex/Happy` because
-they are most similar to `flex/bison` that we learned in class and most
-of us were familiar with the syntax.
+There are several other good Haskell scanning/parsing options, such as
+`Megaparsec`. We decided on `Alex/Happy` because of their syntactic
+similarity to `flex/bison`, which we learned in class.
 
 We use `stack` to manage our Haskell project, including `GHC`, the
 respective projects and tests, additional tests which we implemented
 using the `hspec` package.
 
 
-<a id="orgfa47caa"></a>
+<a id="org3357b85"></a>
 
 ## Miscellaneous
 
 
-<a id="orgf4a87b8"></a>
+<a id="org5aedcbc"></a>
 
 ### Continuous Integration
 
-We use Travis CI to build our project on every push, as well as
-run our tests to make sure that new changes did not break any
+We use Travis CI to build our project on every push to GitHub, as well as
+run our tests to make sure that new changes did not break
 existing functionality.
 
 
-<a id="org67e3609"></a>
+<a id="orgf169035"></a>
 
 ### File Organization
 
@@ -98,81 +96,79 @@ existing functionality.
     -   Spec modules, each exposing a test suite
 
 
-<a id="orgb57ecd8"></a>
+<a id="org34360f8"></a>
 
 # Scanner
 
 The first step of this milestone was to scan user input into
-tokens. Most of the tokens we had to account for were straightforward
-and similar to the assignments. However, we had to encompass a few of
-the quirks/more complicated things relating to `GoLite` compared to
-something simple like `MiniLang`.
+tokens. Handing of most GoLite tokens was straightforward and
+similar to class assignments. In other cases, we had to deal with
+some of Go/GoLite's quirkiness when compared to something simple
+like `MiniLang`.
 
 
-<a id="org49a4115"></a>
+<a id="org5b44b6c"></a>
 
 ## Semicolon Insertion
 
-The first hurdle of scanning was semicolon insertion. To solve
-this, we use start codes in `Alex` and have special rules for
-certain states.
+Semicolon insertion was the first scanning hurdle. To solve
+this, we use start codes, a built in feature of `Alex`, and have
+special rules for certain states.
 
-If the last token we scanned was something
-that can take an optional semicolon, we enter the \(nl\) state, where
-encountering a newline would transform the newline into a
-semicolon. Scanning anything else (that isn't whitespace or otherwise
-ignored) returns the scanner to the default state (\(0\)), where
-newlines are just ignored.
+If the last token we scan is something that can take an optional
+semicolon, we enter the \(nl\) state, where newlines are transformed into
+semicolons after specific tokens. Scanning anything else (that isn't
+whitespace or otherwise ignored) returns the scanner to the default
+state (\(0\)), where newlines are just ignored.
 
-This seems to be an elegant solution, as we don't have to traverse
-the whole list or store context other than the start code, a
-built-in feature of `Alex`. It also makes a lot more sense to let
-the scanner handle these situations automatically rather than trying
-to handle them using the parser.
+This solution seems elegant, as we don't have to traverse
+the whole stream post-scanning or store context, other than the
+start code. It also makes sense to let the scanner handle these
+situations automatically, rather than trying to deal with them
+in the parsing phase.
 
 
-<a id="org70a767a"></a>
+<a id="org5e45781"></a>
 
 ## Block comment support
 
 Block comments cannot be easily scanned using only regular
 expressions. One potential solution was to use start codes again
-(changing state upon opening a comment), although that would
-potentially add a lot more states because we'd have to combine
-possibilities with the newline insertion state: (as block
-comments that span over newlines should also insert semicolons when
-they're optional). Another thing is that using a state approach
-made it harder to catch the error of an unclosed comment block.
+(changing state upon opening a comment). This was ruled out since
+it would potentially add a lot more start codes (i.e. states), as
+we'd have combinatorial possibilities with the newline insertion state
+(since block comments spanning newlines should also insert semicolons
+when they're optional). Using a state approach would also make it
+harder to catch unclosed comment block errors.
 
-In our implemented solution, we iterate through the scanner's input
-once we receive an open comment block and ignore everything until we
-close the block comment. If the comment never closes, we can easily
-emit an error.
+Our solution iterates through the scanner's input once we receive an
+open comment block and ignore everything until the comment is closed.
+If the comment never closes, we can easily emit an error.
 
 To account for semicolon insertion with block comments, we set a
 semicolon flag to true if we encounter any new line inside the
-block comment, and we insert a semicolon if the start code is
-\(nl\), the aforementioned newline insertion state.
+block comment, and we insert a semicolon if we're in the
+aforementioned newline insertion state.
 
 
-<a id="org20b78df"></a>
+<a id="org0a2c94b"></a>
 
 ### Adding newlines at the end of the file if they aren't present already
 
 `Go` requires a semicolon or newline at the end of function
 declarations. Sometimes, there may not be a newline at the end of
-a file, so no semicolon insertion occurs.
+a file, so no semicolon insertion occurs, resulting in a parsing error.
 
 In order to correct for this type of file, we enforce a final
 newline by appending one if necessary. To do this, the code string
-is preprocessed prior to scanning. This was the easiest solution
-as otherwise we'd have to try and insert a semicolon if we were in
+is preprocessed prior to scanning. This is the easiest solution,
+as otherwise we would have to try inserting a semicolon if we are in
 the \(nl\) state when we encounter an `EOF`, while also making sure
 to return an `EOF`. This would be difficult without additional
 context information.
 
 
-<a id="org28c79e1"></a>
+<a id="org020dbbf"></a>
 
 ## Nicer error messages
 
@@ -180,57 +176,66 @@ We decided to use `ErrorBundle` from `Megaparsec` in order to
 output nicer error messages, with program context for easier
 debugging from an end-user programming perspective:
 
-    Error: parsing error, unexpected ) at 5:22:                                                                
+    Error: parsing error, unexpected ) at 5:22:
       |
     5 | func abstract(a, b, c) {
       |                      ^
 
-While we did have access to character offset, line, and column when
-generating error messages, we did not have access to the entire
-source file string, as the default behaviour of the scanner is to not
-keep the entire string at each step.
+With `Alex`' default behaviour, we did not have access to the entire
+source file string, as it is not kept between steps.
 
 In order to generate the contextual message, we modified the `monad`
 wrapper provided with `Alex` (see `TokensBase.hs`) and changed the
 `Alex` monad to wrap over a `Either (String, Int) a` instead of
 `Either String a`, i.e. in addition to storing an error message on
 the left side of the monad we also carry an `Int` which represents
-the offset of the error, so that when we want to print the error
-message at the end we can append the part in the source file where
+the offset of the error. When we want to print the error
+message, we can then append the part in the source file where
 the error occurred.
 
 
-<a id="org49d3903"></a>
+<a id="orgb6738dc"></a>
 
 # Parser
 
 
-<a id="orgb664415"></a>
+<a id="org0e222ae"></a>
 
 ## Grammar
 
 Many of our difficulties in the grammar were associated with identifier and
-expression lists. Two constructs in the Go (and GoLite) spec are identifier
-lists, used in declarations and function signatures, and expression lists,
-used in assignment and function signatures. The grammar was refactored to
-avoid this problem by allowing identifier lists to become expression lists
-if needed in a way which avoided introducing other conflicts.
+expression lists, used in declarations/signatures and assignment/function
+calls respectively. The grammar was refactored to fix this by allowing
+identifier lists to become expression lists if needed, in a way which
+avoided introducing other conflicts.
 
-Another difficulty we had was with list ordering. LR parsers
+The first issue we encountered was with list ordering. LR parsers
 work more intuitively with rules that put the newly-created terminal
-after the recursively-expanding non-terminal However, since Haskell
+after the recursively-expanding non-terminal. However, since Haskell
 uses recursive lists defined in the opposite way, it is significantly
-faster to prepend items rather than append them. Although more
-performant, this prepending results in a reversed ordering, which
-must be handled after the list is 'complete'.
+more efficient to prepend items. This prepending results in a reversed
+ordering, which must be handled after the list is 'complete'.
 
-We initially wanted to avoid reversing the lists ourselves with each usage.
-However, adding an extra non terminal to manage reversals for each list made
-our generated module notably more complex and needlessly increased our
-grammar size, so we decided against it.
+Adding an extra non terminal to manage reversals for each list would
+needlessly increase our grammar and generated code size, so we decided
+against it as a solution. The solution we use is to differentiate
+lists containing at least one non-identifier expression (i.e. using either
+all non-identifiers, identifiers plus one non-identifier, or otherwise mixed
+lists, as grammar base cases) from lists of entirely identifiers. Then,
+the expression list non-terminal is allowed to yield either a mixed list
+or a pure identifier list depending on what is needed.
+
+Another caveat of how lists are handled in the grammar, again a
+compromise to prevent ambiguity, is that the actual grammar constructs
+that represent lists correspond to a list of size two or more, which
+doesn't exactly match the Go spec (where a list may be 0/1 or more,
+depending on the case). The actual single-item non-terminals are allowed
+to represent a list of size one when needed, meaning this disparity
+is resolved in the actual AST construct, which is closer to a direct
+representation of the Go / GoLite specifications.
 
 
-<a id="org7f912b0"></a>
+<a id="org89125a6"></a>
 
 ## AST
 
@@ -240,20 +245,23 @@ parts we don't support removed and additional parts for Golite added.
 In some cases, there are minor deviations from the CFG.
 
 
-<a id="org4819e63"></a>
+<a id="orgd60a6d3"></a>
 
 ### Accurate Type Representation
 
-We model our ast as accurately as possible, such that impossible
-states are forbidden. We lack any checks for compatible types at
-this stage, but we can match the definition for 'exactly one', 'one
-or more', and 'zero or one'. In cases like identifiers, a [list](https://golang.org/ref/spec#IdentifierList) is
-one or more (haskell `NonEmpty`), yet many locations make it
-optional. While a direct translation would be `Maybe (NonEmpty a)`,
-we choose to make it `[a]` as it makes more sense.
+We modeled our AST as close as possible to the actual Go and
+GoLite specs, to try and ensure that impossible states are inherently
+prevented by the Haskell type checker, reducing run-time errors.
+Although we don't have type-checking implemented at this milestone,
+we can use this technique to enforce definitions such as
+'exactly one', 'one or more', and 'zero or one'. This modeling is
+not always perfect. For example, a [list](https://golang.org/ref/spec#IdentifierList)
+of identifiers is 'one or more' (in Haskell, `NonEmpty`). Many locations
+make it optional. While a direct translation would be `Maybe (NonEmpty a)`,
+we choose to make it a possibly empty list `[a]` as it makes more sense.
 
 
-<a id="org75b36e4"></a>
+<a id="org931b04c"></a>
 
 ### Simplified Data Type Categories
 
@@ -262,27 +270,17 @@ purely to demonstrate precedence; they are in fact only used once
 in the specs, so we decide to merge them directly in our `ArithmOp`
 model. Several other instances exist.
 
-Given we created an AST vs a CST, we can further compact parts of
-the grammar. For instance, an if clause in the spec leads to an
-`IfStmt` grammar, whose `else` body is either a block (with
-surrounding braces) or another if statement (no surrounding
-braces). However, in our case, we don't need to model the braces,
-so we can treat the else body exclusively as `Stmt` vs `Either
-    Block IfStmt`.
+Given we are creating an AST, rather than a CST, we can further
+compact parts of the grammar. For instance, an `if` clause in the
+spec leads to an `IfStmt` construction, whose `else` body is either
+a block (with surrounding braces) or another `if` statement (no
+surrounding braces). In our case, we don't need to model the braces,
+so we can treat the `else` body exclusively as `Stmt` rather than
+the more verbose `Either Block IfStmt`. The grammar enforces that
+this `Stmt` is not any other type.
 
 
-<a id="org9639202"></a>
-
-### Format Preservation
-
-By design, our types for `int` and `string` specify whether they
-are hex/octal/dec or raw/interpreted respectively. We kept this
-information so that our pretty print would accurately represent
-the input, even though we can convert them all to a single type
-(eg dec and interpreted).
-
-
-<a id="orga4d23ba"></a>
+<a id="org648af27"></a>
 
 ### Structure Simplification
 
@@ -297,7 +295,7 @@ identifiers matches the number of values. This would have to be
 checked at a later stage
 
 
-<a id="orgcb096dc"></a>
+<a id="orge06f9fd"></a>
 
 ## Weeding
 
@@ -311,26 +309,39 @@ Each verifier returns an optional error, and we are able to map the results
 and return the first error, if any.
 
 
-<a id="org332dfb4"></a>
+<a id="orgf01140e"></a>
 
 # Pretty Printer
 
-TODO
+When creating our pretty printer, we chose a top down approach.
+Every node has the ability to output a list of strings, which makes
+it easier to format indentation. Each node is also only concerned
+with its respective subtree, and does not require context from its
+parent. We focused on aesthetics, focusing on proper spacing and
+alignments. In the case of expressions, we tried to add brackets
+sparingly, though further optimizations can be done down the road
+(a nested binary op does not always need brackets, if the order of
+precedence matches). To produce the full program, we simply join
+the list of strings in the full program, intercalated with new lines.
 
 
-<a id="orgb18ba63"></a>
+<a id="orgcbfd00e"></a>
 
 # Team
 
 
-<a id="org0819393"></a>
+<a id="org4ec166d"></a>
 
 ## Team Organization
 
-TODO
+We started the project by dividing the main components (scanner, parser,
+AST/weeding) among the three group members (Julian, David, and Allan
+respectively). We used GitHub's organization features, such as issues
+and pull requests/code reviews, extensively in order to keep track of
+design goals, report bugs, and keep code quality as high as possible.
 
 
-<a id="org9493526"></a>
+<a id="org024b5b4"></a>
 
 ## Contributions
 
