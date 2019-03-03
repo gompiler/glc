@@ -131,8 +131,11 @@ instance Prettify Stmt where
     where
       ss' =
         case se of
-          Just se' -> prettify (ss, se')
-          Nothing  -> prettify ss
+          Just se' -> prettify (ss, se') ++ " "
+          Nothing  ->
+            case ss of
+              EmptyStmt -> ""
+              _ -> prettify ss ++ "; "
   prettify' (For fc s) = ("for " ++ prettify fc ++ " {") : tab (prettify' s) ++ ["}"]
   prettify' (Break _) = ["break"]
   prettify' (Continue _) = ["continue"]
