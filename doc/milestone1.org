@@ -121,38 +121,33 @@ Error: parsing error, unexpected ) at 5:22:
 * Parser
 ** Grammar
    Many of our difficulties in the grammar were associated with identifier and
-   expression lists. Two constructs in the Go (and GoLite) spec are identifier
-   lists, used in declarations and function signatures, and expression lists,
-   used in assignment and function signatures. The grammar was refactored to
-   avoid this problem by allowing identifier lists to become expression lists
-   if needed in a way which avoided introducing other conflicts.
+   expression lists, used in declarations/signatures and assignment/function
+   calls respectively. The grammar was refactored to fix this by allowing
+   identifier lists to become expression lists if needed, in a way which
+   avoided introducing other conflicts.
 
-   Another difficulty we had was with list ordering. LR parsers
+   The first issue we encountered was with list ordering. LR parsers
    work more intuitively with rules that put the newly-created terminal
-   after the recursively-expanding non-terminal However, since Haskell
+   after the recursively-expanding non-terminal. However, since Haskell
    uses recursive lists defined in the opposite way, it is significantly
-   faster to prepend items rather than append them. Although more
-   performant, this prepending results in a reversed ordering, which
-   must be handled after the list is 'complete'.
+   more efficient to prepend items. This prepending results in a reversed
+   ordering, which must be handled after the list is 'complete'.
 
-   We initially wanted to avoid reversing the lists ourselves with each usage.
-   However, adding an extra non terminal to manage reversals for each list made
-   our generated module notably more complex and needlessly increased our
-   grammar size, so we decided against it.
-
-   Our exact solution was to differentiate between a list which contained at
-   least one non-identifier (i.e. either all non-identifiers, a list of
-   identifiers plus one non-identifier, or a mixed list as the grammar rule
-   base cases) and a list of entirely identifiers. Then, the expression list
-   non-terminal was allowed to yield either one of these mixed lists or a
-   pure identifier list.
+   Adding an extra non terminal to manage reversals for each list would
+   needlessly increase our grammar and generated code size, so we decided
+   against it as a solution. The solution we use is to differentiate
+   lists containing at least one non-identifier expression (i.e. using either
+   all non-identifiers, identifiers plus one non-identifier, or otherwise mixed
+   lists, as grammar base cases) from lists of entirely identifiers. Then,
+   the expression list non-terminal is allowed to yield either a mixed list
+   or a pure identifier list depending on what is needed.
 
    Another caveat of how lists are handled in the grammar, again a
    compromise to prevent ambiguity, is that the actual grammar constructs
    that represent lists correspond to a list of size two or more, which
    doesn't exactly match the Go spec (where a list may be 0/1 or more,
-   depending on the case). The actual single-item non-terminals in some
-   contexts / rules represent a list of size one. However, this disparity
+   depending on the case). The actual single-item non-terminals are allowed
+   to represent a list of size one when needed, meaning this disparity
    is resolved in the actual AST construct, which is closer to a direct
    representation of the Go / GoLite specifications.
 ** AST
