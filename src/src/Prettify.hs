@@ -6,12 +6,9 @@ module Prettify
   ) where
 
 import           Data
-import           Data.List          (dropWhileEnd, intercalate, intersperse,
-                                     null)
+import           Data.List          (intercalate, null)
 import           Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Maybe         as Maybe
-import           Data.Text          (strip)
-import           GHC.Unicode        (isSpace)
 import           Parser             (parse)
 
 checkPrettifyInvariance :: String -> Either String String
@@ -39,11 +36,11 @@ a `skipNewLine` [] = a
 (a:a') `skipNewLine` b = a : a' `skipNewLine` b
 
 -- | Joins last line of first list with first line of last list with a semicolon and space
-skipNewLineSemi :: [String] -> [String] -> [String]
-[] `skipNewLineSemi` a = a
-a `skipNewLineSemi` [] = a
-[a] `skipNewLineSemi` (b:b') = (a ++ "; " ++ b) : b'
-(a:a') `skipNewLineSemi` b = a : a' `skipNewLine` b
+-- skipNewLineSemi :: [String] -> [String] -> [String]
+-- [] `skipNewLineSemi` a = a
+-- a `skipNewLineSemi` [] = a
+-- [a] `skipNewLineSemi` (b:b') = (a ++ "; " ++ b) : b'
+-- (a:a') `skipNewLineSemi` b = a : a' `skipNewLine` b
 
 -- | Some prettified components span a single line
 -- In that case, we can implement prettify by default
@@ -57,16 +54,16 @@ class Prettify a where
   prettify' :: a -> [String]
 
 instance Prettify Identifier where
-  prettify (Identifier _ id) = id
+  prettify (Identifier _ ident) = ident
   prettify' = prettify''
 
 instance Prettify Identifiers where
-  prettify ids = commaJoin $ toList ids
+  prettify idents = commaJoin $ toList idents
   prettify' = prettify''
 
 instance Prettify Program where
-  prettify' Program {package = package, topLevels = topLevels} =
-    ("package " ++ package) : (topLevels >>= (("" :) . prettify'))
+  prettify' (Program package' topLevels') = 
+    ("package " ++ package') : (topLevels' >>= (("" :) . prettify'))
 
 instance Prettify TopDecl where
   prettify' (TopDecl decl)     = prettify' decl
@@ -79,26 +76,29 @@ instance Prettify Decl where
   prettify' (TypeDef defs)   = "type (" : tab (map prettify defs) ++ [")"]
 
 instance Prettify VarDecl' where
-  prettify (VarDecl' ids (Left (t, exprs))) = prettify ids ++ " " ++ prettify t ++ exprs'
+  prettify (VarDecl' idents (Left (t, exprs))) = prettify idents ++ " " ++ prettify t ++ exprs'
     where
       exprs' =
         if null exprs
           then ""
           else " = " ++ intercalate ", " (map prettify exprs)
-  prettify (VarDecl' ids (Right exprs)) = prettify ids ++ " = " ++ intercalate ", " (map prettify $ toList exprs)
+  prettify (VarDecl' idents (Right exprs)) = prettify idents ++ " = " ++ intercalate ", " (map prettify $ toList exprs)
   prettify' = prettify''
 
 instance Prettify TypeDef' where
-  prettify (TypeDef' id t) = prettify id ++ " " ++ prettify t
+  prettify (TypeDef' ident t) = prettify ident ++ " " ++ prettify t
   prettify' = prettify''
 
 instance Prettify FuncDecl where
-  prettify' (FuncDecl id sig body) =
-    ["func " ++ prettify id] `skipNewLine` (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
+  prettify' (FuncDecl ident sig body) =
+    ["func " ++ prettify ident] `skipNewLine` (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
 
 instance Prettify ParameterDecl where
-  prettify (ParameterDecl ids t) = prettify ids ++ " " ++ prettify t
+  prettify (ParameterDecl idents t) = prettify idents ++ " " ++ prettify t
   prettify' = prettify''
+  
+instance Prettify [ParameterDecl] where
+  prettify' params = prettify' $ Parameters params
 
 instance Prettify Parameters where
   prettify (Parameters params) = commaJoin params
@@ -114,7 +114,7 @@ instance Prettify SimpleStmt where
   prettify' (Increment _ e) = ["(" ++ prettify e ++ ")++"]
   prettify' (Decrement _ e) = ["(" ++ prettify e ++ ")--"]
   prettify' (Assign _ op e1 e2) = [prettify e1 ++ " " ++ prettify op ++ " " ++ prettify e2]
-  prettify' (ShortDeclare ids exprs) = [prettify ids ++ " := " ++ prettify exprs]
+  prettify' (ShortDeclare idents exprs) = [prettify idents ++ " := " ++ prettify exprs]
 
 instance Prettify Stmt where
   prettify' (BlockStmt stmts) = stmts >>= prettify'
@@ -151,6 +151,9 @@ instance Prettify (SimpleStmt, Expr) where
   prettify (EmptyStmt, e) = prettify e
   prettify (s, e)         = prettify s ++ "; " ++ prettify e
   prettify' = prettify''
+  
+instance Prettify [Expr] where
+  prettify' exprs = [intercalate ", " $ map prettify exprs]
 
 instance Prettify ForClause where
   prettify ForInfinite = ""
@@ -237,8 +240,8 @@ instance Prettify Type where
   prettify' (StructType fdls) = "struct {" : tab (fdls >>= prettify') ++ ["}"]
   prettify' (SliceType t)     = ["[]" ++ prettify t]
   prettify' (FuncType s)      = ["func" ++ prettify s]
-  prettify' (Type id)         = [prettify id]
+  prettify' (Type ident)         = [prettify ident]
 
 --  prettify s@StructType {} = intercalate "; " $ prettify' s
 instance Prettify FieldDecl where
-  prettify' (FieldDecl ids t) = [prettify ids] `skipNewLine` prettify' t
+  prettify' (FieldDecl idents t) = [prettify idents] `skipNewLine` prettify' t

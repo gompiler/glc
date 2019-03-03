@@ -3,10 +3,13 @@
 module Examples where
 
 import           NeatInterpolation
+import Data.Text.Internal (Text)
 
+intExamples :: [String]
 intExamples =
   ["0", "1", "-123", "1234567890", "42", "0600", "0xBadFace", "000", "170141183460469231731687303715884105727"]
 
+floatExamples :: [String]
 floatExamples =
   [ ".1234567890"
   , "0."
@@ -23,8 +26,10 @@ floatExamples =
   , "12345"
   ]
 
+runeExamples :: [String]
 runeExamples = ["a", "b", "c", "\\a", "\\b", "\\f", "\\n", "\\r", "\\t", "\\v", "\\\\", "\\'", "\""]
 
+topDeclExamples :: [Text]
 topDeclExamples =
   [ [text|
     type bb struct {
@@ -42,6 +47,7 @@ topDeclExamples =
     |]
   ]
 
+stmtExamples :: [Text]
 stmtExamples =
   [ [text|
     if bool {
@@ -61,6 +67,7 @@ stmtExamples =
     |]
   ]
 
+programExamples :: [Text]
 programExamples =
   [ [text|package small|]
   , [text|

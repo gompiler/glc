@@ -118,14 +118,6 @@ genSemiI =
     , genRString
     ]
 
-instance SpecBuilder (String, [InnerToken]) where
-  expectation (input, expected) =
-    it (show $ lines input) $ scanT input `shouldBe` Right expected
-
-instance SpecBuilder (String, String) where
-  expectation (input, failure) =
-    it (show $ lines input) $ scanT input `shouldBe` Left failure
-
 --scanInputs = sndConvert Right scanSuccess ++ sndConvert Left scanFailure
 scanSuccess :: [(String, [InnerToken])]
 scanSuccess =

@@ -236,7 +236,7 @@ alexMonadScan = do
   sc <- alexGetStartCode
   case alexScan inp__ sc of
     AlexEOF -> alexEOF
-    AlexError (AlexPn o line column, prev, _, s) -> errGenL o
+    AlexError (AlexPn o _ _, _, _, _) -> errGenL o
     AlexSkip inp__' _len -> do
       alexSetInput inp__'
       alexMonadScan

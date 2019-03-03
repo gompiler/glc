@@ -2,9 +2,6 @@ module Weeding
   ( weed
   ) where
 
-import           Data.List.NonEmpty  (NonEmpty (..))
-import qualified Data.List.NonEmpty  as NonEmpty
-
 import           Control.Applicative
 import           Data
 import           Data.Maybe          as Maybe

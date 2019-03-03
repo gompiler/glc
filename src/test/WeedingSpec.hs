@@ -9,8 +9,6 @@ module WeedingSpec
 
 import           Base
 import           Data
-import           Data.Functor ((<&>))
-import           Debug.Trace  (trace)
 import           Weeding
 
 expectWeedPass :: Stringable s => [s] -> SpecWith ()

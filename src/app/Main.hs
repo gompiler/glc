@@ -24,3 +24,4 @@ main = do
         PrettyInvar -> either putExit (const $ putSucc "OK") . checkPrettifyInvariance
         Symbol -> const $ putStrLn "symbol not yet implemented"
         Typecheck -> const $ putStrLn "typecheck not yet implemented"
+        Codegen -> const $ putExit "codegen called without filename" -- This should never happen because of case above
