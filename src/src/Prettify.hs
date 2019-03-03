@@ -81,8 +81,7 @@ instance Prettify VarDecl' where
   prettify' = prettify''
 
 instance Prettify TypeDef' where
-  prettify (TypeDef' ident t) = prettify ident ++ " " ++ prettify t
-  prettify' = prettify''
+  prettify' (TypeDef' id t) = prettify' id `skipNewLine` prettify' t
 
 instance Prettify FuncDecl where
   prettify' (FuncDecl ident sig body) =
