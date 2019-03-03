@@ -39,7 +39,14 @@ spec = do
     ["a, b", "a, b, c, d, e"]
   expectFail @Identifiers ["", ",", "a,", ",b", "a,,c", "0"]
   expectPass @Type' ["asdf", "int", "a0", "_0a"]
-  expectFail @Type' ["0", "-", "*"]
+  expectFail
+    @Type'
+    [ "0"
+    , "-"
+    , "*"
+    -- TODO FullParser
+    -- int int
+    ]
   expectPass
     @TopDecl
     -- Basic
@@ -111,6 +118,9 @@ spec = do
     , "a[[]"
     -- One char only in rune
     , "'aa'"
+    --    , "090"
+    --    , "0xG"
+    --    , "00x0"
     ]
   expectPass @Stmt $
     [ "{}"
@@ -146,8 +156,6 @@ spec = do
     blankExpr = Var $ Identifier o "temp"
     blankStmt = blank
 
---    , "(a int) int int"
---    , "int int"
 programMain :: [(String, FuncBody)]
 programMain = [("", BlockStmt [])]
 
