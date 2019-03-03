@@ -29,8 +29,10 @@ spec = do
   expectPrettyInvar @Stmt stmtExamples
   expectPrettyInvar @Program programExamples
   expectPrettyExact
-    @TopDecl
+    @Program
     [ [text|
+      package top
+
       type (
         num int
         point struct {
@@ -39,13 +41,28 @@ spec = do
             x, y float64
           }
         }
+        a []b
+        c [2]d
       )
-      |]
-    , [text|
+
+      type a int
+
       var (
         a, b = 2, 3
         c string
       )
+
+      var a string
+
+      |]
+    , [text|
+      package f
+
+      func f() {
+      }
+
+      func fs(a, b int) int {
+      }
       |]
     ]
 
