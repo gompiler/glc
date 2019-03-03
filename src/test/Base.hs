@@ -26,7 +26,8 @@ module Base
   , module Test.QuickCheck
   , toRetL
   , qcGen
-  , scanToP
+  , Parser.parsef
+  , Parser.parsefNL
   ) where
 
 import           Control.Applicative
@@ -41,9 +42,9 @@ import           ErrorBundle
 import           NeatInterpolation
 import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
                                       pStmt, pT, pTDecl)
-import qualified Parser              (parse)
+import qualified Parser              (parse, parsef, parsefNL, hparse)
 import           Prettify
-import           Scanner             (Alex (..), runAlex, errODef)
+import           Scanner             (Alex (..), runAlex', errODef)
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -161,7 +162,7 @@ instance Parsable Program where
 
 instance Parsable Stmt where
   tag = "stmt"
-  parse' = scanToP pStmt
+  parse' = Parser.parsefNL pStmt
   placeholder = blank
   expectPass = expectPassBase (tag @Stmt) (parse @Stmt)
   expectFail = expectFailBase (tag @Stmt) (parse @Stmt)
@@ -170,7 +171,7 @@ instance Parsable Stmt where
 
 instance Parsable TopDecl where
   tag = "topDecl"
-  parse' = scanToP pTDecl
+  parse' = Parser.parsefNL pTDecl
   placeholder = TopDecl $ VarDecl [placeholder]
   expectPass = expectPassBase (tag @TopDecl) (parse @TopDecl)
   expectFail = expectFailBase (tag @TopDecl) (parse @TopDecl)
@@ -179,7 +180,7 @@ instance Parsable TopDecl where
 
 instance Parsable Signature where
   tag = "signature"
-  parse' = scanToP pSig
+  parse' = Parser.parsef pSig
   placeholder = Signature (Parameters placeholder) Nothing
   expectPass = expectPassBase (tag @Signature) (parse @Signature)
   expectFail = expectFailBase (tag @Signature) (parse @Signature)
@@ -188,7 +189,7 @@ instance Parsable Signature where
 
 instance Parsable [ParameterDecl] where
   tag = "parameterDecls"
-  parse' = scanToP pPar
+  parse' = Parser.parsef pPar
   placeholder = [ParameterDecl placeholder placeholder]
   expectPass = expectPassBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
   expectFail = expectFailBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
@@ -200,7 +201,7 @@ instance Prettify [ParameterDecl] where
 
 instance Parsable Type' where
   tag = "type"
-  parse' = scanToP pT
+  parse' = Parser.parsef pT
   placeholder = (o, Type $ Identifier o "temp")
   expectPass = expectPassBase (tag @Type') (parse @Type')
   expectFail = expectFailBase (tag @Type') (parse @Type')
@@ -209,7 +210,7 @@ instance Parsable Type' where
 
 instance Parsable Decl where
   tag = "decl"
-  parse' = scanToP pDec
+  parse' = Parser.parsef pDec
   placeholder = VarDecl [placeholder]
   expectPass = expectPassBase (tag @Decl) (parse @Decl)
   expectFail = expectFailBase (tag @Decl) (parse @Decl)
@@ -218,7 +219,7 @@ instance Parsable Decl where
 
 instance Parsable [Expr] where
   tag = "exprs"
-  parse' = scanToP pEl
+  parse' = Parser.parsef pEl
   placeholder = [placeholder]
   expectPass = expectPassBase (tag @[Expr]) (parse @[Expr])
   expectFail = expectFailBase (tag @[Expr]) (parse @[Expr])
@@ -230,7 +231,7 @@ instance Prettify [Expr] where
 
 instance Parsable Expr where
   tag = "expr"
-  parse' = scanToP pE
+  parse' = Parser.parsef pE
   placeholder = Lit $ StringLit o Raw "`temp`"
   expectPass = expectPassBase (tag @Expr) (parse @Expr)
   expectFail = expectFailBase (tag @Expr) (parse @Expr)
@@ -239,7 +240,7 @@ instance Parsable Expr where
 
 instance Parsable VarDecl' where
   tag = "varDecl"
-  parse' = scanToP pIDecl
+  parse' = Parser.parsef pIDecl
   placeholder = VarDecl' placeholder (Right $ placeholder :| [])
   expectPass = expectPassBase (tag @VarDecl') (parse @VarDecl')
   expectFail = expectFailBase (tag @VarDecl') (parse @VarDecl')
@@ -248,15 +249,12 @@ instance Parsable VarDecl' where
 
 instance Parsable Identifiers where
   tag = "ids"
-  parse' s = fromList . reverse <$> scanToP pId s
+  parse' s = fromList . reverse <$> Parser.parsef pId s
   placeholder = Identifier o "temp" :| []
   expectPass = expectPassBase (tag @Identifiers) (parse @Identifiers)
   expectFail = expectFailBase (tag @Identifiers) (parse @Identifiers)
   expectAst = expectAstBase (tag @Identifiers)
   expectPrettyInvar = expectPrettyInvarBase (tag @Identifiers) (parse @Identifiers)
-
-scanToP :: (Show a, Eq a) => Alex a -> (String -> Either String a)
-scanToP f s = either (Left . errODef s) Right (runAlex s f)
 
 pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
 pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))

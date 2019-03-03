@@ -27,11 +27,11 @@ spec = do
       "ident list"
       False
       (genCommaList T.genId)
-      (\x -> scanToP pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
+      (\x -> parsef pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
-    qcGen "basic expressions" False genEBase (\(s, out) -> scanToP pE s == Right out)
-    qcGen "binary expressions" False genEBin (\(s, out) -> scanToP pE s == Right out)
-    qcGen "unary expressions" False genEUn (\(s, out) -> scanToP pE s == Right out)
+    qcGen "basic expressions" False genEBase (\(s, out) -> parsef pE s == Right out)
+    qcGen "binary expressions" False genEBin (\(s, out) -> parsef pE s == Right out)
+    qcGen "unary expressions" False genEUn (\(s, out) -> parsef pE s == Right out)
   -- Though a single identifier is valid, we parse it without going through the identifiers type
   expectPass
     @Identifiers
@@ -120,7 +120,7 @@ spec = do
     , "a++"
     , "b--"
     , "c := 2"
-    , "c := 2;; (a + b)++"
+    -- , "c := 2; (a + b)++"
     , "if a { c++ \n}"
     , "if a := 2; b { } else if 0 < 1 { c-- \n}"
     ] ++
