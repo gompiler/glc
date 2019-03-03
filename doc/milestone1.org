@@ -10,18 +10,17 @@ whilst implementing the components for milestone 1.
    more naturally (i.e. tree traversal, recursing over self defined
    structures, enforcing types, etc.).
 ** Tools
-   For scanning, we use the program ~Alex~, which is very similar to ~flex~
-   but produces ~Haskell~ code instead. Additionally, we use ~Happy~ for
-   parsing, which resembles ~bison/yacc~. ~Alex~ and ~Happy~ can be interlinked
-   quite nicely, passing on useful information (encompassed
-   through a state monad) like the line number, column number, character
-   offset in file, and error messages (which can be propagated in a pure manner
+   For scanning, we use the program ~Alex~, which is similar to ~flex~
+   but produces ~Haskell~ code instead. We use ~Happy~ for parsing,
+   which resembles ~bison/yacc~. ~Alex~ and ~Happy~ can be interlinked
+   nicely, passing on useful information (encompassed through a state monad)
+   such as the line number, column number, character offset in file, and
+   error messages (which are propagated in a pure manner
    without having to raise exceptions).
 
-   There are several other good scanning/parsing options to use with
-   Haskell, such as ~Megaparsec~, however, we stuck with ~Alex/Happy~ because
-   they are most similar to ~flex/bison~ that we learned in class and most
-   of us were familiar with the syntax.
+   There are several other good Haskell scanning/parsing options, such as
+   ~Megaparsec~. We decided on ~Alex/Happy~ because of their syntactic
+   similarity to ~flex/bison~, which we learned in class.
 
    We use ~stack~ to manage our Haskell project, including ~GHC~, the
    respective projects and tests, additional tests which we implemented
