@@ -86,6 +86,7 @@ expectBase suffix expectation' title name inputs =
   where
     expect input = it (show $ lines $ title input) $ expectation' input
 
+-- | Expects that input parses with some ast
 expectPassBase ::
      (Parsable a, Stringable s)
   => String
@@ -106,6 +107,7 @@ expectPassBase tag' parse'' -- Put ' to not overshadow variables from class defi
     toString
     tag'
 
+-- | Expects that input parses with some error
 expectFailBase ::
      (Parsable a, Stringable s)
   => String
