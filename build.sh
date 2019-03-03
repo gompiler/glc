@@ -8,7 +8,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 csstack="/usr/local/pkgs/haskell/stack-1.9.3-linux-x86_64"
 
 # If first arg is loc or local (casing does not matter), compile locally without specifying trottier args
-if [ -d "$csstack" ] && [ -d "/mnt/local"]
+if [ -d "$csstack" ] && [ -d "/mnt/local" ]
 then
     PATH=$csstack:$PATH
     STACK_ROOT=/mnt/local
