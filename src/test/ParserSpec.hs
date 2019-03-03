@@ -128,6 +128,12 @@ spec = do
              (Arithm Multiply)
              (Lit (IntLit o Decimal "2"))
              (Lit (IntLit o Decimal "4"))))
+    , ( "-2 ^ 5"
+      , Binary
+          o
+          (Arithm BitXor)
+          (Unary o Neg (Lit (IntLit o Decimal "2")))
+          (Lit (IntLit o Decimal "5")))
     ]
   expectFail
     @Expr
@@ -176,22 +182,6 @@ spec = do
       |]
     ]
 
--- programMain :: [(String, FuncBody)]
--- programMain = [("", BlockStmt [])]
--- programMainL :: [(String, String)]
--- programMainL = [("", ""), ("var a = !!!!!! false;", "")]
--- programE :: [(String, Program)]
--- programE =
---   map
---     (\(s, body) ->
---        ( "package main; func main(){" ++ s ++ "}"
---        , Program
---            { package = "main"
---            , topLevels = [TopFuncDecl (FuncDecl (Identifier o "main") (Signature (Parameters []) Nothing) body)]
---            }))
---     programMain
--- programEL :: [(String, String)]
--- programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
 genCommaList ::
      Gen String -- ^ What we will be comma separating
   -> Gen String
