@@ -39,14 +39,7 @@ spec = do
     ["a, b", "a, b, c, d, e"]
   expectFail @Identifiers ["", ",", "a,", ",b", "a,,c", "0"]
   expectPass @Type' ["asdf", "int", "a0", "_0a"]
-  expectFail
-    @Type'
-    [ "0"
-    , "-"
-    , "*"
-    -- TODO FullParser
-    -- int int
-    ]
+  expectFail @Type' ["0", "-", "*", "int int"]
   expectPass
     @TopDecl
     -- Basic

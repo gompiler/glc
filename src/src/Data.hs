@@ -123,13 +123,12 @@ data SimpleStmt
   -- Note that expr must be some function
   | ExprStmt Expr
   -- | See https://golang.org/ref/spec#IncDecStmt
-  -- TODO check if we want to split these or add a new field for inc and dec
   | Increment Offset
               Expr
   | Decrement Offset
               Expr
   -- | See https://golang.org/ref/spec#Assignments
-  -- TODO confirm that expression lists should be equal
+  -- Lists should be equal, but verification is left for a later phase.
   | Assign Offset
            AssignOp
            (NonEmpty Expr)
@@ -225,7 +224,6 @@ data ForClause
 -- | See https://golang.org/ref/spec#Expression
 -- Note that we don't care about parentheses here;
 -- We can infer them from the AST
--- TODO support slices? index?
 data Expr
   = Unary Offset
           UnaryOp
