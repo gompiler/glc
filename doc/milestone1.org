@@ -22,9 +22,8 @@ whilst implementing the components for milestone 1.
    ~Megaparsec~. We decided on ~Alex/Happy~ because of their syntactic
    similarity to ~flex/bison~, which we learned in class.
 
-   We use ~stack~ to manage our Haskell project, including ~GHC~, the
-   respective projects and tests, additional tests which we implemented
-   using the ~hspec~ package.
+   We use ~stack~ to manage our Haskell project and corresponding tests.
+   We implemented additional tests using the ~hspec~ package.
 ** Miscellaneous
 *** Continuous Integration
     We use Travis CI to build our project on every push to GitHub, as well as
@@ -108,11 +107,10 @@ Error: parsing error, unexpected ) at 5:22:
 #+END_SRC
 
    With ~Alex~' default behaviour, we did not have access to the entire
-   source file string, as it is not kept between steps.
-
-   In order to generate the contextual message, we modified the ~monad~
-   wrapper provided with ~Alex~ (see ~TokensBase.hs~) and changed the
-   ~Alex~ monad to wrap over a ~Either (String, Int) a~ instead of
+   source file string, as it is not kept between steps. In order to
+   generate the contextual message, we modified the ~monad~ wrapper
+   provided with ~Alex~ (see ~TokensBase.hs~) and changed the ~Alex~
+   monad to wrap over a ~Either (String, Int) a~ instead of
    ~Either String a~, i.e. in addition to storing an error message on
    the left side of the monad we also carry an ~Int~ which represents
    the offset of the error. When we want to print the error
@@ -153,7 +151,6 @@ Error: parsing error, unexpected ) at 5:22:
 ** AST
    The AST is largely a one to one mapping of the Golang specs, with
    parts we don't support removed and additional parts for Golite added.
-
    In some cases, there are minor deviations from the CFG.
 *** Accurate Type Representation
     We modeled our AST as close as possible to the actual Go and
@@ -188,8 +185,7 @@ Error: parsing error, unexpected ) at 5:22:
     other words, ~var ( a = 2 )~ would become ~var a = 2~. Note that
     we cannot further simplify group declarations ~var ( a, b = 2,
     3)~, as there is no guarantee at this stage that the number of
-    identifiers matches the number of values. This would have to be
-    checked at a later stage
+    identifiers matches the number of values.
 ** Weeding
     In our first stage, our weeding operations are simple, and don't rely
     on context outside of the statement we are verifying. As a result,
@@ -214,9 +210,9 @@ Error: parsing error, unexpected ) at 5:22:
 ** Team Organization
    We started the project by dividing the main components (scanner, parser,
    AST/weeding) among the three group members (Julian, David, and Allan
-   respectively). We used GitHub's organization features, such as issues
-   and pull requests/code reviews, extensively in order to keep track of
-   design goals, report bugs, and keep code quality as high as possible.
+   respectively). We used GitHub's organization features extensively in
+   order to keep track of design goals, report bugs, and keep code quality
+   as high as possible.
 ** Contributions
 - *Julian Lore:* Wrote the majority of the scanner and handled weird
    cases, wrote a large amount of valid/invalid programs, implemented
