@@ -155,12 +155,12 @@ expectPrettyInvarBase tag' parse'' =
   expectBase
     "pretty invar"
     (\s ->
-       case multiPass $ toString s of
-         Left err ->
-           expectationFailure $
-           "Invalid prettify for:\n\n" ++
-           toString s ++ "\n\nfailed with\n\n" ++ err
-         Right _ -> return ())
+       let s' = toString s
+        in case multiPass s' of
+             Left err ->
+               expectationFailure $
+               "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
+             Right p -> return ())
     toString
     tag'
   where
