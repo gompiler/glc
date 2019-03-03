@@ -1,4 +1,4 @@
-% Created 2019-03-02 Sat 20:54
+% Created 2019-03-02 Sat 21:20
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -14,7 +14,7 @@
 \usepackage{amssymb}
 \usepackage{capt-of}
 \usepackage{hyperref}
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=0.9in]{geometry}
 \author{Lore, J., Lougheed D., Wang A.}
 \date{\today}
 \title{Design Document for Milestone 1}
@@ -33,15 +33,15 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 \section{Introduction}
-\label{sec:org5f44748}
+\label{sec:orgde16c5b}
 \subsection{Implementation Language}
-\label{sec:org3be57f2}
+\label{sec:orgefcd8e3}
 For our \texttt{GoLite} compiler, we decided to use \texttt{Haskell} as the
 implementation language, as many of the required tasks can be done
 more naturally (i.e. tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 \subsection{Tools}
-\label{sec:orgea9bd18}
+\label{sec:org9ee18de}
 For scanning, we use the program \texttt{Alex}, which is similar to \texttt{flex}
 but produces \texttt{Haskell} code instead. We use \texttt{Happy} for parsing,
 which resembles \texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be interlinked
@@ -54,18 +54,17 @@ There are several other good Haskell scanning/parsing options, such as
 \texttt{Megaparsec}. We decided on \texttt{Alex/Happy} because of their syntactic
 similarity to \texttt{flex/bison}, which we learned in class.
 
-We use \texttt{stack} to manage our Haskell project, including \texttt{GHC}, the
-respective projects and tests, additional tests which we implemented
-using the \texttt{hspec} package.
+We use \texttt{stack} to manage our Haskell project and corresponding tests.
+We implemented additional tests using the \texttt{hspec} package.
 \subsection{Miscellaneous}
-\label{sec:org0ed74dd}
+\label{sec:orgc315ac5}
 \subsubsection{Continuous Integration}
-\label{sec:org94e4013}
+\label{sec:org4793bbe}
 We use Travis CI to build our project on every push to GitHub, as well as
 run our tests to make sure that new changes did not break
 existing functionality.
 \subsubsection{File Organization}
-\label{sec:orgb7ecf58}
+\label{sec:org9c46021}
 \begin{itemize}
 \item \texttt{src/}
 \begin{itemize}
@@ -89,14 +88,14 @@ function we want)
 \end{itemize}
 \end{itemize}
 \section{Scanner}
-\label{sec:org82329f8}
+\label{sec:orge169f0d}
 The first step of this milestone was to scan user input into
 tokens. Handing of most GoLite tokens was straightforward and
 similar to class assignments. In other cases, we had to deal with
 some of Go/GoLite's quirkiness when compared to something simple
 like \texttt{MiniLang}.
 \subsection{Semicolon Insertion}
-\label{sec:org072a17d}
+\label{sec:orgfb82096}
 Semicolon insertion was the first scanning hurdle. To solve
 this, we use start codes, a built in feature of \texttt{Alex}, and have
 special rules for certain states.
@@ -113,7 +112,7 @@ start code. It also makes sense to let the scanner handle these
 situations automatically, rather than trying to deal with them
 in the parsing phase.
 \subsection{Block comment support}
-\label{sec:org1474253}
+\label{sec:orgb87d6b8}
 Block comments cannot be easily scanned using only regular
 expressions. One potential solution was to use start codes again
 (changing state upon opening a comment). This was ruled out since
@@ -132,7 +131,7 @@ semicolon flag to true if we encounter any new line inside the
 block comment, and we insert a semicolon if we're in the
 aforementioned newline insertion state.
 \subsubsection{Adding newlines at the end of the file if they aren't present already}
-\label{sec:orgc64542b}
+\label{sec:org7df6806}
 \texttt{Go} requires a semicolon or newline at the end of function
 declarations. Sometimes, there may not be a newline at the end of
 a file, so no semicolon insertion occurs, resulting in a parsing error.
@@ -145,7 +144,7 @@ the \(nl\) state when we encounter an \texttt{EOF}, while also making sure
 to return an \texttt{EOF}. This would be difficult without additional
 context information.
 \subsection{Nicer error messages}
-\label{sec:org78ee27c}
+\label{sec:org7ebc86d}
 We decided to use \texttt{ErrorBundle} from \texttt{Megaparsec} in order to
 output nicer error messages, with program context for easier
 debugging from an end-user programming perspective:
@@ -158,20 +157,19 @@ Error: parsing error, unexpected ) at 5:22:
 \end{verbatim}
 
 With \texttt{Alex}' default behaviour, we did not have access to the entire
-source file string, as it is not kept between steps.
-
-In order to generate the contextual message, we modified the \texttt{monad}
-wrapper provided with \texttt{Alex} (see \texttt{TokensBase.hs}) and changed the
-\texttt{Alex} monad to wrap over a \texttt{Either (String, Int) a} instead of
+source file string, as it is not kept between steps. In order to
+generate the contextual message, we modified the \texttt{monad} wrapper
+provided with \texttt{Alex} (see \texttt{TokensBase.hs}) and changed the \texttt{Alex}
+monad to wrap over a \texttt{Either (String, Int) a} instead of
 \texttt{Either String a}, i.e. in addition to storing an error message on
 the left side of the monad we also carry an \texttt{Int} which represents
 the offset of the error. When we want to print the error
 message, we can then append the part in the source file where
 the error occurred.
 \section{Parser}
-\label{sec:org30b4d1b}
+\label{sec:org80fc7ec}
 \subsection{Grammar}
-\label{sec:org5699611}
+\label{sec:orgf1b94d1}
 Many of our difficulties in the grammar were associated with identifier and
 expression lists, used in declarations/signatures and assignment/function
 calls respectively. The grammar was refactored to fix this by allowing
@@ -203,13 +201,12 @@ to represent a list of size one when needed, meaning this disparity
 is resolved in the actual AST construct, which is closer to a direct
 representation of the Go / GoLite specifications.
 \subsection{AST}
-\label{sec:org7cb496b}
+\label{sec:org40e027a}
 The AST is largely a one to one mapping of the Golang specs, with
 parts we don't support removed and additional parts for Golite added.
-
 In some cases, there are minor deviations from the CFG.
 \subsubsection{Accurate Type Representation}
-\label{sec:org5d45f0a}
+\label{sec:orgc321dba}
 We modeled our AST as close as possible to the actual Go and
 GoLite specs, to try and ensure that impossible states are inherently
 prevented by the Haskell type checker, reducing run-time errors.
@@ -221,7 +218,7 @@ of identifiers is 'one or more' (in Haskell, \texttt{NonEmpty}). Many locations
 make it optional. While a direct translation would be \texttt{Maybe (NonEmpty a)},
 we choose to make it a possibly empty list \texttt{[a]} as it makes more sense.
 \subsubsection{Simplified Data Type Categories}
-\label{sec:org49190a9}
+\label{sec:orgc001d88}
 Some splits, such as \texttt{add\_op} and \texttt{mul\_op} are distinguished
 purely to demonstrate precedence; they are in fact only used once
 in the specs, so we decide to merge them directly in our \texttt{ArithmOp}
@@ -236,7 +233,7 @@ so we can treat the \texttt{else} body exclusively as \texttt{Stmt} rather than
 the more verbose \texttt{Either Block IfStmt}. The grammar enforces that
 this \texttt{Stmt} is not any other type.
 \subsubsection{Structure Simplification}
-\label{sec:org195d7ab}
+\label{sec:orgb239424}
 For \texttt{var} and \texttt{type} declaration, we make no distinction between
 single declaration (exactly one) and block declaration (0 or
 more). Unlike types, which produce different formats, we decide to
@@ -244,20 +241,25 @@ enforce all declarations of one var to be single declaration. In
 other words, \texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note that
 we cannot further simplify group declarations \texttt{var ( a, b = 2,
     3)}, as there is no guarantee at this stage that the number of
-identifiers matches the number of values. This would have to be
-checked at a later stage
+identifiers matches the number of values.
 \subsection{Weeding}
-\label{sec:orga241a99}
-In our first stage, our weeding operations are simple, and don't rely
-on context outside of the statement we are verifying. As a result,
-we were able to define recursive traversal methods to verify relevant
-statements, and create verifiers that validate at a single level.
-Haskell helped immensely here, as we were able to use pattern matching
-to produce performant and independent functions.
-Each verifier returns an optional error, and we are able to map the results
-and return the first error, if any.
+\label{sec:org7efb4b0}
+Most of the weeding operations needed are simple and don't rely
+on external context. As a result, we were able to define recursive
+traversal methods to verify relevant statements, and create verifiers
+that validate at a single level. Haskell helped immensely here, as
+we were able to use pattern matching to produce performant and
+independent functions.
+
+For verification where statement context was important (\texttt{break} and
+\texttt{continue}) we made a simple modification to the recursive traversal
+to avoid exploring scopes under \texttt{for} or \texttt{switch} statements
+where applicable.
+
+Each verifier returns an optional error, and we are able to map the
+results and return the first error, if any.
 \section{Pretty Printer}
-\label{sec:org5fbc631}
+\label{sec:org9b0b4e9}
 When creating our pretty printer, we chose a top down approach.
 Every node has the ability to output a list of strings, which makes
 it easier to format indentation. Each node is also only concerned
@@ -269,16 +271,16 @@ sparingly, though further optimizations can be done down the road
 precedence matches). To produce the full program, we simply join
 the list of strings in the full program, intercalated with new lines.
 \section{Team}
-\label{sec:org5bccf93}
+\label{sec:orgf1d5995}
 \subsection{Team Organization}
-\label{sec:orgf24c344}
+\label{sec:org62c171d}
 We started the project by dividing the main components (scanner, parser,
 AST/weeding) among the three group members (Julian, David, and Allan
-respectively). We used GitHub's organization features, such as issues
-and pull requests/code reviews, extensively in order to keep track of
-design goals, report bugs, and keep code quality as high as possible.
+respectively). We used GitHub's organization features extensively in
+order to keep track of design goals, report bugs, and keep code quality
+as high as possible.
 \subsection{Contributions}
-\label{sec:orgf509078}
+\label{sec:orgc33910c}
 \begin{itemize}
 \item \textbf{Julian Lore:} Wrote the majority of the scanner and handled weird
 cases, wrote a large amount of valid/invalid programs, implemented

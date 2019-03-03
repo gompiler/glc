@@ -1,39 +1,39 @@
 
 # Table of Contents
 
-1.  [Introduction](#orgfe0e625)
-    1.  [Implementation Language](#org05442dd)
-    2.  [Tools](#orga98983a)
-    3.  [Miscellaneous](#org3357b85)
-        1.  [Continuous Integration](#org5aedcbc)
-        2.  [File Organization](#orgf169035)
-2.  [Scanner](#org34360f8)
-    1.  [Semicolon Insertion](#org5b44b6c)
-    2.  [Block comment support](#org5e45781)
-        1.  [Adding newlines at the end of the file if they aren't present already](#org0a2c94b)
-    3.  [Nicer error messages](#org020dbbf)
-3.  [Parser](#orgb6738dc)
-    1.  [Grammar](#org0e222ae)
-    2.  [AST](#org89125a6)
-        1.  [Accurate Type Representation](#orgd60a6d3)
-        2.  [Simplified Data Type Categories](#org931b04c)
-        3.  [Structure Simplification](#org648af27)
-    3.  [Weeding](#orge06f9fd)
-4.  [Pretty Printer](#orgf01140e)
-5.  [Team](#orgcbfd00e)
-    1.  [Team Organization](#org4ec166d)
-    2.  [Contributions](#org024b5b4)
+1.  [Introduction](#org3bdaaf7)
+    1.  [Implementation Language](#org7796246)
+    2.  [Tools](#orgebe28ba)
+    3.  [Miscellaneous](#org7e166ea)
+        1.  [Continuous Integration](#org20de171)
+        2.  [File Organization](#orgc0f2070)
+2.  [Scanner](#orgaa30932)
+    1.  [Semicolon Insertion](#org0c0bd52)
+    2.  [Block comment support](#org9749c8a)
+        1.  [Adding newlines at the end of the file if they aren't present already](#org8a116b4)
+    3.  [Nicer error messages](#org7c92d7c)
+3.  [Parser](#orgceafe0c)
+    1.  [Grammar](#orgfe6ad3f)
+    2.  [AST](#orgaa53a59)
+        1.  [Accurate Type Representation](#orgdb05d65)
+        2.  [Simplified Data Type Categories](#org0f52be7)
+        3.  [Structure Simplification](#org25fe917)
+    3.  [Weeding](#orgc2c3631)
+4.  [Pretty Printer](#orgac2f35a)
+5.  [Team](#org193c3bf)
+    1.  [Team Organization](#org61c2b13)
+    2.  [Contributions](#org5ee7e9c)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 
 
-<a id="orgfe0e625"></a>
+<a id="org3bdaaf7"></a>
 
 # Introduction
 
 
-<a id="org05442dd"></a>
+<a id="org7796246"></a>
 
 ## Implementation Language
 
@@ -43,7 +43,7 @@ more naturally (i.e. tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 
 
-<a id="orga98983a"></a>
+<a id="orgebe28ba"></a>
 
 ## Tools
 
@@ -59,17 +59,16 @@ There are several other good Haskell scanning/parsing options, such as
 `Megaparsec`. We decided on `Alex/Happy` because of their syntactic
 similarity to `flex/bison`, which we learned in class.
 
-We use `stack` to manage our Haskell project, including `GHC`, the
-respective projects and tests, additional tests which we implemented
-using the `hspec` package.
+We use `stack` to manage our Haskell project and corresponding tests.
+We implemented additional tests using the `hspec` package.
 
 
-<a id="org3357b85"></a>
+<a id="org7e166ea"></a>
 
 ## Miscellaneous
 
 
-<a id="org5aedcbc"></a>
+<a id="org20de171"></a>
 
 ### Continuous Integration
 
@@ -78,7 +77,7 @@ run our tests to make sure that new changes did not break
 existing functionality.
 
 
-<a id="orgf169035"></a>
+<a id="orgc0f2070"></a>
 
 ### File Organization
 
@@ -96,7 +95,7 @@ existing functionality.
     -   Spec modules, each exposing a test suite
 
 
-<a id="org34360f8"></a>
+<a id="orgaa30932"></a>
 
 # Scanner
 
@@ -107,7 +106,7 @@ some of Go/GoLite's quirkiness when compared to something simple
 like `MiniLang`.
 
 
-<a id="org5b44b6c"></a>
+<a id="org0c0bd52"></a>
 
 ## Semicolon Insertion
 
@@ -128,7 +127,7 @@ situations automatically, rather than trying to deal with them
 in the parsing phase.
 
 
-<a id="org5e45781"></a>
+<a id="org9749c8a"></a>
 
 ## Block comment support
 
@@ -151,7 +150,7 @@ block comment, and we insert a semicolon if we're in the
 aforementioned newline insertion state.
 
 
-<a id="org0a2c94b"></a>
+<a id="org8a116b4"></a>
 
 ### Adding newlines at the end of the file if they aren't present already
 
@@ -168,7 +167,7 @@ to return an `EOF`. This would be difficult without additional
 context information.
 
 
-<a id="org020dbbf"></a>
+<a id="org7c92d7c"></a>
 
 ## Nicer error messages
 
@@ -182,11 +181,10 @@ debugging from an end-user programming perspective:
       |                      ^
 
 With `Alex`' default behaviour, we did not have access to the entire
-source file string, as it is not kept between steps.
-
-In order to generate the contextual message, we modified the `monad`
-wrapper provided with `Alex` (see `TokensBase.hs`) and changed the
-`Alex` monad to wrap over a `Either (String, Int) a` instead of
+source file string, as it is not kept between steps. In order to
+generate the contextual message, we modified the `monad` wrapper
+provided with `Alex` (see `TokensBase.hs`) and changed the `Alex`
+monad to wrap over a `Either (String, Int) a` instead of
 `Either String a`, i.e. in addition to storing an error message on
 the left side of the monad we also carry an `Int` which represents
 the offset of the error. When we want to print the error
@@ -194,12 +192,12 @@ message, we can then append the part in the source file where
 the error occurred.
 
 
-<a id="orgb6738dc"></a>
+<a id="orgceafe0c"></a>
 
 # Parser
 
 
-<a id="org0e222ae"></a>
+<a id="orgfe6ad3f"></a>
 
 ## Grammar
 
@@ -235,17 +233,16 @@ is resolved in the actual AST construct, which is closer to a direct
 representation of the Go / GoLite specifications.
 
 
-<a id="org89125a6"></a>
+<a id="orgaa53a59"></a>
 
 ## AST
 
 The AST is largely a one to one mapping of the Golang specs, with
 parts we don't support removed and additional parts for Golite added.
-
 In some cases, there are minor deviations from the CFG.
 
 
-<a id="orgd60a6d3"></a>
+<a id="orgdb05d65"></a>
 
 ### Accurate Type Representation
 
@@ -261,7 +258,7 @@ make it optional. While a direct translation would be `Maybe (NonEmpty a)`,
 we choose to make it a possibly empty list `[a]` as it makes more sense.
 
 
-<a id="org931b04c"></a>
+<a id="org0f52be7"></a>
 
 ### Simplified Data Type Categories
 
@@ -280,7 +277,7 @@ the more verbose `Either Block IfStmt`. The grammar enforces that
 this `Stmt` is not any other type.
 
 
-<a id="org648af27"></a>
+<a id="org25fe917"></a>
 
 ### Structure Simplification
 
@@ -291,25 +288,30 @@ enforce all declarations of one var to be single declaration. In
 other words, `var ( a = 2 )` would become `var a = 2`. Note that
 we cannot further simplify group declarations `var ( a, b = 2,
     3)`, as there is no guarantee at this stage that the number of
-identifiers matches the number of values. This would have to be
-checked at a later stage
+identifiers matches the number of values.
 
 
-<a id="orge06f9fd"></a>
+<a id="orgc2c3631"></a>
 
 ## Weeding
 
-In our first stage, our weeding operations are simple, and don't rely
-on context outside of the statement we are verifying. As a result,
-we were able to define recursive traversal methods to verify relevant
-statements, and create verifiers that validate at a single level.
-Haskell helped immensely here, as we were able to use pattern matching
-to produce performant and independent functions.
-Each verifier returns an optional error, and we are able to map the results
-and return the first error, if any.
+Most of the weeding operations needed are simple and don't rely
+on external context. As a result, we were able to define recursive
+traversal methods to verify relevant statements, and create verifiers
+that validate at a single level. Haskell helped immensely here, as
+we were able to use pattern matching to produce performant and
+independent functions.
+
+For verification where statement context was important (`break` and
+`continue`) we made a simple modification to the recursive traversal
+to avoid exploring scopes under `for` or `switch` statements
+where applicable.
+
+Each verifier returns an optional error, and we are able to map the
+results and return the first error, if any.
 
 
-<a id="orgf01140e"></a>
+<a id="orgac2f35a"></a>
 
 # Pretty Printer
 
@@ -325,23 +327,23 @@ precedence matches). To produce the full program, we simply join
 the list of strings in the full program, intercalated with new lines.
 
 
-<a id="orgcbfd00e"></a>
+<a id="org193c3bf"></a>
 
 # Team
 
 
-<a id="org4ec166d"></a>
+<a id="org61c2b13"></a>
 
 ## Team Organization
 
 We started the project by dividing the main components (scanner, parser,
 AST/weeding) among the three group members (Julian, David, and Allan
-respectively). We used GitHub's organization features, such as issues
-and pull requests/code reviews, extensively in order to keep track of
-design goals, report bugs, and keep code quality as high as possible.
+respectively). We used GitHub's organization features extensively in
+order to keep track of design goals, report bugs, and keep code quality
+as high as possible.
 
 
-<a id="org024b5b4"></a>
+<a id="org5ee7e9c"></a>
 
 ## Contributions
 
