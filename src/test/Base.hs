@@ -31,12 +31,12 @@ module Base
   ) where
 
 import           Control.Applicative
-import Examples
 import           Control.Monad       (unless)
 import           Data
 import           Data.List.NonEmpty  (NonEmpty (..), fromList)
 import           Data.Text           (Text, unpack)
 import           ErrorBundle
+import           Examples
 import           NeatInterpolation
 import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
                                       pStmt, pT, pTDecl)
@@ -59,7 +59,8 @@ instance Stringable Text where
   toString = unpack
 
 printError :: Either String String -> SpecWith ()
-printError (Right s) = describe "print" $ it "right error" $ expectationFailure s
+printError (Right s) =
+  describe "print" $ it "right error" $ expectationFailure s
 printError (Left s) = describe "print" $ it "left error" $ expectationFailure s
 
 -- | Relatively complex base expectation
@@ -70,24 +71,45 @@ printError (Left s) = describe "print" $ it "left error" $ expectationFailure s
 -- Inputs refers to list of inputs
 -- Note that the last two entries are type ambiguous, which is why we need to specify them
 -- We order the parameters this way to avoid rewriting them
-expectBase :: (HasCallStack) => String -> (s -> Expectation) -> (s -> String) -> String -> [s] -> SpecWith ()
-expectBase suffix expectation' title name inputs = describe (name ++ " " ++ suffix) $ mapM_ expect inputs
+expectBase ::
+     (HasCallStack)
+  => String
+  -> (s -> Expectation)
+  -> (s -> String)
+  -> String
+  -> [s]
+  -> SpecWith ()
+expectBase suffix expectation' title name inputs =
+  describe (name ++ " " ++ suffix) $ mapM_ expect inputs
   where
     expect input = it (show $ lines $ title input) $ expectation' input
 
-expectPassBase :: (Parsable a, Stringable s) => String -> (s -> Either String a) -> [s] -> SpecWith ()
-expectPassBase tag' parse'' = -- Put ' to not overshadow variables from class definition
+expectPassBase ::
+     (Parsable a, Stringable s)
+  => String
+  -> (s -> Either String a)
+  -> [s]
+  -> SpecWith ()
+expectPassBase tag' parse'' -- Put ' to not overshadow variables from class definition
+ =
   expectBase
     "success"
     (\s ->
        case parse'' s of
          Left err ->
-           expectationFailure $ "Expected parse success on:\n\n" ++ toString s ++ "\n\nbut failed with\n\n" ++ err
+           expectationFailure $
+           "Expected parse success on:\n\n" ++
+           toString s ++ "\n\nbut failed with\n\n" ++ err
          _ -> return ())
     toString
     tag'
 
-expectFailBase :: (Parsable a, Stringable s) => String -> (s -> Either String a) -> [s] -> SpecWith ()
+expectFailBase ::
+     (Parsable a, Stringable s)
+  => String
+  -> (s -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectFailBase tag' parse'' =
   expectBase
     "success"
@@ -95,7 +117,8 @@ expectFailBase tag' parse'' =
        case parse'' s of
          Right ast ->
            expectationFailure $
-           "Expected parse failure on:\n\n" ++ toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
+           "Expected parse failure on:\n\n" ++
+           toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
          _ -> return ())
     toString
     tag'
@@ -108,20 +131,31 @@ expectAstBase =
        case parse s of
          Left err ->
            expectationFailure $
-           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut failed with\n\n" ++ err
+           "Invalid ast for:\n\n" ++
+           toString s ++
+           "\n\nexpected\n\n" ++ show e ++ "\n\nbut failed with\n\n" ++ err
          Right a ->
            unless (e == a) . expectationFailure $
-           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
+           "Invalid ast for:\n\n" ++
+           toString s ++
+           "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
     (toString . fst)
 
 expectPrettyInvarBase ::
-     (Parsable a, Prettify a, Stringable s) => String -> (String -> Either String a) -> [s] -> SpecWith ()
+     (Parsable a, Prettify a, Stringable s)
+  => String
+  -> (String -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectPrettyInvarBase tag' parse'' =
   expectBase
     "pretty invar"
     (\s ->
        case multiPass $ toString s of
-         Left err -> expectationFailure $ "Invalid prettify for:\n\n" ++ toString s ++ "\n\nfailed with\n\n" ++ err
+         Left err ->
+           expectationFailure $
+           "Invalid prettify for:\n\n" ++
+           toString s ++ "\n\nfailed with\n\n" ++ err
          Right _ -> return ())
     toString
     tag'
@@ -132,8 +166,14 @@ expectPrettyInvarBase tag' parse'' =
       ast2 <- parse'' pretty1
       let pretty2 = prettify ast2
       case (ast1 == ast2, pretty1 == pretty2) of
-        (False, _) -> Left $ "AST mismatch: First\n\n" ++ show ast1 ++ "\n\nSecond\n\n" ++ show ast2
-        (_, False) -> Left $ "Prettify mismatch: First\n\n" ++ pretty1 ++ "\n\nSecond\n\n" ++ pretty2
+        (False, _) ->
+          Left $
+          "AST mismatch: First\n\n" ++
+          show ast1 ++ "\n\nSecond\n\n" ++ show ast2
+        (_, False) ->
+          Left $
+          "Prettify mismatch: First\n\n" ++
+          pretty1 ++ "\n\nSecond\n\n" ++ pretty2
         _ -> Right pretty2
 
 class (Show a, Eq a) =>
@@ -192,7 +232,8 @@ instance Parsable [ParameterDecl] where
   expectPass = expectPassBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
   expectFail = expectFailBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
   expectAst = expectAstBase (tag @[ParameterDecl])
-  expectPrettyInvar = expectPrettyInvarBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
+  expectPrettyInvar =
+    expectPrettyInvarBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
 
 instance Parsable Type' where
   tag = "type"
@@ -246,7 +287,8 @@ instance Parsable Identifiers where
   expectPass = expectPassBase (tag @Identifiers) (parse @Identifiers)
   expectFail = expectFailBase (tag @Identifiers) (parse @Identifiers)
   expectAst = expectAstBase (tag @Identifiers)
-  expectPrettyInvar = expectPrettyInvarBase (tag @Identifiers) (parse @Identifiers)
+  expectPrettyInvar =
+    expectPrettyInvarBase (tag @Identifiers) (parse @Identifiers)
 
 pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
 pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))
@@ -261,7 +303,7 @@ class SpecBuilder a where
   expectation :: a -> SpecWith ()
   specAll :: String -> [a] -> SpecWith ()
   specAll name items = describe name $ mapM_ expectation items
-  
+
 instance SpecBuilder (String, [InnerToken]) where
   expectation (input, expected) =
     it (show $ lines input) $ scanT input `shouldBe` Right expected
@@ -284,7 +326,13 @@ cartP = liftA2 (,)
 toRetL :: Monad m => a -> m [a]
 toRetL e = return [e]
 
-qcGen :: (Show a, Testable prop) => String -> Bool -> Gen a -> (a -> prop) -> SpecWith (Arg Property)
+qcGen ::
+     (Show a, Testable prop)
+  => String
+  -> Bool
+  -> Gen a
+  -> (a -> prop)
+  -> SpecWith (Arg Property)
 qcGen desc verb g p =
   it desc $
   property $

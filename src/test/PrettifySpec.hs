@@ -1,6 +1,5 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications  #-}
 
 module PrettifySpec
   ( spec
@@ -17,7 +16,6 @@ spec = do
   expectPrettyInvar @TopDecl topDeclExamples
   expectPrettyInvar @Stmt stmtExamples
   expectPrettyInvar @Program programExamples
-
 --  printError $
 --    prettify <$>
 --    parse
@@ -26,29 +24,19 @@ spec = do
 --      func whatever() struct { int n; } { }
 --      |]
 -- intLit = map (\(i, e) -> (IntLit o i e, e)) [(Decimal, "12"), (Hexadecimal, "0xCAFEBABE"), (Octal, "01001")]
-
 -- floatLit = fstConvert (FloatLit o) [("0.123", "0.123"), ("0.0", "0.0"), ("-1.0", "-1.0")]
-
 -- stringLitInterpreted = map (\i -> (StringLit o Interpreted $ wrap i, wrap i)) ["hello", "world", "\"", "new\nline"]
 --   where
 --     wrap s = "\"" ++ s ++ "\""
-
 -- stringLitRaw = map (\i -> (StringLit o Raw $ wrap i, wrap i)) ["hello", "world", "\"", "new\nline"]
 --   where
 --     wrap s = "`" ++ s ++ "`"
-
 -- baseId = Identifier o "test"
-
 -- baseId' = "test"
-
 -- baseType = (o, SliceType $ Type baseId)
-
 -- baseType' = "[]" ++ baseId'
-
 -- baseExpr = Unary o Neg $ Var baseId
-
 -- baseExpr' = "(-" ++ baseId' ++ ")"
-
 -- exprs =
 --   [ (baseExpr, baseExpr')
 --   , (Unary o Pos baseExpr, "(+" ++ baseExpr' ++ ")")

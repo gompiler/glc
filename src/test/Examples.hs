@@ -2,12 +2,21 @@
 
 module Examples where
 
+import           Data.Text.Internal (Text)
 import           NeatInterpolation
-import Data.Text.Internal (Text)
 
 intExamples :: [String]
 intExamples =
-  ["0", "1", "-123", "1234567890", "42", "0600", "0xBadFace", "000", "170141183460469231731687303715884105727"]
+  [ "0"
+  , "1"
+  , "-123"
+  , "1234567890"
+  , "42"
+  , "0600"
+  , "0xBadFace"
+  , "000"
+  , "170141183460469231731687303715884105727"
+  ]
 
 floatExamples :: [String]
 floatExamples =
@@ -27,7 +36,21 @@ floatExamples =
   ]
 
 runeExamples :: [String]
-runeExamples = ["a", "b", "c", "\\a", "\\b", "\\f", "\\n", "\\r", "\\t", "\\v", "\\\\", "\\'", "\""]
+runeExamples =
+  [ "a"
+  , "b"
+  , "c"
+  , "\\a"
+  , "\\b"
+  , "\\f"
+  , "\\n"
+  , "\\r"
+  , "\\t"
+  , "\\v"
+  , "\\\\"
+  , "\\'"
+  , "\""
+  ]
 
 topDeclExamples :: [Text]
 topDeclExamples =

@@ -4,9 +4,9 @@
 module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NonEmpty()
+import qualified Data.List.NonEmpty as NonEmpty ()
 import           ErrorBundle
-import           GHC.TypeLits()
+import           GHC.TypeLits       ()
 
 -- note that I do not classify blank identifiers as a separate type
 -- because we can easily pattern match it already
@@ -138,11 +138,11 @@ data SimpleStmt
   deriving (Show, Eq)
 
 instance ErrorBreakpoint SimpleStmt where
-  offset EmptyStmt            = error "EmptyStmt has no offset"
-  offset (ExprStmt e)         = offset e
-  offset (Increment o _)      = o
-  offset (Decrement o _)      = o
-  offset (Assign o _ _ _)     = o
+  offset EmptyStmt               = error "EmptyStmt has no offset"
+  offset (ExprStmt e)            = offset e
+  offset (Increment o _)         = o
+  offset (Decrement o _)         = o
+  offset (Assign o _ _ _)        = o
   offset (ShortDeclare idents _) = offset idents
 
 -- | Shortcut for a blank stmt
@@ -272,7 +272,7 @@ instance ErrorBreakpoint Expr where
   offset (Unary o _ _)      = o
   offset (Binary o _ _ _)   = o
   offset (Lit l)            = offset l
-  offset (Var ident)           = offset ident
+  offset (Var ident)        = offset ident
   offset (AppendExpr o _ _) = o
   offset (LenExpr o _)      = o
   offset (CapExpr o _)      = o
