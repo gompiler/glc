@@ -27,6 +27,7 @@ module Base
   , toRetL
   , qcGen
   , Parser.parsef
+  , Parser.parsefNL
   ) where
 
 import           Control.Applicative
@@ -41,7 +42,7 @@ import           ErrorBundle
 import           NeatInterpolation
 import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
                                       pStmt, pT, pTDecl)
-import qualified Parser              (parse, parsef, hparse)
+import qualified Parser              (parse, parsef, parsefNL, hparse)
 import           Prettify
 import           Scanner             (Alex (..), runAlex', errODef)
 import           Test.Hspec
@@ -152,7 +153,7 @@ class (Show a, Eq a) =>
 
 instance Parsable Program where
   tag = "program"
-  parse' = Parser.parsef Parser.hparse
+  parse' = Parser.parse
   placeholder = Program {package = "temp", topLevels = []}
   expectPass = expectPassBase (tag @Program) (parse @Program)
   expectFail = expectFailBase (tag @Program) (parse @Program)
@@ -161,7 +162,7 @@ instance Parsable Program where
 
 instance Parsable Stmt where
   tag = "stmt"
-  parse' = Parser.parsef pStmt
+  parse' = Parser.parsefNL pStmt
   placeholder = blank
   expectPass = expectPassBase (tag @Stmt) (parse @Stmt)
   expectFail = expectFailBase (tag @Stmt) (parse @Stmt)
@@ -170,7 +171,7 @@ instance Parsable Stmt where
 
 instance Parsable TopDecl where
   tag = "topDecl"
-  parse' = Parser.parsef pTDecl
+  parse' = Parser.parsefNL pTDecl
   placeholder = TopDecl $ VarDecl [placeholder]
   expectPass = expectPassBase (tag @TopDecl) (parse @TopDecl)
   expectFail = expectFailBase (tag @TopDecl) (parse @TopDecl)

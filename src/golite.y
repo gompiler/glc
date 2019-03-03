@@ -22,7 +22,8 @@
                 , pE
                 , hparse
                 , parse
-                , parsef)
+                , parsef
+                , parsefNL)
 where
 import Scanner
 import Data
@@ -396,6 +397,11 @@ parse s = either (Left . errODef s) Right (runAlex s $ hparse)
 -- Parse function that takes in any parser
 parsef :: (Alex a) -> String -> Either String a
 parsef f s = either (Left . errODef s) Right (runAlex' s $ f)
+-- runAlex' does not insert newline at end if needed
+
+-- parsef but insert newline if needed at end just like main parse function
+parsefNL :: (Alex a) -> String -> Either String a
+parsefNL f s = either (Left . errODef s) Right (runAlex s $ f)
 
 -- Extract posn only
 ptokl t = case t of
