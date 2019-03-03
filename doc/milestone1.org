@@ -27,8 +27,8 @@ whilst implementing the components for milestone 1.
    using the ~hspec~ package.
 ** Miscellaneous
 *** Continuous Integration
-    We use Travis CI to build our project on every push, as well as
-    run our tests to make sure that new changes did not break any
+    We use Travis CI to build our project on every push to GitHub, as well as
+    run our tests to make sure that new changes did not break
     existing functionality.
 *** File Organization
     - ~src/~
@@ -45,55 +45,53 @@ whilst implementing the components for milestone 1.
       - Spec modules, each exposing a test suite
 * Scanner
   The first step of this milestone was to scan user input into
-  tokens. Most of the tokens we had to account for were straightforward
-  and similar to the assignments. However, we had to encompass a few of
-  the quirks/more complicated things relating to ~GoLite~ compared to
-  something simple like ~MiniLang~.
+  tokens. Handing of most GoLite tokens was straightforward and
+  similar to class assignments. In other cases, we had to deal with
+  some of Go/GoLite's quirkiness when compared to something simple
+  like ~MiniLang~.
 ** Semicolon Insertion
-   The first hurdle of scanning was semicolon insertion. To solve
-   this, we use start codes in ~Alex~ and have special rules for
-   certain states.
+   Semicolon insertion was the first scanning hurdle. To solve
+   this, we use start codes, a built in feature of ~Alex~, and have
+   special rules for certain states.
 
-   If the last token we scanned was something
-   that can take an optional semicolon, we enter the $nl$ state, where
-   encountering a newline would transform the newline into a
-   semicolon. Scanning anything else (that isn't whitespace or otherwise
-   ignored) returns the scanner to the default state ($0$), where
-   newlines are just ignored.
+   If the last token we scan is something that can take an optional
+   semicolon, we enter the $nl$ state, where newlines are transformed into
+   semicolons after specific tokens. Scanning anything else (that isn't
+   whitespace or otherwise ignored) returns the scanner to the default
+   state ($0$), where newlines are just ignored.
 
-   This seems to be an elegant solution, as we don't have to traverse
-   the whole list or store context other than the start code, a
-   built-in feature of ~Alex~. It also makes a lot more sense to let
-   the scanner handle these situations automatically rather than trying
-   to handle them using the parser.
+   This solution seems elegant, as we don't have to traverse
+   the whole stream post-scanning or store context, other than the
+   start code. It also makes sense to let the scanner handle these
+   situations automatically, rather than trying to deal with them
+   in the parsing phase.
 ** Block comment support
    Block comments cannot be easily scanned using only regular
    expressions. One potential solution was to use start codes again
-   (changing state upon opening a comment), although that would
-   potentially add a lot more states because we'd have to combine
-   possibilities with the newline insertion state: (as block
-   comments that span over newlines should also insert semicolons when
-   they're optional). Another thing is that using a state approach
-   made it harder to catch the error of an unclosed comment block.
+   (changing state upon opening a comment). This was ruled out since
+   it would potentially add a lot more start codes (i.e. states), as
+   we'd have combinatorial possibilities with the newline insertion state
+   (since block comments spanning newlines should also insert semicolons
+   when they're optional). Using a state approach would also make it
+   harder to catch unclosed comment block errors.
 
-   In our implemented solution, we iterate through the scanner's input
-   once we receive an open comment block and ignore everything until we
-   close the block comment. If the comment never closes, we can easily
-   emit an error.
+   Our solution iterates through the scanner's input once we receive an
+   open comment block and ignore everything until the comment is closed.
+   If the comment never closes, we can easily emit an error.
 
    To account for semicolon insertion with block comments, we set a
    semicolon flag to true if we encounter any new line inside the
-   block comment, and we insert a semicolon if the start code is
-   $nl$, the aforementioned newline insertion state.
+   block comment, and we insert a semicolon if we're in the
+   aforementioned newline insertion state.
 *** Adding newlines at the end of the file if they aren't present already
     ~Go~ requires a semicolon or newline at the end of function
     declarations. Sometimes, there may not be a newline at the end of
-    a file, so no semicolon insertion occurs.
+    a file, so no semicolon insertion occurs, resulting in a parsing error.
 
     In order to correct for this type of file, we enforce a final
     newline by appending one if necessary. To do this, the code string
-    is preprocessed prior to scanning. This was the easiest solution
-    as otherwise we'd have to try and insert a semicolon if we were in
+    is preprocessed prior to scanning. This is the easiest solution,
+    as otherwise we would have to try inserting a semicolon if we are in
     the $nl$ state when we encounter an ~EOF~, while also making sure
     to return an ~EOF~. This would be difficult without additional
     context information.
@@ -109,18 +107,16 @@ Error: parsing error, unexpected ) at 5:22:
   |                      ^
 #+END_SRC
 
-   While we did have access to character offset, line, and column when
-   generating error messages, we did not have access to the entire
-   source file string, as the default behaviour of the scanner is to not
-   keep the entire string at each step.
+   With ~Alex~' default behaviour, we did not have access to the entire
+   source file string, as it is not kept between steps.
 
    In order to generate the contextual message, we modified the ~monad~
    wrapper provided with ~Alex~ (see ~TokensBase.hs~) and changed the
    ~Alex~ monad to wrap over a ~Either (String, Int) a~ instead of
    ~Either String a~, i.e. in addition to storing an error message on
    the left side of the monad we also carry an ~Int~ which represents
-   the offset of the error, so that when we want to print the error
-   message at the end we can append the part in the source file where
+   the offset of the error. When we want to print the error
+   message, we can then append the part in the source file where
    the error occurred.
 * Parser
 ** Grammar
