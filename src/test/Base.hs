@@ -112,7 +112,7 @@ expectFailBase ::
   -> SpecWith ()
 expectFailBase tag' parse'' =
   expectBase
-    "success"
+    "fail"
     (\s ->
        case parse'' s of
          Right ast ->
@@ -123,6 +123,7 @@ expectFailBase tag' parse'' =
     toString
     tag'
 
+-- | Expects that input parses with an exact ast match
 expectAstBase :: (Parsable a, Stringable s) => String -> [(s, a)] -> SpecWith ()
 expectAstBase =
   expectBase
@@ -141,6 +142,7 @@ expectAstBase =
            "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
     (toString . fst)
 
+-- | Expects that pretty(parse(input)) = pretty(parse(pretty(parse(input))))
 expectPrettyInvarBase ::
      (Parsable a, Prettify a, Stringable s)
   => String
@@ -176,6 +178,35 @@ expectPrettyInvarBase tag' parse'' =
           pretty1 ++ "\n\nSecond\n\n" ++ pretty2
         _ -> Right pretty2
 
+-- | Expects that input = pretty(parse(input))
+expectPrettyExactBase ::
+     (Parsable a, Prettify a, Stringable s)
+  => String
+  -> (String -> Either String a)
+  -> [s]
+  -> SpecWith ()
+expectPrettyExactBase tag parse =
+  expectBase
+    "pretty exact"
+    (\s ->
+       let s' = toString s
+        in case multiPass s' of
+             Left err ->
+               expectationFailure $
+               "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
+             Right p -> return ())
+    toString
+    tag
+  where
+    multiPass input = do
+      pretty <- parse input <&> prettify
+      if clean input == clean pretty
+        then Right pretty
+        else Left $
+             "Prettify mismatch: Expected\n\n" ++
+             input ++ "\n\nActually (whitespace ignored)\n\n" ++ pretty
+    clean = filter (not . isSpace)
+
 class (Show a, Eq a) =>
       Parsable a
   where
@@ -188,6 +219,7 @@ class (Show a, Eq a) =>
   expectFail :: Stringable s => [s] -> SpecWith ()
   expectAst :: Stringable s => [(s, a)] -> SpecWith ()
   expectPrettyInvar :: Stringable s => [s] -> SpecWith ()
+  expectPrettyExact :: Stringable s => [s] -> SpecWith ()
 
 instance Parsable Program where
   tag = "program"
@@ -197,6 +229,7 @@ instance Parsable Program where
   expectFail = expectFailBase (tag @Program) (parse @Program)
   expectAst = expectAstBase (tag @Program)
   expectPrettyInvar = expectPrettyInvarBase (tag @Program) (parse @Program)
+  expectPrettyExact = expectPrettyExactBase (tag @Program) (parse @Program)
 
 instance Parsable Stmt where
   tag = "stmt"
@@ -206,6 +239,7 @@ instance Parsable Stmt where
   expectFail = expectFailBase (tag @Stmt) (parse @Stmt)
   expectAst = expectAstBase (tag @Stmt)
   expectPrettyInvar = expectPrettyInvarBase (tag @Stmt) (parse @Stmt)
+  expectPrettyExact = expectPrettyExactBase (tag @Stmt) (parse @Stmt)
 
 instance Parsable TopDecl where
   tag = "topDecl"
@@ -215,6 +249,7 @@ instance Parsable TopDecl where
   expectFail = expectFailBase (tag @TopDecl) (parse @TopDecl)
   expectAst = expectAstBase (tag @TopDecl)
   expectPrettyInvar = expectPrettyInvarBase (tag @TopDecl) (parse @TopDecl)
+  expectPrettyExact = expectPrettyExactBase (tag @TopDecl) (parse @TopDecl)
 
 instance Parsable Signature where
   tag = "signature"
@@ -224,6 +259,7 @@ instance Parsable Signature where
   expectFail = expectFailBase (tag @Signature) (parse @Signature)
   expectAst = expectAstBase (tag @Signature)
   expectPrettyInvar = expectPrettyInvarBase (tag @Signature) (parse @Signature)
+  expectPrettyExact = expectPrettyExactBase (tag @Signature) (parse @Signature)
 
 instance Parsable [ParameterDecl] where
   tag = "parameterDecls"
@@ -243,6 +279,7 @@ instance Parsable Type' where
   expectFail = expectFailBase (tag @Type') (parse @Type')
   expectAst = expectAstBase (tag @Type')
   expectPrettyInvar = expectPrettyInvarBase (tag @Type') (parse @Type')
+  expectPrettyExact = expectPrettyExactBase (tag @Type') (parse @Type')
 
 instance Parsable Decl where
   tag = "decl"
@@ -252,6 +289,7 @@ instance Parsable Decl where
   expectFail = expectFailBase (tag @Decl) (parse @Decl)
   expectAst = expectAstBase (tag @Decl)
   expectPrettyInvar = expectPrettyInvarBase (tag @Decl) (parse @Decl)
+  expectPrettyExact = expectPrettyExactBase (tag @Decl) (parse @Decl)
 
 instance Parsable [Expr] where
   tag = "exprs"
@@ -261,6 +299,7 @@ instance Parsable [Expr] where
   expectFail = expectFailBase (tag @[Expr]) (parse @[Expr])
   expectAst = expectAstBase (tag @[Expr])
   expectPrettyInvar = expectPrettyInvarBase (tag @[Expr]) (parse @[Expr])
+  expectPrettyExact = expectPrettyExactBase (tag @[Expr]) (parse @[Expr])
 
 instance Parsable Expr where
   tag = "expr"
@@ -270,6 +309,7 @@ instance Parsable Expr where
   expectFail = expectFailBase (tag @Expr) (parse @Expr)
   expectAst = expectAstBase (tag @Expr)
   expectPrettyInvar = expectPrettyInvarBase (tag @Expr) (parse @Expr)
+  expectPrettyExact = expectPrettyExactBase (tag @Expr) (parse @Expr)
 
 instance Parsable VarDecl' where
   tag = "varDecl"
@@ -279,6 +319,7 @@ instance Parsable VarDecl' where
   expectFail = expectFailBase (tag @VarDecl') (parse @VarDecl')
   expectAst = expectAstBase (tag @VarDecl')
   expectPrettyInvar = expectPrettyInvarBase (tag @VarDecl') (parse @VarDecl')
+  expectPrettyExact = expectPrettyExactBase (tag @VarDecl') (parse @VarDecl')
 
 instance Parsable Identifiers where
   tag = "ids"

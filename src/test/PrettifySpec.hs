@@ -11,7 +11,16 @@ import           Data
 spec :: Spec
 spec = do
   expectPrettyInvar @Identifiers ["a, b"]
-  expectPrettyInvar @Expr ["1 + 2 * 3", "(((2))) * abc - _s", "index[0]", "-a"]
+  expectPrettyInvar
+    @Expr
+    [ "1 + 2 * 3"
+    , "(((2))) * abc - _s"
+    , "index[0]"
+    , "-a"
+    -- All bin ops
+    , "1 || 1 && 1 == 1 != 1 < 1 <= 1 > 1 >= 1 + 1 - 1 | 1 ^ 1 * 1 / 1 % 1 << 1 >> 1 & 1 &^ 1"
+    , "+1 && -1 && !1 && ^1"
+    ]
   expectPrettyInvar @Type' ["asdf", "struct {a int; b int;}", "[0][0]a"]
   expectPrettyInvar @TopDecl topDeclExamples
   expectPrettyInvar @Stmt stmtExamples
