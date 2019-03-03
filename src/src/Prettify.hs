@@ -130,12 +130,10 @@ instance Prettify Stmt where
   prettify' (Switch ss se cases) = ("switch " ++ ss' ++ "{") : tab (cases >>= prettify') ++ ["}"]
     where
       ss' =
-        case se of
-          Just se' -> prettify (ss, se') ++ " "
-          Nothing  ->
-            case ss of
-              EmptyStmt -> ""
-              _ -> prettify ss ++ "; "
+        case (ss, se) of
+          (_, Just se') -> prettify (ss, se') ++ " "
+          (EmptyStmt, Nothing) -> ""
+          (_, Nothing) -> prettify ss ++ "; "
   prettify' (For fc s) = ("for " ++ prettify fc ++ " {") : tab (prettify' s) ++ ["}"]
   prettify' (Break _) = ["break"]
   prettify' (Continue _) = ["continue"]
