@@ -1,6 +1,6 @@
 #+TITLE: Design Document for Milestone 1
 #+AUTHOR: Lore, J., Lougheed D., Wang A.
-#+LATEX_HEADER: \usepackage[margin=1in]{geometry}
+#+LATEX_HEADER: \usepackage[margin=0.9in]{geometry}
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 * Introduction
@@ -187,14 +187,20 @@ Error: parsing error, unexpected ) at 5:22:
     3)~, as there is no guarantee at this stage that the number of
     identifiers matches the number of values.
 ** Weeding
-    In our first stage, our weeding operations are simple, and don't rely
-    on context outside of the statement we are verifying. As a result,
-    we were able to define recursive traversal methods to verify relevant
-    statements, and create verifiers that validate at a single level.
-    Haskell helped immensely here, as we were able to use pattern matching
-    to produce performant and independent functions.
-    Each verifier returns an optional error, and we are able to map the results
-    and return the first error, if any.
+    Most of the weeding operations needed are simple and don't rely
+    on external context. As a result, we were able to define recursive
+    traversal methods to verify relevant statements, and create verifiers
+    that validate at a single level. Haskell helped immensely here, as
+    we were able to use pattern matching to produce performant and
+    independent functions.
+
+    For verification where statement context was important (~break~ and
+    ~continue~) we made a simple modification to the recursive traversal
+    to avoid exploring scopes under ~for~ or ~switch~ statements
+    where applicable.
+
+    Each verifier returns an optional error, and we are able to map the
+    results and return the first error, if any.
 * Pretty Printer
   When creating our pretty printer, we chose a top down approach.
   Every node has the ability to output a list of strings, which makes
