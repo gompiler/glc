@@ -4,7 +4,6 @@ import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Set           as Set
 import           Data.Void
 import           Text.Megaparsec
-import qualified TokensBase         as T ()
 
 type ErrorBundle = ParseErrorBundle String Void
 

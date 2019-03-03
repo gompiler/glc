@@ -107,7 +107,7 @@ inpNLR s r =
 
 runAlex' :: String -> Alex a -> Either (String, Int) a
 runAlex' s (Alex f) =
-  either Left (\(_, a) -> Right a) $
+  snd <$>
   f (AlexState
        { alex_pos = alexStartPos
        , alex_inp = s
