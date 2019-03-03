@@ -32,7 +32,11 @@ parseFile =
      help "Read input (source to be evaluated) from file at FILEPATH")
 
 parseStd :: Parser Inp
-parseStd = flag' StdInp (long "stdin" <> short 's' <> help "Read input (source to be evaluated) from stdin")
+parseStd =
+  flag'
+    StdInp
+    (long "stdin" <> short 's' <>
+     help "Read input (source to be evaluated) from stdin")
 
 parseSource :: Parser Inp
 parseSource = parseFile <|> parseStd
@@ -41,7 +45,9 @@ scanParser :: ParserInfo CmdI
 scanParser =
   info
     (CI Scan <$> parseSource)
-    (fullDesc <> progDesc "Outputs OK if lexically correct, or an error message." <> header "scan - scans a source file")
+    (fullDesc <>
+     progDesc "Outputs OK if lexically correct, or an error message." <>
+     header "scan - scans a source file")
 
 tokensParser :: ParserInfo CmdI
 tokensParser =
@@ -54,7 +60,8 @@ parseParser :: ParserInfo CmdI
 parseParser =
   info
     (CI Parse <$> parseSource)
-    (fullDesc <> progDesc "Outputs OK if syntactically correct, or an error message." <>
+    (fullDesc <>
+     progDesc "Outputs OK if syntactically correct, or an error message." <>
      header "parse - parses a source file")
 
 prettyParser :: ParserInfo CmdI
@@ -68,28 +75,33 @@ prettyInvarParser :: ParserInfo CmdI
 prettyInvarParser =
   info
     (CI PrettyInvar <$> parseSource)
-    (fullDesc <> progDesc "Checks that the prettifier and parsers are invariant." <>
+    (fullDesc <>
+     progDesc "Checks that the prettifier and parsers are invariant." <>
      header "prettyinvar - pretty print and verify")
 
 symbolParser :: ParserInfo CmdI
 symbolParser =
   info
     (CI Symbol <$> parseSource)
-    (fullDesc <> progDesc "Outputs the symbol table to stdout or an error if the table is incomplete." <>
+    (fullDesc <>
+     progDesc
+       "Outputs the symbol table to stdout or an error if the table is incomplete." <>
      header "symbol - output the symbol table of a source file")
 
 typecheckParser :: ParserInfo CmdI
 typecheckParser =
   info
     (CI Typecheck <$> parseSource)
-    (fullDesc <> progDesc "Outputs OK if input type is correct, or an error message." <>
+    (fullDesc <>
+     progDesc "Outputs OK if input type is correct, or an error message." <>
      header "typecheck - typechecks a source file")
 
 codegenParser :: ParserInfo CmdI
 codegenParser =
   info
     (CI Codegen <$> parseFile)
-    (fullDesc <> progDesc "Generates equivalent C code in an output file and outputs OK." <>
+    (fullDesc <>
+     progDesc "Generates equivalent C code in an output file and outputs OK." <>
      header "codegen - generate C code from a source file")
 
 -- Combine all mode parsers into one
@@ -97,14 +109,16 @@ cmdParser :: ParserInfo CmdI
 cmdParser =
   info
     (hsubparser
-       (command "scan" scanParser <> command "tokens" tokensParser <> command "parse" parseParser <>
+       (command "scan" scanParser <> command "tokens" tokensParser <>
+        command "parse" parseParser <>
         command "pretty" prettyParser <>
         command "prettyinvar" prettyInvarParser <>
         command "symbol" symbolParser <>
         command "typecheck" typecheckParser <>
         command "codegen" codegenParser) <**>
      helper)
-    (fullDesc <> progDesc "Compiler for goLite" <> header "glc - a compiler for goLite")
+    (fullDesc <> progDesc "Compiler for goLite" <>
+     header "glc - a compiler for goLite")
 
 inpToIOStr :: Inp -> IO String
 inpToIOStr inp =

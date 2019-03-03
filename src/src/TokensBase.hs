@@ -106,16 +106,16 @@ inpNLR s r =
     h:t  -> inpNLR t (h : r)
 
 runAlex' :: String -> Alex a -> Either (String, Int) a
-runAlex' s (Alex f) = either Left (\(_, a) -> Right a) $
-                      f
-                      (AlexState
-                        { alex_pos = alexStartPos
-                        , alex_inp = s
-                        , alex_chr = '\n'
-                        , alex_bytes = []
-                        , alex_scd = 0
-                        })
-                      
+runAlex' s (Alex f) =
+  either Left (\(_, a) -> Right a) $
+  f (AlexState
+       { alex_pos = alexStartPos
+       , alex_inp = s
+       , alex_chr = '\n'
+       , alex_bytes = []
+       , alex_scd = 0
+       })
+
 -- | Wrapper for runAlex' to process output through inpNL and also initialize AlexUserState
 runAlex :: String -> Alex a -> Either (String, Int) a
 runAlex s = runAlex' (inpNL s)

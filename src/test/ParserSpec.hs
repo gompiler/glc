@@ -27,11 +27,24 @@ spec = do
       "ident list"
       False
       (genCommaList T.genId)
-      (\x -> parsef pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
+      (\x ->
+         parsef pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
-    qcGen "basic expressions" False genEBase (\(s, out) -> parsef pE s == Right out)
-    qcGen "binary expressions" False genEBin (\(s, out) -> parsef pE s == Right out)
-    qcGen "unary expressions" False genEUn (\(s, out) -> parsef pE s == Right out)
+    qcGen
+      "basic expressions"
+      False
+      genEBase
+      (\(s, out) -> parsef pE s == Right out)
+    qcGen
+      "binary expressions"
+      False
+      genEBin
+      (\(s, out) -> parsef pE s == Right out)
+    qcGen
+      "unary expressions"
+      False
+      genEUn
+      (\(s, out) -> parsef pE s == Right out)
   -- Though a single identifier is valid, we parse it without going through the identifiers type
   expectPass
     @Identifiers
@@ -90,19 +103,35 @@ spec = do
           o
           (Arithm Add)
           (Lit (IntLit o Decimal "1"))
-          (Binary o (Arithm Multiply) (Lit (IntLit o Decimal "2")) (Lit (IntLit o Decimal "3"))))
+          (Binary
+             o
+             (Arithm Multiply)
+             (Lit (IntLit o Decimal "2"))
+             (Lit (IntLit o Decimal "3"))))
     , ( "1 * (2 + 3)"
       , Binary
           o
           (Arithm Multiply)
           (Lit (IntLit o Decimal "1"))
-          (Binary o (Arithm Add) (Lit (IntLit o Decimal "2")) (Lit (IntLit o Decimal "3"))))
+          (Binary
+             o
+             (Arithm Add)
+             (Lit (IntLit o Decimal "2"))
+             (Lit (IntLit o Decimal "3"))))
     , ( "2 < +a || 2 * 4"
       , Binary
           o
           Or
-          (Binary o D.LT (Lit (IntLit o Decimal "2")) (Unary o Pos (Var (Identifier o "a"))))
-          (Binary o (Arithm Multiply) (Lit (IntLit o Decimal "2")) (Lit (IntLit o Decimal "4"))))
+          (Binary
+             o
+             D.LT
+             (Lit (IntLit o Decimal "2"))
+             (Unary o Pos (Var (Identifier o "a"))))
+          (Binary
+             o
+             (Arithm Multiply)
+             (Lit (IntLit o Decimal "2"))
+             (Lit (IntLit o Decimal "4"))))
     ]
   expectFail
     @Expr
@@ -132,7 +161,12 @@ spec = do
   expectFail @Stmt $ map (\s -> "{" ++ s ++ "}") ["/*", "/**", "/* /* */ */"]
   expectPass
     @Signature
-    ["(a int)", "(a int) int", "(a int, b int) int", "(a, b, c string) []string", "(a struct {\na int\n}, b [9]a)"]
+    [ "(a int)"
+    , "(a int) int"
+    , "(a int, b int) int"
+    , "(a, b, c string) []string"
+    , "(a struct {\na int\n}, b [9]a)"
+    ]
   expectFail @Signature ["(a)", "(a int, b ...int)"]
   expectPass @Program programExamples
   expectFail
@@ -162,17 +196,30 @@ programE =
        ( "package main; func main(){" ++ s ++ "}"
        , Program
            { package = "main"
-           , topLevels = [TopFuncDecl (FuncDecl (Identifier o "main") (Signature (Parameters []) Nothing) body)]
+           , topLevels =
+               [ TopFuncDecl
+                   (FuncDecl
+                      (Identifier o "main")
+                      (Signature (Parameters []) Nothing)
+                      body)
+               ]
            }))
     programMain
 
 programEL :: [(String, String)]
-programEL = map (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err)) programMainL
+programEL =
+  map
+    (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err))
+    programMainL
 
 genCommaList ::
      Gen String -- ^ What we will be comma separating
   -> Gen String
-genCommaList f = oneof [f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',' : s2, (++) <$> f <*> genCommaList f]
+genCommaList f =
+  oneof
+    [ f >>= \s1 -> f >>= \s2 -> return $ s1 ++ ',' : s2
+    , (++) <$> f <*> genCommaList f
+    ]
 
 genEBase :: Gen (String, Expr)
 genEBase =
@@ -220,7 +267,8 @@ genEBin = do
 genEUn1 :: Gen (String, Expr)
 genEUn1 = do
   (s, e) <- genEBase
-  (sop, op) <- elements [("+", Pos), ("-", Neg), ("!", Not), ("^", BitComplement)]
+  (sop, op) <-
+    elements [("+", Pos), ("-", Neg), ("!", Not), ("^", BitComplement)]
   return (sop ++ s, Unary o op e)
 
 genEUn2 :: Gen (String, Expr)
@@ -237,7 +285,10 @@ genEUn =
     , (1, genEBase >>= \(s, e) -> return ('(' : s ++ ")", e))
     , ( 1
       , T.genId >>= \id1 ->
-          T.genId >>= \id2 -> return (id1 ++ '.' : id2, Selector o (Var $ Identifier o id1) $ Identifier o id2))
+          T.genId >>= \id2 ->
+            return
+              ( id1 ++ '.' : id2
+              , Selector o (Var $ Identifier o id1) $ Identifier o id2))
     ]
 
 genE :: Gen (String, Expr)
@@ -245,6 +296,7 @@ genE = oneof [genEBase, genEUn, genEBin]
 
 expectEL :: [(String, [Expr])]
 expectEL =
-  [ ("123, 888", (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
+  [ ( "123, 888"
+    , (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
   , ("123, 88.8", (Lit $ IntLit o Decimal "123") : [Lit $ FloatLit o "88.8"])
   ]

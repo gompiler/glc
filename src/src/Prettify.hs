@@ -73,28 +73,30 @@ instance Prettify TopDecl where
   prettify' (TopFuncDecl decl) = prettify' decl
 
 instance Prettify Decl where
-  prettify' (VarDecl [decl]) = ["var " ++ prettify decl]
-  prettify' (VarDecl decls)  = "var (" : tab (map prettify decls) ++ [")"]
-  prettify' (TypeDef [def])  = ["type"] `skipNewLine` (prettify' def)
-  prettify' (TypeDef defs)   = "type (" : tab (map prettify defs) ++ [")"]
+  prettify' (VarDecl [decl]) = ["var "] `skipNewLine` prettify' decl
+  prettify' (VarDecl decls)  = "var (" : tab (decls >>= prettify') ++ [")"]
+  prettify' (TypeDef [def])  = ["type"] `skipNewLine` prettify' def
+  prettify' (TypeDef defs)   = "type (" : tab (defs >>= prettify') ++ [")"]
 
 instance Prettify VarDecl' where
-  prettify (VarDecl' ids (Left (t, exprs))) = prettify ids ++ " " ++ prettify t ++ exprs'
+  prettify (VarDecl' ids (Left (t, exprs))) =
+    prettify ids ++ " " ++ prettify t ++ exprs'
     where
       exprs' =
         if null exprs
           then ""
           else " = " ++ intercalate ", " (map prettify exprs)
-  prettify (VarDecl' ids (Right exprs)) = prettify ids ++ " = " ++ intercalate ", " (map prettify $ toList exprs)
+  prettify (VarDecl' ids (Right exprs)) =
+    prettify ids ++ " = " ++ intercalate ", " (map prettify $ toList exprs)
   prettify' = prettify''
 
 instance Prettify TypeDef' where
-  prettify (TypeDef' id t) = prettify id ++ " " ++ prettify t
-  prettify' = prettify''
+  prettify' (TypeDef' id t) = prettify' id `skipNewLine` prettify' t
 
 instance Prettify FuncDecl where
   prettify' (FuncDecl id sig body) =
-    ["func " ++ prettify id] `skipNewLine` (prettify' sig `skipNewLine` ["{"]) ++ tab (prettify' body) ++ ["}"]
+    ["func " ++ prettify id] `skipNewLine` (prettify' sig `skipNewLine` ["{"]) ++
+    tab (prettify' body) ++ ["}"]
 
 instance Prettify ParameterDecl where
   prettify (ParameterDecl ids t) = prettify ids ++ " " ++ prettify t
@@ -105,7 +107,8 @@ instance Prettify Parameters where
   prettify' = prettify''
 
 instance Prettify Signature where
-  prettify' (Signature params t) = ["(" ++ prettify params ++ ")" ++ Maybe.maybe "" ((' ' :) . prettify) t]
+  prettify' (Signature params t) =
+    ["(" ++ prettify params ++ ")" ++ Maybe.maybe "" ((' ' :) . prettify) t]
 
 --instance Prettify Scope
 instance Prettify SimpleStmt where
@@ -113,8 +116,10 @@ instance Prettify SimpleStmt where
   prettify' (ExprStmt e) = prettify' e
   prettify' (Increment _ e) = ["(" ++ prettify e ++ ")++"]
   prettify' (Decrement _ e) = ["(" ++ prettify e ++ ")--"]
-  prettify' (Assign _ op e1 e2) = [prettify e1 ++ " " ++ prettify op ++ " " ++ prettify e2]
-  prettify' (ShortDeclare ids exprs) = [prettify ids ++ " := " ++ prettify exprs]
+  prettify' (Assign _ op e1 e2) =
+    [prettify e1 ++ " " ++ prettify op ++ " " ++ prettify e2]
+  prettify' (ShortDeclare ids exprs) =
+    [prettify ids ++ " := " ++ prettify exprs]
 
 instance Prettify Stmt where
   prettify' (BlockStmt stmts) = stmts >>= prettify'
@@ -127,20 +132,24 @@ instance Prettify Stmt where
           If {}                -> ["} else"] `skipNewLine` prettify' e -- Else If
           SimpleStmt EmptyStmt -> ["}"] -- No real else block, don't print anything
           _                    -> "} else {" : tab (prettify' e) ++ ["}"]
-  prettify' (Switch ss se cases) = ("switch " ++ ss' ++ "{") : tab (cases >>= prettify') ++ ["}"]
+  prettify' (Switch ss se cases) =
+    ("switch " ++ ss' ++ "{") : tab (cases >>= prettify') ++ ["}"]
     where
       ss' =
         case (ss, se) of
-          (_, Just se') -> prettify (ss, se') ++ " "
+          (_, Just se')        -> prettify (ss, se') ++ " "
           (EmptyStmt, Nothing) -> ""
-          (_, Nothing) -> prettify ss ++ "; "
-  prettify' (For fc s) = ("for " ++ prettify fc ++ "{") : tab (prettify' s) ++ ["}"]
+          (_, Nothing)         -> prettify ss ++ "; "
+  prettify' (For fc s) =
+    ("for " ++ prettify fc ++ "{") : tab (prettify' s) ++ ["}"]
   prettify' (Break _) = ["break"]
   prettify' (Continue _) = ["continue"]
   -- prettify' (Fallthrough _) = ["fallthrough"]
   prettify' (Declare d) = prettify' d
-  prettify' (Print es) = ["print(" ++ intercalate ", " (es >>= prettify') ++ ")"]
-  prettify' (Println es) = ["println(" ++ intercalate ", " (es >>= prettify') ++ ")"]
+  prettify' (Print es) =
+    ["print(" ++ intercalate ", " (es >>= prettify') ++ ")"]
+  prettify' (Println es) =
+    ["println(" ++ intercalate ", " (es >>= prettify') ++ ")"]
   prettify' (Return m) = ["return"] `skipNewLine` maybe [] prettify' m
 
 instance Prettify SwitchCase where
@@ -155,7 +164,8 @@ instance Prettify (SimpleStmt, Expr) where
 instance Prettify ForClause where
   prettify ForInfinite = ""
   prettify (ForCond e) = prettify e ++ " "
-  prettify (ForClause cs ce s) = prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s ++ " "
+  prettify (ForClause cs ce s) =
+    prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s ++ " "
   prettify' = prettify''
 
 instance Prettify (NonEmpty Expr) where
@@ -164,10 +174,12 @@ instance Prettify (NonEmpty Expr) where
 
 instance Prettify Expr where
   prettify (Unary _ o e) = "(" ++ prettify o ++ prettify e ++ ")"
-  prettify (Binary _ o e1 e2) = "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
+  prettify (Binary _ o e1 e2) =
+    "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
   prettify (Lit l) = prettify l
   prettify (Var i) = prettify i
-  prettify (AppendExpr _ e1 e2) = "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
+  prettify (AppendExpr _ e1 e2) =
+    "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
   prettify (LenExpr _ e) = "len(" ++ prettify e ++ ")"
   prettify (CapExpr _ e) = "cap(" ++ prettify e ++ ")"
   prettify (Selector _ e i) = prettify e ++ "." ++ prettify i

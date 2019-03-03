@@ -31,20 +31,22 @@ module Base
   ) where
 
 import           Control.Applicative
-import Examples
 import           Control.Monad       (unless)
 import           Data
 import qualified Data.Either         as Either
+import           Data.Functor        ((<&>))
 import           Data.List           (intercalate)
 import           Data.List.NonEmpty  (NonEmpty (..), fromList)
 import           Data.Text           (Text, unpack)
 import           ErrorBundle
+import           Examples
+import           GHC.Unicode         (isSpace)
 import           NeatInterpolation
 import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
                                       pStmt, pT, pTDecl)
-import qualified Parser              (parse, parsef, parsefNL, hparse)
+import qualified Parser              (hparse, parse, parsef, parsefNL)
 import           Prettify
-import           Scanner             (Alex (..), runAlex', errODef)
+import           Scanner             (Alex (..), errODef, runAlex')
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -61,7 +63,8 @@ instance Stringable Text where
   toString = unpack
 
 printError :: Either String String -> SpecWith ()
-printError (Right s) = describe "print" $ it "right error" $ expectationFailure s
+printError (Right s) =
+  describe "print" $ it "right error" $ expectationFailure s
 printError (Left s) = describe "print" $ it "left error" $ expectationFailure s
 
 -- | Relatively complex base expectation
@@ -72,36 +75,60 @@ printError (Left s) = describe "print" $ it "left error" $ expectationFailure s
 -- Inputs refers to list of inputs
 -- Note that the last two entries are type ambiguous, which is why we need to specify them
 -- We order the parameters this way to avoid rewriting them
-expectBase :: (HasCallStack) => String -> (s -> Expectation) -> (s -> String) -> String -> [s] -> SpecWith ()
-expectBase suffix expectation title name inputs = describe (name ++ " " ++ suffix) $ mapM_ expect inputs
+expectBase ::
+     (HasCallStack)
+  => String
+  -> (s -> Expectation)
+  -> (s -> String)
+  -> String
+  -> [s]
+  -> SpecWith ()
+expectBase suffix expectation title name inputs =
+  describe (name ++ " " ++ suffix) $ mapM_ expect inputs
   where
     expect input = it (show $ lines $ title input) $ expectation input
 
-expectPassBase :: (Parsable a, Stringable s) => String -> (s -> Either String a) -> [s] -> SpecWith ()
+-- | Expects that input parses with some ast
+expectPassBase ::
+     (Parsable a, Stringable s)
+  => String
+  -> (s -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectPassBase tag parse =
   expectBase
     "success"
     (\s ->
        case parse s of
          Left error ->
-           expectationFailure $ "Expected parse success on:\n\n" ++ toString s ++ "\n\nbut failed with\n\n" ++ error
+           expectationFailure $
+           "Expected parse success on:\n\n" ++
+           toString s ++ "\n\nbut failed with\n\n" ++ error
          _ -> return ())
     toString
     tag
 
-expectFailBase :: (Parsable a, Stringable s) => String -> (s -> Either String a) -> [s] -> SpecWith ()
+-- | Expects that input parses with some error
+expectFailBase ::
+     (Parsable a, Stringable s)
+  => String
+  -> (s -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectFailBase tag parse =
   expectBase
-    "success"
+    "fail"
     (\s ->
        case parse s of
          Right ast ->
            expectationFailure $
-           "Expected parse failure on:\n\n" ++ toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
+           "Expected parse failure on:\n\n" ++
+           toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
          _ -> return ())
     toString
     tag
 
+-- | Expects that input parses with an exact ast match
 expectAstBase :: (Parsable a, Stringable s) => String -> [(s, a)] -> SpecWith ()
 expectAstBase =
   expectBase
@@ -110,21 +137,33 @@ expectAstBase =
        case parse s of
          Left err ->
            expectationFailure $
-           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut failed with\n\n" ++ err
+           "Invalid ast for:\n\n" ++
+           toString s ++
+           "\n\nexpected\n\n" ++ show e ++ "\n\nbut failed with\n\n" ++ err
          Right a ->
            unless (e == a) . expectationFailure $
-           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
+           "Invalid ast for:\n\n" ++
+           toString s ++
+           "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
     (toString . fst)
 
+-- | Expects that pretty(parse(input)) = pretty(parse(pretty(parse(input))))
 expectPrettyInvarBase ::
-     (Parsable a, Prettify a, Stringable s) => String -> (String -> Either String a) -> [s] -> SpecWith ()
+     (Parsable a, Prettify a, Stringable s)
+  => String
+  -> (String -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectPrettyInvarBase tag parse =
   expectBase
     "pretty invar"
     (\s ->
-       case multiPass $ toString s of
-         Left err -> expectationFailure $ "Invalid prettify for:\n\n" ++ toString s ++ "\n\nfailed with\n\n" ++ err
-         Right p -> return ())
+       let s' = toString s
+        in case multiPass s' of
+             Left err ->
+               expectationFailure $
+               "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
+             Right p -> return ())
     toString
     tag
   where
@@ -134,9 +173,44 @@ expectPrettyInvarBase tag parse =
       ast2 <- parse pretty1
       let pretty2 = prettify ast2
       case (ast1 == ast2, pretty1 == pretty2) of
-        (False, _) -> Left $ "AST mismatch: First\n\n" ++ show ast1 ++ "\n\nSecond\n\n" ++ show ast2
-        (_, False) -> Left $ "Prettify mismatch: First\n\n" ++ pretty1 ++ "\n\nSecond\n\n" ++ pretty2
+        (False, _) ->
+          Left $
+          "AST mismatch: First\n\n" ++
+          show ast1 ++ "\n\nSecond\n\n" ++ show ast2
+        (_, False) ->
+          Left $
+          "Prettify mismatch: First\n\n" ++
+          pretty1 ++ "\n\nSecond\n\n" ++ pretty2
         _ -> Right pretty2
+
+-- | Expects that input = pretty(parse(input))
+expectPrettyExactBase ::
+     (Parsable a, Prettify a, Stringable s)
+  => String
+  -> (String -> Either String a)
+  -> [s]
+  -> SpecWith ()
+expectPrettyExactBase tag parse =
+  expectBase
+    "pretty exact"
+    (\s ->
+       let s' = toString s
+        in case multiPass s' of
+             Left err ->
+               expectationFailure $
+               "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
+             Right p -> return ())
+    toString
+    tag
+  where
+    multiPass input = do
+      pretty <- parse input <&> prettify
+      if clean input == clean pretty
+        then Right pretty
+        else Left $
+             "Prettify mismatch: Expected\n\n" ++
+             input ++ "\n\nActually (whitespace ignored)\n\n" ++ pretty
+    clean = filter (not . isSpace)
 
 class (Show a, Eq a) =>
       Parsable a
@@ -150,6 +224,7 @@ class (Show a, Eq a) =>
   expectFail :: Stringable s => [s] -> SpecWith ()
   expectAst :: Stringable s => [(s, a)] -> SpecWith ()
   expectPrettyInvar :: Stringable s => [s] -> SpecWith ()
+  expectPrettyExact :: Stringable s => [s] -> SpecWith ()
 
 instance Parsable Program where
   tag = "program"
@@ -159,6 +234,7 @@ instance Parsable Program where
   expectFail = expectFailBase (tag @Program) (parse @Program)
   expectAst = expectAstBase (tag @Program)
   expectPrettyInvar = expectPrettyInvarBase (tag @Program) (parse @Program)
+  expectPrettyExact = expectPrettyExactBase (tag @Program) (parse @Program)
 
 instance Parsable Stmt where
   tag = "stmt"
@@ -168,6 +244,7 @@ instance Parsable Stmt where
   expectFail = expectFailBase (tag @Stmt) (parse @Stmt)
   expectAst = expectAstBase (tag @Stmt)
   expectPrettyInvar = expectPrettyInvarBase (tag @Stmt) (parse @Stmt)
+  expectPrettyExact = expectPrettyExactBase (tag @Stmt) (parse @Stmt)
 
 instance Parsable TopDecl where
   tag = "topDecl"
@@ -177,6 +254,7 @@ instance Parsable TopDecl where
   expectFail = expectFailBase (tag @TopDecl) (parse @TopDecl)
   expectAst = expectAstBase (tag @TopDecl)
   expectPrettyInvar = expectPrettyInvarBase (tag @TopDecl) (parse @TopDecl)
+  expectPrettyExact = expectPrettyExactBase (tag @TopDecl) (parse @TopDecl)
 
 instance Parsable Signature where
   tag = "signature"
@@ -186,6 +264,7 @@ instance Parsable Signature where
   expectFail = expectFailBase (tag @Signature) (parse @Signature)
   expectAst = expectAstBase (tag @Signature)
   expectPrettyInvar = expectPrettyInvarBase (tag @Signature) (parse @Signature)
+  expectPrettyExact = expectPrettyExactBase (tag @Signature) (parse @Signature)
 
 instance Parsable [ParameterDecl] where
   tag = "parameterDecls"
@@ -194,7 +273,10 @@ instance Parsable [ParameterDecl] where
   expectPass = expectPassBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
   expectFail = expectFailBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
   expectAst = expectAstBase (tag @[ParameterDecl])
-  expectPrettyInvar = expectPrettyInvarBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
+  expectPrettyInvar =
+    expectPrettyInvarBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
+  expectPrettyExact =
+    expectPrettyExactBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
 
 instance Prettify [ParameterDecl] where
   prettify' params = prettify' $ Parameters params
@@ -207,6 +289,7 @@ instance Parsable Type' where
   expectFail = expectFailBase (tag @Type') (parse @Type')
   expectAst = expectAstBase (tag @Type')
   expectPrettyInvar = expectPrettyInvarBase (tag @Type') (parse @Type')
+  expectPrettyExact = expectPrettyExactBase (tag @Type') (parse @Type')
 
 instance Parsable Decl where
   tag = "decl"
@@ -216,6 +299,7 @@ instance Parsable Decl where
   expectFail = expectFailBase (tag @Decl) (parse @Decl)
   expectAst = expectAstBase (tag @Decl)
   expectPrettyInvar = expectPrettyInvarBase (tag @Decl) (parse @Decl)
+  expectPrettyExact = expectPrettyExactBase (tag @Decl) (parse @Decl)
 
 instance Parsable [Expr] where
   tag = "exprs"
@@ -225,6 +309,7 @@ instance Parsable [Expr] where
   expectFail = expectFailBase (tag @[Expr]) (parse @[Expr])
   expectAst = expectAstBase (tag @[Expr])
   expectPrettyInvar = expectPrettyInvarBase (tag @[Expr]) (parse @[Expr])
+  expectPrettyExact = expectPrettyExactBase (tag @[Expr]) (parse @[Expr])
 
 instance Prettify [Expr] where
   prettify' exprs = [intercalate ", " $ map prettify exprs]
@@ -237,6 +322,7 @@ instance Parsable Expr where
   expectFail = expectFailBase (tag @Expr) (parse @Expr)
   expectAst = expectAstBase (tag @Expr)
   expectPrettyInvar = expectPrettyInvarBase (tag @Expr) (parse @Expr)
+  expectPrettyExact = expectPrettyExactBase (tag @Expr) (parse @Expr)
 
 instance Parsable VarDecl' where
   tag = "varDecl"
@@ -246,6 +332,7 @@ instance Parsable VarDecl' where
   expectFail = expectFailBase (tag @VarDecl') (parse @VarDecl')
   expectAst = expectAstBase (tag @VarDecl')
   expectPrettyInvar = expectPrettyInvarBase (tag @VarDecl') (parse @VarDecl')
+  expectPrettyExact = expectPrettyExactBase (tag @VarDecl') (parse @VarDecl')
 
 instance Parsable Identifiers where
   tag = "ids"
@@ -254,7 +341,10 @@ instance Parsable Identifiers where
   expectPass = expectPassBase (tag @Identifiers) (parse @Identifiers)
   expectFail = expectFailBase (tag @Identifiers) (parse @Identifiers)
   expectAst = expectAstBase (tag @Identifiers)
-  expectPrettyInvar = expectPrettyInvarBase (tag @Identifiers) (parse @Identifiers)
+  expectPrettyInvar =
+    expectPrettyInvarBase (tag @Identifiers) (parse @Identifiers)
+  expectPrettyExact =
+    expectPrettyExactBase (tag @Identifiers) (parse @Identifiers)
 
 pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
 pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))
@@ -284,7 +374,13 @@ cartP = liftA2 (,)
 toRetL :: Monad m => a -> m [a]
 toRetL e = return [e]
 
-qcGen :: (Show a, Testable prop) => String -> Bool -> Gen a -> (a -> prop) -> SpecWith (Arg Property)
+qcGen ::
+     (Show a, Testable prop)
+  => String
+  -> Bool
+  -> Gen a
+  -> (a -> prop)
+  -> SpecWith (Arg Property)
 qcGen desc verb g p =
   it desc $
   property $
