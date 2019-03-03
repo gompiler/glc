@@ -33,6 +33,8 @@ module Base
 import           Control.Applicative
 import           Control.Monad       (unless)
 import           Data
+import           Data.Char           (isSpace)
+import           Data.Functor        ((<&>))
 import           Data.List.NonEmpty  (NonEmpty (..), fromList)
 import           Data.Text           (Text, unpack)
 import           ErrorBundle
@@ -270,6 +272,8 @@ instance Parsable [ParameterDecl] where
   expectAst = expectAstBase (tag @[ParameterDecl])
   expectPrettyInvar =
     expectPrettyInvarBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
+  expectPrettyExact =
+    expectPrettyExactBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
 
 instance Parsable Type' where
   tag = "type"
@@ -330,6 +334,8 @@ instance Parsable Identifiers where
   expectAst = expectAstBase (tag @Identifiers)
   expectPrettyInvar =
     expectPrettyInvarBase (tag @Identifiers) (parse @Identifiers)
+  expectPrettyExact =
+    expectPrettyExactBase (tag @Identifiers) (parse @Identifiers)
 
 pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
 pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))

@@ -75,7 +75,7 @@ instance Prettify VarDecl' where
       exprs' =
         if null exprs
           then ""
-          else " = " ++ intercalate ", " (map prettify exprs)
+          else " = " ++ prettify exprs
   prettify (VarDecl' idents (Right exprs)) =
     prettify idents ++ " = " ++ intercalate ", " (map prettify $ toList exprs)
   prettify' = prettify''
@@ -157,7 +157,8 @@ instance Prettify (SimpleStmt, Expr) where
   prettify' = prettify''
 
 instance Prettify [Expr] where
-  prettify' exprs = [intercalate ", " $ map prettify exprs]
+  prettify = commaJoin
+  prettify' = prettify''
 
 instance Prettify ForClause where
   prettify ForInfinite = ""
