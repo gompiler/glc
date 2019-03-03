@@ -203,7 +203,16 @@ Error: parsing error, unexpected ) at 5:22:
     Each verifier returns an optional error, and we are able to map the results
     and return the first error, if any.
 * Pretty Printer
-  TODO
+  When creating our pretty printer, we chose a top down approach.
+  Every node has the ability to output a list of strings, which makes
+  it easier to format indentation. Each node is also only concerned
+  with its respective subtree, and does not require context from its
+  parent. We focused on aesthetics, focusing on proper spacing and
+  alignments. In the case of expressions, we tried to add brackets
+  sparingly, though further optimizations can be done down the road
+  (a nested binary op does not always need brackets, if the order of
+  precedence matches). To produce the full program, we simply join
+  the list of strings in the full program, intercalated with new lines.
 * Team
 ** Team Organization
    We started the project by dividing the main components (scanner, parser,
