@@ -7,15 +7,11 @@ module ParserSpec
   ) where
 
 import           Base
-import           Data               as D
+import           Data            as D
 import           Parser
-import           Scanner
-import qualified TokensSpec         as T
+import qualified TokensSpec      as T
 
-import qualified Data.Either        as Either
-import           Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NonEmpty
-import           Data.List.Split    (splitOn)
+import           Data.List.Split (splitOn)
 
 {-# ANN module "HLint: ignore Redundant do" #-}
 
@@ -185,38 +181,6 @@ spec = do
       }
       |]
     ]
-  where
-    blankExpr = Var $ Identifier o "temp"
-    blankStmt = blank
-
-programMain :: [(String, FuncBody)]
-programMain = [("", BlockStmt [])]
-
-programMainL :: [(String, String)]
-programMainL = [("", ""), ("var a = !!!!!! false;", "")]
-
-programE :: [(String, Program)]
-programE =
-  map
-    (\(s, body) ->
-       ( "package main; func main(){" ++ s ++ "}"
-       , Program
-           { package = "main"
-           , topLevels =
-               [ TopFuncDecl
-                   (FuncDecl
-                      (Identifier o "main")
-                      (Signature (Parameters []) Nothing)
-                      body)
-               ]
-           }))
-    programMain
-
-programEL :: [(String, String)]
-programEL =
-  map
-    (\(s, err) -> ("package main; func main(){" ++ s ++ "}", err))
-    programMainL
 
 genCommaList ::
      Gen String -- ^ What we will be comma separating
@@ -296,13 +260,3 @@ genEUn =
               ( id1 ++ '.' : id2
               , Selector o (Var $ Identifier o id1) $ Identifier o id2))
     ]
-
-genE :: Gen (String, Expr)
-genE = oneof [genEBase, genEUn, genEBin]
-
-expectEL :: [(String, [Expr])]
-expectEL =
-  [ ( "123, 888"
-    , (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
-  , ("123, 88.8", (Lit $ IntLit o Decimal "123") : [Lit $ FloatLit o "88.8"])
-  ]

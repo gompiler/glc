@@ -4,10 +4,7 @@
 module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NonEmpty
 import           ErrorBundle
-import           GHC.Exts           (Constraint)
-import           GHC.TypeLits
 
 -- note that I do not classify blank identifiers as a separate type
 -- because we can easily pattern match it already
@@ -22,7 +19,7 @@ instance ErrorBreakpoint Identifier where
 type Identifiers = NonEmpty Identifier
 
 instance ErrorBreakpoint Identifiers where
-  offset (id :| _) = offset id
+  offset (ident :| _) = offset ident
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
@@ -85,7 +82,7 @@ data FuncDecl =
   deriving (Show, Eq)
 
 instance ErrorBreakpoint FuncDecl where
-  offset (FuncDecl id _ _) = offset id
+  offset (FuncDecl ident _ _) = offset ident
 
 -- | See https://golang.org/ref/spec#ParameterDecl
 -- Func components
@@ -96,7 +93,7 @@ data ParameterDecl =
   deriving (Show, Eq)
 
 instance ErrorBreakpoint ParameterDecl where
-  offset (ParameterDecl ids _) = offset ids
+  offset (ParameterDecl idents _) = offset idents
 
 -- | See https://golang.org/ref/spec#Parameters
 -- Variadic parameters aren't supported in golite
@@ -139,12 +136,12 @@ data SimpleStmt
   deriving (Show, Eq)
 
 instance ErrorBreakpoint SimpleStmt where
-  offset EmptyStmt            = error "EmptyStmt has no offset"
-  offset (ExprStmt e)         = offset e
-  offset (Increment o _)      = o
-  offset (Decrement o _)      = o
-  offset (Assign o _ _ _)     = o
-  offset (ShortDeclare ids _) = offset ids
+  offset EmptyStmt               = error "EmptyStmt has no offset"
+  offset (ExprStmt e)            = offset e
+  offset (Increment o _)         = o
+  offset (Decrement o _)         = o
+  offset (Assign o _ _ _)        = o
+  offset (ShortDeclare idents _) = offset idents
 
 -- | Shortcut for a blank stmt
 blank :: Stmt
@@ -273,7 +270,7 @@ instance ErrorBreakpoint Expr where
   offset (Unary o _ _)      = o
   offset (Binary o _ _ _)   = o
   offset (Lit l)            = offset l
-  offset (Var id)           = offset id
+  offset (Var ident)        = offset ident
   offset (AppendExpr o _ _) = o
   offset (LenExpr o _)      = o
   offset (CapExpr o _)      = o
@@ -400,4 +397,4 @@ data FieldDecl =
   deriving (Show, Eq)
 
 instance ErrorBreakpoint FieldDecl where
-  offset (FieldDecl ids _) = offset ids
+  offset (FieldDecl idents _) = offset idents

@@ -1,7 +1,6 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE QuasiQuotes          #-}
-{-# LANGUAGE TypeApplications     #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE TypeApplications  #-}
 
 module WeedingSpec
   ( spec
@@ -9,8 +8,6 @@ module WeedingSpec
 
 import           Base
 import           Data
-import           Data.Functor ((<&>))
-import           Debug.Trace  (trace)
 import           Weeding
 
 expectWeedPass :: Stringable s => [s] -> SpecWith ()

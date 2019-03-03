@@ -2,8 +2,10 @@
 
 module Examples where
 
+import           Data.Text.Internal (Text)
 import           NeatInterpolation
 
+intExamples :: [String]
 intExamples =
   [ "0"
   , "1"
@@ -16,6 +18,7 @@ intExamples =
   , "170141183460469231731687303715884105727"
   ]
 
+floatExamples :: [String]
 floatExamples =
   [ ".1234567890"
   , "0."
@@ -32,6 +35,7 @@ floatExamples =
   , "12345"
   ]
 
+runeExamples :: [String]
 runeExamples =
   [ "a"
   , "b"
@@ -48,6 +52,7 @@ runeExamples =
   , "\""
   ]
 
+topDeclExamples :: [Text]
 topDeclExamples =
   [ [text|
     type bb struct {
@@ -65,6 +70,7 @@ topDeclExamples =
     |]
   ]
 
+stmtExamples :: [Text]
 stmtExamples =
   [ [text|
     if bool {
@@ -84,6 +90,7 @@ stmtExamples =
     |]
   ]
 
+programExamples :: [Text]
 programExamples =
   [ [text|package small|]
   , [text|

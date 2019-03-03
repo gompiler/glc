@@ -579,7 +579,7 @@ alexMonadScan = do
   sc <- alexGetStartCode
   case alexScan inp__ sc of
     AlexEOF -> alexEOF
-    AlexError (AlexPn o line column, prev, _, s) -> errGenL o
+    AlexError (AlexPn o _ _, _, _, _) -> errGenL o
     AlexSkip inp__' _len -> do
       alexSetInput inp__'
       alexMonadScan
@@ -608,22 +608,22 @@ checkBlk inp beg@(pos@(AlexPn o _ _), _, _, _) semi =
     (alexError ("Error: unclosed block comment at ", o)) matchEnd (alexGetByte inp)
   where
   bToC b = (toEnum (fromIntegral b) :: Char)
-  matchEnd (b, inp) = case bToC b of
+  matchEnd (b, inp') = case bToC b of
                         '*'  ->
                             maybe
                                 (alexError ("Error: unclosed block comment at ", o))
-                                matchEnd2 (alexGetByte inp)
-                        '\n' -> checkBlk inp beg True
-                        _    -> checkBlk inp beg semi
-  matchEnd2 (b, inp) = case bToC b of
+                                matchEnd2 (alexGetByte inp')
+                        '\n' -> checkBlk inp' beg True
+                        _    -> checkBlk inp' beg semi
+  matchEnd2 (b, inp') = case bToC b of
                          '/' -> do
-                             alexSetInput inp
+                             alexSetInput inp'
                              sc <- alexGetStartCode
                              if semi && (sc == nl)
                                 then alexSetStartCode 0 >>
                                      return (Token pos TSemicolon)
                                 else alexMonadScan
-                         _   -> checkBlk inp beg semi
+                         _   -> checkBlk inp' beg semi
 
 -- | tokM is a monad wrapper, this deals with consumming strings from the input string and wrapping tokens in a monad
 tokM :: ([a] -> InnerToken) -> (AlexPosn, b, c, [a]) -> Int -> Alex Token

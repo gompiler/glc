@@ -33,20 +33,18 @@ module Base
 import           Control.Applicative
 import           Control.Monad       (unless)
 import           Data
-import qualified Data.Either         as Either
+import           Data.Char           (isSpace)
 import           Data.Functor        ((<&>))
-import           Data.List           (intercalate)
 import           Data.List.NonEmpty  (NonEmpty (..), fromList)
 import           Data.Text           (Text, unpack)
 import           ErrorBundle
 import           Examples
-import           GHC.Unicode         (isSpace)
 import           NeatInterpolation
 import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
                                       pStmt, pT, pTDecl)
-import qualified Parser              (hparse, parse, parsef, parsefNL)
+import qualified Parser              (parse, parsef, parsefNL)
 import           Prettify
-import           Scanner             (Alex (..), errODef, runAlex')
+import           Scanner             (InnerToken, scanT)
 import           Test.Hspec
 import           Test.QuickCheck
 
@@ -83,10 +81,10 @@ expectBase ::
   -> String
   -> [s]
   -> SpecWith ()
-expectBase suffix expectation title name inputs =
+expectBase suffix expectation' title name inputs =
   describe (name ++ " " ++ suffix) $ mapM_ expect inputs
   where
-    expect input = it (show $ lines $ title input) $ expectation input
+    expect input = it (show $ lines $ title input) $ expectation' input
 
 -- | Expects that input parses with some ast
 expectPassBase ::
@@ -95,18 +93,19 @@ expectPassBase ::
   -> (s -> Either String a)
   -> [s]
   -> SpecWith ()
-expectPassBase tag parse =
+expectPassBase tag' parse'' -- Put ' to not overshadow variables from class definition
+ =
   expectBase
     "success"
     (\s ->
-       case parse s of
-         Left error ->
+       case parse'' s of
+         Left err ->
            expectationFailure $
            "Expected parse success on:\n\n" ++
-           toString s ++ "\n\nbut failed with\n\n" ++ error
+           toString s ++ "\n\nbut failed with\n\n" ++ err
          _ -> return ())
     toString
-    tag
+    tag'
 
 -- | Expects that input parses with some error
 expectFailBase ::
@@ -115,18 +114,18 @@ expectFailBase ::
   -> (s -> Either String a)
   -> [s]
   -> SpecWith ()
-expectFailBase tag parse =
+expectFailBase tag' parse'' =
   expectBase
     "fail"
     (\s ->
-       case parse s of
+       case parse'' s of
          Right ast ->
            expectationFailure $
            "Expected parse failure on:\n\n" ++
            toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
          _ -> return ())
     toString
-    tag
+    tag'
 
 -- | Expects that input parses with an exact ast match
 expectAstBase :: (Parsable a, Stringable s) => String -> [(s, a)] -> SpecWith ()
@@ -154,7 +153,7 @@ expectPrettyInvarBase ::
   -> (String -> Either String a)
   -> [s]
   -> SpecWith ()
-expectPrettyInvarBase tag parse =
+expectPrettyInvarBase tag' parse'' =
   expectBase
     "pretty invar"
     (\s ->
@@ -165,12 +164,12 @@ expectPrettyInvarBase tag parse =
                "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
              Right p -> return ())
     toString
-    tag
+    tag'
   where
     multiPass input = do
-      ast1 <- parse input
+      ast1 <- parse'' input
       let pretty1 = prettify ast1
-      ast2 <- parse pretty1
+      ast2 <- parse'' pretty1
       let pretty2 = prettify ast2
       case (ast1 == ast2, pretty1 == pretty2) of
         (False, _) ->
@@ -278,9 +277,6 @@ instance Parsable [ParameterDecl] where
   expectPrettyExact =
     expectPrettyExactBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
 
-instance Prettify [ParameterDecl] where
-  prettify' params = prettify' $ Parameters params
-
 instance Parsable Type' where
   tag = "type"
   parse' = Parser.parsef pT
@@ -310,9 +306,6 @@ instance Parsable [Expr] where
   expectAst = expectAstBase (tag @[Expr])
   expectPrettyInvar = expectPrettyInvarBase (tag @[Expr]) (parse @[Expr])
   expectPrettyExact = expectPrettyExactBase (tag @[Expr]) (parse @[Expr])
-
-instance Prettify [Expr] where
-  prettify' exprs = [intercalate ", " $ map prettify exprs]
 
 instance Parsable Expr where
   tag = "expr"
@@ -359,6 +352,14 @@ class SpecBuilder a where
   expectation :: a -> SpecWith ()
   specAll :: String -> [a] -> SpecWith ()
   specAll name items = describe name $ mapM_ expectation items
+
+instance SpecBuilder (String, [InnerToken]) where
+  expectation (input, expected) =
+    it (show $ lines input) $ scanT input `shouldBe` Right expected
+
+instance SpecBuilder (String, String) where
+  expectation (input, failure) =
+    it (show $ lines input) $ scanT input `shouldBe` Left failure
 
 -- | Generate Either given a string and feed this to constructor
 strData :: String -> (String -> a) -> (String, a)

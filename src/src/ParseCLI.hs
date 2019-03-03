@@ -28,15 +28,17 @@ parseFile :: Parser Inp
 parseFile =
   FileInp <$>
   strOption
-    (long "file-path" <> short 'f' <> metavar "FILEPATH" <>
+    (long "file-path" <>
+     short 'f' <>
+     metavar "FILEPATH" <>
      help "Read input (source to be evaluated) from file at FILEPATH")
 
 parseStd :: Parser Inp
 parseStd =
   flag'
     StdInp
-    (long "stdin" <> short 's' <>
-     help "Read input (source to be evaluated) from stdin")
+    (long "stdin" <>
+     short 's' <> help "Read input (source to be evaluated) from stdin")
 
 parseSource :: Parser Inp
 parseSource = parseFile <|> parseStd
@@ -53,7 +55,8 @@ tokensParser :: ParserInfo CmdI
 tokensParser =
   info
     (CI Tokens <$> parseSource)
-    (fullDesc <> progDesc "Outputs tokens, one per line, until the end of file." <>
+    (fullDesc <>
+     progDesc "Outputs tokens, one per line, until the end of file." <>
      header "tokens - outputs tokens from the scanner for a source file")
 
 parseParser :: ParserInfo CmdI
@@ -68,7 +71,8 @@ prettyParser :: ParserInfo CmdI
 prettyParser =
   info
     (CI Pretty <$> parseSource)
-    (fullDesc <> progDesc "Outputs pretty printed code from the AST to stdout." <>
+    (fullDesc <>
+     progDesc "Outputs pretty printed code from the AST to stdout." <>
      header "pretty - pretty print a source file")
 
 prettyInvarParser :: ParserInfo CmdI
@@ -109,16 +113,16 @@ cmdParser :: ParserInfo CmdI
 cmdParser =
   info
     (hsubparser
-       (command "scan" scanParser <> command "tokens" tokensParser <>
+       (command "scan" scanParser <>
+        command "tokens" tokensParser <>
         command "parse" parseParser <>
         command "pretty" prettyParser <>
         command "prettyinvar" prettyInvarParser <>
         command "symbol" symbolParser <>
-        command "typecheck" typecheckParser <>
-        command "codegen" codegenParser) <**>
+        command "typecheck" typecheckParser <> command "codegen" codegenParser) <**>
      helper)
-    (fullDesc <> progDesc "Compiler for goLite" <>
-     header "glc - a compiler for goLite")
+    (fullDesc <>
+     progDesc "Compiler for goLite" <> header "glc - a compiler for goLite")
 
 inpToIOStr :: Inp -> IO String
 inpToIOStr inp =
