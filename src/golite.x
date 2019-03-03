@@ -128,7 +128,7 @@ tokens :-
     cap                                 { tokS TCap }
     0$octal+                            { tokSM TOctVal }
     0[xX]$hex+                          { tokSM THexVal }
-    $digit+                             { tokSM TDecVal }
+    0 | [1-9]$digit*                    { tokSM TDecVal }
     $digit*\.$digit*                    { tokSM TFloatVal }
     $alpha [$alpha $digit]*             { tokSM TIdent }
     \' @char \'                         { tokSM TRuneVal }
