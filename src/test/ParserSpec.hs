@@ -132,6 +132,12 @@ spec = do
              (Arithm Multiply)
              (Lit (IntLit o Decimal "2"))
              (Lit (IntLit o Decimal "4"))))
+    , ( "-2 ^ 5"
+      , Binary
+          o
+          (Arithm BitXor)
+          (Unary o Neg (Lit (IntLit o Decimal "2")))
+          (Lit (IntLit o Decimal "5")))
     ]
   expectFail
     @Expr
