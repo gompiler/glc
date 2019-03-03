@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE QuasiQuotes          #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
@@ -16,23 +15,10 @@ spec = do
   expectPrettyInvar @Identifiers ["a, b"]
   expectPrettyInvar @Expr ["1 + 2 * 3", "(((2))) * abc - _s", "index[0]", "-a"]
   expectPrettyInvar @Type' ["asdf", "struct {a int; b int;}", "[0][0]a"]
-  expectPrettyInvar
-    @TopDecl
-    [ [text|
-      type bb struct {
-        b int
-        c, d float64
-        e struct {
-          f int
-          g, h int
-        }
-      }
-      |],
-      [text|
-      func whatever() struct { int n; } {
-      }
-      |]
-    ]
+  expectPrettyInvar @TopDecl topDeclExamples
+  expectPrettyInvar @Stmt stmtExamples
+  expectPrettyInvar @Program programExamples
+
 --  printError $
 --    prettify <$>
 --    parse
@@ -40,7 +26,6 @@ spec = do
 --      [text|
 --      func whatever() struct { int n; } { }
 --      |]
-
 intLit = map (\(i, e) -> (IntLit o i e, e)) [(Decimal, "12"), (Hexadecimal, "0xCAFEBABE"), (Octal, "01001")]
 
 floatLit = fstConvert (FloatLit o) [("0.123", "0.123"), ("0.0", "0.0"), ("-1.0", "-1.0")]

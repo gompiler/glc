@@ -85,4 +85,15 @@ spec = do
         case c:
         default:
       }
-      |]]
+      |]
+    , [text|
+      for {
+        a.b
+      }
+      |]
+      -- No short decl in post
+    , [text|
+      for i := 0; i < 20; i := 0 {
+      }
+      |]
+    ]
