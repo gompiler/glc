@@ -104,7 +104,7 @@ whilst implementing the components for milestone 1.
    debugging from an end-user programming perspective:
 
 #+BEGIN_SRC
-Error: parsing error, unexpected ) at 5:22:                                                                
+Error: parsing error, unexpected ) at 5:22:
   |
 5 | func abstract(a, b, c) {
   |                      ^
@@ -144,6 +144,13 @@ Error: parsing error, unexpected ) at 5:22:
    However, adding an extra non terminal to manage reversals for each list made
    our generated module notably more complex and needlessly increased our
    grammar size, so we decided against it.
+
+   Our exact solution was to differentiate between a list which contained at
+   least one non-identifier (i.e. either all non-identifiers, a list of
+   identifiers plus one non-identifier, or a mixed list as the grammar rule
+   base cases) and a list of entirely identifiers. Then, the expression list
+   non-terminal was allowed to yield either one of these mixed lists or a
+   pure identifier list.
 ** AST
    The AST is largely a one to one mapping of the Golang specs, with
    parts we don't support removed and additional parts for Golite added.
