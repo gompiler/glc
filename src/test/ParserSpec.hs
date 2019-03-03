@@ -260,10 +260,3 @@ genEUn =
               ( id1 ++ '.' : id2
               , Selector o (Var $ Identifier o id1) $ Identifier o id2))
     ]
--- genE :: Gen (String, Expr)
--- genE = oneof [genEBase, genEUn, genEBin]
--- expectEL :: [(String, [Expr])]
--- expectEL =
---   [ ("123, 888", (Lit $ IntLit o Decimal "123") : [Lit $ IntLit o Decimal "888"])
---   , ("123, 88.8", (Lit $ IntLit o Decimal "123") : [Lit $ FloatLit o "88.8"])
---   ]
