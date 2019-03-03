@@ -153,7 +153,13 @@ Error: parsing error, unexpected ) at 5:22:
    pure identifier list.
 
    Another caveat of how lists are handled in the grammar, again a
-   compromise to prevent ambiguity, is TODO.
+   compromise to prevent ambiguity, is that the actual grammar constructs
+   that represent lists correspond to a list of size two or more, which
+   doesn't exactly match the Go spec (where a list may be 0/1 or more,
+   depending on the case). The actual single-item non-terminals in some
+   contexts / rules represent a list of size one. However, this disparity
+   is resolved in the actual AST construct, which is closer to a direct
+   representation of the Go / GoLite specifications.
 ** AST
    The AST is largely a one to one mapping of the Golang specs, with
    parts we don't support removed and additional parts for Golite added.
