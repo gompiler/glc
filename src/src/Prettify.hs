@@ -35,12 +35,6 @@ a `skipNewLine` [] = a
 [a] `skipNewLine` (b:b') = (a ++ " " ++ b) : b'
 (a:a') `skipNewLine` b = a : a' `skipNewLine` b
 
--- | Joins last line of first list with first line of last list with a semicolon and space
--- skipNewLineSemi :: [String] -> [String] -> [String]
--- [] `skipNewLineSemi` a = a
--- a `skipNewLineSemi` [] = a
--- [a] `skipNewLineSemi` (b:b') = (a ++ "; " ++ b) : b'
--- (a:a') `skipNewLineSemi` b = a : a' `skipNewLine` b
 -- | Some prettified components span a single line
 -- In that case, we can implement prettify by default
 -- And use this function to derive the list format from the string format
