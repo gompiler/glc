@@ -1,8 +1,8 @@
-.PHONY: all
+.PHONY: allT
 all: glcT
 
 # local build
-.PHONY: allL
+.PHONY: all
 allL: glc
 
 .PHONY: clean
@@ -48,7 +48,7 @@ ctest: gen
 # Refactor code using hlint, hindent and stylish-haskell
 .PHONY: refactor
 refactor:
-	@find . -name "*.hs" -not -path "./src/generated/*" -not -path "./.stack-work/*" -exec hlint --refactor --refactor-options="--inplace" {} \; -exec hindent {} \; -exec stylish-haskell -i {} \;
+	@find . -name "*.hs" -not -path "./out/*" -not -path "./src/generated/*" -not -path "./.stack-work/*" -exec hlint --refactor --refactor-options="--inplace" {} \; -exec hindent {} \; -exec stylish-haskell -i {} \;
 
 # ------------------------------------------------------------
 # |                   Trottier specific                      |

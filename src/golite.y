@@ -21,7 +21,9 @@
                 , pEl
                 , pE
                 , hparse
-                , parse)
+                , parse
+                , parsef
+                , parsefNL)
 where
 import Scanner
 import Data
@@ -40,29 +42,29 @@ import qualified Data.List.NonEmpty as NonEmpty
 %lexer { lexer } { Token _ TEOF }
 %error { parseError }
 
--- Other partial parsers for testing
-%partial pId Idents
-%partial pE Expr
-%partial pT Type
-%partial pEl EIList
-%partial pTDecl TopDecl
-%partial pTDecls TopDecls
-%partial pDec Decl
-%partial pDecB DeclBody
-%partial pFDec FuncDecl
-%partial pSig Signature
-%partial pIDecl InnerDecl
-%partial pPar Params
-%partial pRes Result
-%partial pStmt Stmt
-%partial pStmts Stmts
-%partial pBStmt BlockStmt
-%partial pSStmt SimpleStmt
-%partial pIf IfStmt
-%partial pElses Elses
-%partial pSwS SwitchStmt
-%partial pSwB SwitchBody
-%partial pFor ForStmt
+-- Other subparsers for testing
+%name pId Idents
+%name pE Expr
+%name pT Type
+%name pEl EIList
+%name pTDecl TopDecl
+%name pTDecls TopDecls
+%name pDec Decl
+%name pDecB DeclBody
+%name pFDec FuncDecl
+%name pSig Signature
+%name pIDecl InnerDecl
+%name pPar Params
+%name pRes Result
+%name pStmt Stmt
+%name pStmts Stmts
+%name pBStmt BlockStmt
+%name pSStmt SimpleStmt
+%name pIf IfStmt
+%name pElses Elses
+%name pSwS SwitchStmt
+%name pSwB SwitchBody
+%name pFor ForStmt
 
 {- Spec: https://golang.org/ref/spec#Operator_precedence -}
 %nonassoc ',' {- Lowest precedence, for arrays and expression lists. TODO: DO WE NEED THIS? -}
@@ -247,8 +249,8 @@ BlockStmt   : '{' Stmts '}'                                 { BlockStmt (reverse
 
 {- Spec: https://golang.org/ref/spec#SimpleStmt -}
 SimpleStNE  : {- empty -}                                   { EmptyStmt }
-            | ident "++"                                    { Increment (getOffset $2) $ Var (getIdent $1) }
-            | ident "--"                                    { Decrement (getOffset $2) $ Var (getIdent $1) }
+            | Expr "++"                                     { Increment (getOffset $2) $1 } {- Typecheck for identifiers -}
+            | Expr "--"                                     { Decrement (getOffset $2) $1 } {- Typecheck for identifiers -}
 
             | EIList '=' EIList                             { Assign (getOffset $2) (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
 
@@ -336,8 +338,8 @@ NIExpr      : '+' Expr %prec POS                            { Unary (getOffset $
             | decv                                          { Lit (IntLit (getOffset $1) Decimal $ getInnerString $1) }
             | octv                                          { Lit (IntLit (getOffset $1) Octal $ getInnerString $1) }
             | hexv                                          { Lit (IntLit (getOffset $1) Hexadecimal $ getInnerString $1) }
-            | fv                                            { Lit (FloatLit (getOffset $1) $ getInnerFloat $1) }
-            | rv                                            { Lit (RuneLit (getOffset $1) $ getInnerChar $1) }
+            | fv                                            { Lit (FloatLit (getOffset $1) $ getInnerString $1) }
+            | rv                                            { Lit (RuneLit (getOffset $1) $ getInnerString $1) }
             | sv                                            { Lit (StringLit (getOffset $1) Interpreted $ getInnerString $1) }
             | rsv                                           { Lit (StringLit (getOffset $1) Raw $ getInnerString $1) }
             | append '(' Expr ',' Expr ')'                  { AppendExpr (getOffset $1) $3 $5 }
@@ -382,20 +384,24 @@ getInnerString t = case t of
   Token _ (TDecVal val) -> val
   Token _ (TOctVal val) -> val
   Token _ (THexVal val) -> val
-  Token _ (THexVal val) -> val
+  Token _ (TFloatVal val) -> val
+  Token _ (TRuneVal val) -> val
   Token _ (TStringVal val) -> val
   Token _ (TRStringVal val) -> val
   Token _ (TIdent val) -> val
 
-getInnerFloat :: Token -> Float
-getInnerFloat (Token _ (TFloatVal val)) = val
-
-getInnerChar :: Token -> Char
-getInnerChar (Token _ (TRuneVal val)) = val
-
 -- Main parse function
 parse :: String -> Either String Program
 parse s = either (Left . errODef s) Right (runAlex s $ hparse)
+
+-- Parse function that takes in any parser
+parsef :: (Alex a) -> String -> Either String a
+parsef f s = either (Left . errODef s) Right (runAlex' s $ f)
+-- runAlex' does not insert newline at end if needed
+
+-- parsef but insert newline if needed at end just like main parse function
+parsefNL :: (Alex a) -> String -> Either String a
+parsefNL f s = either (Left . errODef s) Right (runAlex s $ f)
 
 -- Extract posn only
 ptokl t = case t of
@@ -403,5 +409,5 @@ ptokl t = case t of
 
 parseError :: (Token) -> Alex a
 parseError (Token (AlexPn o l c) t) =
-           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at ", o)
+           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at: ", o)
 }

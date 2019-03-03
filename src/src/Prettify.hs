@@ -2,6 +2,7 @@
 
 module Prettify
   ( Prettify(..)
+  , checkPrettifyInvariance
   ) where
 
 import           Data
@@ -11,9 +12,21 @@ import           Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Maybe         as Maybe
 import           Data.Text          (strip)
 import           GHC.Unicode        (isSpace)
+import           Parser             (parse)
+
+checkPrettifyInvariance :: String -> Either String String
+checkPrettifyInvariance input = do
+  ast1 <- parse input
+  let pretty1 = prettify ast1
+  ast2 <- parse input
+  let pretty2 = prettify ast2
+  case (ast1 == ast2, pretty1 == pretty2) of
+    (False, _) -> Left $ "AST mismatch:\n\n" ++ show ast1 ++ "\n\n" ++ show ast2
+    (_, False) -> Left $ "Prettify mismatch" ++ pretty1 ++ "\n\n" ++ pretty2
+    _ -> Right pretty2
 
 tab :: [String] -> [String]
-tab = map ("\t" ++)
+tab = map ("    " ++)
 
 commaJoin :: Prettify a => [a] -> String
 commaJoin p = intercalate ", " $ map prettify p
@@ -24,6 +37,13 @@ skipNewLine :: [String] -> [String] -> [String]
 a `skipNewLine` [] = a
 [a] `skipNewLine` (b:b') = (a ++ " " ++ b) : b'
 (a:a') `skipNewLine` b = a : a' `skipNewLine` b
+
+-- | Joins last line of first list with first line of last list with a semicolon and space
+skipNewLineSemi :: [String] -> [String] -> [String]
+[] `skipNewLineSemi` a = a
+a `skipNewLineSemi` [] = a
+[a] `skipNewLineSemi` (b:b') = (a ++ "; " ++ b) : b'
+(a:a') `skipNewLineSemi` b = a : a' `skipNewLine` b
 
 -- | Some prettified components span a single line
 -- In that case, we can implement prettify by default
@@ -53,10 +73,10 @@ instance Prettify TopDecl where
   prettify' (TopFuncDecl decl) = prettify' decl
 
 instance Prettify Decl where
-  prettify' (VarDecl [decl]) = ["var " ++ prettify decl]
-  prettify' (VarDecl decls)  = "var (" : tab (map prettify decls) ++ [")"]
-  prettify' (TypeDef [def])  = ["type " ++ prettify def]
-  prettify' (TypeDef defs)   = "type (" : tab (map prettify defs) ++ [")"]
+  prettify' (VarDecl [decl]) = ["var"] `skipNewLine` prettify' decl
+  prettify' (VarDecl decls)  = "var (" : tab (decls >>= prettify') ++ [")"]
+  prettify' (TypeDef [def])  = ["type"] `skipNewLine` prettify' def
+  prettify' (TypeDef defs)   = "type (" : tab (defs >>= prettify') ++ [")"]
 
 instance Prettify VarDecl' where
   prettify (VarDecl' ids (Left (t, exprs))) =
@@ -71,8 +91,7 @@ instance Prettify VarDecl' where
   prettify' = prettify''
 
 instance Prettify TypeDef' where
-  prettify (TypeDef' id t) = prettify id ++ " = " ++ prettify t
-  prettify' = prettify''
+  prettify' (TypeDef' id t) = prettify' id `skipNewLine` prettify' t
 
 instance Prettify FuncDecl where
   prettify' (FuncDecl id sig body) =
@@ -89,7 +108,7 @@ instance Prettify Parameters where
 
 instance Prettify Signature where
   prettify' (Signature params t) =
-    ["(" ++ prettify params ++ ")" ++ Maybe.maybe "" prettify t]
+    ["(" ++ prettify params ++ ")" ++ Maybe.maybe "" ((' ' :) . prettify) t]
 
 --instance Prettify Scope
 instance Prettify SimpleStmt where
@@ -117,11 +136,12 @@ instance Prettify Stmt where
     ("switch " ++ ss' ++ "{") : tab (cases >>= prettify') ++ ["}"]
     where
       ss' =
-        case se of
-          Just se' -> prettify (ss, se')
-          Nothing  -> prettify ss
+        case (ss, se) of
+          (_, Just se')        -> prettify (ss, se') ++ " "
+          (EmptyStmt, Nothing) -> ""
+          (_, Nothing)         -> prettify ss ++ "; "
   prettify' (For fc s) =
-    ("for " ++ prettify fc ++ " {") : tab (prettify' s) ++ ["}"]
+    ("for " ++ prettify fc ++ "{") : tab (prettify' s) ++ ["}"]
   prettify' (Break _) = ["break"]
   prettify' (Continue _) = ["continue"]
   -- prettify' (Fallthrough _) = ["fallthrough"]
@@ -130,7 +150,7 @@ instance Prettify Stmt where
     ["print(" ++ intercalate ", " (es >>= prettify') ++ ")"]
   prettify' (Println es) =
     ["println(" ++ intercalate ", " (es >>= prettify') ++ ")"]
-  prettify' (Return m) = ["return"] `skipNewLine` maybe [] (prettify') m
+  prettify' (Return m) = ["return"] `skipNewLine` maybe [] prettify' m
 
 instance Prettify SwitchCase where
   prettify' (Case _ e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)
@@ -143,9 +163,9 @@ instance Prettify (SimpleStmt, Expr) where
 
 instance Prettify ForClause where
   prettify ForInfinite = ""
-  prettify (ForCond e) = prettify e
+  prettify (ForCond e) = prettify e ++ " "
   prettify (ForClause cs ce s) =
-    prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s
+    prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s ++ " "
   prettify' = prettify''
 
 instance Prettify (NonEmpty Expr) where
@@ -162,17 +182,16 @@ instance Prettify Expr where
     "append(" ++ prettify e1 ++ ", " ++ prettify e2 ++ ")"
   prettify (LenExpr _ e) = "len(" ++ prettify e ++ ")"
   prettify (CapExpr _ e) = "cap(" ++ prettify e ++ ")"
-  prettify (Conversion _ t e) = prettify t ++ "(" ++ prettify e ++ ")"
   prettify (Selector _ e i) = prettify e ++ "." ++ prettify i
   prettify (Index _ e1 e2) = prettify e1 ++ "[" ++ prettify e2 ++ "]"
-  prettify (TypeAssertion _ e t) = prettify e ++ ".(" ++ prettify t ++ ")"
   prettify (Arguments _ e ee) = prettify e ++ "(" ++ commaJoin ee ++ ")"
   prettify' = prettify''
 
 instance Prettify Literal where
   prettify (IntLit _ _ i)              = i
-  prettify (FloatLit _ f)              = show f
-  prettify (RuneLit _ c)               = "'" ++ [c] ++ "'"
+  prettify (FloatLit _ f)              = f
+  -- Quotes within string s
+  prettify (RuneLit _ s)               = s
   -- Quotes within string s
   prettify (StringLit _ Interpreted s) = s
   -- Quotes within string s
@@ -181,7 +200,7 @@ instance Prettify Literal where
 
 instance Prettify BinaryOp where
   prettify Or         = "||"
-  prettify And        = "||"
+  prettify And        = "&&"
   prettify (Arithm o) = prettify o
   prettify Data.EQ    = "=="
   prettify NEQ        = "!="
@@ -223,20 +242,15 @@ instance Prettify StringType' where
   prettify' _ = []
 
 instance Prettify Type' where
-  prettify (_, t) = prettify t
-  prettify' = prettify''
+  prettify' (_, t) = prettify' t
 
 instance Prettify Type where
-  prettify (ArrayType e t)    = "[" ++ prettify e ++ "]" ++ prettify t
-  prettify (StructType [fdl]) = "struct {" ++ prettify fdl ++ "}"
-  -- prettify' (StructType fdls) = "struct {" : tab (map prettify fdls) ++ "}"
-  prettify (SliceType t)      = "[]" ++ prettify t
-  prettify (PointerType t)    = "*" ++ prettify t
-  prettify (FuncType s)       = "func" ++ prettify s
-  prettify (Type id)          = prettify id
-  prettify' = prettify''
+  prettify' (ArrayType e t)   = ["[" ++ prettify e ++ "]" ++ prettify t]
+  prettify' (StructType fdls) = "struct {" : tab (fdls >>= prettify') ++ ["}"]
+  prettify' (SliceType t)     = ["[]" ++ prettify t]
+  prettify' (FuncType s)      = ["func" ++ prettify s]
+  prettify' (Type id)         = [prettify id]
 
+--  prettify s@StructType {} = intercalate "; " $ prettify' s
 instance Prettify FieldDecl where
-  prettify (FieldDecl ids t)   = prettify ids ++ " " ++ prettify t
-  prettify (EmbeddedField ids) = prettify ids
-  prettify' = prettify''
+  prettify' (FieldDecl ids t) = [prettify ids] `skipNewLine` prettify' t

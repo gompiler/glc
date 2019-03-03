@@ -12,6 +12,7 @@ module Scanner
   , T.AlexPosn(..)
   , T.alexError
   , T.runAlex
+  , T.runAlex'
   , T.Alex
   , errO
   , errODef
@@ -21,6 +22,7 @@ import           System.Exit
 import           System.IO
 
 import           ErrorBundle
+
 -- Helper functions for scanning using tokens and also pass relevant things to parser
 import qualified Tokens      as T
 
@@ -205,7 +207,7 @@ humanize t =
     T.TCap            -> "cap"
     T.TInc            -> "++"
     T.TDInc           -> "--"
-    T.TEOF            -> error "TEOF should not be converted into a string"
+    T.TEOF            -> "EOF" -- error "TEOF should not be converted into a string"
 
 -- |prettyPrint calls prettify on a list of tokens and then prints each one one a new line
 prettyPrint :: [T.InnerToken] -> IO ()

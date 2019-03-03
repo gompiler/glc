@@ -36,9 +36,12 @@ genId' =
 genId :: Gen String
 genId = frequency [(30, genId'), (1, return "_")]
 
+genNum' :: Gen String
+genNum' =
+  oneof [choose ('0', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
+
 genNum :: Gen String
-genNum -- Ensure no octal
- = oneof [choose ('8', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
+genNum = genNum' >>= \n -> choose ('1', '9') >>= \n2 -> return (n2 : n)
 
 genHex' :: Gen String
 genHex' =
@@ -248,11 +251,11 @@ scanSuccess =
   , ("`teststring`", [TRStringVal "`teststring`", TSemicolon])
   , ("`teststring`\n", [TRStringVal "`teststring`", TSemicolon])
   , ("`teststring`;\n", [TRStringVal "`teststring`", TSemicolon])
-  , ("1.23", [TFloatVal 1.23, TSemicolon])
-  , ("1.23\n", [TFloatVal 1.23, TSemicolon])
-  , ("1.23; \n", [TFloatVal 1.23, TSemicolon])
-  , ("1.", [TFloatVal 1.0, TSemicolon])
-  , (".1", [TFloatVal 0.1, TSemicolon])
+  , ("1.23", [TFloatVal "1.23", TSemicolon])
+  , ("1.23\n", [TFloatVal "1.23", TSemicolon])
+  , ("1.23; \n", [TFloatVal "1.23", TSemicolon])
+  , ("1.", [TFloatVal "1.", TSemicolon])
+  , (".1", [TFloatVal ".1", TSemicolon])
   , ("help\n", [TIdent "help", TSemicolon])
   , ("help;\n", [TIdent "help", TSemicolon])
   , ("help ;\n", [TIdent "help", TSemicolon])
@@ -270,8 +273,8 @@ scanSuccess =
   , ("--", [TDInc, TSemicolon])
   , ("--\n", [TDInc, TSemicolon])
   , ("--;", [TDInc, TSemicolon])
-  , ("'a'", [TRuneVal 'a', TSemicolon])
-  , ("'a'\n", [TRuneVal 'a', TSemicolon])
+  , ("'a'", [TRuneVal "'a'", TSemicolon])
+  , ("'a'\n", [TRuneVal "'a'", TSemicolon])
   , ("", [])
   , ("\n", [])
   , ("\r", [])
@@ -314,14 +317,14 @@ scanSuccess =
   , ("\"\"", [TStringVal "\"\"", TSemicolon])
   , ("``", [TRStringVal "``", TSemicolon])
   , ("\"\\n\"", [TStringVal "\"\\n\"", TSemicolon])
-  , ("'\\a'", [TRuneVal '\a', TSemicolon])
-  , ("'\\b'", [TRuneVal '\b', TSemicolon])
-  , ("'\\f'", [TRuneVal '\f', TSemicolon])
-  , ("'\\n'", [TRuneVal '\n', TSemicolon])
-  , ("'\\r'", [TRuneVal '\r', TSemicolon])
-  , ("'\\t'", [TRuneVal '\t', TSemicolon])
-  , ("'\\v'", [TRuneVal '\v', TSemicolon])
-  , ("'\\\\'", [TRuneVal '\\', TSemicolon])
+  , ("'\\a'", [TRuneVal "'\\a'", TSemicolon])
+  , ("'\\b'", [TRuneVal "'\\b'", TSemicolon])
+  , ("'\\f'", [TRuneVal "'\\f'", TSemicolon])
+  , ("'\\n'", [TRuneVal "'\\n'", TSemicolon])
+  , ("'\\r'", [TRuneVal "'\\r'", TSemicolon])
+  , ("'\\t'", [TRuneVal "'\\t'", TSemicolon])
+  , ("'\\v'", [TRuneVal "'\\v'", TSemicolon])
+  , ("'\\\\'", [TRuneVal "'\\\\'", TSemicolon])
   , ( unpack
         [text|
              "\""
@@ -331,7 +334,7 @@ scanSuccess =
         [text|
              '\''
         |]
-    , [TRuneVal '\'', TSemicolon])
+    , [TRuneVal "'\\''", TSemicolon])
   , ( unpack
         [text|
           +   /* Multiline to simulate

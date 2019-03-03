@@ -22,5 +22,7 @@ main = do
         Parse ->
           either putExit (const $ putSucc "OK") . (\s -> parse s >>= weed s)
         Pretty -> either putExit putStrLn . (fmap Prettify.prettify . parse)
+        PrettyInvar ->
+          either putExit (const $ putSucc "OK") . checkPrettifyInvariance
         Symbol -> const $ putStrLn "symbol not yet implemented"
         Typecheck -> const $ putStrLn "typecheck not yet implemented"
