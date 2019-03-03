@@ -206,7 +206,11 @@ Error: parsing error, unexpected ) at 5:22:
   TODO
 * Team
 ** Team Organization
-   TODO
+   We started the project by dividing the main components (scanner, parser,
+   AST/weeding) among the three group members (Julian, David, and Allan
+   respectively). We used GitHub's organization features, such as issues
+   and pull requests/code reviews, extensively in order to keep track of
+   design goals, report bugs, and keep code quality as high as possible.
 ** Contributions
 - *Julian Lore:* Wrote the majority of the scanner and handled weird
    cases, wrote a large amount of valid/invalid programs, implemented
