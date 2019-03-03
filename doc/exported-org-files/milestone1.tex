@@ -1,4 +1,4 @@
-% Created 2019-03-02 Sat 17:04
+% Created 2019-03-02 Sat 20:54
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -33,40 +33,39 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 1.
 \section{Introduction}
-\label{sec:org4d3385e}
+\label{sec:org5f44748}
 \subsection{Implementation Language}
-\label{sec:org4c5c0c6}
+\label{sec:org3be57f2}
 For our \texttt{GoLite} compiler, we decided to use \texttt{Haskell} as the
 implementation language, as many of the required tasks can be done
 more naturally (i.e. tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 \subsection{Tools}
-\label{sec:org4c89b6b}
-For scanning, we use the program \texttt{Alex}, which is very similar to \texttt{flex}
-but produces \texttt{Haskell} code instead. Additionally, we use \texttt{Happy} for
-parsing, which resembles \texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be interlinked
-quite nicely, passing on useful information (encompassed
-through a state monad) like the line number, column number, character
-offset in file, and error messages (which can be propagated in a pure manner
+\label{sec:orgea9bd18}
+For scanning, we use the program \texttt{Alex}, which is similar to \texttt{flex}
+but produces \texttt{Haskell} code instead. We use \texttt{Happy} for parsing,
+which resembles \texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be interlinked
+nicely, passing on useful information (encompassed through a state monad)
+such as the line number, column number, character offset in file, and
+error messages (which are propagated in a pure manner
 without having to raise exceptions).
 
-There are several other good scanning/parsing options to use with
-Haskell, such as \texttt{Megaparsec}, however, we stuck with \texttt{Alex/Happy} because
-they are most similar to \texttt{flex/bison} that we learned in class and most
-of us were familiar with the syntax.
+There are several other good Haskell scanning/parsing options, such as
+\texttt{Megaparsec}. We decided on \texttt{Alex/Happy} because of their syntactic
+similarity to \texttt{flex/bison}, which we learned in class.
 
 We use \texttt{stack} to manage our Haskell project, including \texttt{GHC}, the
 respective projects and tests, additional tests which we implemented
 using the \texttt{hspec} package.
 \subsection{Miscellaneous}
-\label{sec:org32b68d8}
+\label{sec:org0ed74dd}
 \subsubsection{Continuous Integration}
-\label{sec:org2448d5d}
-We use Travis CI to build our project on every push, as well as
-run our tests to make sure that new changes did not break any
+\label{sec:org94e4013}
+We use Travis CI to build our project on every push to GitHub, as well as
+run our tests to make sure that new changes did not break
 existing functionality.
 \subsubsection{File Organization}
-\label{sec:org1ddc6fd}
+\label{sec:orgb7ecf58}
 \begin{itemize}
 \item \texttt{src/}
 \begin{itemize}
@@ -90,150 +89,154 @@ function we want)
 \end{itemize}
 \end{itemize}
 \section{Scanner}
-\label{sec:orgdb98011}
+\label{sec:org82329f8}
 The first step of this milestone was to scan user input into
-tokens. Most of the tokens we had to account for were straightforward
-and similar to the assignments. However, we had to encompass a few of
-the quirks/more complicated things relating to \texttt{GoLite} compared to
-something simple like \texttt{MiniLang}.
+tokens. Handing of most GoLite tokens was straightforward and
+similar to class assignments. In other cases, we had to deal with
+some of Go/GoLite's quirkiness when compared to something simple
+like \texttt{MiniLang}.
 \subsection{Semicolon Insertion}
-\label{sec:orgf48ff83}
-The first hurdle of scanning was semicolon insertion. To solve
-this, we use start codes in \texttt{Alex} and have special rules for
-certain states.
+\label{sec:org072a17d}
+Semicolon insertion was the first scanning hurdle. To solve
+this, we use start codes, a built in feature of \texttt{Alex}, and have
+special rules for certain states.
 
-If the last token we scanned was something
-that can take an optional semicolon, we enter the \(nl\) state, where
-encountering a newline would transform the newline into a
-semicolon. Scanning anything else (that isn't whitespace or otherwise
-ignored) returns the scanner to the default state (\(0\)), where
-newlines are just ignored.
+If the last token we scan is something that can take an optional
+semicolon, we enter the \(nl\) state, where newlines are transformed into
+semicolons after specific tokens. Scanning anything else (that isn't
+whitespace or otherwise ignored) returns the scanner to the default
+state (\(0\)), where newlines are just ignored.
 
-This seems to be an elegant solution, as we don't have to traverse
-the whole list or store context other than the start code, a
-built-in feature of \texttt{Alex}. It also makes a lot more sense to let
-the scanner handle these situations automatically rather than trying
-to handle them using the parser.
+This solution seems elegant, as we don't have to traverse
+the whole stream post-scanning or store context, other than the
+start code. It also makes sense to let the scanner handle these
+situations automatically, rather than trying to deal with them
+in the parsing phase.
 \subsection{Block comment support}
-\label{sec:orge7c44bf}
+\label{sec:org1474253}
 Block comments cannot be easily scanned using only regular
 expressions. One potential solution was to use start codes again
-(changing state upon opening a comment), although that would
-potentially add a lot more states because we'd have to combine
-possibilities with the newline insertion state: (as block
-comments that span over newlines should also insert semicolons when
-they're optional). Another thing is that using a state approach
-made it harder to catch the error of an unclosed comment block.
+(changing state upon opening a comment). This was ruled out since
+it would potentially add a lot more start codes (i.e. states), as
+we'd have combinatorial possibilities with the newline insertion state
+(since block comments spanning newlines should also insert semicolons
+when they're optional). Using a state approach would also make it
+harder to catch unclosed comment block errors.
 
-In our implemented solution, we iterate through the scanner's input
-once we receive an open comment block and ignore everything until we
-close the block comment. If the comment never closes, we can easily
-emit an error.
+Our solution iterates through the scanner's input once we receive an
+open comment block and ignore everything until the comment is closed.
+If the comment never closes, we can easily emit an error.
 
 To account for semicolon insertion with block comments, we set a
 semicolon flag to true if we encounter any new line inside the
-block comment, and we insert a semicolon if the start code is
-\(nl\), the aforementioned newline insertion state.
+block comment, and we insert a semicolon if we're in the
+aforementioned newline insertion state.
 \subsubsection{Adding newlines at the end of the file if they aren't present already}
-\label{sec:orgf002d2d}
+\label{sec:orgc64542b}
 \texttt{Go} requires a semicolon or newline at the end of function
 declarations. Sometimes, there may not be a newline at the end of
-a file, so no semicolon insertion occurs.
+a file, so no semicolon insertion occurs, resulting in a parsing error.
 
 In order to correct for this type of file, we enforce a final
 newline by appending one if necessary. To do this, the code string
-is preprocessed prior to scanning. This was the easiest solution
-as otherwise we'd have to try and insert a semicolon if we were in
+is preprocessed prior to scanning. This is the easiest solution,
+as otherwise we would have to try inserting a semicolon if we are in
 the \(nl\) state when we encounter an \texttt{EOF}, while also making sure
 to return an \texttt{EOF}. This would be difficult without additional
 context information.
 \subsection{Nicer error messages}
-\label{sec:orgce3b2bd}
+\label{sec:org78ee27c}
 We decided to use \texttt{ErrorBundle} from \texttt{Megaparsec} in order to
 output nicer error messages, with program context for easier
 debugging from an end-user programming perspective:
 
 \begin{verbatim}
-Error: parsing error, unexpected ) at 5:22:                                                                
+Error: parsing error, unexpected ) at 5:22:
   |
 5 | func abstract(a, b, c) {
   |                      ^
 \end{verbatim}
 
-While we did have access to character offset, line, and column when
-generating error messages, we did not have access to the entire
-source file string, as the default behaviour of the scanner is to not
-keep the entire string at each step.
+With \texttt{Alex}' default behaviour, we did not have access to the entire
+source file string, as it is not kept between steps.
 
 In order to generate the contextual message, we modified the \texttt{monad}
 wrapper provided with \texttt{Alex} (see \texttt{TokensBase.hs}) and changed the
 \texttt{Alex} monad to wrap over a \texttt{Either (String, Int) a} instead of
 \texttt{Either String a}, i.e. in addition to storing an error message on
 the left side of the monad we also carry an \texttt{Int} which represents
-the offset of the error, so that when we want to print the error
-message at the end we can append the part in the source file where
+the offset of the error. When we want to print the error
+message, we can then append the part in the source file where
 the error occurred.
 \section{Parser}
-\label{sec:org5860e5a}
+\label{sec:org30b4d1b}
 \subsection{Grammar}
-\label{sec:org448cef8}
+\label{sec:org5699611}
 Many of our difficulties in the grammar were associated with identifier and
-expression lists. Two constructs in the Go (and GoLite) spec are identifier
-lists, used in declarations and function signatures, and expression lists,
-used in assignment and function signatures. The grammar was refactored to
-avoid this problem by allowing identifier lists to become expression lists
-if needed in a way which avoided introducing other conflicts.
+expression lists, used in declarations/signatures and assignment/function
+calls respectively. The grammar was refactored to fix this by allowing
+identifier lists to become expression lists if needed, in a way which
+avoided introducing other conflicts.
 
-Another difficulty we had was with list ordering. LR parsers
+The first issue we encountered was with list ordering. LR parsers
 work more intuitively with rules that put the newly-created terminal
-after the recursively-expanding non-terminal However, since Haskell
+after the recursively-expanding non-terminal. However, since Haskell
 uses recursive lists defined in the opposite way, it is significantly
-faster to prepend items rather than append them. Although more
-performant, this prepending results in a reversed ordering, which
-must be handled after the list is 'complete'.
+more efficient to prepend items. This prepending results in a reversed
+ordering, which must be handled after the list is 'complete'.
 
-We initially wanted to avoid reversing the lists ourselves with each usage.
-However, adding an extra non terminal to manage reversals for each list made
-our generated module notably more complex and needlessly increased our
-grammar size, so we decided against it.
+Adding an extra non terminal to manage reversals for each list would
+needlessly increase our grammar and generated code size, so we decided
+against it as a solution. The solution we use is to differentiate
+lists containing at least one non-identifier expression (i.e. using either
+all non-identifiers, identifiers plus one non-identifier, or otherwise mixed
+lists, as grammar base cases) from lists of entirely identifiers. Then,
+the expression list non-terminal is allowed to yield either a mixed list
+or a pure identifier list depending on what is needed.
+
+Another caveat of how lists are handled in the grammar, again a
+compromise to prevent ambiguity, is that the actual grammar constructs
+that represent lists correspond to a list of size two or more, which
+doesn't exactly match the Go spec (where a list may be 0/1 or more,
+depending on the case). The actual single-item non-terminals are allowed
+to represent a list of size one when needed, meaning this disparity
+is resolved in the actual AST construct, which is closer to a direct
+representation of the Go / GoLite specifications.
 \subsection{AST}
-\label{sec:org5c57c24}
+\label{sec:org7cb496b}
 The AST is largely a one to one mapping of the Golang specs, with
 parts we don't support removed and additional parts for Golite added.
 
 In some cases, there are minor deviations from the CFG.
 \subsubsection{Accurate Type Representation}
-\label{sec:org7b18d26}
-We model our ast as accurately as possible, such that impossible
-states are forbidden. We lack any checks for compatible types at
-this stage, but we can match the definition for 'exactly one', 'one
-or more', and 'zero or one'. In cases like identifiers, a \href{https://golang.org/ref/spec\#IdentifierList}{list} is
-one or more (haskell \texttt{NonEmpty}), yet many locations make it
-optional. While a direct translation would be \texttt{Maybe (NonEmpty a)},
-we choose to make it \texttt{[a]} as it makes more sense.
+\label{sec:org5d45f0a}
+We modeled our AST as close as possible to the actual Go and
+GoLite specs, to try and ensure that impossible states are inherently
+prevented by the Haskell type checker, reducing run-time errors.
+Although we don't have type-checking implemented at this milestone,
+we can use this technique to enforce definitions such as
+'exactly one', 'one or more', and 'zero or one'. This modeling is
+not always perfect. For example, a \href{https://golang.org/ref/spec\#IdentifierList}{list}
+of identifiers is 'one or more' (in Haskell, \texttt{NonEmpty}). Many locations
+make it optional. While a direct translation would be \texttt{Maybe (NonEmpty a)},
+we choose to make it a possibly empty list \texttt{[a]} as it makes more sense.
 \subsubsection{Simplified Data Type Categories}
-\label{sec:org4d6118c}
+\label{sec:org49190a9}
 Some splits, such as \texttt{add\_op} and \texttt{mul\_op} are distinguished
 purely to demonstrate precedence; they are in fact only used once
 in the specs, so we decide to merge them directly in our \texttt{ArithmOp}
 model. Several other instances exist.
 
-Given we created an AST vs a CST, we can further compact parts of
-the grammar. For instance, an if clause in the spec leads to an
-\texttt{IfStmt} grammar, whose \texttt{else} body is either a block (with
-surrounding braces) or another if statement (no surrounding
-braces). However, in our case, we don't need to model the braces,
-so we can treat the else body exclusively as \texttt{Stmt} vs \texttt{Either
-    Block IfStmt}.
-\subsubsection{Format Preservation}
-\label{sec:org9e01a1b}
-By design, our types for \texttt{int} and \texttt{string} specify whether they
-are hex/octal/dec or raw/interpreted respectively. We kept this
-information so that our pretty print would accurately represent
-the input, even though we can convert them all to a single type
-(eg dec and interpreted).
+Given we are creating an AST, rather than a CST, we can further
+compact parts of the grammar. For instance, an \texttt{if} clause in the
+spec leads to an \texttt{IfStmt} construction, whose \texttt{else} body is either
+a block (with surrounding braces) or another \texttt{if} statement (no
+surrounding braces). In our case, we don't need to model the braces,
+so we can treat the \texttt{else} body exclusively as \texttt{Stmt} rather than
+the more verbose \texttt{Either Block IfStmt}. The grammar enforces that
+this \texttt{Stmt} is not any other type.
 \subsubsection{Structure Simplification}
-\label{sec:org7e5e843}
+\label{sec:org195d7ab}
 For \texttt{var} and \texttt{type} declaration, we make no distinction between
 single declaration (exactly one) and block declaration (0 or
 more). Unlike types, which produce different formats, we decide to
@@ -244,7 +247,7 @@ we cannot further simplify group declarations \texttt{var ( a, b = 2,
 identifiers matches the number of values. This would have to be
 checked at a later stage
 \subsection{Weeding}
-\label{sec:org11727ac}
+\label{sec:orga241a99}
 In our first stage, our weeding operations are simple, and don't rely
 on context outside of the statement we are verifying. As a result,
 we were able to define recursive traversal methods to verify relevant
@@ -254,15 +257,28 @@ to produce performant and independent functions.
 Each verifier returns an optional error, and we are able to map the results
 and return the first error, if any.
 \section{Pretty Printer}
-\label{sec:org76db7d5}
-TODO
+\label{sec:org5fbc631}
+When creating our pretty printer, we chose a top down approach.
+Every node has the ability to output a list of strings, which makes
+it easier to format indentation. Each node is also only concerned
+with its respective subtree, and does not require context from its
+parent. We focused on aesthetics, focusing on proper spacing and
+alignments. In the case of expressions, we tried to add brackets
+sparingly, though further optimizations can be done down the road
+(a nested binary op does not always need brackets, if the order of
+precedence matches). To produce the full program, we simply join
+the list of strings in the full program, intercalated with new lines.
 \section{Team}
-\label{sec:org75fd43f}
+\label{sec:org5bccf93}
 \subsection{Team Organization}
-\label{sec:orgc5604c4}
-TODO
+\label{sec:orgf24c344}
+We started the project by dividing the main components (scanner, parser,
+AST/weeding) among the three group members (Julian, David, and Allan
+respectively). We used GitHub's organization features, such as issues
+and pull requests/code reviews, extensively in order to keep track of
+design goals, report bugs, and keep code quality as high as possible.
 \subsection{Contributions}
-\label{sec:org32e390e}
+\label{sec:orgf509078}
 \begin{itemize}
 \item \textbf{Julian Lore:} Wrote the majority of the scanner and handled weird
 cases, wrote a large amount of valid/invalid programs, implemented
