@@ -73,10 +73,10 @@ instance Prettify TopDecl where
   prettify' (TopFuncDecl decl) = prettify' decl
 
 instance Prettify Decl where
-  prettify' (VarDecl [decl]) = ["var " ++ prettify decl]
-  prettify' (VarDecl decls)  = "var (" : tab (map prettify decls) ++ [")"]
-  prettify' (TypeDef [def])  = ["type"] `skipNewLine` (prettify' def)
-  prettify' (TypeDef defs)   = "type (" : tab (map prettify defs) ++ [")"]
+  prettify' (VarDecl [decl]) = ["var "] `skipNewLine` prettify' decl
+  prettify' (VarDecl decls) = ["var ("] `skipNewLine` tab (decls >>= prettify') ++ [")"]
+  prettify' (TypeDef [def]) = ["type"] `skipNewLine` prettify' def
+  prettify' (TypeDef defs) = ["type ("] `skipNewLine` tab (defs >>= prettify') ++ [")"]
 
 instance Prettify VarDecl' where
   prettify (VarDecl' ids (Left (t, exprs))) = prettify ids ++ " " ++ prettify t ++ exprs'
@@ -89,8 +89,7 @@ instance Prettify VarDecl' where
   prettify' = prettify''
 
 instance Prettify TypeDef' where
-  prettify (TypeDef' id t) = prettify id ++ " " ++ prettify t
-  prettify' = prettify''
+  prettify' (TypeDef' id t) = prettify' id `skipNewLine` prettify' t
 
 instance Prettify FuncDecl where
   prettify' (FuncDecl id sig body) =
@@ -131,9 +130,9 @@ instance Prettify Stmt where
     where
       ss' =
         case (ss, se) of
-          (_, Just se') -> prettify (ss, se') ++ " "
+          (_, Just se')        -> prettify (ss, se') ++ " "
           (EmptyStmt, Nothing) -> ""
-          (_, Nothing) -> prettify ss ++ "; "
+          (_, Nothing)         -> prettify ss ++ "; "
   prettify' (For fc s) = ("for " ++ prettify fc ++ "{") : tab (prettify' s) ++ ["}"]
   prettify' (Break _) = ["break"]
   prettify' (Continue _) = ["continue"]

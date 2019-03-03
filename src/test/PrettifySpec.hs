@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module PrettifySpec
   ( spec
@@ -27,14 +28,22 @@ spec = do
   expectPrettyInvar @TopDecl topDeclExamples
   expectPrettyInvar @Stmt stmtExamples
   expectPrettyInvar @Program programExamples
+  printError $
+    prettify <$>
+    parse
+      @Program
+      [text|
+package main
 
---  printError $
---    prettify <$>
---    parse
---      @TopDecl
---      [text|
---      func whatever() struct { int n; } { }
---      |]
+func main () {
+    type num int
+    type point struct {
+        x, y float64
+    }
+}
+
+      |]
+
 intLit = map (\(i, e) -> (IntLit o i e, e)) [(Decimal, "12"), (Hexadecimal, "0xCAFEBABE"), (Octal, "01001")]
 
 floatLit = fstConvert (FloatLit o) [("0.123", "0.123"), ("0.0", "0.0"), ("-1.0", "-1.0")]
