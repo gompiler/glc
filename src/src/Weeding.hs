@@ -67,7 +67,7 @@ stmtVerify (SimpleStmt stmt) =
   case stmt of
     ExprStmt Arguments {} -> Nothing
     e@(ExprStmt _) ->
-      Just $ createError e "Expression statements must be function calls" -- TODO: OFFSET
+      Just $ createError e "Expression statements must be function calls"
     _ -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
@@ -88,7 +88,6 @@ stmtVerify (For (ForClause pre _ post) _) =
     s@ShortDeclare {} ->
       Just $ createError s "For post-statement cannot be declaration"
     _ -> Nothing
--- TODO
 stmtVerify _ = Nothing
 
 programVerify :: PureConstraint Program

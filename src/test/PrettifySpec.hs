@@ -1,13 +1,10 @@
 {-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE QuasiQuotes          #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module PrettifySpec
   ( spec
   ) where
-
-import           NeatInterpolation
 
 import           Base
 import           Data
@@ -17,7 +14,18 @@ spec :: Spec
 spec = do
   expectPrettyInvar @Identifiers ["a, b"]
   expectPrettyInvar @Expr ["1 + 2 * 3", "(((2))) * abc - _s", "index[0]", "-a"]
+  expectPrettyInvar @Type' ["asdf", "struct {a int; b int;}", "[0][0]a"]
+  expectPrettyInvar @TopDecl topDeclExamples
+  expectPrettyInvar @Stmt stmtExamples
+  expectPrettyInvar @Program programExamples
 
+--  printError $
+--    prettify <$>
+--    parse
+--      @TopDecl
+--      [text|
+--      func whatever() struct { int n; } { }
+--      |]
 intLit = map (\(i, e) -> (IntLit o i e, e)) [(Decimal, "12"), (Hexadecimal, "0xCAFEBABE"), (Octal, "01001")]
 
 floatLit = fstConvert (FloatLit o) [("0.123", "0.123"), ("0.0", "0.0"), ("-1.0", "-1.0")]
@@ -51,10 +59,8 @@ exprs =
   , (AppendExpr o baseExpr baseExpr, "append(" ++ baseExpr' ++ ", " ++ baseExpr' ++ ")")
   , (LenExpr o baseExpr, "len(" ++ baseExpr' ++ ")")
   , (CapExpr o baseExpr, "cap(" ++ baseExpr' ++ ")")
-  , (Conversion o baseType baseExpr, baseType' ++ "(" ++ baseExpr' ++ ")")
   , (Selector o baseExpr baseId, baseExpr' ++ "." ++ baseId')
   , (Index o baseExpr baseExpr, baseExpr' ++ "[" ++ baseExpr' ++ "]")
-  , (TypeAssertion o baseExpr baseType, baseExpr' ++ ".(" ++ baseType' ++ ")")
   , ( Arguments o baseExpr [baseExpr, baseExpr, baseExpr]
     , baseExpr' ++ "(" ++ baseExpr' ++ ", " ++ baseExpr' ++ ", " ++ baseExpr' ++ ")")
   ]
