@@ -134,7 +134,7 @@ instance Prettify Stmt where
           (_, Just se') -> prettify (ss, se') ++ " "
           (EmptyStmt, Nothing) -> ""
           (_, Nothing) -> prettify ss ++ "; "
-  prettify' (For fc s) = ("for " ++ prettify fc ++ " {") : tab (prettify' s) ++ ["}"]
+  prettify' (For fc s) = ("for " ++ prettify fc ++ "{") : tab (prettify' s) ++ ["}"]
   prettify' (Break _) = ["break"]
   prettify' (Continue _) = ["continue"]
   -- prettify' (Fallthrough _) = ["fallthrough"]
@@ -154,8 +154,8 @@ instance Prettify (SimpleStmt, Expr) where
 
 instance Prettify ForClause where
   prettify ForInfinite = ""
-  prettify (ForCond e) = prettify e
-  prettify (ForClause cs ce s) = prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s
+  prettify (ForCond e) = prettify e ++ " "
+  prettify (ForClause cs ce s) = prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s ++ " "
   prettify' = prettify''
 
 instance Prettify (NonEmpty Expr) where
