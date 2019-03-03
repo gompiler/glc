@@ -18,9 +18,13 @@ expectWeedPass =
   expectBase
     "weed success"
     (\s ->
-       let program = "package main\n\nfunc main() {\n\n" ++ toString s ++ "\n\n}"
+       let program =
+             "package main\n\nfunc main() {\n\n" ++ toString s ++ "\n\n}"
         in case parse @Program program >>= weed program of
-             Left err -> expectationFailure $ "Expected success on:\n\n" ++ program ++ "\n\nbut got error\n\n" ++ err
+             Left err ->
+               expectationFailure $
+               "Expected success on:\n\n" ++
+               program ++ "\n\nbut got error\n\n" ++ err
              _ -> return ())
     toString
     "wrapped stmt"
@@ -30,10 +34,13 @@ expectWeedFail =
   expectBase
     "weed fail"
     (\s ->
-       let program = "package main\n\nfunc main() {\n\n" ++ toString s ++ "\n\n}"
+       let program =
+             "package main\n\nfunc main() {\n\n" ++ toString s ++ "\n\n}"
         in case parse @Program program >>= weed program of
              Right p ->
-               expectationFailure $ "Expected failure on:\n\n" ++ program ++ "\n\nbut got program\n\n" ++ show p
+               expectationFailure $
+               "Expected failure on:\n\n" ++
+               program ++ "\n\nbut got program\n\n" ++ show p
              _ -> return ())
     toString
     "wrapped stmt"

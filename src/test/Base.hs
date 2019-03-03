@@ -63,7 +63,8 @@ instance Stringable Text where
   toString = unpack
 
 printError :: Either String String -> SpecWith ()
-printError (Right s) = describe "print" $ it "right error" $ expectationFailure s
+printError (Right s) =
+  describe "print" $ it "right error" $ expectationFailure s
 printError (Left s) = describe "print" $ it "left error" $ expectationFailure s
 
 -- | Relatively complex base expectation
@@ -74,26 +75,46 @@ printError (Left s) = describe "print" $ it "left error" $ expectationFailure s
 -- Inputs refers to list of inputs
 -- Note that the last two entries are type ambiguous, which is why we need to specify them
 -- We order the parameters this way to avoid rewriting them
-expectBase :: (HasCallStack) => String -> (s -> Expectation) -> (s -> String) -> String -> [s] -> SpecWith ()
-expectBase suffix expectation title name inputs = describe (name ++ " " ++ suffix) $ mapM_ expect inputs
+expectBase ::
+     (HasCallStack)
+  => String
+  -> (s -> Expectation)
+  -> (s -> String)
+  -> String
+  -> [s]
+  -> SpecWith ()
+expectBase suffix expectation title name inputs =
+  describe (name ++ " " ++ suffix) $ mapM_ expect inputs
   where
     expect input = it (show $ lines $ title input) $ expectation input
 
 -- | Expects that input parses with some ast
-expectPassBase :: (Parsable a, Stringable s) => String -> (s -> Either String a) -> [s] -> SpecWith ()
+expectPassBase ::
+     (Parsable a, Stringable s)
+  => String
+  -> (s -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectPassBase tag parse =
   expectBase
     "success"
     (\s ->
        case parse s of
          Left error ->
-           expectationFailure $ "Expected parse success on:\n\n" ++ toString s ++ "\n\nbut failed with\n\n" ++ error
+           expectationFailure $
+           "Expected parse success on:\n\n" ++
+           toString s ++ "\n\nbut failed with\n\n" ++ error
          _ -> return ())
     toString
     tag
 
 -- | Expects that input parses with some error
-expectFailBase :: (Parsable a, Stringable s) => String -> (s -> Either String a) -> [s] -> SpecWith ()
+expectFailBase ::
+     (Parsable a, Stringable s)
+  => String
+  -> (s -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectFailBase tag parse =
   expectBase
     "fail"
@@ -101,7 +122,8 @@ expectFailBase tag parse =
        case parse s of
          Right ast ->
            expectationFailure $
-           "Expected parse failure on:\n\n" ++ toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
+           "Expected parse failure on:\n\n" ++
+           toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
          _ -> return ())
     toString
     tag
@@ -115,22 +137,32 @@ expectAstBase =
        case parse s of
          Left err ->
            expectationFailure $
-           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut failed with\n\n" ++ err
+           "Invalid ast for:\n\n" ++
+           toString s ++
+           "\n\nexpected\n\n" ++ show e ++ "\n\nbut failed with\n\n" ++ err
          Right a ->
            unless (e == a) . expectationFailure $
-           "Invalid ast for:\n\n" ++ toString s ++ "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
+           "Invalid ast for:\n\n" ++
+           toString s ++
+           "\n\nexpected\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show a)
     (toString . fst)
 
 -- | Expects that pretty(parse(input)) = pretty(parse(pretty(parse(input))))
 expectPrettyInvarBase ::
-     (Parsable a, Prettify a, Stringable s) => String -> (String -> Either String a) -> [s] -> SpecWith ()
+     (Parsable a, Prettify a, Stringable s)
+  => String
+  -> (String -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectPrettyInvarBase tag parse =
   expectBase
     "pretty invar"
     (\s ->
        let s' = toString s
         in case multiPass s' of
-             Left err -> expectationFailure $ "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
+             Left err ->
+               expectationFailure $
+               "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
              Right p -> return ())
     toString
     tag
@@ -141,20 +173,32 @@ expectPrettyInvarBase tag parse =
       ast2 <- parse pretty1
       let pretty2 = prettify ast2
       case (ast1 == ast2, pretty1 == pretty2) of
-        (False, _) -> Left $ "AST mismatch: First\n\n" ++ show ast1 ++ "\n\nSecond\n\n" ++ show ast2
-        (_, False) -> Left $ "Prettify mismatch: First\n\n" ++ pretty1 ++ "\n\nSecond\n\n" ++ pretty2
+        (False, _) ->
+          Left $
+          "AST mismatch: First\n\n" ++
+          show ast1 ++ "\n\nSecond\n\n" ++ show ast2
+        (_, False) ->
+          Left $
+          "Prettify mismatch: First\n\n" ++
+          pretty1 ++ "\n\nSecond\n\n" ++ pretty2
         _ -> Right pretty2
 
 -- | Expects that input = pretty(parse(input))
 expectPrettyExactBase ::
-     (Parsable a, Prettify a, Stringable s) => String -> (String -> Either String a) -> [s] -> SpecWith ()
+     (Parsable a, Prettify a, Stringable s)
+  => String
+  -> (String -> Either String a)
+  -> [s]
+  -> SpecWith ()
 expectPrettyExactBase tag parse =
   expectBase
     "pretty exact"
     (\s ->
        let s' = toString s
         in case multiPass s' of
-             Left err -> expectationFailure $ "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
+             Left err ->
+               expectationFailure $
+               "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
              Right p -> return ())
     toString
     tag
@@ -163,7 +207,9 @@ expectPrettyExactBase tag parse =
       pretty <- parse input <&> prettify
       if clean input == clean pretty
         then Right pretty
-        else Left $ "Prettify mismatch: Expected\n\n" ++ input ++ "\n\nActually (whitespace ignored)\n\n" ++ pretty
+        else Left $
+             "Prettify mismatch: Expected\n\n" ++
+             input ++ "\n\nActually (whitespace ignored)\n\n" ++ pretty
     clean = filter (not . isSpace)
 
 class (Show a, Eq a) =>
@@ -227,8 +273,10 @@ instance Parsable [ParameterDecl] where
   expectPass = expectPassBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
   expectFail = expectFailBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
   expectAst = expectAstBase (tag @[ParameterDecl])
-  expectPrettyInvar = expectPrettyInvarBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
-  expectPrettyExact = expectPrettyExactBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
+  expectPrettyInvar =
+    expectPrettyInvarBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
+  expectPrettyExact =
+    expectPrettyExactBase (tag @[ParameterDecl]) (parse @[ParameterDecl])
 
 instance Prettify [ParameterDecl] where
   prettify' params = prettify' $ Parameters params
@@ -293,8 +341,10 @@ instance Parsable Identifiers where
   expectPass = expectPassBase (tag @Identifiers) (parse @Identifiers)
   expectFail = expectFailBase (tag @Identifiers) (parse @Identifiers)
   expectAst = expectAstBase (tag @Identifiers)
-  expectPrettyInvar = expectPrettyInvarBase (tag @Identifiers) (parse @Identifiers)
-  expectPrettyExact = expectPrettyExactBase (tag @Identifiers) (parse @Identifiers)
+  expectPrettyInvar =
+    expectPrettyInvarBase (tag @Identifiers) (parse @Identifiers)
+  expectPrettyExact =
+    expectPrettyExactBase (tag @Identifiers) (parse @Identifiers)
 
 pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
 pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))
@@ -324,7 +374,13 @@ cartP = liftA2 (,)
 toRetL :: Monad m => a -> m [a]
 toRetL e = return [e]
 
-qcGen :: (Show a, Testable prop) => String -> Bool -> Gen a -> (a -> prop) -> SpecWith (Arg Property)
+qcGen ::
+     (Show a, Testable prop)
+  => String
+  -> Bool
+  -> Gen a
+  -> (a -> prop)
+  -> SpecWith (Arg Property)
 qcGen desc verb g p =
   it desc $
   property $
