@@ -74,9 +74,9 @@ instance Prettify TopDecl where
 
 instance Prettify Decl where
   prettify' (VarDecl [decl]) = ["var "] `skipNewLine` prettify' decl
-  prettify' (VarDecl decls) = ["var ("] `skipNewLine` tab (decls >>= prettify') ++ [")"]
-  prettify' (TypeDef [def]) = ["type"] `skipNewLine` prettify' def
-  prettify' (TypeDef defs) = ["type ("] `skipNewLine` tab (defs >>= prettify') ++ [")"]
+  prettify' (VarDecl decls)  = "var (" : tab (decls >>= prettify') ++ [")"]
+  prettify' (TypeDef [def])  = ["type"] `skipNewLine` prettify' def
+  prettify' (TypeDef defs)   = "type (" : tab (defs >>= prettify') ++ [")"]
 
 instance Prettify VarDecl' where
   prettify (VarDecl' ids (Left (t, exprs))) = prettify ids ++ " " ++ prettify t ++ exprs'
