@@ -111,9 +111,9 @@ spec = do
     , "a[[]"
     -- One char only in rune
     , "'aa'"
-    --    , "090"
-    --    , "0xG"
-    --    , "00x0"
+    , "090"
+    , "0xG"
+    , "00x0"
     ]
   expectPass @Stmt $
     [ "{}"
