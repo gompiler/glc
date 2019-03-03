@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 LOG=0
 VERBOSE=0
@@ -6,21 +6,21 @@ VERIFY=1
 RESULT=0
 
 while getopts ":lvc" opt; do
-	case $opt in
-		l)
-			LOG=1
-			;;
-		v)
-			VERBOSE=1
-			;;
-		c)
-			VERIFY=1
-			;;
-		\?)
-			echo "Invalid option: -$OPTARG" >&2
-			exit
-			;;
-	esac
+    case $opt in
+	l)
+	    LOG=1
+	    ;;
+	v)
+	    VERBOSE=1
+	    ;;
+	c)
+	    VERIFY=1
+	    ;;
+	\?)
+	    echo "Invalid option: -$OPTARG" >&2
+	    exit
+	    ;;
+    esac
 done
 
 echo -n -e "\033[93m"
@@ -96,24 +96,19 @@ do
 
 				if [[ $VERBOSE == 1 ]]
 				then
-					echo
-					echo -n "$TEST: "
+				    echo
+				    echo -n "$TEST: "
 				fi
 				if [[ $TYPE == 'Invalid' && ! -z $PREV_MODE ]]
 				then
-					OUTPUT=$(./run.sh $PREV_MODE $TEST 2>&1)
-					STATUS=${PIPESTATUS[0]}
-					OUTPUT=${OUTPUT#$TEST}
-
-					if [[ $OUTPUT == *"java.lang.NullPointerException"* ]]
-					then
-						STATUS=-1
-					fi
-
-					if [[ $OUTPUT != "OK" || $STATUS != 0 ]]
-					then
-						PREV_SUCCESS=0
-					fi
+				    OUTPUT=$(./run.sh $PREV_MODE $TEST 2>&1)
+				    STATUS=${PIPESTATUS[0]}
+				    OUTPUT=${OUTPUT#$TEST}
+                                        
+				    if [[ $OUTPUT != "OK" || $STATUS != 0 ]]
+				    then
+					PREV_SUCCESS=0
+				    fi
 				fi
 
 				VERIFY_OUTPUT=
@@ -121,45 +116,51 @@ do
 
 				if [[ $PREV_SUCCESS == 1 ]]
 				then
-					OUTPUT=$(./run.sh $MODE $TEST 2>&1)
-					STATUS=${PIPESTATUS[0]}
-					OUTPUT=${OUTPUT#$TEST}
+				    OUTPUT0=$(./run.sh $MODE $TEST 2>&1)
+				    STATUS0=${PIPESTATUS[0]}
+				    OUTPUT0=${OUTPUT0#$TEST}
 
-					if [[ $OUTPUT == *"java.lang.NullPointerException"* ]]
+                                    if [[ $MODE == "parse" && $TYPE == 'Valid' ]]
+                                    then
+				        OUTPUT1=$(./run.sh "prettyinvar" $TEST 2>&1)
+				        STATUS1=${PIPESTATUS[0]}
+				        OUTPUT1=${OUTPUT1#$TEST}
+                                    else
+				        OUTPUT1=$OUTPUT0
+				        STATUS1=$STATUS0
+				        OUTPUT1=$OUTPUT0
+                                    fi
+				    if [[ $OUTPUT0 == $CONF_OUTPUT* && $STATUS0 == $CONF_STATUS && $OUTPUT1 == $CONF_OUTPUT* && $STATUS1 == $CONF_STATUS ]]
+				    then
+					if [[ $VERBOSE == 1 ]]
 					then
-						STATUS=-1
-					fi
-					if [[ $OUTPUT == $CONF_OUTPUT* && $STATUS == $CONF_STATUS ]]
-					then
-						if [[ $VERBOSE == 1 ]]
-						then
-							STATUS_TEXT="pass"
-							STATUS_COLOUR="32"
+					    STATUS_TEXT="pass"
+					    STATUS_COLOUR="32"
 
-						else
-							STATUS_TEXT=""
-						fi
-
-						if [[ $VERIFY == 1 && -f $DIR_TYPE/verify.sh ]]
-						then
-							VERIFY_OUTPUT=$(./$DIR_TYPE/verify.sh $TEST 2>&1)
-							VERIFY_STATUS=${PIPESTATUS[0]}
-
-							if [[ $VERIFY_STATUS == 0 ]]
-							then
-								((COUNT_PASSED++))
-							else
-								STATUS_TEXT="pass"
-								STATUS_COLOUR="32"
-							fi
-						else
-							((COUNT_PASSED++))
-						fi
 					else
-						STATUS_TEXT="fail"
-						STATUS_COLOUR="31"
-                                                RESULT=1
+					    STATUS_TEXT=""
 					fi
+
+					if [[ $VERIFY == 1 && -f $DIR_TYPE/verify.sh ]]
+					then
+					    VERIFY_OUTPUT=$(./$DIR_TYPE/verify.sh $TEST 2>&1)
+					    VERIFY_STATUS=${PIPESTATUS[0]}
+
+					    if [[ $VERIFY_STATUS == 0 ]]
+					    then
+						((COUNT_PASSED++))
+					    else
+						STATUS_TEXT="pass"
+						STATUS_COLOUR="32"
+					    fi
+					else
+					    ((COUNT_PASSED++))
+					fi
+				    else
+					STATUS_TEXT="fail"
+					STATUS_COLOUR="31"
+                                        RESULT=1
+				    fi
 
 				else
 					STATUS_TEXT="failed previous"
@@ -174,16 +175,18 @@ do
 						echo
 						echo -n "$TEST: "
 					fi
-					echo "$OUTPUT" | tr -d '\n'
+					echo "$OUTPUT0"
+					echo "$OUTPUT1"
 					echo -n -e " \033[0;${STATUS_COLOUR}m[$STATUS_TEXT]\033[0m"
 					if [ ! -z "$VERIFY_OUTPUT" ]
 					then
-						echo -e -n "\n$VERIFY_OUTPUT" | sed 's/^/  /'
+					    echo -e -n "\n$VERIFY_OUTPUT" | sed 's/^/  /'
 					fi
 
 					if [ $LOG -eq 1 ]
 					then
-						echo "$TEST: $OUTPUT [$STATUS_TEXT]" >> ${PHASE_NAME}_${TYPE}.log
+					    echo "$TEST: $OUTPUT0 [$STATUS_TEXT]" >> ${PHASE_NAME}_${TYPE}.log
+					    echo "$TEST: $OUTPUT1 [$STATUS_TEXT]" >> ${PHASE_NAME}_${TYPE}.log
 					fi
 				fi
 			done                                 
