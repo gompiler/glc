@@ -4,9 +4,7 @@
 module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NonEmpty ()
 import           ErrorBundle
-import           GHC.TypeLits       ()
 
 -- note that I do not classify blank identifiers as a separate type
 -- because we can easily pattern match it already
