@@ -5,6 +5,7 @@ module TokensBase where
 -- Based off Alex monad wrapper
 import           Control.Applicative as App (Applicative (..))
 
+import           Control.Monad       ((>=>))
 import qualified Data.Bits
 import           Data.Char           (ord)
 import           Data.Word           (Word8)
@@ -132,7 +133,9 @@ instance Applicative Alex where
   fa <*> a = fa <*> a
 
 instance Monad Alex where
-  m >>= k = Alex $ \s -> either Left (\(s', a) -> unAlex (k a) s') (unAlex m s)
+  m >>= k = Alex (unAlex m >=> unAlex' k)
+    where
+      unAlex' k (s, a) = unAlex (k a) s
   return = App.pure
 
 alexGetInput :: Alex AlexInput
