@@ -151,38 +151,39 @@ Error: parsing error, unexpected ) at 5:22:
    base cases) and a list of entirely identifiers. Then, the expression list
    non-terminal was allowed to yield either one of these mixed lists or a
    pure identifier list.
+
+   Another caveat of how lists are handled in the grammar, again a
+   compromise to prevent ambiguity, is TODO.
 ** AST
    The AST is largely a one to one mapping of the Golang specs, with
    parts we don't support removed and additional parts for Golite added.
 
    In some cases, there are minor deviations from the CFG.
 *** Accurate Type Representation
-    We model our ast as accurately as possible, such that impossible
-    states are forbidden. We lack any checks for compatible types at
-    this stage, but we can match the definition for 'exactly one', 'one
-    or more', and 'zero or one'. In cases like identifiers, a [[https://golang.org/ref/spec#IdentifierList][list]] is
-    one or more (haskell ~NonEmpty~), yet many locations make it
-    optional. While a direct translation would be ~Maybe (NonEmpty a)~,
-    we choose to make it ~[a]~ as it makes more sense.
+    We modeled our AST as close as possible to the actual Go and
+    GoLite specs, to try and ensure that impossible states are inherently
+    prevented by the Haskell type checker, reducing run-time errors.
+    Although we don't have type-checking implemented at this milestone,
+    we can use this technique to enforce definitions such as
+    'exactly one', 'one or more', and 'zero or one'. This modeling is
+    not always perfect. For example, a [[https://golang.org/ref/spec#IdentifierList][list]]
+    of identifiers is 'one or more' (in Haskell, ~NonEmpty~). Many locations
+    make it optional. While a direct translation would be ~Maybe (NonEmpty a)~,
+    we choose to make it a possibly empty list ~[a]~ as it makes more sense.
 *** Simplified Data Type Categories
     Some splits, such as ~add_op~ and ~mul_op~ are distinguished
     purely to demonstrate precedence; they are in fact only used once
     in the specs, so we decide to merge them directly in our ~ArithmOp~
     model. Several other instances exist.
 
-    Given we created an AST vs a CST, we can further compact parts of
-    the grammar. For instance, an if clause in the spec leads to an
-    ~IfStmt~ grammar, whose ~else~ body is either a block (with
-    surrounding braces) or another if statement (no surrounding
-    braces). However, in our case, we don't need to model the braces,
-    so we can treat the else body exclusively as ~Stmt~ vs ~Either
-    Block IfStmt~.
-*** Format Preservation
-    By design, our types for ~int~ and ~string~ specify whether they
-    are hex/octal/dec or raw/interpreted respectively. We kept this
-    information so that our pretty print would accurately represent
-    the input, even though we can convert them all to a single type
-    (eg dec and interpreted).
+    Given we are creating an AST, rather than a CST, we can further
+    compact parts of the grammar. For instance, an ~if~ clause in the
+    spec leads to an ~IfStmt~ construction, whose ~else~ body is either
+    a block (with surrounding braces) or another ~if~ statement (no
+    surrounding braces). In our case, we don't need to model the braces,
+    so we can treat the ~else~ body exclusively as ~Stmt~ rather than
+    the more verbose ~Either Block IfStmt~. The grammar enforces that
+    this ~Stmt~ is not any other type.
 *** Structure Simplification
     For ~var~ and ~type~ declaration, we make no distinction between
     single declaration (exactly one) and block declaration (0 or
