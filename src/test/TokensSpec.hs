@@ -37,10 +37,11 @@ genId :: Gen String
 genId = frequency [(30, genId'), (1, return "_")]
 
 genNum' :: Gen String
-genNum' = oneof [choose ('0', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
+genNum' =
+  oneof [choose ('0', '9') >>= toRetL, (:) <$> choose ('0', '9') <*> genNum]
 
 genNum :: Gen String
-genNum = genNum' >>= \n -> choose ('1', '9') >>= \n2 -> return (n2:n)
+genNum = genNum' >>= \n -> choose ('1', '9') >>= \n2 -> return (n2 : n)
 
 genHex' :: Gen String
 genHex' =
