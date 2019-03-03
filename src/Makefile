@@ -1,9 +1,9 @@
 .PHONY: allT
-all: glcT
+allT: glcT
 
 # local build
 .PHONY: all
-allL: glc
+all: glc
 
 .PHONY: clean
 clean:
@@ -62,7 +62,7 @@ exT: export STACK_ROOT := /mnt/local
 glcT: exT glc
 
 .PHONY: cleanT
-cleantrot: exT clean
+cleanT: exT clean
 
 .PHONY: cbuildT
 cbuildT: exT cbuild
