@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Build the compiler
-#
+# Trottier wrapper to add stack to path and change STACK_ROOT to /mnt/local
+
 # Ensure we are in the directory the script is in
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
@@ -12,8 +12,9 @@ then
     PATH=$csstack:$PATH
     STACK_ROOT=/mnt/local
     export STACK_ROOT
+
+    make -C src "$2"
 else
-    echo "Did not find /usr/local/pkgs/haskell/stack-1.9.3-linux-x86_64 and /mnt/local, assuming we are running this locally (not on Trottier), otherwise please use a cs-x.cs.mcgill.ca computer."
+    echo "Did not find /usr/local/pkgs/haskell/stack-1.9.3-linux-x86_64 and /mnt/local, please run on a cs-x.cs.mcgill.ca computer. Exiting."
+    exit 1
 fi
-make -C src clean
-make -C src
