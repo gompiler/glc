@@ -165,7 +165,7 @@ expectPrettyInvar =
              Left err ->
                expectationFailure $
                "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
-             Right p -> return ())
+             Right _ -> return ())
     toString
     (tag @a)
   where
@@ -199,7 +199,7 @@ expectPrettyExact =
              Left err ->
                expectationFailure $
                "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
-             Right p -> return ())
+             Right _ -> return ())
     toString
     (tag @a)
   where
