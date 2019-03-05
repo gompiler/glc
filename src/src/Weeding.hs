@@ -1,12 +1,14 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Weeding
   ( weed
   ) where
 
 import           Control.Applicative
 import           Data
+import           Data.List.NonEmpty  (toList)
 import           Data.Maybe          as Maybe
 import           ErrorBundle
-import           Data.List.NonEmpty   (toList)
 import           Parser              (parse)
 
 type PureConstraint a = a -> Maybe ErrorBundle'
@@ -25,7 +27,9 @@ weed code = do
 
 verify :: Program -> Maybe ErrorBundle'
 verify program =
-  programVerify program <|> continueVerify program <|> breakVerify program <|> progVerifyDecl program <|> progVerifyBlank program
+  programVerify program <|> continueVerify program <|> breakVerify program <|>
+  progVerifyDecl program <|>
+  progVerifyBlank program
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
@@ -69,11 +73,24 @@ stmtVerify (SimpleStmt stmt) =
     e@(ExprStmt _) ->
       Just $ createError e "Expression statements must be function calls"
     a@(Assign _ _ l1 l2) ->
-      if length l1 == length l2 then Nothing -- firstOrNothing $ mapMaybe exprAssignVerify $ toList l2
-      else Just $ createError a $ "LHS(" ++ show (length l1) ++ ") and RHS(" ++ show (length l2) ++ ") of assignments must be equal in length"
+      if length l1 == length l2
+        then Nothing -- firstOrNothing $ mapMaybe exprAssignVerify $ toList l2
+        else Just $
+             createError a $
+             "LHS(" ++
+             show (length l1) ++
+             ") and RHS(" ++
+             show (length l2) ++ ") of assignments must be equal in length"
     a@(ShortDeclare identl el) ->
-      if length identl == length el then Nothing
-      else Just $ createError a $ "LHS(" ++ show (length identl) ++ ") and RHS(" ++ show (length el) ++ ") of short declaration must be equal in length"
+      if length identl == length el
+        then Nothing
+        else Just $
+             createError a $
+             "LHS(" ++
+             show (length identl) ++
+             ") and RHS(" ++
+             show (length el) ++
+             ") of short declaration must be equal in length"
     _ -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
@@ -100,10 +117,26 @@ stmtVerify _ = Nothing
 declVerify :: Decl -> Maybe ErrorBundle'
 declVerify (VarDecl vdl) = firstOrNothing $ mapMaybe vdeclVer vdl
   where
-    vdeclVer d@(VarDecl' identl (Right el)) = if length identl == length el then Nothing
-      else Just $ createError d $ "LHS(" ++ show (length identl) ++ ") and RHS(" ++ show (length el) ++ ") of declaration assignment must be equal in length"
-    vdeclVer d@(VarDecl' identl (Left (_, el))) = if length el == 0 || length identl == length el then Nothing
-      else Just $ createError d $ "LHS(" ++ show (length identl) ++ ") and RHS(" ++ show (length el) ++ ") of declaration assignment with type must be equal in length"
+    vdeclVer d@(VarDecl' identl (Right el)) =
+      if length identl == length el
+        then Nothing
+        else Just $
+             createError d $
+             "LHS(" ++
+             show (length identl) ++
+             ") and RHS(" ++
+             show (length el) ++
+             ") of declaration assignment must be equal in length"
+    vdeclVer d@(VarDecl' identl (Left (_, el))) =
+      if null el || length identl == length el
+        then Nothing
+        else Just $
+             createError d $
+             "LHS(" ++
+             show (length identl) ++
+             ") and RHS(" ++
+             show (length el) ++
+             ") of declaration assignment with type must be equal in length"
 declVerify _ = Nothing
 
 progVerifyDecl :: PureConstraint Program
@@ -112,10 +145,13 @@ progVerifyDecl program = firstOrNothing errors
     errors :: [ErrorBundle']
     errors =
       mapMaybe
-        (declVerify)
+        declVerify
         -- Extract all declarations from either top level (i.e. top level declaration, not in a block statement)
         -- or from a block stmt, using getScopes and calling stmtToDecl on each entry in the statement list
-        ((mapMaybe topToDecl $ topLevels program) ++ (mapMaybe stmtToDecl $ concat $ map getScopes $ mapMaybe topToStmt $ topLevels program))
+        (mapMaybe topToDecl (topLevels program) ++
+         mapMaybe
+           stmtToDecl
+           (concat $ map getScopes $ mapMaybe topToStmt $ topLevels program))
     getScopes stmt =
       case stmt of
         BlockStmt stmts  -> stmts
@@ -128,11 +164,13 @@ progVerifyBlank :: PureConstraint Program
 progVerifyBlank program = firstOrNothing errors
   where
     errors :: [ErrorBundle']
-    errors = mapMaybe blankVerify (concatMap topToIdent $ topLevels program)
+    errors = mapMaybe blankVerify (concatMap toIdent $ topLevels program)
 
 blankVerify :: Identifier -> Maybe ErrorBundle'
-blankVerify (Identifier o str) = if str == "_" then Just $ createError o "Invalid use of blank identifier"
-                                 else Nothing
+blankVerify (Identifier o str) =
+  if str == "_"
+    then Just $ createError o "Invalid use of blank identifier"
+    else Nothing
 
 programVerify :: PureConstraint Program
 programVerify program = firstOrNothing errors
@@ -202,91 +240,101 @@ topToStmt _                                 = Nothing
 -- | Extract declarations from top-level declarations
 topToDecl :: TopDecl -> Maybe Decl
 topToDecl (TopFuncDecl (FuncDecl _ _ s)) = stmtToDecl s
-topToDecl (TopDecl d) = Just d
+topToDecl (TopDecl d)                    = Just d
 
 -- | Extract declaration from stmt
 stmtToDecl :: Stmt -> Maybe Decl
 stmtToDecl (Declare d) = Just d
-stmtToDecl _ = Nothing
+stmtToDecl _           = Nothing
+
+-- | toIdent for various structures from AST so we can extract identifiers
+class BlankWeed a where
+  toIdent :: a -> [Identifier]
 
 -- | Extract identifiers that cannot be blank
-topToIdent :: TopDecl -> [Identifier]
-topToIdent (TopFuncDecl (FuncDecl ident (Signature (Parameters pdl) Nothing) stmt)) =
-  (ident:(pdIdentl)) ++ stmtIdentl
-  where
-    pdIdentl = concatMap paramDeclToIdent pdl
-    stmtIdentl = stmtToIdent stmt
-topToIdent (TopFuncDecl (FuncDecl ident (Signature (Parameters pdl) (Just t)) stmt)) =
-  (ident:(pdIdentl)) ++ stmtIdentl ++ type'ToIdent t
-  where
-    pdIdentl = concatMap paramDeclToIdent pdl
-    stmtIdentl = stmtToIdent stmt
-topToIdent (TopDecl d) = declToIdent d
+instance BlankWeed TopDecl where
+  toIdent (TopFuncDecl (FuncDecl ident (Signature (Parameters pdl) Nothing) stmt)) =
+    (ident : pdIdentl) ++ stmtIdentl
+    where
+      pdIdentl = concatMap toIdent pdl
+      stmtIdentl = toIdent stmt
+  toIdent (TopFuncDecl (FuncDecl ident (Signature (Parameters pdl) (Just t)) stmt)) =
+    (ident : pdIdentl) ++ stmtIdentl ++ toIdent t
+    where
+      pdIdentl = concatMap toIdent pdl
+      stmtIdentl = toIdent stmt
+  toIdent (TopDecl d) = toIdent d
 
-paramDeclToIdent :: ParameterDecl -> [Identifier]
-paramDeclToIdent (ParameterDecl il _) = toList il
+instance BlankWeed ParameterDecl where
+  toIdent (ParameterDecl il _) = toList il
 
-stmtToIdent :: Stmt -> [Identifier]
-stmtToIdent (BlockStmt stmts) = concatMap stmtToIdent stmts
-stmtToIdent (SimpleStmt stmt) = simpleToIdent stmt
-stmtToIdent (If (simp, e) s1 s2) = (simpleToIdent simp) ++ (exprToIdent e) ++ (stmtToIdent s1) ++ (stmtToIdent s2)
-stmtToIdent (Switch (simp) (Just e) cases) = (simpleToIdent simp) ++ (exprToIdent e) ++ (concatMap casesToIdent cases)
-stmtToIdent (Switch (simp) (Nothing) cases) = (simpleToIdent simp) ++ (concatMap casesToIdent cases)
-stmtToIdent (For (ForCond e) s) = exprToIdent e ++ stmtToIdent s
-stmtToIdent (For (ForClause simp1 e simp2) s) = exprToIdent e ++ simpleToIdent simp1 ++ simpleToIdent simp2 ++ stmtToIdent s
-stmtToIdent (Declare d) = declToIdent d
-stmtToIdent (Print el) = concatMap exprToIdent el
-stmtToIdent (Println el) = concatMap exprToIdent el
-stmtToIdent (Return (Just e)) = exprToIdent e
-stmtToIdent _ = []
+instance BlankWeed Stmt where
+  toIdent (BlockStmt stmts) = concatMap toIdent stmts
+  toIdent (SimpleStmt stmt) = toIdent stmt
+  toIdent (If (simp, e) s1 s2) =
+    toIdent simp ++ toIdent e ++ toIdent s1 ++ toIdent s2
+  toIdent (Switch simp (Just e) cases) =
+    toIdent simp ++ toIdent e ++ concatMap toIdent cases
+  toIdent (Switch simp Nothing cases) = toIdent simp ++ concatMap toIdent cases
+  toIdent (For (ForCond e) s) = toIdent e ++ toIdent s
+  toIdent (For (ForClause simp1 e simp2) s) =
+    toIdent e ++ toIdent simp1 ++ toIdent simp2 ++ toIdent s
+  toIdent (Declare d) = toIdent d
+  toIdent (Print el) = concatMap toIdent el
+  toIdent (Println el) = concatMap toIdent el
+  toIdent (Return (Just e)) = toIdent e
+  toIdent _ = []
 
-simpleToIdent :: SimpleStmt -> [Identifier]
-simpleToIdent (ExprStmt e) = exprToIdent e
-simpleToIdent (Increment _ e) = exprToIdent e
-simpleToIdent (Decrement _ e) = exprToIdent e
-simpleToIdent (Assign _ _ _ el) = concatMap exprToIdent (toList el) -- We don't care about identifiers on the LHS
-simpleToIdent (ShortDeclare identl el) = toList identl ++ concatMap exprToIdent (toList el)
-simpleToIdent _ = []
+instance BlankWeed SimpleStmt where
+  toIdent (ExprStmt e) = toIdent e
+  toIdent (Increment _ e) = toIdent e
+  toIdent (Decrement _ e) = toIdent e
+  toIdent (Assign _ _ _ el) = concatMap toIdent (toList el) -- We don't care about identifiers on the LHS
+  toIdent (ShortDeclare identl el) =
+    toList identl ++ concatMap toIdent (toList el)
+  toIdent _ = []
 
-exprToIdent :: Expr -> [Identifier]
-exprToIdent (Unary _ _ e) = exprToIdent e
-exprToIdent (Binary _ _ e1 e2) = exprToIdent e1 ++ exprToIdent e2
-exprToIdent (Var ident) = [ident]
-exprToIdent (LenExpr _ e) = exprToIdent e
-exprToIdent (CapExpr _ e) = exprToIdent e
-exprToIdent (Selector _ e ident) = ident:(exprToIdent e)
-exprToIdent (Index _ e1 e2) = exprToIdent e1 ++ exprToIdent e2
-exprToIdent (Arguments _ e el) = exprToIdent e ++ concatMap exprToIdent el
-exprToIdent _ = []
+instance BlankWeed Expr where
+  toIdent (Unary _ _ e)        = toIdent e
+  toIdent (Binary _ _ e1 e2)   = toIdent e1 ++ toIdent e2
+  toIdent (Var ident)          = [ident]
+  toIdent (LenExpr _ e)        = toIdent e
+  toIdent (CapExpr _ e)        = toIdent e
+  toIdent (Selector _ e ident) = ident : toIdent e
+  toIdent (Index _ e1 e2)      = toIdent e1 ++ toIdent e2
+  toIdent (Arguments _ e el)   = toIdent e ++ concatMap toIdent el
+  toIdent _                    = []
 
-casesToIdent :: SwitchCase -> [Identifier]
-casesToIdent (Case _ el s) = concatMap exprToIdent (toList el) ++ stmtToIdent s
-casesToIdent (Default _ s) = stmtToIdent s
+instance BlankWeed SwitchCase where
+  toIdent (Case _ el s) = concatMap toIdent (toList el) ++ toIdent s
+  toIdent (Default _ s) = toIdent s
 
-declToIdent :: Decl -> [Identifier]
-declToIdent (VarDecl vdl) = concatMap vdeclToIdent vdl
-declToIdent (TypeDef tdl) = concatMap tdefToIdent tdl
+instance BlankWeed Decl where
+  toIdent (VarDecl vdl) = concatMap toIdent vdl
+  toIdent (TypeDef tdl) = concatMap toIdent tdl
 
-vdeclToIdent :: VarDecl' -> [Identifier]
-vdeclToIdent (VarDecl' _ (Left (t, el))) = type'ToIdent t ++ concatMap exprToIdent el
-vdeclToIdent (VarDecl' _ (Right el)) = concatMap exprToIdent (toList el)
+instance BlankWeed VarDecl' where
+  toIdent (VarDecl' _ (Left (t, el))) = toIdent t ++ concatMap toIdent el
+  toIdent (VarDecl' _ (Right el))     = concatMap toIdent (toList el)
 
-tdefToIdent :: TypeDef' -> [Identifier]
-tdefToIdent (TypeDef' _ t) = type'ToIdent t -- Don't care about idents on LHS
+instance BlankWeed TypeDef' where
+  toIdent (TypeDef' _ t) = toIdent t -- Don't care about idents on LHS
 
-type'ToIdent :: Type' -> [Identifier]
-type'ToIdent (_, t) = typeToIdent t
+instance BlankWeed (Offset, Type) where
+  toIdent (_, t) = toIdent t
 
-typeToIdent :: Type -> [Identifier]
-typeToIdent (ArrayType e t) = exprToIdent e ++ typeToIdent t
-typeToIdent (SliceType t) = typeToIdent t
-typeToIdent (StructType fdl) = concatMap fdToIdent fdl
-typeToIdent (FuncType (Signature (Parameters pdl) Nothing)) = concatMap paramDeclToIdent pdl
-typeToIdent (FuncType (Signature (Parameters pdl) (Just t))) = concatMap paramDeclToIdent pdl ++ type'ToIdent t
-typeToIdent (Type ident) = [ident]
+instance BlankWeed Type where
+  toIdent (ArrayType e t) = toIdent e ++ toIdent t
+  toIdent (SliceType t) = toIdent t
+  toIdent (StructType fdl) = concatMap toIdent fdl
+  toIdent (FuncType (Signature (Parameters pdl) Nothing)) =
+    concatMap toIdent pdl
+  toIdent (FuncType (Signature (Parameters pdl) (Just t))) =
+    concatMap toIdent pdl ++ toIdent t
+  toIdent (Type ident) = [ident]
 
-fdToIdent :: FieldDecl -> [Identifier]
-fdToIdent (FieldDecl identl t) = toList identl ++ type'ToIdent t
+instance BlankWeed FieldDecl where
+  toIdent (FieldDecl identl t) = toList identl ++ toIdent t
 
 stmtFromCase :: SwitchCase -> Stmt
 stmtFromCase (Case _ _ stmt)  = stmt
