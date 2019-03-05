@@ -117,8 +117,8 @@ progVerifyDecl program = asum errors
         (mapMaybe topToDecl (topLevels program) ++
          mapMaybe
            stmtToDecl
-           (concatMap getScopes mapMaybe topToStmt $ topLevels program))
-    getScopes stmt =
+           (concatMap getStmts $ mapMaybe topToStmt $ topLevels program))
+    getStmts stmt =
       case stmt of
         BlockStmt stmts  -> stmts
         If _ s1 s2       -> [s1, s2]
