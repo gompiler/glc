@@ -6,6 +6,7 @@ import           Control.Applicative
 import           Data
 import           Data.Maybe          as Maybe
 import           ErrorBundle
+-- import           Data.List.NonEmpty   (toList)
 import           Parser              (parse)
 
 type PureConstraint a = a -> Maybe ErrorBundle'
@@ -68,7 +69,7 @@ stmtVerify (SimpleStmt stmt) =
     e@(ExprStmt _) ->
       Just $ createError e "Expression statements must be function calls"
     a@(Assign _ _ l1 l2) ->
-      if length l1 == length l2 then Nothing
+      if length l1 == length l2 then Nothing -- firstOrNothing $ mapMaybe exprAssignVerify $ toList l2
       else Just $ createError a "LHS and RHS of assignments must be equal in length"
     _ -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
@@ -91,6 +92,39 @@ stmtVerify (For (ForClause pre _ post) _) =
       Just $ createError s "For post-statement cannot be declaration"
     _ -> Nothing
 stmtVerify _ = Nothing
+
+-- | Weeding of blank identifier
+-- blankVerify :: Program -> Maybe ErrorBundle'
+-- blankVerify program = firstOrNothing errors
+--   where
+--     errors = mapMaybe 
+--         (mapMaybe topToStmt $ topLevels program)
+
+-- | Verification rules for expressions (weeding of blank identifier)
+-- exprVerify :: Expr -> Maybe ErrorBundle'
+-- exprVerify (Selector _ e@(Var (Identifier _ idname)) f@(Identifier _ field)) = if idname == "_" then
+--                                                     Just $ createError e "Selector may not be used on the blank identifier"
+--                                                                                     else if field == "_" then
+--                                                                                            Just $ createError f "Selector field may not be the blank identifier"
+--                                                                                          else Nothing
+-- exprVerify _ = Nothing
+
+-- exprAssignVerify :: Expr -> Maybe ErrorBundle'
+-- exprAssignVerify e@(Var (Identifier _ idname)) = if idname == "_" then
+--                                                    Just $ createError e "Cannot assign to the blank identifier"
+--                                                  else
+--                                                    exprVerify e
+-- exprAssignVerify e = exprVerify e
+
+-- -- | Like exprVerify on args of function call
+-- exprArgsVerify :: Expr -> Maybe ErrorBundle'
+-- exprArgsVerify (Arguments _ e@(Var (Identifier _ fname)) el) = if fname == "_" then
+--                                                                  Just $ createError e "Function in expression statement call may not be the blank identifier"
+--                                                                else firstOrNothing $ mapMaybe id (map exprArgsVerify el ++ [exprVerify e])
+-- exprArgsVerify e@(Var (Identifier _ idname)) = if idname == "_" then
+--                                                  Just $ createError e "Argument in function call may not be the blank identifier"
+--                                                else exprVerify e
+-- exprArgsVerify e = exprVerify e
 
 programVerify :: PureConstraint Program
 programVerify program = firstOrNothing errors
