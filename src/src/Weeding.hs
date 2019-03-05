@@ -67,6 +67,9 @@ stmtVerify (SimpleStmt stmt) =
     ExprStmt Arguments {} -> Nothing
     e@(ExprStmt _) ->
       Just $ createError e "Expression statements must be function calls"
+    a@(Assign _ _ l1 l2) ->
+      if length l1 == length l2 then Nothing
+      else Just $ createError a "LHS and RHS of assignments must be equal in length"
     _ -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
