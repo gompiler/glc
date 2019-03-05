@@ -6,23 +6,25 @@ import           Control.Applicative
 import           Data
 import           Data.Maybe          as Maybe
 import           ErrorBundle
+import           Parser              (parse)
 
 type PureConstraint a = a -> Maybe ErrorBundle'
 
 -- | Main weeding function
--- Takes in input code as well as ast program
-weed :: String -> Program -> Either String Program
-weed code program =
-  case errorBundle of
-    Just eb ->
-      Left
-        ("Error: weeding error at " ++
-         errorString (eb (createInitialState code)))
-    Nothing -> Right program
-  where
-    errorBundle :: Maybe ErrorBundle'
-    errorBundle =
-      programVerify program <|> continueVerify program <|> breakVerify program
+-- Takes in input code, will pass through parser
+weed :: String -> Either String Program
+weed code = do
+  program <- parse code
+  maybe
+    (Right program)
+    (\eb ->
+       Left $
+       "Error: weeding error at " ++ errorString (eb $ createInitialState code))
+    (verify program)
+
+verify :: Program -> Maybe ErrorBundle'
+verify program =
+  programVerify program <|> continueVerify program <|> breakVerify program
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a

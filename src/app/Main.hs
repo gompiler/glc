@@ -2,7 +2,6 @@ module Main where
 
 import qualified Options.Applicative as Op
 import           ParseCLI
-import           Parser
 import           Prettify
 import           Scanner
 import           Weeding
@@ -20,8 +19,8 @@ main = do
         Scan -> scanC
         Tokens -> scanP
         Parse ->
-          either putExit (const $ putSucc "OK") . (\s -> parse s >>= weed s)
-        Pretty -> either putExit putStrLn . (fmap Prettify.prettify . parse)
+          either putExit (const $ putSucc "OK") . weed
+        Pretty -> either putExit putStrLn . (fmap Prettify.prettify . weed)
         PrettyInvar ->
           either putExit (const $ putSucc "OK") . checkPrettifyInvariance
         Symbol -> const $ putStrLn "symbol not yet implemented"
