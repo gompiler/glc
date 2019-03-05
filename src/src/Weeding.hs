@@ -6,7 +6,7 @@ import           Control.Applicative
 import           Data
 import           Data.Maybe          as Maybe
 import           ErrorBundle
--- import           Data.List.NonEmpty   (toList)
+import           Data.List.NonEmpty   (toList)
 import           Parser              (parse)
 
 type PureConstraint a = a -> Maybe ErrorBundle'
@@ -25,7 +25,7 @@ weed code = do
 
 verify :: Program -> Maybe ErrorBundle'
 verify program =
-  programVerify program <|> continueVerify program <|> breakVerify program <|> progVerifyDecl program
+  programVerify program <|> continueVerify program <|> breakVerify program <|> progVerifyDecl program <|> progVerifyBlank program
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
@@ -123,39 +123,16 @@ progVerifyDecl program = firstOrNothing errors
         For _ s          -> [s]
         Switch _ _ cases -> map stmtFromCase cases
         _                -> []
-        
--- | Weeding of blank identifier
--- blankVerify :: Program -> Maybe ErrorBundle'
--- blankVerify program = firstOrNothing errors
---   where
---     errors = mapMaybe 
---         (mapMaybe topToStmt $ topLevels program)
 
--- | Verification rules for expressions (weeding of blank identifier)
--- exprVerify :: Expr -> Maybe ErrorBundle'
--- exprVerify (Selector _ e@(Var (Identifier _ idname)) f@(Identifier _ field)) = if idname == "_" then
---                                                     Just $ createError e "Selector may not be used on the blank identifier"
---                                                                                     else if field == "_" then
---                                                                                            Just $ createError f "Selector field may not be the blank identifier"
---                                                                                          else Nothing
--- exprVerify _ = Nothing
+progVerifyBlank :: PureConstraint Program
+progVerifyBlank program = firstOrNothing errors
+  where
+    errors :: [ErrorBundle']
+    errors = mapMaybe blankVerify (concatMap topToIdent $ topLevels program)
 
--- exprAssignVerify :: Expr -> Maybe ErrorBundle'
--- exprAssignVerify e@(Var (Identifier _ idname)) = if idname == "_" then
---                                                    Just $ createError e "Cannot assign to the blank identifier"
---                                                  else
---                                                    exprVerify e
--- exprAssignVerify e = exprVerify e
-
--- -- | Like exprVerify on args of function call
--- exprArgsVerify :: Expr -> Maybe ErrorBundle'
--- exprArgsVerify (Arguments _ e@(Var (Identifier _ fname)) el) = if fname == "_" then
---                                                                  Just $ createError e "Function in expression statement call may not be the blank identifier"
---                                                                else firstOrNothing $ mapMaybe id (map exprArgsVerify el ++ [exprVerify e])
--- exprArgsVerify e@(Var (Identifier _ idname)) = if idname == "_" then
---                                                  Just $ createError e "Argument in function call may not be the blank identifier"
---                                                else exprVerify e
--- exprArgsVerify e = exprVerify e
+blankVerify :: Identifier -> Maybe ErrorBundle'
+blankVerify (Identifier o str) = if str == "_" then Just $ createError o "Invalid use of blank identifier"
+                                 else Nothing
 
 programVerify :: PureConstraint Program
 programVerify program = firstOrNothing errors
@@ -231,6 +208,85 @@ topToDecl (TopDecl d) = Just d
 stmtToDecl :: Stmt -> Maybe Decl
 stmtToDecl (Declare d) = Just d
 stmtToDecl _ = Nothing
+
+-- | Extract identifiers that cannot be blank
+topToIdent :: TopDecl -> [Identifier]
+topToIdent (TopFuncDecl (FuncDecl ident (Signature (Parameters pdl) Nothing) stmt)) =
+  (ident:(pdIdentl)) ++ stmtIdentl
+  where
+    pdIdentl = concatMap paramDeclToIdent pdl
+    stmtIdentl = stmtToIdent stmt
+topToIdent (TopFuncDecl (FuncDecl ident (Signature (Parameters pdl) (Just t)) stmt)) =
+  (ident:(pdIdentl)) ++ stmtIdentl ++ type'ToIdent t
+  where
+    pdIdentl = concatMap paramDeclToIdent pdl
+    stmtIdentl = stmtToIdent stmt
+topToIdent (TopDecl d) = declToIdent d
+
+paramDeclToIdent :: ParameterDecl -> [Identifier]
+paramDeclToIdent (ParameterDecl il _) = toList il
+
+stmtToIdent :: Stmt -> [Identifier]
+stmtToIdent (BlockStmt stmts) = concatMap stmtToIdent stmts
+stmtToIdent (SimpleStmt stmt) = simpleToIdent stmt
+stmtToIdent (If (simp, e) s1 s2) = (simpleToIdent simp) ++ (exprToIdent e) ++ (stmtToIdent s1) ++ (stmtToIdent s2)
+stmtToIdent (Switch (simp) (Just e) cases) = (simpleToIdent simp) ++ (exprToIdent e) ++ (concatMap casesToIdent cases)
+stmtToIdent (Switch (simp) (Nothing) cases) = (simpleToIdent simp) ++ (concatMap casesToIdent cases)
+stmtToIdent (For (ForCond e) s) = exprToIdent e ++ stmtToIdent s
+stmtToIdent (For (ForClause simp1 e simp2) s) = exprToIdent e ++ simpleToIdent simp1 ++ simpleToIdent simp2 ++ stmtToIdent s
+stmtToIdent (Declare d) = declToIdent d
+stmtToIdent (Print el) = concatMap exprToIdent el
+stmtToIdent (Println el) = concatMap exprToIdent el
+stmtToIdent (Return (Just e)) = exprToIdent e
+stmtToIdent _ = []
+
+simpleToIdent :: SimpleStmt -> [Identifier]
+simpleToIdent (ExprStmt e) = exprToIdent e
+simpleToIdent (Increment _ e) = exprToIdent e
+simpleToIdent (Decrement _ e) = exprToIdent e
+simpleToIdent (Assign _ _ _ el) = concatMap exprToIdent (toList el) -- We don't care about identifiers on the LHS
+simpleToIdent (ShortDeclare identl el) = toList identl ++ concatMap exprToIdent (toList el)
+simpleToIdent _ = []
+
+exprToIdent :: Expr -> [Identifier]
+exprToIdent (Unary _ _ e) = exprToIdent e
+exprToIdent (Binary _ _ e1 e2) = exprToIdent e1 ++ exprToIdent e2
+exprToIdent (Var ident) = [ident]
+exprToIdent (LenExpr _ e) = exprToIdent e
+exprToIdent (CapExpr _ e) = exprToIdent e
+exprToIdent (Selector _ e ident) = ident:(exprToIdent e)
+exprToIdent (Index _ e1 e2) = exprToIdent e1 ++ exprToIdent e2
+exprToIdent (Arguments _ e el) = exprToIdent e ++ concatMap exprToIdent el
+exprToIdent _ = []
+
+casesToIdent :: SwitchCase -> [Identifier]
+casesToIdent (Case _ el s) = concatMap exprToIdent (toList el) ++ stmtToIdent s
+casesToIdent (Default _ s) = stmtToIdent s
+
+declToIdent :: Decl -> [Identifier]
+declToIdent (VarDecl vdl) = concatMap vdeclToIdent vdl
+declToIdent (TypeDef tdl) = concatMap tdefToIdent tdl
+
+vdeclToIdent :: VarDecl' -> [Identifier]
+vdeclToIdent (VarDecl' _ (Left (t, el))) = type'ToIdent t ++ concatMap exprToIdent el
+vdeclToIdent (VarDecl' _ (Right el)) = concatMap exprToIdent (toList el)
+
+tdefToIdent :: TypeDef' -> [Identifier]
+tdefToIdent (TypeDef' _ t) = type'ToIdent t -- Don't care about idents on LHS
+
+type'ToIdent :: Type' -> [Identifier]
+type'ToIdent (_, t) = typeToIdent t
+
+typeToIdent :: Type -> [Identifier]
+typeToIdent (ArrayType e t) = exprToIdent e ++ typeToIdent t
+typeToIdent (SliceType t) = typeToIdent t
+typeToIdent (StructType fdl) = concatMap fdToIdent fdl
+typeToIdent (FuncType (Signature (Parameters pdl) Nothing)) = concatMap paramDeclToIdent pdl
+typeToIdent (FuncType (Signature (Parameters pdl) (Just t))) = concatMap paramDeclToIdent pdl ++ type'ToIdent t
+typeToIdent (Type ident) = [ident]
+
+fdToIdent :: FieldDecl -> [Identifier]
+fdToIdent (FieldDecl identl t) = toList identl ++ type'ToIdent t
 
 stmtFromCase :: SwitchCase -> Stmt
 stmtFromCase (Case _ _ stmt)  = stmt
