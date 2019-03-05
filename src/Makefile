@@ -1,7 +1,5 @@
-.PHONY: allT
-allT: glcT
+COMPILE_FLAGS = --pedantic
 
-# local build
 .PHONY: all
 all: glc
 
@@ -16,7 +14,7 @@ cleangen:
 
 .PHONY: build
 build: gen
-	stack --allow-different-user build
+	stack --allow-different-user build $(COMPILE_FLAGS)
 
 .PHONY: gen
 gen: src/generated/Tokens.hs src/generated/Parser.hs
@@ -34,41 +32,18 @@ glc: build
 # Continuous build, builds at every file modification, for development purposes only
 .PHONY: cbuild
 cbuild:
-	stack build  --allow-different-user --file-watch
+	stack build  --allow-different-user --file-watch $(COMPILE_FLAGS)
 
 # Run hspec tests
 .PHONY: test
 test: gen
-	stack test --allow-different-user --coverage
+	stack test --allow-different-user --coverage $(COMPILE_FLAGS)
 
 .PHONY: ctest
 ctest: gen
-	stack test --allow-different-user --coverage --file-watch
+	stack test --allow-different-user --coverage --file-watch $(COMPILE_FLAGS)
 
 # Refactor code using hlint, hindent and stylish-haskell
 .PHONY: refactor
 refactor:
 	@find . -name "*.hs" -not -path "./out/*" -not -path "./src/generated/*" -not -path "./.stack-work/*" -exec hlint --refactor --refactor-options="--inplace" {} \; -exec hindent {} \; -exec stylish-haskell -i {} \;
-
-# ------------------------------------------------------------
-# |                   Trottier specific                      |
-# ------------------------------------------------------------
-# Export variables required to run on cs-x machines in Trottier
-.PHONY: exT
-exT: PATH := /usr/local/pkgs/haskell/stack-1.9.3-linux-x86_64:$(PATH)
-exT: export STACK_ROOT := /mnt/local
-
-.PHONY: glcT
-glcT: exT glc
-
-.PHONY: cleanT
-cleanT: exT clean
-
-.PHONY: cbuildT
-cbuildT: exT cbuild
-
-.PHONY: testT
-testT: exT test
-
-.PHONY: ctestT
-ctestT: exT ctest

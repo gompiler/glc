@@ -135,7 +135,7 @@ instance Applicative Alex where
 instance Monad Alex where
   m >>= k = Alex (unAlex m >=> unAlex' k)
     where
-      unAlex' k (s, a) = unAlex (k a) s
+      unAlex' k' (s, a) = unAlex (k' a) s
   return = App.pure
 
 alexGetInput :: Alex AlexInput
