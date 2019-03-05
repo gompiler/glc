@@ -253,13 +253,13 @@ class BlankWeed a where
 
 -- | Extract identifiers that cannot be blank
 instance BlankWeed TopDecl where
-  toIdent (TopFuncDecl (FuncDecl ident (Signature (Parameters pdl) Nothing) stmt)) =
-    (ident : pdIdentl) ++ stmtIdentl
+  toIdent (TopFuncDecl (FuncDecl _ (Signature (Parameters pdl) Nothing) stmt)) =
+    pdIdentl ++ stmtIdentl
     where
       pdIdentl = concatMap toIdent pdl
       stmtIdentl = toIdent stmt
-  toIdent (TopFuncDecl (FuncDecl ident (Signature (Parameters pdl) (Just t)) stmt)) =
-    (ident : pdIdentl) ++ stmtIdentl ++ toIdent t
+  toIdent (TopFuncDecl (FuncDecl _ (Signature (Parameters pdl) (Just t)) stmt)) =
+    pdIdentl ++ stmtIdentl ++ toIdent t
     where
       pdIdentl = concatMap toIdent pdl
       stmtIdentl = toIdent stmt
@@ -290,8 +290,7 @@ instance BlankWeed SimpleStmt where
   toIdent (Increment _ e) = toIdent e
   toIdent (Decrement _ e) = toIdent e
   toIdent (Assign _ _ _ el) = concatMap toIdent (toList el) -- We don't care about identifiers on the LHS
-  toIdent (ShortDeclare identl el) =
-    toList identl ++ concatMap toIdent (toList el)
+  toIdent (ShortDeclare _ el) = concatMap toIdent (toList el) -- Don't care about LHS
   toIdent _ = []
 
 instance BlankWeed Expr where
@@ -334,7 +333,7 @@ instance BlankWeed Type where
   toIdent (Type ident) = [ident]
 
 instance BlankWeed FieldDecl where
-  toIdent (FieldDecl identl t) = toList identl ++ toIdent t
+  toIdent (FieldDecl _ t) = toIdent t
 
 stmtFromCase :: SwitchCase -> Stmt
 stmtFromCase (Case _ _ stmt)  = stmt
