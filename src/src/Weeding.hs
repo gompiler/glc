@@ -7,6 +7,7 @@ module Weeding
 import           Control.Applicative
 import           Data
 import           Data.List.NonEmpty  (toList)
+import           Data.Foldable       (asum)
 import           Data.Maybe          as Maybe
 import           ErrorBundle
 import           Parser              (parse)
@@ -26,10 +27,8 @@ weed code = do
     (verify program)
 
 verify :: Program -> Maybe ErrorBundle'
-verify program =
-  programVerify program <|> continueVerify program <|> breakVerify program <|>
-  progVerifyDecl program <|>
-  progVerifyBlank program
+-- Alternative sum, i.e. sum using <|> over each function mapped to program
+verify program = asum $ [programVerify, continueVerify, breakVerify, progVerifyDecl, progVerifyBlank] <*> [program]
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
@@ -164,7 +163,7 @@ progVerifyBlank :: PureConstraint Program
 progVerifyBlank program = firstOrNothing errors
   where
     errors :: [ErrorBundle']
-    errors = mapMaybe blankVerify (concatMap toIdent $ topLevels program)
+    errors = mapMaybe blankVerify (topLevels program >>= toIdent)
 
 blankVerify :: Identifier -> Maybe ErrorBundle'
 blankVerify (Identifier o str) =
@@ -256,12 +255,12 @@ instance BlankWeed TopDecl where
   toIdent (TopFuncDecl (FuncDecl _ (Signature (Parameters pdl) Nothing) stmt)) =
     pdIdentl ++ stmtIdentl
     where
-      pdIdentl = concatMap toIdent pdl
+      pdIdentl = pdl >>= toIdent
       stmtIdentl = toIdent stmt
   toIdent (TopFuncDecl (FuncDecl _ (Signature (Parameters pdl) (Just t)) stmt)) =
     pdIdentl ++ stmtIdentl ++ toIdent t
     where
-      pdIdentl = concatMap toIdent pdl
+      pdIdentl = pdl >>= toIdent
       stmtIdentl = toIdent stmt
   toIdent (TopDecl d) = toIdent d
 
@@ -269,19 +268,19 @@ instance BlankWeed ParameterDecl where
   toIdent (ParameterDecl il _) = toList il
 
 instance BlankWeed Stmt where
-  toIdent (BlockStmt stmts) = concatMap toIdent stmts
+  toIdent (BlockStmt stmts) = stmts >>= toIdent
   toIdent (SimpleStmt stmt) = toIdent stmt
   toIdent (If (simp, e) s1 s2) =
     toIdent simp ++ toIdent e ++ toIdent s1 ++ toIdent s2
   toIdent (Switch simp (Just e) cases) =
-    toIdent simp ++ toIdent e ++ concatMap toIdent cases
-  toIdent (Switch simp Nothing cases) = toIdent simp ++ concatMap toIdent cases
+    toIdent simp ++ toIdent e ++ (cases >>= toIdent)
+  toIdent (Switch simp Nothing cases) = toIdent simp ++ (cases >>= toIdent)
   toIdent (For (ForCond e) s) = toIdent e ++ toIdent s
   toIdent (For (ForClause simp1 e simp2) s) =
     toIdent e ++ toIdent simp1 ++ toIdent simp2 ++ toIdent s
   toIdent (Declare d) = toIdent d
-  toIdent (Print el) = concatMap toIdent el
-  toIdent (Println el) = concatMap toIdent el
+  toIdent (Print el) = el >>= toIdent
+  toIdent (Println el) = el >>= toIdent
   toIdent (Return (Just e)) = toIdent e
   toIdent _ = []
 
@@ -289,8 +288,8 @@ instance BlankWeed SimpleStmt where
   toIdent (ExprStmt e) = toIdent e
   toIdent (Increment _ e) = toIdent e
   toIdent (Decrement _ e) = toIdent e
-  toIdent (Assign _ _ _ el) = concatMap toIdent (toList el) -- We don't care about identifiers on the LHS
-  toIdent (ShortDeclare _ el) = concatMap toIdent (toList el) -- Don't care about LHS
+  toIdent (Assign _ _ _ el) = toList el >>= toIdent -- We don't care about identifiers on the LHS
+  toIdent (ShortDeclare _ el) = toList el >>= toIdent -- Don't care about LHS
   toIdent _ = []
 
 instance BlankWeed Expr where
@@ -301,20 +300,20 @@ instance BlankWeed Expr where
   toIdent (CapExpr _ e)        = toIdent e
   toIdent (Selector _ e ident) = ident : toIdent e
   toIdent (Index _ e1 e2)      = toIdent e1 ++ toIdent e2
-  toIdent (Arguments _ e el)   = toIdent e ++ concatMap toIdent el
+  toIdent (Arguments _ e el)   = toIdent e ++ (el >>= toIdent)
   toIdent _                    = []
 
 instance BlankWeed SwitchCase where
-  toIdent (Case _ el s) = concatMap toIdent (toList el) ++ toIdent s
+  toIdent (Case _ el s) = (toList el >>= toIdent) ++ toIdent s
   toIdent (Default _ s) = toIdent s
 
 instance BlankWeed Decl where
-  toIdent (VarDecl vdl) = concatMap toIdent vdl
-  toIdent (TypeDef tdl) = concatMap toIdent tdl
+  toIdent (VarDecl vdl) = vdl >>= toIdent
+  toIdent (TypeDef tdl) = tdl >>= toIdent
 
 instance BlankWeed VarDecl' where
-  toIdent (VarDecl' _ (Left (t, el))) = toIdent t ++ concatMap toIdent el
-  toIdent (VarDecl' _ (Right el))     = concatMap toIdent (toList el)
+  toIdent (VarDecl' _ (Left (t, el))) = toIdent t ++ (el >>= toIdent)
+  toIdent (VarDecl' _ (Right el))     = toList el >>= toIdent
 
 instance BlankWeed TypeDef' where
   toIdent (TypeDef' _ t) = toIdent t -- Don't care about idents on LHS
@@ -325,11 +324,11 @@ instance BlankWeed (Offset, Type) where
 instance BlankWeed Type where
   toIdent (ArrayType e t) = toIdent e ++ toIdent t
   toIdent (SliceType t) = toIdent t
-  toIdent (StructType fdl) = concatMap toIdent fdl
+  toIdent (StructType fdl) = fdl >>= toIdent
   toIdent (FuncType (Signature (Parameters pdl) Nothing)) =
-    concatMap toIdent pdl
+    pdl >>= toIdent
   toIdent (FuncType (Signature (Parameters pdl) (Just t))) =
-    concatMap toIdent pdl ++ toIdent t
+    (pdl >>= toIdent) ++ toIdent t
   toIdent (Type ident) = [ident]
 
 instance BlankWeed FieldDecl where
