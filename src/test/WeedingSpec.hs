@@ -24,6 +24,22 @@ expectWeedPass =
              _ -> return ())
     toString
     "wrapped stmt"
+  
+expectWeedPassNoMain :: Stringable s => [s] -> SpecWith ()
+expectWeedPassNoMain =
+  expectBase
+    "weed success"
+    (\s ->
+       let program =
+             "package main\n" ++ toString s
+        in case weed program of
+             Left err ->
+               expectationFailure $
+               "Expected success on:\n\n" ++
+               program ++ "\n\nbut got error\n\n" ++ err
+             _ -> return ())
+    toString
+    "wrapped stmt"
 
 expectWeedFail :: Stringable s => [s] -> SpecWith ()
 expectWeedFail =
@@ -40,10 +56,27 @@ expectWeedFail =
              _ -> return ())
     toString
     "wrapped stmt"
+  
+expectWeedFailNoMain :: Stringable s => [s] -> SpecWith ()
+expectWeedFailNoMain =
+  expectBase
+    "weed fail"
+    (\s ->
+       let program =
+             "package main\n" ++ toString s
+        in case weed program of
+             Right p ->
+               expectationFailure $
+               "Expected failure on:\n\n" ++
+               program ++ "\n\nbut got program\n\n" ++ show p
+             _ -> return ())
+    toString
+    "wrapped stmt"
 
 spec :: Spec
 spec = do
   expectWeedPass ["if true { }", "a.b()", "a++"]
+  expectWeedPassNoMain ["", "var a = 5", "var a, b, c int", "var a, b, c = 1, 2, 3", "var a, b, c int = 1, 2, 3"]
   expectWeedPass
     [ [text|
       for {
@@ -78,6 +111,24 @@ spec = do
     -- ExprStmt must be functions
     , "action"
     , "a.b"
+    -- len LHS != len RHS
+    , "a, b, c = 1, 2"
+    -- Blank ident in RHS of assignment
+    -- , "a = _"
+    -- Function is blank ident
+    -- , "_()"
+    -- Arg is blank ident
+    -- , "f(_)"
+    -- , "f(a, b, _)"
+    -- Use of blank ident in selector inside func
+    -- , "f(_.b)"
+    -- , "f(_.b())"
+    -- , "f(a, _.b, c)"
+    -- Unary op with blank ident
+    -- , "var a = 0 + _"
+    ]
+  expectWeedFailNoMain
+    [ "var a, b = 3", "var a, b int = 3"
     ]
   expectWeedFail
     [ [text|
@@ -99,37 +150,4 @@ spec = do
       for i := 0; i < 20; i := 0 {
       }
       |]
-        -- len LHS != len RHS
-        , [text|
-               a, b, c = 1, 2
-               |]
-            -- Blank ident in RHS of assignment
-            -- , [text|
-            --        a = _
-            --        |]
-            --     -- Function is blank ident
-            --     , [text|
-            --            _()
-            --            |]
-            --         -- Arg is blank ident
-            --     , [text|
-            --            f(_)
-            --            |]
-            --     , [text|
-            --            f(a, b, _)
-            --            |]
-            --         -- Use of blank ident in selector inside func
-            --     , [text|
-            --            f(_.b)
-            --            |]
-            --     , [text|
-            --            f(_.b())
-            --            |]
-            --     , [text|
-            --            f(a, _.b, c)
-            --            |]
-            --         -- Unary op with blank ident
-            --     , [text|
-            --            var a = 0 + _
-            --            |]
-    ]
+      ]

@@ -3,7 +3,7 @@
 
 module Data where
 
-import           Data.List.NonEmpty (NonEmpty (..))
+import           Data.List.NonEmpty (NonEmpty (..), toList)
 import           ErrorBundle
 
 -- note that I do not classify blank identifiers as a separate type
@@ -58,6 +58,9 @@ data VarDecl' =
   VarDecl' Identifiers
            (Either (Type', [Expr]) (NonEmpty Expr))
   deriving (Show, Eq)
+
+instance ErrorBreakpoint VarDecl' where
+  offset (VarDecl' idents _) = offset $ last $ toList idents
 
 -- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =

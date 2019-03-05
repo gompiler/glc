@@ -25,7 +25,7 @@ weed code = do
 
 verify :: Program -> Maybe ErrorBundle'
 verify program =
-  programVerify program <|> continueVerify program <|> breakVerify program
+  programVerify program <|> continueVerify program <|> breakVerify program <|> progVerifyDecl program
 
 -- | Returns option of either the first element of a list or nothing
 firstOrNothing :: [a] -> Maybe a
@@ -70,7 +70,10 @@ stmtVerify (SimpleStmt stmt) =
       Just $ createError e "Expression statements must be function calls"
     a@(Assign _ _ l1 l2) ->
       if length l1 == length l2 then Nothing -- firstOrNothing $ mapMaybe exprAssignVerify $ toList l2
-      else Just $ createError a "LHS and RHS of assignments must be equal in length"
+      else Just $ createError a $ "LHS(" ++ show (length l1) ++ ") and RHS(" ++ show (length l2) ++ ") of assignments must be equal in length"
+    a@(ShortDeclare identl el) ->
+      if length identl == length el then Nothing
+      else Just $ createError a $ "LHS(" ++ show (length identl) ++ ") and RHS(" ++ show (length el) ++ ") of short declaration must be equal in length"
     _ -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
@@ -93,6 +96,34 @@ stmtVerify (For (ForClause pre _ post) _) =
     _ -> Nothing
 stmtVerify _ = Nothing
 
+-- Verify declarations (LHS = RHS if an assignment)
+declVerify :: Decl -> Maybe ErrorBundle'
+declVerify (VarDecl vdl) = firstOrNothing $ mapMaybe vdeclVer vdl
+  where
+    vdeclVer d@(VarDecl' identl (Right el)) = if length identl == length el then Nothing
+      else Just $ createError d $ "LHS(" ++ show (length identl) ++ ") and RHS(" ++ show (length el) ++ ") of declaration assignment must be equal in length"
+    vdeclVer d@(VarDecl' identl (Left (_, el))) = if length el == 0 || length identl == length el then Nothing
+      else Just $ createError d $ "LHS(" ++ show (length identl) ++ ") and RHS(" ++ show (length el) ++ ") of declaration assignment with type must be equal in length"
+declVerify _ = Nothing
+
+progVerifyDecl :: PureConstraint Program
+progVerifyDecl program = firstOrNothing errors
+  where
+    errors :: [ErrorBundle']
+    errors =
+      mapMaybe
+        (declVerify)
+        -- Extract all declarations from either top level (i.e. top level declaration, not in a block statement)
+        -- or from a block stmt, using getScopes and calling stmtToDecl on each entry in the statement list
+        ((mapMaybe topToDecl $ topLevels program) ++ (mapMaybe stmtToDecl $ concat $ map getScopes $ mapMaybe topToStmt $ topLevels program))
+    getScopes stmt =
+      case stmt of
+        BlockStmt stmts  -> stmts
+        If _ s1 s2       -> [s1, s2]
+        For _ s          -> [s]
+        Switch _ _ cases -> map stmtFromCase cases
+        _                -> []
+        
 -- | Weeding of blank identifier
 -- blankVerify :: Program -> Maybe ErrorBundle'
 -- blankVerify program = firstOrNothing errors
@@ -190,6 +221,16 @@ breakVerify program = firstOrNothing errors
 topToStmt :: TopDecl -> Maybe Stmt
 topToStmt (TopFuncDecl (FuncDecl _ _ stmt)) = Just stmt
 topToStmt _                                 = Nothing
+
+-- | Extract declarations from top-level declarations
+topToDecl :: TopDecl -> Maybe Decl
+topToDecl (TopFuncDecl (FuncDecl _ _ s)) = stmtToDecl s
+topToDecl (TopDecl d) = Just d
+
+-- | Extract declaration from stmt
+stmtToDecl :: Stmt -> Maybe Decl
+stmtToDecl (Declare d) = Just d
+stmtToDecl _ = Nothing
 
 stmtFromCase :: SwitchCase -> Stmt
 stmtFromCase (Case _ _ stmt)  = stmt
