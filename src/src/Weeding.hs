@@ -6,8 +6,8 @@ module Weeding
 
 import           Control.Applicative
 import           Data
-import           Data.List.NonEmpty  (toList)
 import           Data.Foldable       (asum)
+import           Data.List.NonEmpty  (toList)
 import           Data.Maybe          as Maybe
 import           ErrorBundle
 import           Parser              (parse)
@@ -28,7 +28,10 @@ weed code = do
 
 verify :: Program -> Maybe ErrorBundle'
 -- Alternative sum, i.e. sum using <|> over each function mapped to program
-verify program = asum $ [programVerify, continueVerify, breakVerify, progVerifyDecl, progVerifyBlank] <*> [program]
+verify program =
+  asum $
+  [programVerify, continueVerify, breakVerify, progVerifyDecl, progVerifyBlank] <*>
+  [program]
 
 verifyAll :: PureConstraint a -> [a] -> Maybe ErrorBundle'
 verifyAll constraint items = asum $ map constraint items
@@ -66,25 +69,8 @@ stmtVerify (SimpleStmt stmt) =
     ExprStmt Arguments {} -> Nothing
     e@(ExprStmt _) ->
       Just $ createError e "Expression statements must be function calls"
-    a@(Assign _ _ l1 l2) ->
-      if length l1 == length l2
-        then Nothing 
-        else Just $
-             createError a $
-             "LHS(" ++
-             show (length l1) ++
-             ") and RHS(" ++
-             show (length l2) ++ ") of assignments must be equal in length"
-    a@(ShortDeclare identl el) ->
-      if length identl == length el
-        then Nothing
-        else Just $
-             createError a $
-             "LHS(" ++
-             show (length identl) ++
-             ") and RHS(" ++
-             show (length el) ++
-             ") of short declaration must be equal in length"
+    (Assign _ _ e1 e2) -> checkListSize (toList e1) (toList e2)
+    (ShortDeclare identl el) -> checkListSize (toList identl) (toList el)
     _ -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
@@ -111,26 +97,12 @@ stmtVerify _ = Nothing
 declVerify :: Decl -> Maybe ErrorBundle'
 declVerify (VarDecl vdl) = asum $ map vdeclVer vdl
   where
-    vdeclVer d@(VarDecl' identl (Right el)) =
-      if length identl == length el
-        then Nothing
-        else Just $
-             createError d $
-             "LHS(" ++
-             show (length identl) ++
-             ") and RHS(" ++
-             show (length el) ++
-             ") of declaration assignment must be equal in length"
-    vdeclVer d@(VarDecl' identl (Left (_, el))) =
-      if null el || length identl == length el
-        then Nothing
-        else Just $
-             createError d $
-             "LHS(" ++
-             show (length identl) ++
-             ") and RHS(" ++
-             show (length el) ++
-             ") of declaration assignment with type must be equal in length"
+    vdeclVer (VarDecl' identl (Right el)) =
+      checkListSize (toList identl) (toList el)
+    vdeclVer (VarDecl' identl (Left (_, el))) =
+      if null el
+        then Nothing -- If no expressions, i.e. type only, then nothing on RHS, don't care about length
+        else checkListSize (toList identl) el
 declVerify _ = Nothing
 
 progVerifyDecl :: PureConstraint Program
@@ -145,7 +117,7 @@ progVerifyDecl program = asum errors
         (mapMaybe topToDecl (topLevels program) ++
          mapMaybe
            stmtToDecl
-           (concat $ map getScopes $ mapMaybe topToStmt $ topLevels program))
+           (concatMap getScopes mapMaybe topToStmt $ topLevels program))
     getScopes stmt =
       case stmt of
         BlockStmt stmts  -> stmts
@@ -280,12 +252,12 @@ instance BlankWeed Stmt where
   toIdent _ = []
 
 instance BlankWeed SimpleStmt where
-  toIdent (ExprStmt e) = toIdent e
-  toIdent (Increment _ e) = toIdent e
-  toIdent (Decrement _ e) = toIdent e
-  toIdent (Assign _ _ _ el) = toList el >>= toIdent -- We don't care about identifiers on the LHS
+  toIdent (ExprStmt e)        = toIdent e
+  toIdent (Increment _ e)     = toIdent e
+  toIdent (Decrement _ e)     = toIdent e
+  toIdent (Assign _ _ _ el)   = toList el >>= toIdent -- We don't care about identifiers on the LHS
   toIdent (ShortDeclare _ el) = toList el >>= toIdent -- Don't care about LHS
-  toIdent _ = []
+  toIdent _                   = []
 
 instance BlankWeed Expr where
   toIdent (Unary _ _ e)        = toIdent e
@@ -320,8 +292,7 @@ instance BlankWeed Type where
   toIdent (ArrayType e t) = toIdent e ++ toIdent t
   toIdent (SliceType t) = toIdent t
   toIdent (StructType fdl) = fdl >>= toIdent
-  toIdent (FuncType (Signature (Parameters pdl) Nothing)) =
-    pdl >>= toIdent
+  toIdent (FuncType (Signature (Parameters pdl) Nothing)) = pdl >>= toIdent
   toIdent (FuncType (Signature (Parameters pdl) (Just t))) =
     (pdl >>= toIdent) ++ toIdent t
   toIdent (Type ident) = [ident]
