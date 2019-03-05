@@ -30,13 +30,8 @@ verify :: Program -> Maybe ErrorBundle'
 -- Alternative sum, i.e. sum using <|> over each function mapped to program
 verify program = asum $ [programVerify, continueVerify, breakVerify, progVerifyDecl, progVerifyBlank] <*> [program]
 
--- | Returns option of either the first element of a list or nothing
-firstOrNothing :: [a] -> Maybe a
-firstOrNothing []    = Nothing
-firstOrNothing (x:_) = Just x
-
 verifyAll :: PureConstraint a -> [a] -> Maybe ErrorBundle'
-verifyAll constraint items = firstOrNothing $ mapMaybe constraint items
+verifyAll constraint items = asum $ map constraint items
 
 recursiveVerifyAll ::
      (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
@@ -73,7 +68,7 @@ stmtVerify (SimpleStmt stmt) =
       Just $ createError e "Expression statements must be function calls"
     a@(Assign _ _ l1 l2) ->
       if length l1 == length l2
-        then Nothing -- firstOrNothing $ mapMaybe exprAssignVerify $ toList l2
+        then Nothing 
         else Just $
              createError a $
              "LHS(" ++
@@ -114,7 +109,7 @@ stmtVerify _ = Nothing
 
 -- Verify declarations (LHS = RHS if an assignment)
 declVerify :: Decl -> Maybe ErrorBundle'
-declVerify (VarDecl vdl) = firstOrNothing $ mapMaybe vdeclVer vdl
+declVerify (VarDecl vdl) = asum $ map vdeclVer vdl
   where
     vdeclVer d@(VarDecl' identl (Right el)) =
       if length identl == length el
@@ -139,11 +134,11 @@ declVerify (VarDecl vdl) = firstOrNothing $ mapMaybe vdeclVer vdl
 declVerify _ = Nothing
 
 progVerifyDecl :: PureConstraint Program
-progVerifyDecl program = firstOrNothing errors
+progVerifyDecl program = asum errors
   where
-    errors :: [ErrorBundle']
+    errors :: [Maybe ErrorBundle']
     errors =
-      mapMaybe
+      map
         declVerify
         -- Extract all declarations from either top level (i.e. top level declaration, not in a block statement)
         -- or from a block stmt, using getScopes and calling stmtToDecl on each entry in the statement list
@@ -160,10 +155,10 @@ progVerifyDecl program = firstOrNothing errors
         _                -> []
 
 progVerifyBlank :: PureConstraint Program
-progVerifyBlank program = firstOrNothing errors
+progVerifyBlank program = asum errors
   where
-    errors :: [ErrorBundle']
-    errors = mapMaybe blankVerify (topLevels program >>= toIdent)
+    errors :: [Maybe ErrorBundle']
+    errors = map blankVerify (topLevels program >>= toIdent)
 
 blankVerify :: Identifier -> Maybe ErrorBundle'
 blankVerify (Identifier o str) =
@@ -172,11 +167,11 @@ blankVerify (Identifier o str) =
     else Nothing
 
 programVerify :: PureConstraint Program
-programVerify program = firstOrNothing errors
+programVerify program = asum errors
   where
-    errors :: [ErrorBundle']
+    errors :: [Maybe ErrorBundle']
     errors =
-      mapMaybe
+      map
         (stmtRecursiveVerify stmtVerify)
         (mapMaybe topToStmt $ topLevels program)
 
@@ -197,11 +192,11 @@ continueConstraint (Continue o) =
 continueConstraint _ = Nothing
 
 continueVerify :: PureConstraint Program
-continueVerify program = firstOrNothing errors
+continueVerify program = asum errors
   where
-    errors :: [ErrorBundle']
+    errors :: [Maybe ErrorBundle']
     errors =
-      mapMaybe
+      map
         (continueRecursiveVerify continueConstraint)
         (mapMaybe topToStmt $ topLevels program)
 
@@ -222,11 +217,11 @@ breakConstraint (Break o) =
 breakConstraint _ = Nothing
 
 breakVerify :: PureConstraint Program
-breakVerify program = firstOrNothing errors
+breakVerify program = asum errors
   where
-    errors :: [ErrorBundle']
+    errors :: [Maybe ErrorBundle']
     errors =
-      mapMaybe
+      map
         (breakRecursiveVerify breakConstraint)
         (mapMaybe topToStmt $ topLevels program)
 
