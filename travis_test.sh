@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-(cd src && make test)
+(cd src && stack test --pedantic --coverage)
 
 chmod +x ./test_custom.sh
 ./test_custom.sh 
