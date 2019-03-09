@@ -31,6 +31,7 @@ dependencies:
 - neat-interpolation
 - QuickCheck
 - split
+- Stack
 
 library:
   source-dirs: [src, src/generated]
