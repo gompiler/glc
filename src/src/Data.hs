@@ -212,7 +212,7 @@ data ForClause
   = ForInfinite -- blank clause
   | ForCond Expr
   | ForClause SimpleStmt
-              Expr
+              (Maybe Expr)
               SimpleStmt
   deriving (Show, Eq)
 
