@@ -20,6 +20,12 @@
                 , pElses
                 , pEl
                 , pE
+                , pTDef
+                , pStruct
+                , pFiDecls
+                , pFor
+                , pSwS
+                , pSwB
                 , hparse
                 , parse
                 , parsef
@@ -43,28 +49,31 @@ import qualified Data.List.NonEmpty as NonEmpty
 %error { parseError }
 
 -- Other subparsers for testing
-%name pId Idents
-%name pE Expr
-%name pT Type
-%name pEl EIList
-%name pTDecl TopDecl
-%name pTDecls TopDecls
-%name pDec Decl
-%name pDecB DeclBody
-%name pFDec FuncDecl
-%name pSig Signature
-%name pIDecl InnerDecl
-%name pPar Params
-%name pRes Result
-%name pStmt Stmt
-%name pStmts Stmts
-%name pBStmt BlockStmt
-%name pSStmt SimpleStmt
-%name pIf IfStmt
-%name pElses Elses
-%name pSwS SwitchStmt
-%name pSwB SwitchBody
-%name pFor ForStmt
+%name pTDecls TopDecls      -- Alex [TopDecl]
+%name pTDecl TopDecl        -- Alex TopDecl
+%name pId Idents            -- Alex [Identifier]
+%name pT Type               -- Alex (Offset, Type)
+%name pDec Decl             -- Alex Decl
+%name pIDecl InnerDecl      -- Alex VarDecl'
+%name pDecB DeclBody        -- Alex (Either (Type', [Expr]) (NonEmpty Expr))
+%name pTDef TypeDefs        -- Alex [TypeDef']
+%name pStruct Struct        -- Alex (Offset, [FieldDecl])
+%name pFiDecls FieldDecls   -- Alex [FieldDecl]
+%name pFDec FuncDecl        -- Alex FuncDecl
+%name pSig Signature        -- Alex Signature
+%name pPar Params           -- Alex [ParameterDecl]
+%name pRes Result           -- Alex (Maybe Type')
+%name pStmt Stmt            -- Alex Stmt
+%name pStmts Stmts          -- Alex [Stmt]
+%name pBStmt BlockStmt      -- Alex FuncBody
+%name pSStmt SimpleStmt     -- Alex SimpleStmt
+%name pIf IfStmt            -- Alex Stmt
+%name pElses Elses          -- Alex Stmt
+%name pFor ForStmt          -- Alex Stmt
+%name pSwS SwitchStmt       -- Alex Stmt
+%name pSwB SwitchBody       -- Alex [SwitchCase]
+%name pE Expr               -- Alex Expr
+%name pEl EIList            -- Alex [Expr]
 
 {- Spec: https://golang.org/ref/spec#Operator_precedence -}
 %nonassoc ',' {- Lowest precedence, for arrays and expression lists. TODO: DO WE NEED THIS? -}
