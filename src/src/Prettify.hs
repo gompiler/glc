@@ -165,7 +165,7 @@ instance Prettify ForClause where
   prettify (ForClause cs (Just ce) s) =
     prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s ++ " "
   prettify (ForClause cs Nothing s) =
-    prettify cs ++ "; " ++ "; " ++ prettify s ++ " "
+    prettify cs ++ "; ; " ++ prettify s ++ " "
   prettify' = prettify''
 
 instance Prettify (NonEmpty Expr) where
