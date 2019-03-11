@@ -1,5 +1,6 @@
 .stack-work/
 glc.cabal
+golite.info
 *~
 
 # IntelliJ
@@ -11,6 +12,7 @@ glc.cabal
 .idea/dictionaries
 .idea/libraries
 .idea/caches
+*.bak
 
 # Mac
 .DS_Store

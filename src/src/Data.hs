@@ -209,9 +209,7 @@ instance ErrorBreakpoint SwitchCase where
 -- | See https://golang.org/ref/spec#For_statements
 -- Golite does not support range statement
 data ForClause
-  = ForInfinite -- blank clause
-  | ForCond Expr
-  | ForClause SimpleStmt
+  = ForClause SimpleStmt
               (Maybe Expr)
               SimpleStmt
   deriving (Show, Eq)
