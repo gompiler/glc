@@ -17,7 +17,7 @@ expectWeedPass =
     (\s ->
        let program =
              "package main\n\nfunc main() {\n\n" ++ toString s ++ "\n\n}"
-        in case parse @Program program >>= weed program of
+        in case weed program of
              Left err ->
                expectationFailure $
                "Expected success on:\n\n" ++
@@ -33,7 +33,7 @@ expectWeedFail =
     (\s ->
        let program =
              "package main\n\nfunc main() {\n\n" ++ toString s ++ "\n\n}"
-        in case parse @Program program >>= weed program of
+        in case weed program of
              Right p ->
                expectationFailure $
                "Expected failure on:\n\n" ++
