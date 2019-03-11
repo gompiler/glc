@@ -242,9 +242,10 @@ instance BlankWeed Stmt where
   toIdent (Switch simp (Just e) cases) =
     toIdent simp ++ toIdent e ++ (cases >>= toIdent)
   toIdent (Switch simp Nothing cases) = toIdent simp ++ (cases >>= toIdent)
-  toIdent (For (ForCond e) s) = toIdent e ++ toIdent s
-  toIdent (For (ForClause simp1 e simp2) s) =
+  toIdent (For (ForClause simp1 (Just e) simp2) s) =
     toIdent e ++ toIdent simp1 ++ toIdent simp2 ++ toIdent s
+  toIdent (For (ForClause simp1 Nothing simp2) s) =
+    toIdent simp1 ++ toIdent simp2 ++ toIdent s
   toIdent (Declare d) = toIdent d
   toIdent (Print el) = el >>= toIdent
   toIdent (Println el) = el >>= toIdent
