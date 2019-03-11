@@ -117,7 +117,7 @@ programExamples =
         b int
         c int
         c struct {}
-        d [][2 * 2][][][2]a
+        d [][4][][][2]a
       }
     )
 
