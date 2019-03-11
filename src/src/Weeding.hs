@@ -6,7 +6,7 @@ import           Control.Applicative
 import           Data
 import           Data.Maybe          as Maybe
 import           ErrorBundle
-import           Parser              (parse)
+import           Parsable
 
 type PureConstraint a = a -> Maybe ErrorBundle'
 
