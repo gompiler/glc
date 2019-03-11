@@ -28,12 +28,11 @@ module Base
   , qcGen
   ) where
 
-import           Control.Applicative
 import           Control.Monad       (unless)
 import           Data
 import           Data.Char           (isSpace)
 import           Data.Functor        ((<&>))
-import           Data.List.NonEmpty  (NonEmpty (..), fromList)
+import           Data.List.NonEmpty  (NonEmpty (..))
 import           Data.Text           (Text, unpack)
 import           ErrorBundle
 import           Examples
@@ -43,6 +42,7 @@ import           Prettify
 import           Scanner             (InnerToken, scanT)
 import           Test.Hspec
 import           Test.QuickCheck
+import Test.Hspec.QuickCheck (prop)
 
 o :: Offset
 o = Offset 0
@@ -268,15 +268,15 @@ instance SpecBuilder (String, String) where
     it (show $ lines input) $ scanT input `shouldBe` Left failure
 
 -- | Generate Either given a string and feed this to constructor
-strData :: String -> (String -> a) -> (String, a)
-strData s constr = (s, constr s)
+--strData :: String -> (String -> a) -> (String, a)
+--strData s constr = (s, constr s)
 
-strData' :: (String -> a) -> String -> (String, a)
-strData' constr s = (s, constr s)
+--strData' :: (String -> a) -> String -> (String, a)
+--strData' constr s = (s, constr s)
 
 -- | Cartesian product of two lists
-cartP :: [a] -> [b] -> [(a, b)]
-cartP = liftA2 (,)
+--cartP :: [a] -> [b] -> [(a, b)]
+--cartP = liftA2 (,)
 
 toRetL :: Monad m => a -> m [a]
 toRetL e = return [e]
@@ -289,8 +289,7 @@ qcGen ::
   -> (a -> prop)
   -> SpecWith (Arg Property)
 qcGen desc verb g p =
-  it desc $
-  property $
+  prop desc $
   if verb
     then verbose (forAll g p)
     else forAll g p
