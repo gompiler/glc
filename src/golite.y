@@ -299,10 +299,10 @@ Elses       : else IfStmt                                   { $2 }
             | {- empty -}                                   { blank }
 
 {- Spec: https://golang.org/ref/spec#For_statements -}
-ForStmt     : for BlockStmt                                 { For ForInfinite $2 }
-            | for Expr BlockStmt                            { For (ForCond $2) $3 }
+ForStmt     : for BlockStmt                                 { For (ForClause EmptyStmt Nothing EmptyStmt) $2 }
+            | for Expr BlockStmt                            { For (ForClause EmptyStmt (Just $2) EmptyStmt) $3 }
             | for SimpleStmt Expr ';' SimpleStNE BlockStmt  { For (ForClause $2 (Just $3) $5) $6 }
-            | for SimpleStmt ';' SimpleStNE BlockStmt       { For (ForClause EmptyStmt (Nothing) ($4)) $5 }
+            | for SimpleStmt ';' SimpleStNE BlockStmt       { For (ForClause EmptyStmt Nothing ($4)) $5 }
 
 {- Spec: https://golang.org/ref/spec#Switch_statements -}
 SwitchStmt  : switch SimpleStmt Expr '{' SwitchBody '}'     { Switch $2 (Just $3) (reverse $5) }

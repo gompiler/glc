@@ -247,7 +247,6 @@ happyOutTok :: (HappyAbsSyn t29 t30 t31 t32 t33 t34 t35 t36 t37 t38 t39 t40 t41 
 happyOutTok x = Happy_GHC_Exts.unsafeCoerce# x
 {-# INLINE happyOutTok #-}
 
-
 happyActOffsets :: HappyAddr
 happyActOffsets = HappyA# "\x6b\x04\x00\x00\xf8\x00\x53\x04\xb9\x00\x16\x05\x51\x04\xe8\x00\x4d\x04\x4e\x04\x00\x00\x52\x04\x73\x04\x25\x04\xb9\x00\x21\x01\x00\x00\x69\x04\x12\x04\x39\x04\x15\x04\x1e\x04\x0d\x04\x00\x00\xbd\x03\xb1\x03\x33\x04\xe5\x03\x2c\x04\x88\x06\x26\x04\xe0\x03\x22\x04\xa5\x03\xa5\x03\xa5\x03\xa5\x03\xa5\x03\x14\x04\xf0\x03\xe4\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd1\x03\xd8\x00\x00\x00\x00\x00\xd3\xff\x81\x03\x16\x02\x81\x03\x0a\x02\x81\x03\xf6\xff\x81\x03\x99\x03\x18\x00\xc4\x03\x70\x03\x96\x04\xc1\x03\x14\x00\x6e\x03\x00\x00\x82\x00\x00\x00\x6e\x03\xb3\x03\x00\x00\xb0\x03\xaa\x03\xa4\x03\x9e\x03\x9b\x03\xfe\x01\x0e\x00\x09\x00\x97\x03\x95\x03\x00\x00\x00\x00\x46\x03\xb9\x00\xd6\x00\x5b\x03\x00\x00\x13\x04\x43\x03\x4c\x03\xc2\x03\x3a\x03\x21\x03\xfc\x02\xf8\x02\x02\x05\xf3\x02\x6b\x03\xb9\x00\x2a\x03\xeb\x02\x8d\x03\xaf\x00\xeb\x02\xa3\x00\xeb\x02\xeb\x02\x04\x00\x2d\x03\xe2\x02\x00\x00\x00\x00\xe0\x00\xe2\x02\x00\x00\xe0\x02\xda\x02\x1f\x03\x19\x03\x88\x06\x00\x00\x8d\x03\x16\x03\xb9\x00\x3d\x03\xae\x01\x12\x03\x0f\x03\x00\x00\xc2\x02\x00\x00\x00\x00\xb9\x00\x06\x03\xfd\x02\xef\x02\xe5\x02\xa9\x01\x9d\x01\x00\x00\x00\x00\x39\x00\xb9\x00\x6f\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xfb\x00\x38\x03\x2c\x03\x20\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x91\x01\x14\x03\x14\x03\xba\x02\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x00\x00\x00\x00\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x14\x03\x00\x00\x08\x03\xb3\x02\xa7\x02\x68\x04\x00\x00\x00\x00\x00\x00\x85\x01\x68\x04\x76\x01\x28\x04\x00\x00\x9b\x02\xdc\x02\x8f\x02\x8f\x02\x8f\x02\xa6\x00\x45\x06\xa6\x00\xa6\x00\xa6\x00\x8f\x02\x83\x02\xcf\x02\x00\x00\xb6\x02\x31\x02\x88\x06\x00\x00\x2c\x06\x13\x06\xfa\x05\x00\x00\xe1\x05\xbd\x02\x61\x00\x00\x00\xb7\x05\x00\x00\x00\x00\x8d\x05\x2e\x02\x58\x02\x63\x05\x00\x00\x0d\x01\x16\x00\x88\x06\x88\x06\x88\x06\x19\x07\x19\x07\x19\x07\x19\x07\xa1\x06\xba\x06\x88\x06\x88\x06\x88\x06\x88\x06\x88\x06\x88\x06\x88\x06\x88\x06\xa6\x00\xa6\x00\xa6\x00\x19\x07\x19\x07\x00\x00\x88\x06\x39\x05\x0f\x05\xb5\x02\x00\x00\x30\x07\x30\x07\xa6\x00\xa6\x00\xa6\x00\xa6\x00\x30\x07\x30\x07\x00\x00\x88\x06\x03\x01\x12\x00\x00\x00\x00\x00\xb2\x02\x34\x00\xa9\x02\x06\x00\xf6\x04\xaa\x02\xa6\x02\xdd\x04\x9e\x02\x9d\x02\x00\x00\xb9\x00\xb9\x00\xb9\x00\x00\x00\xf1\xff\x77\x01\xdc\x00\xb9\x00\x95\x02\x98\x02\x94\x02\x91\x02\x00\x00\x88\x06\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x8e\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x8c\x02\x88\x02\x00\x00\x80\x02\x7c\x02\x00\x00\x6e\x02\x00\x00\x62\x02\x00\x00\x00\x00\x00\x00\x00\x00\x29\x02\x00\x00\x45\x02\x2e\x02\x5e\x00\x00\x00\xfb\xff\x00\x00\x00\x00\x00\x00\x57\x00\x00\x00\x00\x00\x22\x02\xf8\x00\xc4\x04\x2c\x00\x01\x00\x00\x00\xfa\xff\x00\x00\x45\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
 
@@ -1264,7 +1263,7 @@ happyReduction_114 happy_x_2
 	happy_x_1
 	 =  case happyOut48 happy_x_2 of { happy_var_2 -> 
 	happyIn53
-		 (For ForInfinite happy_var_2
+		 (For (ForClause EmptyStmt Nothing EmptyStmt) happy_var_2
 	)}
 
 happyReduce_115 = happySpecReduce_3  24# happyReduction_115
@@ -1274,7 +1273,7 @@ happyReduction_115 happy_x_3
 	 =  case happyOut56 happy_x_2 of { happy_var_2 -> 
 	case happyOut48 happy_x_3 of { happy_var_3 -> 
 	happyIn53
-		 (For (ForCond happy_var_2) happy_var_3
+		 (For (ForClause EmptyStmt (Just happy_var_2) EmptyStmt) happy_var_3
 	)}}
 
 happyReduce_116 = happyReduce 6# 24# happyReduction_116
@@ -1303,7 +1302,7 @@ happyReduction_117 (happy_x_5 `HappyStk`
 	 = case happyOut49 happy_x_4 of { happy_var_4 -> 
 	case happyOut48 happy_x_5 of { happy_var_5 -> 
 	happyIn53
-		 (For (ForClause EmptyStmt (Nothing) (happy_var_4)) happy_var_5
+		 (For (ForClause EmptyStmt Nothing (happy_var_4)) happy_var_5
 	) `HappyStk` happyRest}}
 
 happyReduce_118 = happyReduce 6# 25# happyReduction_118
@@ -2072,7 +2071,6 @@ pEl = happySomeParser where
 
 happySeq = happyDontSeq
 
-
 -- Helper functions
 getOffset :: Token -> Offset
 getOffset (Token (AlexPn o _ _) _) = Offset o
@@ -2117,229 +2115,23 @@ parseError (Token (AlexPn o l c) t) =
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
-{-# LINE 18 "<built-in>" #-}
-{-# LINE 1 "/usr/local/Cellar/ghc/8.6.3/lib/ghc-8.6.3/include/ghcversion.h" #-}
+{-# LINE 1 "<command-line>" #-}
+{-# LINE 10 "<command-line>" #-}
+# 1 "/usr/include/stdc-predef.h" 1 3 4
 
+# 17 "/usr/include/stdc-predef.h" 3 4
 
+{-# LINE 10 "<command-line>" #-}
+{-# LINE 1 "/usr/lib/ghc-8.6.3/include/ghcversion.h" #-}
 
+{-# LINE 10 "<command-line>" #-}
+{-# LINE 1 "/tmp/ghc29346_0/ghc_2.h" #-}
 
-
-
-
-
-
-
-
-
-
-
-
-
-{-# LINE 19 "<built-in>" #-}
-{-# LINE 1 "/var/folders/hd/dnzz34rj7891bl2b3r_rmgsc0000gn/T/ghc99700_0/ghc_2.h" #-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-{-# LINE 20 "<built-in>" #-}
+{-# LINE 10 "<command-line>" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- Id: GenericTemplate.hs,v 1.26 2005/01/14 14:47:22 simonmar Exp 
 
-
 {-# LINE 13 "templates/GenericTemplate.hs" #-}
-
-
-
-
 
 -- Do not remove this comment. Required to fix CPP parsing when using GCC and a clang-compiled alex.
 #if __GLASGOW_HASKELL__ > 706
@@ -2351,30 +2143,15 @@ parseError (Token (AlexPn o l c) t) =
 #define GTE(n,m) (n Happy_GHC_Exts.>=# m)
 #define EQ(n,m) (n Happy_GHC_Exts.==# m)
 #endif
-
 {-# LINE 46 "templates/GenericTemplate.hs" #-}
-
 
 data Happy_IntList = HappyCons Happy_GHC_Exts.Int# Happy_IntList
 
-
-
-
-
-
 {-# LINE 67 "templates/GenericTemplate.hs" #-}
-
 
 {-# LINE 77 "templates/GenericTemplate.hs" #-}
 
-
-
-
-
-
-
-
-
+{-# LINE 86 "templates/GenericTemplate.hs" #-}
 
 infixr 9 `HappyStk`
 data HappyStk a = HappyStk a (HappyStk a)
@@ -2398,11 +2175,8 @@ happyAccept j tk st sts (HappyStk ans _) =
 -----------------------------------------------------------------------------
 -- Arrays only: do the next action
 
-
-
 happyDoAction i tk st
         = {- nothing -}
-          
 
           case action of
                 0#           -> {- nothing -}
@@ -2410,11 +2184,10 @@ happyDoAction i tk st
                 -1#          -> {- nothing -}
                                      happyAccept i tk st
                 n | LT(n,(0# :: Happy_GHC_Exts.Int#)) -> {- nothing -}
-                                                   
+
                                                    (happyReduceArr Happy_Data_Array.! rule) i tk st
                                                    where rule = (Happy_GHC_Exts.I# ((Happy_GHC_Exts.negateInt# ((n Happy_GHC_Exts.+# (1# :: Happy_GHC_Exts.Int#))))))
                 n                 -> {- nothing -}
-                                     
 
                                      happyShift new_state i tk st
                                      where new_state = (n Happy_GHC_Exts.-# (1# :: Happy_GHC_Exts.Int#))
@@ -2427,7 +2200,6 @@ happyDoAction i tk st
           | check     = indexShortOffAddr happyTable off_i
           | otherwise = indexShortOffAddr happyDefActions st
 
-
 indexShortOffAddr (HappyA# arr) off =
         Happy_GHC_Exts.narrow16Int# i
   where
@@ -2436,18 +2208,10 @@ indexShortOffAddr (HappyA# arr) off =
         low  = Happy_GHC_Exts.int2Word# (Happy_GHC_Exts.ord# (Happy_GHC_Exts.indexCharOffAddr# arr off'))
         off' = off Happy_GHC_Exts.*# 2#
 
-
-
-
-
 data HappyAddr = HappyA# Happy_GHC_Exts.Addr#
-
-
-
 
 -----------------------------------------------------------------------------
 -- HappyState data type (not arrays)
-
 
 {-# LINE 170 "templates/GenericTemplate.hs" #-}
 
@@ -2514,8 +2278,6 @@ happyMonad2Reduce k nt fn j tk st sts stk =
              off_i = (off Happy_GHC_Exts.+# nt)
              new_state = indexShortOffAddr happyTable off_i
 
-
-
           in
           happyThen1 (fn stk tk) (\r -> happyNewToken new_state sts1 (r `HappyStk` drop_stk))
 
@@ -2528,16 +2290,12 @@ happyDropStk n (x `HappyStk` xs) = happyDropStk (n Happy_GHC_Exts.-# (1#::Happy_
 -----------------------------------------------------------------------------
 -- Moving to a new state after a reduction
 
-
 happyGoto nt j tk st = 
    {- nothing -}
    happyDoAction j tk new_state
    where off = indexShortOffAddr happyGotoOffsets st
          off_i = (off Happy_GHC_Exts.+# nt)
          new_state = indexShortOffAddr happyTable off_i
-
-
-
 
 -----------------------------------------------------------------------------
 -- Error recovery (0# is the error token)
@@ -2573,11 +2331,9 @@ notHappyAtAll = error "Internal Happy error\n"
 -----------------------------------------------------------------------------
 -- Hack to get the typechecker to accept our action functions
 
-
 happyTcHack :: Happy_GHC_Exts.Int# -> a -> a
 happyTcHack x y = y
 {-# INLINE happyTcHack #-}
-
 
 -----------------------------------------------------------------------------
 -- Seq-ing.  If the --strict flag is given, then Happy emits 
@@ -2593,7 +2349,6 @@ happyDontSeq a b = b
 -- Don't inline any functions from the template.  GHC has a nasty habit
 -- of deciding to inline happyGoto everywhere, which increases the size of
 -- the generated parser quite a bit.
-
 
 {-# NOINLINE happyDoAction #-}
 {-# NOINLINE happyTable #-}
@@ -2613,4 +2368,3 @@ happyDontSeq a b = b
 {-# NOINLINE happyFail #-}
 
 -- end of Happy Template.
-
