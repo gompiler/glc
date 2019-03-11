@@ -5,9 +5,10 @@
 module Parsable where
 
 import           Data
-import           Data.List.NonEmpty (NonEmpty (..), fromList)
-import qualified Parser             as P (parse, parsef, parsefNL, pDec, pE, pEl, pIDecl, pId, pPar, pSig,
-                                                                               pStmt, pT, pTDecl)
+import           Data.List.NonEmpty (fromList)
+import qualified Parser             as P (pDec, pE, pEl, pIDecl, pId, pPar,
+                                          pSig, pStmt, pT, pTDecl, parse,
+                                          parsef, parsefNL)
 
 class (Show a, Eq a) =>
       Parsable a

@@ -8,10 +8,9 @@ module ParserSpec
 
 import           Base
 import           Data            as D
+import           Data.List.Split (splitOn)
 import           Parser
 import qualified TokensSpec      as T
-
-import           Data.List.Split (splitOn)
 
 {-# ANN module "HLint: ignore Redundant do" #-}
 
