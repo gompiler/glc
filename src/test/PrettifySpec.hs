@@ -183,7 +183,7 @@ spec = do
               default:
                   println("what")
           }
-          for {
+          for ;; {
               continue
               break
           }
@@ -200,7 +200,7 @@ spec = do
           if (a < b) {
           } else if a := 5; (a < b) {
           }
-          for (a < 10) {
+          for ;(a < 10); {
               println("a")
               println(`b`)
           }

@@ -160,8 +160,6 @@ instance Prettify [Expr] where
   prettify' = prettify''
 
 instance Prettify ForClause where
-  prettify ForInfinite = ""
-  prettify (ForCond e) = prettify e ++ " "
   prettify (ForClause cs (Just ce) s) =
     prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s ++ " "
   prettify (ForClause cs Nothing s) =
