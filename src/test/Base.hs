@@ -211,6 +211,7 @@ expectPrettyExact =
 expectStringMatch :: String -> String -> Maybe String
 expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
   where
+    -- Return first index where strings don't match, or Nothing otherwise
     mismatchIndex :: String -> String -> Maybe Int
     mismatchIndex = mismatchIndex' 0
     mismatchIndex' :: Int -> String -> String -> Maybe Int
@@ -222,12 +223,18 @@ expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
       if length l == length l'
         then Nothing
         else Just i
+    -- | Generates error message around supplied index
+    -- For the sake of clarity, we will showcase a portion of the expected string
+    -- rather than just the mismatched character.
+    -- The range is arbitrary
     errorMessage :: Int -> String
     errorMessage i =
       let message = "Expected '" ++ ([i - 10 .. i + 3] >>= get s2) ++ "'"
           error' =
             errorString $ createError (Offset i) message (createInitialState s1)
        in "Prettify failed for \n\n" ++ s1 ++ "\n\n" ++ error'
+    -- | Safe index retrieval for strings
+    -- Note that some chars are formatted for readability
     get :: String -> Int -> String
     get s i =
       if i >= 0 && i < length s
