@@ -24,6 +24,7 @@ src/generated/Tokens.hs: golite.x
 
 src/generated/Parser.hs: golite.y
 	happy $< -agc -i -o $@
+	sed -i 's/\\$$//;/./,/^$$/!d' src/generated/Parser.hs # Remove consecutive lines of whitespace
 
 glc: build
 	@rm -f glc
