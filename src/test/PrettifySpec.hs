@@ -108,6 +108,10 @@ spec = do
             return c
         }
 
+        var ()
+
+        type ()
+
         func main() {
             type num int
             type point struct {
