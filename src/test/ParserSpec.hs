@@ -10,7 +10,7 @@ import           Base
 import           Data               as D
 import           Data.List.NonEmpty (fromList)
 import           Data.List.Split    (splitOn)
-import           Parsable
+import           Parser
 import qualified TokensSpec         as T
 
 {-# ANN module "HLint: ignore Redundant do" #-}

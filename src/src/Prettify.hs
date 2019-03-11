@@ -12,7 +12,7 @@ import           Data
 import           Data.List          (intercalate, null)
 import           Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Maybe         as Maybe
-import           Parsable
+import           Parser
 
 checkPrettifyInvariance :: String -> Either String String
 checkPrettifyInvariance input = do

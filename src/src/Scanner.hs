@@ -24,7 +24,7 @@ import           System.IO
 import           ErrorBundle
 
 -- Helper functions for scanning using tokens and also pass relevant things to parser
-import qualified Tokens      as T
+import qualified TokenGen      as T
 
 -- |prettify, takes a token and turn it into a string representing said token
 -- Also makes the tokens look like the expected tTYPE format

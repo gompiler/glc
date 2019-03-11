@@ -37,7 +37,7 @@ import           Data.Text           (Text, unpack)
 import           ErrorBundle
 import           Examples
 import           NeatInterpolation
-import           Parsable
+import           Parser
 import           Prettify
 import           Scanner             (InnerToken, scanT)
 import           Test.Hspec

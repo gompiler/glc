@@ -10,7 +10,7 @@ import           Data.Foldable       (asum)
 import           Data.List.NonEmpty  (toList)
 import           Data.Maybe          as Maybe
 import           ErrorBundle
-import           Parsable
+import           Parser
 
 type PureConstraint a = a -> Maybe ErrorBundle'
 
