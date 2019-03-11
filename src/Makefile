@@ -23,7 +23,7 @@ src/generated/Tokens.hs: golite.x
 	alex $< -g -o $@
 
 src/generated/Parser.hs: golite.y
-	happy $< -agc -o $@
+	happy $< -agc -i -o $@
 
 glc: build
 	@rm -f glc
