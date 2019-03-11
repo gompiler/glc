@@ -12,15 +12,9 @@ module Base
   , NeatInterpolation.text
   , o
   , module ErrorBundle
-  , sndConvert
-  , fstConvert
-  , pairConvert
-  , strData
   , Stringable(..)
+  , ParseTest(..)
   , expectBase
-  , Parsable(..)
-  , strData'
-  , cartP
   , printError
   , module Test.Hspec
   , module Examples
@@ -33,26 +27,22 @@ module Base
   , expectPrettyExact
   , expectPrettyInvar
   , qcGen
-  , Parser.parsef
-  , Parser.parsefNL
   ) where
 
-import           Control.Applicative
 import           Control.Monad       (unless)
 import           Data
 import           Data.Functor        ((<&>))
-import           Data.List.NonEmpty  (NonEmpty (..), fromList)
+import           Data.List.NonEmpty  (NonEmpty (..))
 import           Data.Text           (Text, unpack)
 import           ErrorBundle
 import           Examples
 import           NeatInterpolation
-import           Parser              (pDec, pE, pEl, pIDecl, pId, pPar, pSig,
-                                      pStmt, pT, pTDecl)
-import qualified Parser              (parse, parsef, parsefNL)
+import           Parser
 import           Prettify
 import           Scanner             (InnerToken, scanT)
 import           Test.Hspec
 import           Test.QuickCheck
+import Test.Hspec.QuickCheck (prop)
 
 o :: Offset
 o = Offset 0
@@ -75,7 +65,7 @@ printError (Left s) = describe "print" $ it "left error" $ expectationFailure s
 -- Suffix is a tag for the description
 -- Expectation maps the input to an expectation
 -- Title maps the input to a string (prefix of description)
--- Name refers to tag from Parsable
+-- Name refers to tag from ParseTest
 -- Inputs refers to list of inputs
 -- Note that the last two entries are type ambiguous, which is why we need to specify them
 -- We order the parameters this way to avoid rewriting them
@@ -97,14 +87,14 @@ expectBase suffix expectation' title name inputs =
 
 -- | Expects that input parses with some ast
 expectPass ::
-     forall a s. (Parsable a, Stringable s)
+     forall a s. (ParseTest a, Stringable s)
   => [s]
   -> SpecWith ()
 expectPass =
   expectBase
     "success"
     (\s ->
-       case parse @a s of
+       case parse' @a s of
          Left err ->
            expectationFailure $
            "Expected parse success on:\n\n" ++
@@ -115,14 +105,14 @@ expectPass =
 
 -- | Expects that input parses with some error
 expectFail ::
-     forall a s. (Parsable a, Stringable s)
+     forall a s. (ParseTest a, Stringable s)
   => [s]
   -> SpecWith ()
 expectFail =
   expectBase
     "fail"
     (\s ->
-       case parse @a s of
+       case parse' @a s of
          Right ast ->
            expectationFailure $
            "Expected parse failure on:\n\n" ++
@@ -133,14 +123,14 @@ expectFail =
 
 -- | Expects that input parses with an exact ast match
 expectAst ::
-     forall a s. (Parsable a, Stringable s)
+     forall a s. (ParseTest a, Stringable s)
   => [(s, a)]
   -> SpecWith ()
 expectAst =
   expectBase
     "ast"
     (\(s, e) ->
-       case parse s of
+       case parse' s of
          Left err ->
            expectationFailure $
            "Invalid ast for:\n\n" ++
@@ -156,7 +146,7 @@ expectAst =
 
 -- | Expects that pretty(parse(input)) = pretty(parse(pretty(parse(input))))
 expectPrettyInvar ::
-     forall a s. (Parsable a, Prettify a, Stringable s)
+     forall a s. (ParseTest a, Prettify a, Stringable s)
   => [s]
   -> SpecWith ()
 expectPrettyInvar =
@@ -173,9 +163,9 @@ expectPrettyInvar =
     (tag @a)
   where
     multiPass input = do
-      ast1 <- parse @a input
+      ast1 <- parse' @a input
       let pretty1 = prettify ast1
-      ast2 <- parse @a pretty1
+      ast2 <- parse' @a pretty1
       let pretty2 = prettify ast2
       case (ast1 == ast2, expectStringMatch pretty1 pretty2) of
         (False, _) ->
@@ -187,7 +177,7 @@ expectPrettyInvar =
 
 -- | Expects that input = pretty(parse(input))
 expectPrettyExact ::
-     forall a s. (Parsable a, Prettify a, Stringable s)
+     forall a s. (ParseTest a, Prettify a, Stringable s)
   => [s]
   -> SpecWith ()
 expectPrettyExact =
@@ -245,78 +235,57 @@ expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
                s'   -> [s']
         else "?"
 
-class (Show a, Eq a) =>
-      Parsable a
+class (Parsable a) =>
+      ParseTest a
   where
   tag :: String
-  parse :: Stringable s => s -> Either String a
-  parse s = parse' $ toString s
-  parse' :: String -> Either String a
+  parse' :: Stringable s => s -> Either String a
+  parse' = parse . toString
   placeholder :: a
 
-instance Parsable Program where
+instance ParseTest Program where
   tag = "program"
-  parse' = Parser.parse
   placeholder = Program {package = "temp", topLevels = []}
 
-instance Parsable Stmt where
+instance ParseTest Stmt where
   tag = "stmt"
-  parse' = Parser.parsefNL pStmt
   placeholder = blank
 
-instance Parsable TopDecl where
+instance ParseTest TopDecl where
   tag = "topDecl"
-  parse' = Parser.parsefNL pTDecl
   placeholder = TopDecl $ VarDecl [placeholder]
 
-instance Parsable Signature where
+instance ParseTest Signature where
   tag = "signature"
-  parse' = Parser.parsef pSig
   placeholder = Signature (Parameters placeholder) Nothing
 
-instance Parsable [ParameterDecl] where
+instance ParseTest [ParameterDecl] where
   tag = "parameterDecls"
-  parse' = Parser.parsef pPar
   placeholder = [ParameterDecl placeholder placeholder]
 
-instance Parsable Type' where
+instance ParseTest Type' where
   tag = "type"
-  parse' = Parser.parsef pT
   placeholder = (o, Type $ Identifier o "temp")
 
-instance Parsable Decl where
+instance ParseTest Decl where
   tag = "decl"
-  parse' = Parser.parsef pDec
   placeholder = VarDecl [placeholder]
 
-instance Parsable [Expr] where
+instance ParseTest [Expr] where
   tag = "exprs"
-  parse' = Parser.parsef pEl
   placeholder = [placeholder]
 
-instance Parsable Expr where
+instance ParseTest Expr where
   tag = "expr"
-  parse' = Parser.parsef pE
   placeholder = Lit $ StringLit o Raw "`temp`"
 
-instance Parsable VarDecl' where
+instance ParseTest VarDecl' where
   tag = "varDecl"
-  parse' = Parser.parsef pIDecl
   placeholder = VarDecl' placeholder (Right $ placeholder :| [])
 
-instance Parsable Identifiers where
+instance ParseTest Identifiers where
   tag = "ids"
-  parse' s = fromList . reverse <$> Parser.parsef pId s
   placeholder = Identifier o "temp" :| []
-
-pairConvert :: (a -> a') -> (b -> b') -> [(a, b)] -> [(a', b')]
-pairConvert f1 f2 = map (\(a, b) -> (f1 a, f2 b))
-
-fstConvert :: (a -> a') -> [(a, b')] -> [(a', b')]
-fstConvert f = pairConvert f id
-
-sndConvert :: (b -> b') -> [(a, b)] -> [(a, b')]
-sndConvert = pairConvert id
 
 class SpecBuilder a where
   expectation :: a -> SpecWith ()
@@ -375,15 +344,15 @@ format program =
     gcdAll l  = max 1 $ foldl1 gcd l
 
 -- | Generate Either given a string and feed this to constructor
-strData :: String -> (String -> a) -> (String, a)
-strData s constr = (s, constr s)
+--strData :: String -> (String -> a) -> (String, a)
+--strData s constr = (s, constr s)
 
-strData' :: (String -> a) -> String -> (String, a)
-strData' constr s = (s, constr s)
+--strData' :: (String -> a) -> String -> (String, a)
+--strData' constr s = (s, constr s)
 
 -- | Cartesian product of two lists
-cartP :: [a] -> [b] -> [(a, b)]
-cartP = liftA2 (,)
+--cartP :: [a] -> [b] -> [(a, b)]
+--cartP = liftA2 (,)
 
 toRetL :: Monad m => a -> m [a]
 toRetL e = return [e]
@@ -396,8 +365,7 @@ qcGen ::
   -> (a -> prop)
   -> SpecWith (Arg Property)
 qcGen desc verb g p =
-  it desc $
-  property $
+  prop desc $
   if verb
     then verbose (forAll g p)
     else forAll g p

@@ -7,13 +7,16 @@ module ParserSpec
   ) where
 
 import           Base
-import           Data            as D
+import           Data               as D
+import           Data.List.NonEmpty (fromList)
+import           Data.List.Split    (splitOn)
 import           Parser
-import qualified TokensSpec      as T
-
-import           Data.List.Split (splitOn)
+import qualified TokensSpec         as T
 
 {-# ANN module "HLint: ignore Redundant do" #-}
+
+qcGenMatch :: Parsable p => (String, p) -> Bool
+qcGenMatch (s, out) = parse s == Right out
 
 -- | Spec template listing some expected tests; not yet implemented
 spec :: Spec
@@ -23,24 +26,11 @@ spec = do
       "ident list"
       False
       (genCommaList T.genId)
-      (\x ->
-         parsef pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
+      (\x -> parse x == (Right $ fromList $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
-    qcGen
-      "basic expressions"
-      False
-      genEBase
-      (\(s, out) -> parsef pE s == Right out)
-    qcGen
-      "binary expressions"
-      False
-      genEBin
-      (\(s, out) -> parsef pE s == Right out)
-    qcGen
-      "unary expressions"
-      False
-      genEUn
-      (\(s, out) -> parsef pE s == Right out)
+    qcGen "basic expressions" False genEBase qcGenMatch
+    qcGen "binary expressions" False genEBin qcGenMatch
+    qcGen "unary expressions" False genEUn qcGenMatch
   -- Though a single identifier is valid, we parse it without going through the identifiers type
   expectPass
     @Identifiers

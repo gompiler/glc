@@ -1,4 +1,4 @@
-{module Parser ( putExit
+{module ParserGen ( putExit
                 , AlexPosn(..)
                 , runAlex
                 , pId

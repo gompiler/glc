@@ -1,5 +1,5 @@
 {
-module Tokens
+module TokenGen
 ( Alex(..)
 , AlexPosn(..)
 , alex_pos

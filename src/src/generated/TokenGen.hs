@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP,MagicHash #-}
 {-# LINE 1 "golite.x" #-}
 
-module Tokens
+module TokenGen
 ( Alex(..)
 , AlexPosn(..)
 , alex_pos

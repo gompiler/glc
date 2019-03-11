@@ -9,21 +9,21 @@ clean:
 
 .PHONY: cleangen
 cleangen:
-	@rm -f src/generated/Tokens.hs
-	@rm -f src/generated/Parser.hs
+	@rm -f src/generated/TokenGen.hs
+	@rm -f src/generated/ParserGen.hs
 
 .PHONY: build
 build: gen
 	stack --allow-different-user build $(COMPILE_FLAGS)
 
 .PHONY: gen
-gen: src/generated/Tokens.hs src/generated/Parser.hs
+gen: src/generated/TokenGen.hs src/generated/ParserGen.hs
 
-src/generated/Tokens.hs: golite.x
+src/generated/TokenGen.hs: golite.x
 	alex $< -g -o $@
 	sed -i.bak 's/\\$$//;/./,/^$$/!d' $@ # Remove consecutive lines of whitespace
 
-src/generated/Parser.hs: golite.y
+src/generated/ParserGen.hs: golite.y
 	happy $< -agc -i -o $@
 	sed -i.bak 's/\\$$//;/./,/^$$/!d' $@ # Remove consecutive lines of whitespace
 

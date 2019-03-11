@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -w #-}
 {-# OPTIONS -fglasgow-exts -cpp #-}
-module Parser ( putExit
+module ParserGen ( putExit
                 , AlexPosn(..)
                 , runAlex
                 , pId
