@@ -90,6 +90,8 @@ expectBase ::
 expectBase suffix expectation' title name inputs =
   describe (name ++ " " ++ suffix) $ mapM_ expect inputs
   where
+    -- We trim the spec title so that it doesn't take too much space
+    -- The limit is arbitrary
     expect input =
       it (take 80 $ show $ lines $ title input) $ expectation' input
 
