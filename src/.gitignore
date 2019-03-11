@@ -12,6 +12,7 @@ golite.info
 .idea/dictionaries
 .idea/libraries
 .idea/caches
+*.bak
 
 # Mac
 .DS_Store
