@@ -7,7 +7,6 @@ module WeedingSpec
   ) where
 
 import           Base
-import           Data
 import           Weeding
 
 expectWeedPass :: Stringable s => [s] -> SpecWith ()
