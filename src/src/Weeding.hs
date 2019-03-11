@@ -1,9 +1,13 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Weeding
   ( weed
   ) where
 
 import           Control.Applicative
 import           Data
+import           Data.Foldable       (asum)
+import           Data.List.NonEmpty  (toList)
 import           Data.Maybe          as Maybe
 import           ErrorBundle
 import           Parsable
@@ -23,16 +27,14 @@ weed code = do
     (verify program)
 
 verify :: Program -> Maybe ErrorBundle'
+-- Alternative sum, i.e. sum using <|> over each function mapped to program
 verify program =
-  programVerify program <|> continueVerify program <|> breakVerify program
-
--- | Returns option of either the first element of a list or nothing
-firstOrNothing :: [a] -> Maybe a
-firstOrNothing []    = Nothing
-firstOrNothing (x:_) = Just x
+  asum $
+  [programVerify, continueVerify, breakVerify, progVerifyDecl, progVerifyBlank] <*>
+  [program]
 
 verifyAll :: PureConstraint a -> [a] -> Maybe ErrorBundle'
-verifyAll constraint items = firstOrNothing $ mapMaybe constraint items
+verifyAll constraint items = asum $ map constraint items
 
 recursiveVerifyAll ::
      (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
@@ -67,6 +69,8 @@ stmtVerify (SimpleStmt stmt) =
     ExprStmt Arguments {} -> Nothing
     e@(ExprStmt _) ->
       Just $ createError e "Expression statements must be function calls"
+    (Assign _ _ e1 e2) -> checkListSize (toList e1) (toList e2)
+    (ShortDeclare identl el) -> checkListSize (toList identl) (toList el)
     _ -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
@@ -89,12 +93,57 @@ stmtVerify (For (ForClause pre _ post) _) =
     _ -> Nothing
 stmtVerify _ = Nothing
 
-programVerify :: PureConstraint Program
-programVerify program = firstOrNothing errors
+-- Verify declarations (LHS = RHS if an assignment)
+declVerify :: Decl -> Maybe ErrorBundle'
+declVerify (VarDecl vdl) = asum $ map vdeclVer vdl
   where
-    errors :: [ErrorBundle']
+    vdeclVer (VarDecl' identl (Right el)) =
+      checkListSize (toList identl) (toList el)
+    vdeclVer (VarDecl' identl (Left (_, el))) =
+      if null el
+        then Nothing -- If no expressions, i.e. type only, then nothing on RHS, don't care about length
+        else checkListSize (toList identl) el
+declVerify _ = Nothing
+
+progVerifyDecl :: PureConstraint Program
+progVerifyDecl program = asum errors
+  where
+    errors :: [Maybe ErrorBundle']
     errors =
-      mapMaybe
+      map
+        declVerify
+        -- Extract all declarations from either top level (i.e. top level declaration, not in a block statement)
+        -- or from a block stmt, using getScopes and calling stmtToDecl on each entry in the statement list
+        (mapMaybe topToDecl (topLevels program) ++
+         mapMaybe
+           stmtToDecl
+           (concatMap getStmts $ mapMaybe topToStmt $ topLevels program))
+    getStmts stmt =
+      case stmt of
+        BlockStmt stmts  -> stmts
+        If _ s1 s2       -> [s1, s2]
+        For _ s          -> [s]
+        Switch _ _ cases -> map stmtFromCase cases
+        _                -> []
+
+progVerifyBlank :: PureConstraint Program
+progVerifyBlank program = asum errors
+  where
+    errors :: [Maybe ErrorBundle']
+    errors = map blankVerify (topLevels program >>= toIdent)
+
+blankVerify :: Identifier -> Maybe ErrorBundle'
+blankVerify (Identifier o str) =
+  if str == "_"
+    then Just $ createError o "Invalid use of blank identifier"
+    else Nothing
+
+programVerify :: PureConstraint Program
+programVerify program = asum errors
+  where
+    errors :: [Maybe ErrorBundle']
+    errors =
+      map
         (stmtRecursiveVerify stmtVerify)
         (mapMaybe topToStmt $ topLevels program)
 
@@ -115,11 +164,11 @@ continueConstraint (Continue o) =
 continueConstraint _ = Nothing
 
 continueVerify :: PureConstraint Program
-continueVerify program = firstOrNothing errors
+continueVerify program = asum errors
   where
-    errors :: [ErrorBundle']
+    errors :: [Maybe ErrorBundle']
     errors =
-      mapMaybe
+      map
         (continueRecursiveVerify continueConstraint)
         (mapMaybe topToStmt $ topLevels program)
 
@@ -140,11 +189,11 @@ breakConstraint (Break o) =
 breakConstraint _ = Nothing
 
 breakVerify :: PureConstraint Program
-breakVerify program = firstOrNothing errors
+breakVerify program = asum errors
   where
-    errors :: [ErrorBundle']
+    errors :: [Maybe ErrorBundle']
     errors =
-      mapMaybe
+      map
         (breakRecursiveVerify breakConstraint)
         (mapMaybe topToStmt $ topLevels program)
 
@@ -153,6 +202,104 @@ breakVerify program = firstOrNothing errors
 topToStmt :: TopDecl -> Maybe Stmt
 topToStmt (TopFuncDecl (FuncDecl _ _ stmt)) = Just stmt
 topToStmt _                                 = Nothing
+
+-- | Extract declarations from top-level declarations
+topToDecl :: TopDecl -> Maybe Decl
+topToDecl (TopFuncDecl (FuncDecl _ _ s)) = stmtToDecl s
+topToDecl (TopDecl d)                    = Just d
+
+-- | Extract declaration from stmt
+stmtToDecl :: Stmt -> Maybe Decl
+stmtToDecl (Declare d) = Just d
+stmtToDecl _           = Nothing
+
+-- | toIdent for various structures from AST so we can extract identifiers
+class BlankWeed a where
+  toIdent :: a -> [Identifier]
+
+-- | Extract identifiers that cannot be blank
+instance BlankWeed TopDecl where
+  toIdent (TopFuncDecl (FuncDecl _ (Signature (Parameters pdl) Nothing) stmt)) =
+    pdIdentl ++ stmtIdentl
+    where
+      pdIdentl = pdl >>= toIdent
+      stmtIdentl = toIdent stmt
+  toIdent (TopFuncDecl (FuncDecl _ (Signature (Parameters pdl) (Just t)) stmt)) =
+    pdIdentl ++ stmtIdentl ++ toIdent t
+    where
+      pdIdentl = pdl >>= toIdent
+      stmtIdentl = toIdent stmt
+  toIdent (TopDecl d) = toIdent d
+
+instance BlankWeed ParameterDecl where
+  toIdent (ParameterDecl il _) = toList il
+
+instance BlankWeed Stmt where
+  toIdent (BlockStmt stmts) = stmts >>= toIdent
+  toIdent (SimpleStmt stmt) = toIdent stmt
+  toIdent (If (simp, e) s1 s2) =
+    toIdent simp ++ toIdent e ++ toIdent s1 ++ toIdent s2
+  toIdent (Switch simp (Just e) cases) =
+    toIdent simp ++ toIdent e ++ (cases >>= toIdent)
+  toIdent (Switch simp Nothing cases) = toIdent simp ++ (cases >>= toIdent)
+  toIdent (For (ForClause simp1 (Just e) simp2) s) =
+    toIdent e ++ toIdent simp1 ++ toIdent simp2 ++ toIdent s
+  toIdent (For (ForClause simp1 Nothing simp2) s) =
+    toIdent simp1 ++ toIdent simp2 ++ toIdent s
+  toIdent (Declare d) = toIdent d
+  toIdent (Print el) = el >>= toIdent
+  toIdent (Println el) = el >>= toIdent
+  toIdent (Return (Just e)) = toIdent e
+  toIdent _ = []
+
+instance BlankWeed SimpleStmt where
+  toIdent (ExprStmt e)        = toIdent e
+  toIdent (Increment _ e)     = toIdent e
+  toIdent (Decrement _ e)     = toIdent e
+  toIdent (Assign _ _ _ el)   = toList el >>= toIdent -- We don't care about identifiers on the LHS
+  toIdent (ShortDeclare _ el) = toList el >>= toIdent -- Don't care about LHS
+  toIdent _                   = []
+
+instance BlankWeed Expr where
+  toIdent (Unary _ _ e)        = toIdent e
+  toIdent (Binary _ _ e1 e2)   = toIdent e1 ++ toIdent e2
+  toIdent (Var ident)          = [ident]
+  toIdent (LenExpr _ e)        = toIdent e
+  toIdent (CapExpr _ e)        = toIdent e
+  toIdent (Selector _ e ident) = ident : toIdent e
+  toIdent (Index _ e1 e2)      = toIdent e1 ++ toIdent e2
+  toIdent (Arguments _ e el)   = toIdent e ++ (el >>= toIdent)
+  toIdent _                    = []
+
+instance BlankWeed SwitchCase where
+  toIdent (Case _ el s) = (toList el >>= toIdent) ++ toIdent s
+  toIdent (Default _ s) = toIdent s
+
+instance BlankWeed Decl where
+  toIdent (VarDecl vdl) = vdl >>= toIdent
+  toIdent (TypeDef tdl) = tdl >>= toIdent
+
+instance BlankWeed VarDecl' where
+  toIdent (VarDecl' _ (Left (t, el))) = toIdent t ++ (el >>= toIdent)
+  toIdent (VarDecl' _ (Right el))     = toList el >>= toIdent
+
+instance BlankWeed TypeDef' where
+  toIdent (TypeDef' _ t) = toIdent t -- Don't care about idents on LHS
+
+instance BlankWeed (Offset, Type) where
+  toIdent (_, t) = toIdent t
+
+instance BlankWeed Type where
+  toIdent (ArrayType e t) = toIdent e ++ toIdent t
+  toIdent (SliceType t) = toIdent t
+  toIdent (StructType fdl) = fdl >>= toIdent
+  toIdent (FuncType (Signature (Parameters pdl) Nothing)) = pdl >>= toIdent
+  toIdent (FuncType (Signature (Parameters pdl) (Just t))) =
+    (pdl >>= toIdent) ++ toIdent t
+  toIdent (Type ident) = [ident]
+
+instance BlankWeed FieldDecl where
+  toIdent (FieldDecl _ t) = toIdent t
 
 stmtFromCase :: SwitchCase -> Stmt
 stmtFromCase (Case _ _ stmt)  = stmt

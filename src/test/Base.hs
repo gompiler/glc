@@ -23,6 +23,7 @@ module Base
   , expectPass
   , expectFail
   , expectAst
+  , PrettyFormat(..)
   , expectPrettyExact
   , expectPrettyInvar
   , qcGen
@@ -30,7 +31,6 @@ module Base
 
 import           Control.Monad       (unless)
 import           Data
-import           Data.Char           (isSpace)
 import           Data.Functor        ((<&>))
 import           Data.List.NonEmpty  (NonEmpty (..))
 import           Data.Text           (Text, unpack)
@@ -79,8 +79,11 @@ expectBase ::
   -> SpecWith ()
 expectBase suffix expectation' title name inputs =
   describe (name ++ " " ++ suffix) $ mapM_ expect inputs
+    -- | We trim the spec title so that it doesn't take too much space
+    -- The limit is arbitrary
   where
-    expect input = it (show $ lines $ title input) $ expectation' input
+    expect input =
+      it (take 80 $ show $ lines $ title input) $ expectation' input
 
 -- | Expects that input parses with some ast
 expectPass ::
@@ -164,15 +167,12 @@ expectPrettyInvar =
       let pretty1 = prettify ast1
       ast2 <- parse' @a pretty1
       let pretty2 = prettify ast2
-      case (ast1 == ast2, pretty1 == pretty2) of
+      case (ast1 == ast2, expectStringMatch pretty1 pretty2) of
         (False, _) ->
           Left $
           "AST mismatch: First\n\n" ++
           show ast1 ++ "\n\nSecond\n\n" ++ show ast2
-        (_, False) ->
-          Left $
-          "Prettify mismatch: First\n\n" ++
-          pretty1 ++ "\n\nSecond\n\n" ++ pretty2
+        (_, Just err) -> Left $ "\n\n" ++ err
         _ -> Right pretty2
 
 -- | Expects that input = pretty(parse(input))
@@ -186,21 +186,54 @@ expectPrettyExact =
     (\s ->
        let s' = toString s
         in case multiPass s' of
-             Left err ->
-               expectationFailure $
-               "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ err
-             Right _ -> return ())
+             Left err -> expectationFailure err
+             Right _  -> return ())
     toString
     (tag @a)
   where
     multiPass input = do
-      pretty <- parse' @a input <&> prettify
-      if clean input == clean pretty
-        then Right pretty
-        else Left $
-             "Prettify mismatch: Expected\n\n" ++
-             input ++ "\n\nActually (whitespace ignored)\n\n" ++ pretty
-    clean = filter (not . isSpace)
+      pretty <- parse @a input <&> prettify
+      let input' = format input
+      case expectStringMatch input' pretty of
+        Just err -> Left $ "Prettify failed for \n\n" ++ input' ++ "\n\n" ++ err
+        Nothing -> Right pretty
+
+-- | Checks that two strings match
+-- Returns Just err if strings don't match, Nothing otherwise
+expectStringMatch :: String -> String -> Maybe String
+expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
+    -- | Return first index where strings don't match, or Nothing otherwise
+  where
+    mismatchIndex :: String -> String -> Maybe Int
+    mismatchIndex = mismatchIndex' 0
+    mismatchIndex' :: Int -> String -> String -> Maybe Int
+    mismatchIndex' i (x:xs) (x':xs') =
+      if x == x'
+        then mismatchIndex' (i + 1) xs xs'
+        else Just i
+    mismatchIndex' i l l' =
+      if length l == length l'
+        then Nothing
+        else Just i
+    -- | Generates error message around supplied index
+    -- For the sake of clarity, we will showcase a portion of the expected string
+    -- rather than just the mismatched character.
+    -- The range is arbitrary
+    errorMessage :: Int -> String
+    errorMessage i =
+      let message = "Expected '" ++ ([i - 10 .. i + 3] >>= getSafe s2) ++ "'"
+          error' =
+            errorString $ createError (Offset i) message (createInitialState s1)
+       in "Prettify failed for \n\n" ++ s1 ++ "\n\n" ++ error'
+    -- | Safe index retrieval for strings
+    -- Note that some chars are formatted for readability
+    getSafe :: String -> Int -> String
+    getSafe s i =
+      if i >= 0 && i < length s
+        then case s !! i of
+               '\n' -> "\\n"
+               s'   -> [s']
+        else "?"
 
 class (Parsable a) =>
       ParseTest a
@@ -266,6 +299,49 @@ instance SpecBuilder (String, [InnerToken]) where
 instance SpecBuilder (String, String) where
   expectation (input, failure) =
     it (show $ lines input) $ scanT input `shouldBe` Left failure
+
+newtype PrettyFormat =
+  PrettyFormat (String, String)
+
+instance SpecBuilder PrettyFormat where
+  expectation (PrettyFormat (input, expected)) =
+    it (show $ lines input) $ format input `shouldBe` expected
+
+-- | Formats a program string so that it conforms with prettify
+-- * Leading and trailing lines with just whitespaces are removed
+-- * Trailing whitespaces for every line is removed
+-- * Tabs are reformatted so that the tab size matches that of prettify
+format :: String -> String
+format program =
+  let (offsets, rows) = unzip $ (lstrip' . rstrip') $ map clean $ lines program
+      gcd' = gcdAll offsets
+      offsets' = map (`div` gcd') offsets
+      newLines = zipWith (\i r -> concat (replicate i tabS) ++ r) offsets' rows
+   in (rstrip . unlines) newLines
+  where
+    clean :: String -> (Int, String)
+    clean s = lstrip (0, rstrip s)
+    -- Removes leading whitespace and track number of occurrences
+    lstrip :: (Int, String) -> (Int, String)
+    lstrip (i, ' ':xs)  = lstrip (i + 1, xs)
+    lstrip (i, '\t':xs) = lstrip (i + tabSize, xs)
+    -- New lines don't affect indices; this is purely for formatting unlines,
+    lstrip (i, '\n':xs) = lstrip (i, xs)
+    lstrip (i, s)       = (i, s)
+    rstrip :: String -> String
+    rstrip = reverse . (\s -> snd $ lstrip (0, s)) . reverse
+    -- Removes leading empty lines; indices are left untouched
+    lstrip' :: [(Int, String)] -> [(Int, String)]
+    lstrip' [] = []
+    lstrip' l@((_, x):xs) =
+      if null x
+        then lstrip' xs
+        else l
+    rstrip' :: [(Int, String)] -> [(Int, String)]
+    rstrip' = reverse . lstrip' . reverse
+    gcdAll :: [Int] -> Int
+    gcdAll [] = 1
+    gcdAll l  = max 1 $ foldl1 gcd l
 
 -- | Generate Either given a string and feed this to constructor
 --strData :: String -> (String -> a) -> (String, a)

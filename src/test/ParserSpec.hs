@@ -37,8 +37,17 @@ spec = do
     -- Basic
     ["a, b", "a, b, c, d, e"]
   expectFail @Identifiers ["", ",", "a,", ",b", "a,,c", "0"]
-  expectPass @Type' ["asdf", "int", "a0", "_0a"]
-  expectFail @Type' ["0", "-", "*", "int int"]
+  expectPass @Type' ["asdf", "int", "a0", "_0a", "[3]string", "[0x12]string", "[0123]string"]
+  expectFail
+    @Type'
+    [ "0"
+    , "-"
+    , "*"
+    , "int int"
+    -- Only int literals allowed
+    , "[1 + 2]string"
+    , "[a]string"
+    ]
   expectPass
     @TopDecl
     -- Basic
@@ -49,6 +58,7 @@ spec = do
     , "type a b"
     , "type (a int\n)"
     , "type ( a b; c d\n)"
+    , "type ()"
     , "func f(a, b, c string) { }"
     ]
   expectFail
@@ -147,6 +157,10 @@ spec = do
     -- , "c := 2; (a + b)++"
     , "if a { c++ \n}"
     , "if a := 2; b { } else if 0 < 1 { c-- \n}"
+    , "for ;; { }"
+    , "for a < 5 { }"
+    , "for a := 2; a < 5; a++ { }"
+    , "for { }"
     ] ++
     intExamples ++ floatExamples ++ map (\s -> "'" ++ s ++ "'") runeExamples
   expectPass @Stmt stmtExamples

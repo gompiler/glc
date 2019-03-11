@@ -50,3 +50,10 @@ errorString = errorBundlePretty
 
 instance ErrorBreakpoint Int where
   offset = Offset
+
+-- | Given two lists, check if the sizes are equal, if not, output a corresponding error
+checkListSize :: (ErrorBreakpoint a, ErrorBreakpoint b) => [a] -> [b] -> Maybe ErrorBundle'
+checkListSize (_:t1) (_:t2) = checkListSize t1 t2
+checkListSize [] (h2:_) = Just $ createError h2 $ "LHS and RHS of assignments must be equal in length"
+checkListSize (h1:_) [] = Just $ createError h1 $ "LHS and RHS of assignments must be equal in length"
+checkListSize [] [] = Nothing
