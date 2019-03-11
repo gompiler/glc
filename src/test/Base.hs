@@ -89,9 +89,9 @@ expectBase ::
   -> SpecWith ()
 expectBase suffix expectation' title name inputs =
   describe (name ++ " " ++ suffix) $ mapM_ expect inputs
-  where
     -- We trim the spec title so that it doesn't take too much space
     -- The limit is arbitrary
+  where
     expect input =
       it (take 80 $ show $ lines $ title input) $ expectation' input
 
@@ -212,8 +212,8 @@ expectPrettyExact =
 -- Returns Just err if strings don't match, Nothing otherwise
 expectStringMatch :: String -> String -> Maybe String
 expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
-  where
     -- Return first index where strings don't match, or Nothing otherwise
+  where
     mismatchIndex :: String -> String -> Maybe Int
     mismatchIndex = mismatchIndex' 0
     mismatchIndex' :: Int -> String -> String -> Maybe Int
@@ -231,14 +231,14 @@ expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
     -- The range is arbitrary
     errorMessage :: Int -> String
     errorMessage i =
-      let message = "Expected '" ++ ([i - 10 .. i + 3] >>= get s2) ++ "'"
+      let message = "Expected '" ++ ([i - 10 .. i + 3] >>= getSafe s2) ++ "'"
           error' =
             errorString $ createError (Offset i) message (createInitialState s1)
        in "Prettify failed for \n\n" ++ s1 ++ "\n\n" ++ error'
     -- | Safe index retrieval for strings
     -- Note that some chars are formatted for readability
-    get :: String -> Int -> String
-    get s i =
+    getSafe :: String -> Int -> String
+    getSafe s i =
       if i >= 0 && i < length s
         then case s !! i of
                '\n' -> "\\n"
