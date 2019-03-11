@@ -1,0 +1,67 @@
+
+# Table of Contents
+
+1.  [Invalid Programs](#orgfbf23ed)
+
+This document is for explaining the design decisions we had to make
+whilst implementing the components for milestone 2.
+\newpage
+
+
+<a id="orgfbf23ed"></a>
+
+# Invalid Programs
+
+Summary of the check in each invalid program:
+
+-   `append-diff-type.go`: Append an expression of a different type than
+    the type of the expressions of the `slice`.
+-   `append-no-slice.go`: Append to something that isn't a slice.
+-   `assign-no-decl.go`: Assign to a variable that hasn't been declared.
+-   `assign-non-addressable.go`: Assign to a LHS that is a
+    non-addressable field.
+-   `cast-not-base.go`: Cast to a type that isn't a base type.
+-   `dec-non-lval.go`: Decrement something that isn't an `lvalue`.
+-   `decl-type-mismatch.go`: Declare and assign variable of explicit type
+    to an expression of a different type.
+-   `float-to-string.go`: Try to cast a `float` to a `string`.
+-   `for-no-bool.go`: While variant of for loop with a condition that isn't
+    a bool.
+-   `func-call.go`: Function call with arguments of different type than
+    function declaration arguments.
+-   `func-no-decl.go`: Calling a function that hasn't been declared.
+-   `function-already-declared.go`: Trying to declare a function that
+    has already been declared.
+-   `function-duplicate-param.go`: Trying to declare function with two
+    params with same name.
+-   `if-bad-init.go`: If with an init statement that does not typecheck
+    (assignment of different type).
+-   `inc-non-numeric.go`: Increment an expression that doesn't resolve
+    to a numeric base type.
+-   `index-not-list.go`: Index into something that isn't a slice.
+-   `index.go`: Index that does not resolve to an int.
+-   `invalid-type-decl.go`: Declare a type mapping to a type that
+    doesn't exist.
+-   `no-field.go`: Using selector operator on struct that doesn't have
+    the field requested.
+-   `non-existent-assign.go`: Assigning a variable to a non existent
+    variable.
+-   `non-existent-decl.go`: Trying to declare a variable of a type that
+    doesn't exist.
+-   `op-assign.go`: Op-assignment where variable and expression are not
+    compatible with operator (i.e. `int + string`)
+-   `print-non-base.go`: Trying to print a non base type.
+-   `return-expr.go`: Returning an expression of different type than the
+    return type of the function.
+-   `return.go`: Return nothing from non-void function.
+-   `short-decl-all-decl.go`: Short declaration where all variables on
+    LHS are already declared.
+-   `short-decl-diff-type.go`: Short declaration where already defined
+    variables on LHS are not the same type as assigned expression.
+-   `switch-diff-type.go`: Type of expression of case is different from
+    switch expression type.
+-   `type-already-declared.go`: Trying to define a type mapping to a
+    type that already exists.
+-   `var-already-declared.go`: Trying to declare a variable that is
+    already declared.
+
