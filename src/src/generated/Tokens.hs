@@ -649,7 +649,6 @@ tokS x = andBegin (tokM $ const x) (getTokenState x)
 tokSM :: (String -> InnerToken) -> AlexAction Token
 tokSM x = andBegin (tokM x) nl -- All literal values can take optional semicolons
 
-
 nl :: Int
 nl = 1
 alex_action_0 =  tokS TSemicolon 
@@ -749,22 +748,6 @@ alex_action_88 =  tokSM TRStringVal
 -- -----------------------------------------------------------------------------
 -- INTERNALS and main scanner engine
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 -- Do not remove this comment. Required to fix CPP parsing when using GCC and a clang-compiled alex.
 #if __GLASGOW_HASKELL__ > 706
 #define GTE(n,m) (tagToEnum# (n >=# m))
@@ -773,24 +756,6 @@ alex_action_88 =  tokSM TRStringVal
 #define GTE(n,m) (n >=# m)
 #define EQ(n,m) (n ==# m)
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 data AlexAddr = AlexA# Addr#
 -- Do not remove this comment. Required to fix CPP parsing when using GCC and a clang-compiled alex.
@@ -811,10 +776,6 @@ alexIndexInt16OffAddr (AlexA# arr) off =
   indexInt16OffAddr# arr off
 #endif
 
-
-
-
-
 {-# INLINE alexIndexInt32OffAddr #-}
 alexIndexInt32OffAddr (AlexA# arr) off =
 #ifdef WORDS_BIGENDIAN
@@ -832,20 +793,12 @@ alexIndexInt32OffAddr (AlexA# arr) off =
   indexInt32OffAddr# arr off
 #endif
 
-
-
-
-
-
 #if __GLASGOW_HASKELL__ < 503
 quickIndex arr i = arr ! i
 #else
 -- GHC >= 503, unsafeAt is available from Data.Array.Base.
 quickIndex = unsafeAt
 #endif
-
-
-
 
 -- -----------------------------------------------------------------------------
 -- Main lexing routines
@@ -866,27 +819,18 @@ alexScanUser user__ input__ (I# (sc))
     case alexGetByte input__ of
       Nothing ->
 
-
-
                                    AlexEOF
       Just _ ->
-
-
 
                                    AlexError input__'
 
   (AlexLastSkip input__'' len, _) ->
 
-
-
     AlexSkip input__'' len
 
   (AlexLastAcc k input__''' len, _) ->
 
-
-
     AlexToken input__''' len (alex_actions ! k)
-
 
 -- Push the input through the DFA, remembering the most recent accepting
 -- state it encountered.
@@ -900,8 +844,6 @@ alex_scan_tkn user__ orig_input len input__ s last_acc =
   case alexGetByte input__ of
      Nothing -> (new_acc, input__)
      Just (c, new_input) ->
-
-
 
       case fromIntegral c of { (I# (ord_c)) ->
         let
@@ -926,18 +868,6 @@ alex_scan_tkn user__ orig_input len input__ s last_acc =
         check_accs (AlexAcc a  ) = AlexLastAcc a input__ (I# (len))
         check_accs (AlexAccSkip) = AlexLastSkip  input__ (I# (len))
 
-
-
-
-
-
-
-
-
-
-
-
-
 data AlexLastAcc
   = AlexNone
   | AlexLastAcc !Int !AlexInput !Int
@@ -947,32 +877,4 @@ data AlexAcc user
   = AlexAccNone
   | AlexAcc Int
   | AlexAccSkip
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
