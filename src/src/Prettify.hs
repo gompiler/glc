@@ -175,10 +175,14 @@ instance Prettify [Expr] where
   prettify = commaJoin
   prettify' = prettify''
 
+-- Note that generated string s fits within "for s{";
+-- there is already a space beforehand but none after
 instance Prettify ForClause where
-  prettify (ForClause cs (Just ce) s) =
-    prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s ++ " "
-  prettify (ForClause cs Nothing s) = prettify cs ++ "; ; " ++ prettify s ++ " "
+  prettify (ForClause EmptyStmt Nothing EmptyStmt) = ""
+  prettify (ForClause EmptyStmt (Just ce) EmptyStmt) = prettify ce ++ " "
+  prettify (ForClause cs ce' s) =
+    prettify cs ++
+    "; " ++ Maybe.maybe "" prettify ce' ++ "; " ++ prettify s ++ " "
   prettify' = prettify''
 
 instance Prettify (NonEmpty Expr) where
