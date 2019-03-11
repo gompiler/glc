@@ -89,7 +89,7 @@ expectBase ::
   -> SpecWith ()
 expectBase suffix expectation' title name inputs =
   describe (name ++ " " ++ suffix) $ mapM_ expect inputs
-    -- We trim the spec title so that it doesn't take too much space
+    -- | We trim the spec title so that it doesn't take too much space
     -- The limit is arbitrary
   where
     expect input =
@@ -212,7 +212,7 @@ expectPrettyExact =
 -- Returns Just err if strings don't match, Nothing otherwise
 expectStringMatch :: String -> String -> Maybe String
 expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
-    -- Return first index where strings don't match, or Nothing otherwise
+    -- | Return first index where strings don't match, or Nothing otherwise
   where
     mismatchIndex :: String -> String -> Maybe Int
     mismatchIndex = mismatchIndex' 0
