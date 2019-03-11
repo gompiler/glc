@@ -222,8 +222,7 @@ expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
     errorMessage :: Int -> String
     errorMessage i =
       let message = "Expected '" ++ ([i - 10 .. i + 3] >>= getSafe s2) ++ "'"
-          error' =
-            errorString $ createError (Offset i) message (createInitialState s1)
+          error' = createError' (Offset i) message  s1
        in "Prettify failed for \n\n" ++ s1 ++ "\n\n" ++ error'
     -- | Safe index retrieval for strings
     -- Note that some chars are formatted for readability

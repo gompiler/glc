@@ -24,7 +24,7 @@ import           System.IO
 import           ErrorBundle
 
 -- Helper functions for scanning using tokens and also pass relevant things to parser
-import qualified TokenGen      as T
+import qualified TokenGen    as T
 
 -- |prettify, takes a token and turn it into a string representing said token
 -- Also makes the tokens look like the expected tTYPE format
@@ -231,7 +231,7 @@ scan s = either (Left . errODef s) Right (scan' s)
 -- | Convert (String, Int) to String, i.e. err msg + offset to string
 errO :: String -> String -> (String, Int) -> String
 errO s err2 (err, o) =
-  err ++ errorString (createError o err2 (createInitialState s))
+  err ++ createError' o  err2  s
 
 -- | errO but no message after Megaparsec error, i.e. just feed it the empty string as we have no additional error to repot
 errODef :: String -> (String, Int) -> String
