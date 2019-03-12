@@ -589,7 +589,7 @@ alexMonadScan = do
       action (ignorePendingBytes inp__) len
 
 errGenL :: Int -> Alex a
-errGenL o = alexError (createError (Offset o) "Error: lexical error at ")
+errGenL o = alexError (createError (Offset o) "Lexical error")
 
 alexEOF :: Alex Token
 alexEOF = do
@@ -606,13 +606,13 @@ blockComment _ _ = do
 --         -> Bool -> Alex a
 checkBlk inp beg@(pos@(AlexPn o _ _), _, _, _) semi =
   maybe
-    (alexError (createError (Offset o) "Error: unclosed block comment at ")) matchEnd (alexGetByte inp)
+    (alexError (createError (Offset o) "Unclosed block comment")) matchEnd (alexGetByte inp)
   where
   bToC b = (toEnum (fromIntegral b) :: Char)
   matchEnd (b, inp') = case bToC b of
                         '*'  ->
                             maybe
-                                (alexError (createError (Offset o) "Error: unclosed block comment at "))
+                                (alexError (createError (Offset o) "Unclosed block comment"))
                                 matchEnd2 (alexGetByte inp')
                         '\n' -> checkBlk inp' beg True
                         _    -> checkBlk inp' beg semi

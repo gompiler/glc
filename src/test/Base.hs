@@ -142,7 +142,7 @@ expectError =
 
 containsError :: ErrorEntry e => ErrorMessage -> e -> Expectation
 err `containsError` e = unless (err `hasError` e) . expectationFailure $
-      "Expected error\n\n" ++ show e ++ "\n\nbut got\n\n" ++ show err
+      "Expected error:\t" ++ show e ++ "\nbut got:\t" ++ showErrorEntry err ++ "\n\n" ++ show err
 
 -- | Expects that input parses with an exact ast match
 expectAst ::

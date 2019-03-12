@@ -227,13 +227,9 @@ scan' s =
 scan :: String -> Either ErrorMessage [T.InnerToken]
 scan s = either (Left . errODef s) Right (scan' s)
 
--- | Convert (String, Int) to ErrorMessage, i.e. err msg + offset to string
-errO :: String -> String -> ErrorMessage' -> ErrorMessage
-errO s input err = err input `withPrefix` s
-
--- | errO but no message after Megaparsec error, i.e. just feed it the empty string as we have no additional error to repot
+-- | Passes input to error bundle
 errODef :: String -> ErrorMessage' -> ErrorMessage
-errODef s = errO s ""
+errODef input err = err input
 
 scanT :: String -> Either ErrorMessage [T.InnerToken]
 scanT s = fmap reverse (scan s)

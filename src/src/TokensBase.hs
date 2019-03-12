@@ -156,6 +156,8 @@ alexSetInput (pos, c, bs, inp__) =
 alexError ::  ErrorMessage' -> Alex a
 alexError = Alex . const . Left
 
+
+
 alexGetStartCode :: Alex Int
 alexGetStartCode = Alex $ \s@AlexState {alex_scd = sc} -> Right (s, sc)
 

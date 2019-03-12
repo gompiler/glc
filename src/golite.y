@@ -419,7 +419,7 @@ instance ErrorEntry ParseError where
           case err of
             ParseError t        -> humanize t
             ParseUnknown s      -> s
-     in "Error: parsing error, unexpected " ++ m ++ " at: "
+     in "Parsing error: unexpected " ++ m ++ "."
 
 parseError :: Token -> Alex a
 parseError (Token (AlexPn o l c) t) =

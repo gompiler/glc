@@ -67,27 +67,26 @@ instance Eq ErrorMessage where
   e1 == e2 = show e1 == show e2
 
 instance Show ErrorMessage where
-  show e = "Error: " ++ showInternal e
+  show e = "Error:\n" ++ showInternal e
 
 showInternal :: ErrorMessage -> String
-showInternal (ErrorBundle _ err _ w) = "Bundle: " ++ errorMessage err ++ show err ++ show w
---showInternal (ErrorBundle (Offset o) err input wrapper) =
---  let initialState =
---        PosState
---          { pstateInput = input
---          , pstateOffset = 0
---          , pstateSourcePos = initialPos ""
---          , pstateTabWidth = defaultTabWidth
---          , pstateLinePrefix = ""
---          }
---      bundle :: ParseErrorBundle' =
---        ParseErrorBundle
---          { bundleErrors =
---              NonEmpty.fromList
---                [FancyError o (Set.singleton $ ErrorFail (errorMessage err))]
---          , bundlePosState = initialState
---          }
---   in wrap wrapper $ errorBundlePretty bundle
+showInternal (ErrorBundle (Offset o) err input wrapper) =
+  let initialState =
+        PosState
+          { pstateInput = input
+          , pstateOffset = 0
+          , pstateSourcePos = initialPos ""
+          , pstateTabWidth = defaultTabWidth
+          , pstateLinePrefix = ""
+          }
+      bundle :: ParseErrorBundle' =
+        ParseErrorBundle
+          { bundleErrors =
+              NonEmpty.fromList
+                [FancyError o (Set.singleton $ ErrorFail (errorMessage err))]
+          , bundlePosState = initialState
+          }
+   in wrap wrapper $ errorBundlePretty bundle
 showInternal (ErrorMessage e wrapper) = wrap wrapper $ show e
 
 withPrefix :: ErrorMessage -> String -> ErrorMessage
