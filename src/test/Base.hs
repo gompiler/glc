@@ -21,6 +21,7 @@ module Base
   , module Examples
   , module Test.QuickCheck
   , toRetL
+  , containsError
   , expectPass
   , expectFail
   , expectAst
@@ -136,12 +137,15 @@ expectError =
            expectationFailure $
            "Expected parse failure on:\n\n" ++
            toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
-         Left err ->
-           let err' = errorMessage e
-            in unless (err' `isInfixOf` err) . expectationFailure $
-               "Expected error\n\n" ++ err' ++ "\n\nbut got\n\n" ++ err)
+         Left err -> err `containsError` e)
     (toString . fst)
     (tag @a)
+
+containsError :: ErrorEntry e => String -> e -> Expectation
+err `containsError` e =
+  let err' = errorMessage e
+   in unless (err' `isInfixOf` err) . expectationFailure $
+      "Expected error\n\n" ++ err' ++ "\n\nbut got\n\n" ++ err
 
 -- | Expects that input parses with an exact ast match
 expectAst ::

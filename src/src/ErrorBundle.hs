@@ -7,7 +7,6 @@ module ErrorBundle
   , ErrorBundle'
   , ErrorBreakpoint(..)
   , ErrorEntry(..)
-  , ErrorConst(..)
   , Offset(..)
   ) where
 
@@ -62,28 +61,7 @@ class (Show a, Eq a) =>
   where
   errorMessage :: a -> String
 
-data ErrorConst
-  = ListSizeMismatch
-  | ExprStmtNotFunction
-  | DuplicateDefault
-  | ForPostDecl
-  | InvalidBlankId
-  | ContinueScope
-  | BreakScope
-  deriving (Show, Eq)
-
 -- | Helper to allow for string error comparisons
 -- However, you should really implement a new type that allows
 instance ErrorEntry String where
   errorMessage = id
-
-instance ErrorEntry ErrorConst where
-  errorMessage c =
-    case c of
-      ListSizeMismatch -> "LHS and RHS of assignments must be equal in length"
-      ExprStmtNotFunction -> "Expression statements must be function calls"
-      DuplicateDefault -> "Duplicate default found"
-      InvalidBlankId -> "Invalid use of blank identifier"
-      ForPostDecl -> "For post-statement cannot be declaration"
-      ContinueScope -> "Continue statement must occur in for loop"
-      BreakScope -> "Break statement must occur in for loop or switch statement"

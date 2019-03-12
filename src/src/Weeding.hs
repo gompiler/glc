@@ -2,6 +2,7 @@
 
 module Weeding
   ( weed
+  , WeedingError(..)
   ) where
 
 import           Control.Applicative
@@ -21,7 +22,7 @@ weed code = do
   program <- parse code
   maybe
     (Right program)
-    (\eb -> Left $ "Error: weeding error at " ++ eb  code)
+    (\eb -> Left $ "Error: weeding error at " ++ eb code)
     (verify program)
 
 -- | Alternative sum, i.e. sum using <|> over each function mapped to program
@@ -64,12 +65,11 @@ stmtVerify :: Stmt -> Maybe ErrorBundle'
 -- Verify that expression statements are only function calls
 stmtVerify (SimpleStmt stmt) =
   case stmt of
-    ExprStmt Arguments {} -> Nothing
-    e@(ExprStmt _) ->
-      Just $ createError e ExprStmtNotFunction
-    (Assign _ _ e1 e2) -> checkListSize (toList e1) (toList e2)
+    ExprStmt Arguments {}    -> Nothing
+    e@(ExprStmt _)           -> Just $ createError e ExprStmtNotFunction
+    (Assign _ _ e1 e2)       -> checkListSize (toList e1) (toList e2)
     (ShortDeclare identl el) -> checkListSize (toList identl) (toList el)
-    _ -> Nothing
+    _                        -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
 -- The [...] pattern matching returns all the examples in the list where the
@@ -86,9 +86,8 @@ stmtVerify (Switch s _ cases) =
 stmtVerify (For (ForClause pre _ post) _) =
   stmtVerify (SimpleStmt pre) <|> stmtVerify (SimpleStmt post) <|>
   case post of
-    s@ShortDeclare {} ->
-      Just $ createError s ForPostDecl
-    _ -> Nothing
+    s@ShortDeclare {} -> Just $ createError s ForPostDecl
+    _                 -> Nothing
 stmtVerify _ = Nothing
 
 -- Verify declarations (LHS = RHS if an assignment)
@@ -165,9 +164,8 @@ continueRecursiveVerify = recursiveVerify getScopes
         _                -> []
 
 continueConstraint :: Stmt -> Maybe ErrorBundle'
-continueConstraint (Continue o) =
-  Just $ createError o ContinueScope
-continueConstraint _ = Nothing
+continueConstraint (Continue o) = Just $ createError o ContinueScope
+continueConstraint _            = Nothing
 
 continueVerify :: PureConstraint Program
 continueVerify program = asum errors
@@ -189,10 +187,8 @@ breakRecursiveVerify = recursiveVerify getScopes
         _               -> [] -- Skip for and switch, since breaks can occur there
 
 breakConstraint :: Stmt -> Maybe ErrorBundle'
-breakConstraint (Break o) =
-  Just $
-  createError o BreakScope
-breakConstraint _ = Nothing
+breakConstraint (Break o) = Just $ createError o BreakScope
+breakConstraint _         = Nothing
 
 breakVerify :: PureConstraint Program
 breakVerify program = asum errors
@@ -310,3 +306,24 @@ instance BlankWeed FieldDecl where
 stmtFromCase :: SwitchCase -> Stmt
 stmtFromCase (Case _ _ stmt)  = stmt
 stmtFromCase (Default _ stmt) = stmt
+
+data WeedingError
+  = ListSizeMismatch
+  | ExprStmtNotFunction
+  | DuplicateDefault
+  | ForPostDecl
+  | InvalidBlankId
+  | ContinueScope
+  | BreakScope
+  deriving (Show, Eq)
+
+instance ErrorEntry WeedingError where
+  errorMessage c =
+    case c of
+      ListSizeMismatch -> "LHS and RHS of assignments must be equal in length"
+      ExprStmtNotFunction -> "Expression statements must be function calls"
+      DuplicateDefault -> "Duplicate default found"
+      InvalidBlankId -> "Invalid use of blank identifier"
+      ForPostDecl -> "For post-statement cannot be declaration"
+      ContinueScope -> "Continue statement must occur in for loop"
+      BreakScope -> "Break statement must occur in for loop or switch statement"
