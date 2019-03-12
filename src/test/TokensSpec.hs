@@ -21,7 +21,6 @@ import           Scanner
 spec :: Spec
 spec = do
   specAll "scanner success" scanSuccess
-  specAll "scanner failures" scanFailure
   describe "extra scanner tests" $
     qcGen
       "semicolon insertion"
@@ -119,7 +118,6 @@ genSemiI =
     , genRString
     ]
 
---scanInputs = sndConvert Right scanSuccess ++ sndConvert Left scanFailure
 scanSuccess :: [(String, [InnerToken])]
 scanSuccess =
   [ (";", [TSemicolon])
@@ -379,6 +377,3 @@ scanSuccess =
           |]
     , [TBreak, TSemicolon])
   ]
-
-scanFailure :: [(String, String)]
-scanFailure = [("''", "Error: lexical error at 1:2:\n  |\n1 | ''\n  |  ^\n\n")]

@@ -392,25 +392,23 @@ getInnerString t = case t of
   Token _ (TIdent val) -> val
 
 -- Main parse function
-parse :: String -> Either String Program
+parse :: String -> Either ErrorMessage Program
 parse s = either (Left . errODef s) Right (runAlex s hparse)
 
 -- Parse function that takes in any parser
-parsef :: Alex a -> String -> Either String a
+parsef :: Alex a -> String -> Either ErrorMessage a
 parsef f s = either (Left . errODef s) Right (runAlex' s f)
 -- runAlex' does not insert newline at end if needed
 
 -- parsef but insert newline if needed at end just like main parse function
-parsefNL :: Alex a -> String -> Either String a
+parsefNL :: Alex a -> String -> Either ErrorMessage a
 parsefNL f s = either (Left . errODef s) Right (runAlex s f)
 
 -- Extract posn only
 ptokl t = case t of
           Token pos _ -> pos
 
-data ParseError
-  = ParseError InnerToken
-  | ParseUnknown String
+newtype ParseError = ParseError InnerToken
   deriving (Show, Eq)
 
 instance ErrorEntry ParseError where
@@ -419,9 +417,9 @@ instance ErrorEntry ParseError where
           case err of
             ParseError t        -> humanize t
             ParseUnknown s      -> s
-     in "Error: parsing error, unexpected " ++ m ++ " at: "
+     in "Parsing error: unexpected " ++ m ++ "."
 
 parseError :: Token -> Alex a
 parseError (Token (AlexPn o l c) t) =
-           alexError (errorMessage (ParseError t), o)
+           alexError $ createError (Offset o) (ParseError t)
 }
