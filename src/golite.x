@@ -11,7 +11,7 @@ module TokenGen
 , runAlex'
 ) where
 import TokensBase
-import ErrorBundle
+import ErrorBundle (Offset(..), createError)
 }
 
 
