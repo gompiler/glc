@@ -67,7 +67,7 @@ instance Eq ErrorMessage where
   e1 == e2 = show e1 == show e2
 
 instance Show ErrorMessage where
-  show e = "Error:\n" ++ showInternal e
+  show e = "Error:  \n" ++ showInternal e
 
 showInternal :: ErrorMessage -> String
 showInternal (ErrorBundle (Offset o) err input wrapper) =
