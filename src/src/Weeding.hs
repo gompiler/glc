@@ -66,7 +66,7 @@ stmtVerify (SimpleStmt stmt) =
   case stmt of
     ExprStmt Arguments {} -> Nothing
     e@(ExprStmt _) ->
-      Just $ createError' e "Expression statements must be function calls"
+      Just $ createError e ExprStmtNotFunction
     (Assign _ _ e1 e2) -> checkListSize (toList e1) (toList e2)
     (ShortDeclare identl el) -> checkListSize (toList identl) (toList el)
     _ -> Nothing
@@ -80,14 +80,14 @@ stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 stmtVerify (Switch s _ cases) =
   stmtVerify (SimpleStmt s) <|>
   case [x | x@(Default _ _) <- cases] of
-    (_:d@Default {}:_) -> Just $ createError' d "Duplicate default found"
+    (_:d@Default {}:_) -> Just $ createError d DuplicateDefault
     _                  -> Nothing
 -- Verify that for-loop post conditions are not short declarations
 stmtVerify (For (ForClause pre _ post) _) =
   stmtVerify (SimpleStmt pre) <|> stmtVerify (SimpleStmt post) <|>
   case post of
     s@ShortDeclare {} ->
-      Just $ createError' s "For post-statement cannot be declaration"
+      Just $ createError s ForPostDecl
     _ -> Nothing
 stmtVerify _ = Nothing
 
@@ -133,7 +133,7 @@ progVerifyBlank program = asum errors
 blankVerify :: Identifier -> Maybe ErrorBundle'
 blankVerify (Identifier o str) =
   if str == "_"
-    then Just $ createError' o "Invalid use of blank identifier"
+    then Just $ createError o InvalidBlankId
     else Nothing
 
 programVerify :: PureConstraint Program
@@ -158,7 +158,7 @@ continueRecursiveVerify = recursiveVerify getScopes
 
 continueConstraint :: Stmt -> Maybe ErrorBundle'
 continueConstraint (Continue o) =
-  Just $ createError' o "Continue statement must occur in for loop"
+  Just $ createError o ContinueScope
 continueConstraint _ = Nothing
 
 continueVerify :: PureConstraint Program
@@ -183,7 +183,7 @@ breakRecursiveVerify = recursiveVerify getScopes
 breakConstraint :: Stmt -> Maybe ErrorBundle'
 breakConstraint (Break o) =
   Just $
-  createError' o "Break statement must occur in for loop or switch statement"
+  createError o BreakScope
 breakConstraint _ = Nothing
 
 breakVerify :: PureConstraint Program
