@@ -72,6 +72,8 @@ data ErrorConst
   | BreakScope
   deriving (Show, Eq)
 
+-- | Helper to allow for string error comparisons
+-- However, you should really implement a new type that allows
 instance ErrorEntry String where
   errorMessage = id
 
