@@ -11,6 +11,7 @@ module TokenGen
 , runAlex'
 ) where
 import TokensBase
+import ErrorBundle
 }
 
 
@@ -245,7 +246,7 @@ alexMonadScan = do
       action (ignorePendingBytes inp__) len
 
 errGenL :: Int -> Alex a
-errGenL o = alexError ("Error: lexical error at ", o)
+errGenL o = alexError (createError (Offset o) "Error: lexical error at ")
 
 alexEOF :: Alex Token
 alexEOF = do
@@ -262,13 +263,13 @@ blockComment _ _ = do
 --         -> Bool -> Alex a
 checkBlk inp beg@(pos@(AlexPn o _ _), _, _, _) semi =
   maybe
-    (alexError ("Error: unclosed block comment at ", o)) matchEnd (alexGetByte inp)
+    (alexError (createError (Offset o) "Error: unclosed block comment at ")) matchEnd (alexGetByte inp)
   where
   bToC b = (toEnum (fromIntegral b) :: Char)
   matchEnd (b, inp') = case bToC b of
                         '*'  ->
                             maybe
-                                (alexError ("Error: unclosed block comment at ", o))
+                                (alexError (createError (Offset o) "Error: unclosed block comment at "))
                                 matchEnd2 (alexGetByte inp')
                         '\n' -> checkBlk inp' beg True
                         _    -> checkBlk inp' beg semi

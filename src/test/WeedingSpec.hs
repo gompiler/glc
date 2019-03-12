@@ -19,7 +19,7 @@ expectWeedPass =
              Left err ->
                expectationFailure $
                "Expected success on:\n\n" ++
-               program ++ "\n\nbut got error\n\n" ++ err
+               program ++ "\n\nbut got error\n\n" ++ show err
              _ -> return ())
     toString
     "wrapped stmt"
@@ -34,7 +34,7 @@ expectWeedPassNoMain =
              Left err ->
                expectationFailure $
                "Expected success on:\n\n" ++
-               program ++ "\n\nbut got error\n\n" ++ err
+               program ++ "\n\nbut got error\n\n" ++ show err
              _ -> return ())
     toString
     "wrapped stmt"

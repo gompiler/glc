@@ -13,30 +13,30 @@ import           Data.Maybe          as Maybe
 import           ErrorBundle
 import           Parser
 
-type PureConstraint a = a -> Maybe ErrorBundle'
+type PureConstraint a = a -> Maybe ErrorMessage'
 
 -- | Main weeding function
 -- Takes in input code, will pass through parser
-weed :: String -> Either String Program
+weed :: String -> Either ErrorMessage Program
 weed code = do
   program <- parse code
   maybe
     (Right program)
-    (\eb -> Left $ "Error: weeding error at " ++ eb code)
+    (\eb -> Left $ eb code `withPrefix` "weeding error at ")
     (verify program)
 
 -- | Alternative sum, i.e. sum using <|> over each function mapped to program
-verify :: Program -> Maybe ErrorBundle'
+verify :: Program -> Maybe ErrorMessage'
 verify program =
   asum $
   [programVerify, continueVerify, breakVerify, progVerifyDecl, progVerifyBlank] <*>
   [program]
 
-verifyAll :: PureConstraint a -> [a] -> Maybe ErrorBundle'
+verifyAll :: PureConstraint a -> [a] -> Maybe ErrorMessage'
 verifyAll constraint items = asum $ map constraint items
 
 recursiveVerifyAll ::
-     (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
+     (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorMessage'
 recursiveVerifyAll getScopes c = verifyAll $ recursiveVerify getScopes c
 
 -- | Takes a top level statement verifier and applies it to specified scopes
@@ -61,7 +61,7 @@ stmtRecursiveVerify = recursiveVerify getScopes
         _                -> []
 
 -- | Verification rules for specific statements
-stmtVerify :: Stmt -> Maybe ErrorBundle'
+stmtVerify :: Stmt -> Maybe ErrorMessage'
 -- Verify that expression statements are only function calls
 stmtVerify (SimpleStmt stmt) =
   case stmt of
@@ -91,7 +91,7 @@ stmtVerify (For (ForClause pre _ post) _) =
 stmtVerify _ = Nothing
 
 -- Verify declarations (LHS = RHS if an assignment)
-declVerify :: Decl -> Maybe ErrorBundle'
+declVerify :: Decl -> Maybe ErrorMessage'
 declVerify (VarDecl vdl) = asum $ map vdeclVer vdl
   where
     vdeclVer (VarDecl' identl (Right el)) =
@@ -104,7 +104,7 @@ declVerify _ = Nothing
 
 -- | Given two lists, check if the sizes are equal, if not, output a corresponding error
 checkListSize ::
-     (ErrorBreakpoint a, ErrorBreakpoint b) => [a] -> [b] -> Maybe ErrorBundle'
+     (ErrorBreakpoint a, ErrorBreakpoint b) => [a] -> [b] -> Maybe ErrorMessage'
 checkListSize (_:t1) (_:t2) = checkListSize t1 t2
 checkListSize [] (h2:_)     = Just $ createError h2 ListSizeMismatch
 checkListSize (h1:_) []     = Just $ createError h1 ListSizeMismatch
@@ -113,7 +113,7 @@ checkListSize [] []         = Nothing
 progVerifyDecl :: PureConstraint Program
 progVerifyDecl program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors =
       map
         declVerify
@@ -134,10 +134,10 @@ progVerifyDecl program = asum errors
 progVerifyBlank :: PureConstraint Program
 progVerifyBlank program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors = map blankVerify (topLevels program >>= toIdent)
 
-blankVerify :: Identifier -> Maybe ErrorBundle'
+blankVerify :: Identifier -> Maybe ErrorMessage'
 blankVerify (Identifier o str) =
   if str == "_"
     then Just $ createError o InvalidBlankId
@@ -146,7 +146,7 @@ blankVerify (Identifier o str) =
 programVerify :: PureConstraint Program
 programVerify program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors =
       map
         (stmtRecursiveVerify stmtVerify)
@@ -163,14 +163,14 @@ continueRecursiveVerify = recursiveVerify getScopes
         Switch _ _ cases -> map stmtFromCase cases
         _                -> []
 
-continueConstraint :: Stmt -> Maybe ErrorBundle'
+continueConstraint :: Stmt -> Maybe ErrorMessage'
 continueConstraint (Continue o) = Just $ createError o ContinueScope
 continueConstraint _            = Nothing
 
 continueVerify :: PureConstraint Program
 continueVerify program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors =
       map
         (continueRecursiveVerify continueConstraint)
@@ -186,14 +186,14 @@ breakRecursiveVerify = recursiveVerify getScopes
         If _ s1 s2      -> [s1, s2]
         _               -> [] -- Skip for and switch, since breaks can occur there
 
-breakConstraint :: Stmt -> Maybe ErrorBundle'
+breakConstraint :: Stmt -> Maybe ErrorMessage'
 breakConstraint (Break o) = Just $ createError o BreakScope
 breakConstraint _         = Nothing
 
 breakVerify :: PureConstraint Program
 breakVerify program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors =
       map
         (breakRecursiveVerify breakConstraint)

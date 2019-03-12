@@ -2081,16 +2081,16 @@ getInnerString t = case t of
   Token _ (TIdent val) -> val
 
 -- Main parse function
-parse :: String -> Either String Program
+parse :: String -> Either ErrorMessage Program
 parse s = either (Left . errODef s) Right (runAlex s hparse)
 
 -- Parse function that takes in any parser
-parsef :: Alex a -> String -> Either String a
+parsef :: Alex a -> String -> Either ErrorMessage a
 parsef f s = either (Left . errODef s) Right (runAlex' s f)
 -- runAlex' does not insert newline at end if needed
 
 -- parsef but insert newline if needed at end just like main parse function
-parsefNL :: Alex a -> String -> Either String a
+parsefNL :: Alex a -> String -> Either ErrorMessage a
 parsefNL f s = either (Left . errODef s) Right (runAlex s f)
 
 -- Extract posn only
@@ -2112,7 +2112,7 @@ instance ErrorEntry ParseError where
 
 parseError :: Token -> Alex a
 parseError (Token (AlexPn o l c) t) =
-           alexError (errorMessage (ParseError t), o)
+           alexError $ createError (Offset o) (ParseError t)
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
