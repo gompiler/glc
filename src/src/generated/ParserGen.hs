@@ -2082,16 +2082,16 @@ getInnerString t = case t of
 
 -- Main parse function
 parse :: String -> Either String Program
-parse s = either (Left . errODef s) Right (runAlex s $ hparse)
+parse s = either (Left . errODef s) Right (runAlex s hparse)
 
 -- Parse function that takes in any parser
-parsef :: (Alex a) -> String -> Either String a
-parsef f s = either (Left . errODef s) Right (runAlex' s $ f)
+parsef :: Alex a -> String -> Either String a
+parsef f s = either (Left . errODef s) Right (runAlex' s f)
 -- runAlex' does not insert newline at end if needed
 
 -- parsef but insert newline if needed at end just like main parse function
 parsefNL :: Alex a -> String -> Either String a
-parsefNL f s = either (Left . errODef s) Right (runAlex s $ f)
+parsefNL f s = either (Left . errODef s) Right (runAlex s f)
 
 -- Extract posn only
 ptokl t = case t of
@@ -2110,7 +2110,7 @@ instance ErrorEntry ParseError where
             ParseUnknown s      -> s
      in "Error: parsing error, unexpected " ++ m ++ " at: "
 
-parseError :: (Token) -> Alex a
+parseError :: Token -> Alex a
 parseError (Token (AlexPn o l c) t) =
            alexError (errorMessage (ParseError t), o)
 {-# LINE 1 "templates/GenericTemplate.hs" #-}

@@ -64,19 +64,6 @@ spec = do
     , "type ()"
     , "func f(a, b, c string) { }"
     ]
-  expectFail
-    @TopDecl
-    [ "var a"
-    , "type a = b"
-    -- Must have type
-    , "func (a, b, c) { }"
-    -- Must have body
-    , "func (a, b)"
-    -- No variadic types
-    , "func (a, b, c ...int)"
-    -- No need for semicolon rule 2
-    , "type (a b)"
-    ]
   expectError
     @TopDecl
       -- Missing semicolon
