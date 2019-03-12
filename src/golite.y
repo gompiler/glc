@@ -1,5 +1,6 @@
 {module ParserGen ( putExit
                 , AlexPosn(..)
+                , ParseError(..)
                 , runAlex
                 , pId
                 , pT
@@ -407,7 +408,20 @@ parsefNL f s = either (Left . errODef s) Right (runAlex s $ f)
 ptokl t = case t of
           Token pos _ -> pos
 
+data ParseError
+  = ParseError InnerToken
+  | ParseUnknown String
+  deriving (Show, Eq)
+
+instance ErrorEntry ParseError where
+  errorMessage err =
+    let m =
+          case err of
+            ParseError t        -> humanize t
+            ParseUnknown s      -> s
+     in "Error: parsing error, unexpected " ++ m ++ " at: "
+
 parseError :: (Token) -> Alex a
 parseError (Token (AlexPn o l c) t) =
-           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at: ", o)
+           alexError (errorMessage (ParseError t), o)
 }

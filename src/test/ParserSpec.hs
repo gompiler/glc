@@ -11,6 +11,7 @@ import           Data               as D
 import           Data.List.NonEmpty (fromList)
 import           Data.List.Split    (splitOn)
 import           Parser
+import           Token              (InnerToken (..))
 import qualified TokensSpec         as T
 
 {-# ANN module "HLint: ignore Redundant do" #-}
@@ -37,7 +38,9 @@ spec = do
     -- Basic
     ["a, b", "a, b, c, d, e"]
   expectFail @Identifiers ["", ",", "a,", ",b", "a,,c", "0"]
-  expectPass @Type' ["asdf", "int", "a0", "_0a", "[3]string", "[0x12]string", "[0123]string"]
+  expectPass
+    @Type'
+    ["asdf", "int", "a0", "_0a", "[3]string", "[0x12]string", "[0123]string"]
   expectFail
     @Type'
     [ "0"
@@ -73,6 +76,22 @@ spec = do
     , "func (a, b, c ...int)"
     -- No need for semicolon rule 2
     , "type (a b)"
+    ]
+  expectError
+    @TopDecl
+      -- Missing semicolon
+    [ ("var a", ParseError TSemicolon)
+      -- Format should be 'type a b'
+    , ("type a = b", ParseError TAssn)
+      -- Func must have name
+    , ("func () { }", ParseError TLParen)
+    , ("func a(b, c) { }", ParseError TRParen)
+      -- Must have body
+    , ("func f(a b)", ParseError TSemicolon)
+      -- No variadic types
+    , ("func f(a, b, c ...int)", ParseUnknown "...")
+      -- No need for semicolon rule 2
+    , ("type (a b)", ParseError TRParen)
     ]
   expectPass @Stmt ["if true { }"]
   expectPass

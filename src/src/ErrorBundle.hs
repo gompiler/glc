@@ -6,7 +6,7 @@ module ErrorBundle
   ( ErrorBundle
   , ErrorBundle'
   , ErrorBreakpoint(..)
-  , ErrorEntry
+  , ErrorEntry(..)
   , ErrorConst(..)
   , Offset(..)
   ) where

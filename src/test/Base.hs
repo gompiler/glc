@@ -16,6 +16,7 @@ module Base
   , ParseTest(..)
   , expectBase
   , printError
+  , expectError
   , module Test.Hspec
   , module Examples
   , module Test.QuickCheck
@@ -29,20 +30,21 @@ module Base
   , qcGen
   ) where
 
-import           Control.Monad       (unless)
+import           Control.Monad         (unless)
 import           Data
-import           Data.Functor        ((<&>))
-import           Data.List.NonEmpty  (NonEmpty (..))
-import           Data.Text           (Text, unpack)
+import           Data.Functor          ((<&>))
+import           Data.List             (isInfixOf)
+import           Data.List.NonEmpty    (NonEmpty (..))
+import           Data.Text             (Text, unpack)
 import           ErrorBundle
 import           Examples
 import           NeatInterpolation
 import           Parser
 import           Prettify
-import           Scanner             (InnerToken, scanT)
+import           Scanner               (InnerToken, scanT)
 import           Test.Hspec
+import           Test.Hspec.QuickCheck (prop)
 import           Test.QuickCheck
-import Test.Hspec.QuickCheck (prop)
 
 o :: Offset
 o = Offset 0
@@ -119,6 +121,26 @@ expectFail =
            toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
          _ -> return ())
     toString
+    (tag @a)
+
+expectError ::
+     forall a s e. (ParseTest a, Stringable s, ErrorEntry e)
+  => [(s, e)]
+  -> SpecWith ()
+expectError =
+  expectBase
+    "error"
+    (\(s, e) ->
+       case parse' @a s of
+         Right ast ->
+           expectationFailure $
+           "Expected parse failure on:\n\n" ++
+           toString s ++ "\n\nbut succeeded with\n\n" ++ show ast
+         Left err ->
+           let err' = errorMessage e
+            in unless (err' `isInfixOf` err) . expectationFailure $
+               "Expected error\n\n" ++ err' ++ "\n\nbut got\n\n" ++ err)
+    (toString . fst)
     (tag @a)
 
 -- | Expects that input parses with an exact ast match
@@ -201,7 +223,7 @@ expectPrettyExact =
 -- | Checks that two strings match
 -- Returns Just err if strings don't match, Nothing otherwise
 expectStringMatch :: String -> String -> Maybe String
-expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
+expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> indexError
     -- | Return first index where strings don't match, or Nothing otherwise
   where
     mismatchIndex :: String -> String -> Maybe Int
@@ -219,10 +241,10 @@ expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> errorMessage
     -- For the sake of clarity, we will showcase a portion of the expected string
     -- rather than just the mismatched character.
     -- The range is arbitrary
-    errorMessage :: Int -> String
-    errorMessage i =
+    indexError :: Int -> String
+    indexError i =
       let message = "Expected '" ++ ([i - 10 .. i + 3] >>= getSafe s2) ++ "'"
-          error' = createError (Offset i) message  s1
+          error' = createError (Offset i) message s1
        in "Prettify failed for \n\n" ++ s1 ++ "\n\n" ++ error'
     -- | Safe index retrieval for strings
     -- Note that some chars are formatted for readability
@@ -345,14 +367,11 @@ format program =
 -- | Generate Either given a string and feed this to constructor
 --strData :: String -> (String -> a) -> (String, a)
 --strData s constr = (s, constr s)
-
 --strData' :: (String -> a) -> String -> (String, a)
 --strData' constr s = (s, constr s)
-
 -- | Cartesian product of two lists
 --cartP :: [a] -> [b] -> [(a, b)]
 --cartP = liftA2 (,)
-
 toRetL :: Monad m => a -> m [a]
 toRetL e = return [e]
 
