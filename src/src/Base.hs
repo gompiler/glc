@@ -1,5 +1,5 @@
 module Base
-  ( Glc(..)
+  ( Glc
   , module ErrorBundle
   ) where
 
