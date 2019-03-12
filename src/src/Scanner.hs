@@ -231,7 +231,7 @@ scan s = either (Left . errODef s) Right (scan' s)
 -- | Convert (String, Int) to String, i.e. err msg + offset to string
 errO :: String -> String -> (String, Int) -> String
 errO s err2 (err, o) =
-  err ++ createError'' (Offset o)  err2  s
+  err ++ createError (Offset o)  err2  s
 
 -- | errO but no message after Megaparsec error, i.e. just feed it the empty string as we have no additional error to repot
 errODef :: String -> (String, Int) -> String

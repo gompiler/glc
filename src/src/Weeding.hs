@@ -103,6 +103,14 @@ declVerify (VarDecl vdl) = asum $ map vdeclVer vdl
         else checkListSize (toList identl) el
 declVerify _ = Nothing
 
+-- | Given two lists, check if the sizes are equal, if not, output a corresponding error
+checkListSize ::
+     (ErrorBreakpoint a, ErrorBreakpoint b) => [a] -> [b] -> Maybe ErrorBundle'
+checkListSize (_:t1) (_:t2) = checkListSize t1 t2
+checkListSize [] (h2:_)     = Just $ createError h2 ListSizeMismatch
+checkListSize (h1:_) []     = Just $ createError h1 ListSizeMismatch
+checkListSize [] []         = Nothing
+
 progVerifyDecl :: PureConstraint Program
 progVerifyDecl program = asum errors
   where
