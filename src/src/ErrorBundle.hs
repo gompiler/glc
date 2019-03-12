@@ -1,6 +1,6 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE GADTs                #-}
-{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module ErrorBundle
   ( ErrorMessage
@@ -106,8 +106,11 @@ showErrorEntry (ErrorMessage e _)    = show e
 -- | Returns true if error message has the supplied error
 -- Note that the underlying check is done using 'show' values
 hasError :: ErrorEntry e => ErrorMessage -> e -> Bool
-(ErrorBundle _ err _ _) `hasError` e = errorMessage err == errorMessage e
-(ErrorMessage err _) `hasError` e = errorMessage err == errorMessage e
+(ErrorBundle _ err _ _) `hasError` e = err `eq` e
+(ErrorMessage err _) `hasError` e = err `eq` e
+
+eq :: (ErrorEntry a, ErrorEntry b) => a -> b -> Bool
+a `eq` b = show a == show b && errorMessage a == errorMessage b
 
 instance ErrorBreakpoint Offset where
   offset = id

@@ -76,7 +76,7 @@ spec = do
       -- Must have body
     , ("func f(a b)", ParseError TSemicolon)
       -- No variadic types
-    , ("func f(a, b, c ...int)", ParseUnknown "...")
+    , ("func f(a, b, c ...int)", ParseError TLdots)
       -- No need for semicolon rule 2
     , ("type (a b)", ParseError TRParen)
     ]

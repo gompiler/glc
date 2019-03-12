@@ -408,9 +408,7 @@ parsefNL f s = either (Left . errODef s) Right (runAlex s f)
 ptokl t = case t of
           Token pos _ -> pos
 
-data ParseError
-  = ParseError InnerToken
-  | ParseUnknown String
+newtype ParseError = ParseError InnerToken
   deriving (Show, Eq)
 
 instance ErrorEntry ParseError where
