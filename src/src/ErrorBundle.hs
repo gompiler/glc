@@ -1,9 +1,6 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE GADTs                #-}
-{-# LANGUAGE NamedFieldPuns       #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
-{-# LANGUAGE StandaloneDeriving   #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 
 module ErrorBundle
   ( ErrorMessage
@@ -50,9 +47,12 @@ data ErrorWrapper =
 emptyWrapper :: ErrorWrapper
 emptyWrapper = ErrorWrapper "" ""
 
+-- | Allows adding prefixes and suffixes to an error message
 wrap :: ErrorWrapper -> String -> String
 wrap (ErrorWrapper prefix suffix) msg = prefix ++ msg ++ suffix
 
+-- | Creates an error message using only an error entry
+-- No offsets or program inputs required
 createError' :: ErrorEntry e => e -> ErrorMessage
 createError' e = ErrorMessage e emptyWrapper
 
@@ -66,6 +66,7 @@ type ErrorMessage' = String -> ErrorMessage
 instance Eq ErrorMessage where
   e1 == e2 = show e1 == show e2
 
+-- | Enforce prepending of "Error: "
 instance Show ErrorMessage where
   show e = "Error:  \n" ++ showInternal e
 
@@ -89,16 +90,21 @@ showInternal (ErrorBundle (Offset o) err input wrapper) =
    in wrap wrapper $ errorBundlePretty bundle
 showInternal (ErrorMessage e wrapper) = wrap wrapper $ show e
 
+-- | Adds prefix to error message
 withPrefix :: ErrorMessage -> String -> ErrorMessage
 ErrorBundle o e i (ErrorWrapper p s) `withPrefix` p' =
   ErrorBundle o e i (ErrorWrapper (p' ++ p) s)
 ErrorMessage e (ErrorWrapper p s) `withPrefix` p' =
   ErrorMessage e (ErrorWrapper (p' ++ p) s)
 
+-- | Displays the underlying error entry for debugging
+-- Show is meant to make it easy to copy the expected error into tests
 showErrorEntry :: ErrorMessage -> String
 showErrorEntry (ErrorBundle _ e _ _) = show e
 showErrorEntry (ErrorMessage e _)    = show e
 
+-- | Returns true if error message has the supplied error
+-- Note that the underlying check is done using 'show' values
 hasError :: ErrorEntry e => ErrorMessage -> e -> Bool
 (ErrorBundle _ err _ _) `hasError` e = errorMessage err == errorMessage e
 (ErrorMessage err _) `hasError` e = errorMessage err == errorMessage e
