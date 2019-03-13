@@ -20,6 +20,12 @@
                 , pElses
                 , pEl
                 , pE
+                , pTDef
+                , pStruct
+                , pFiDecls
+                , pFor
+                , pSwS
+                , pSwB
                 , hparse
                 , parse
                 , parsef
@@ -43,28 +49,31 @@ import qualified Data.List.NonEmpty as NonEmpty
 %error { parseError }
 
 -- Other subparsers for testing
-%name pId Idents
-%name pE Expr
-%name pT Type
-%name pEl EIList
-%name pTDecl TopDecl
-%name pTDecls TopDecls
-%name pDec Decl
-%name pDecB DeclBody
-%name pFDec FuncDecl
-%name pSig Signature
-%name pIDecl InnerDecl
-%name pPar Params
-%name pRes Result
-%name pStmt Stmt
-%name pStmts Stmts
-%name pBStmt BlockStmt
-%name pSStmt SimpleStmt
-%name pIf IfStmt
-%name pElses Elses
-%name pSwS SwitchStmt
-%name pSwB SwitchBody
-%name pFor ForStmt
+%name pTDecls TopDecls      -- Alex [TopDecl]
+%name pTDecl TopDecl        -- Alex TopDecl
+%name pId Idents            -- Alex [Identifier]
+%name pT Type               -- Alex (Offset, Type)
+%name pDec Decl             -- Alex Decl
+%name pIDecl InnerDecl      -- Alex VarDecl'
+%name pDecB DeclBody        -- Alex (Either (Type', [Expr]) (NonEmpty Expr))
+%name pTDef TypeDefs        -- Alex [TypeDef']
+%name pStruct Struct        -- Alex (Offset, [FieldDecl])
+%name pFiDecls FieldDecls   -- Alex [FieldDecl]
+%name pFDec FuncDecl        -- Alex FuncDecl
+%name pSig Signature        -- Alex Signature
+%name pPar Params           -- Alex [ParameterDecl]
+%name pRes Result           -- Alex (Maybe Type')
+%name pStmt Stmt            -- Alex Stmt
+%name pStmts Stmts          -- Alex [Stmt]
+%name pBStmt BlockStmt      -- Alex FuncBody
+%name pSStmt SimpleStmt     -- Alex SimpleStmt
+%name pIf IfStmt            -- Alex Stmt
+%name pElses Elses          -- Alex Stmt
+%name pFor ForStmt          -- Alex Stmt
+%name pSwS SwitchStmt       -- Alex Stmt
+%name pSwB SwitchBody       -- Alex [SwitchCase]
+%name pE Expr               -- Alex Expr
+%name pEl EIList            -- Alex [Expr]
 
 {- Spec: https://golang.org/ref/spec#Operator_precedence -}
 %nonassoc ',' {- Lowest precedence, for arrays and expression lists. TODO: DO WE NEED THIS? -}
@@ -113,7 +122,6 @@ import qualified Data.List.NonEmpty as NonEmpty
     "^="                                { Token _ TLXorA }
     "&&"                                { Token _ TAnd }
     "||"                                { Token _ TOr }
-    "<-"                                { Token _ TRecv }             {- unsupported -}
     "++"                                { Token _ TInc }
     "--"                                { Token _ TDInc }
     "=="                                { Token _ TEq }
@@ -124,28 +132,16 @@ import qualified Data.List.NonEmpty as NonEmpty
     "<<="                               { Token _ TLeftSA }
     ">>="                               { Token _ TRightSA }
     "&^="                               { Token _ TLAndNotA }
-    "..."                               { Token _ TLdots }            {- unsupported -}
     break                               { Token _ TBreak }
     case                                { Token _ TCase }
-    chan                                { Token _ TChan }             {- unsupported -}
-    const                               { Token _ TConst }            {- unsupported -}
     continue                            { Token _ TContinue }
     default                             { Token _ TDefault }
-    defer                               { Token _ TDefer }            {- unsupported -}
     else                                { Token _ TElse }
-    fallthrough                         { Token _ TFallthrough }      {- unsupported -}
     for                                 { Token _ TFor }
     func                                { Token _ TFunc }
-    go                                  { Token _ TGo }               {- unsupported -}
-    goto                                { Token _ TGoto }             {- unsupported -}
     if                                  { Token _ TIf }
-    import                              { Token _ TImport }           {- unsupported -}
-    interface                           { Token _ TInterface }        {- unsupported -}
-    map                                 { Token _ TMap }              {- unsupported -}
     package                             { Token _ TPackage }
-    range                               { Token _ TRange }            {- unsupported -}
     return                              { Token _ TReturn }
-    select                              { Token _ TSelect }           {- unsupported -}
     struct                              { Token _ TStruct }
     switch                              { Token _ TSwitch }
     type                                { Token _ TType }
@@ -180,7 +176,9 @@ Idents      : Idents ',' ident                              { (getIdent $3) : $1
 
 Type        : ident                                         { ((getOffset $1), Type $ getIdent $1) }
             | '(' Type ')'                                  { $2 }
-            | '[' Expr ']' Type                             { ((getOffset $1), ArrayType $2 (snd $4)) }
+            | '[' decv ']' Type                             { ((getOffset $1), ArrayType (Lit (IntLit (getOffset $2) Decimal $ getInnerString $2)) (snd $4)) }
+            | '[' octv ']' Type                             { ((getOffset $1), ArrayType (Lit (IntLit (getOffset $2) Octal $ getInnerString $2)) (snd $4)) }
+            | '[' hexv ']' Type                             { ((getOffset $1), ArrayType (Lit (IntLit (getOffset $2) Hexadecimal $ getInnerString $2)) (snd $4)) }
             | '[' ']' Type                                  { ((getOffset $1), SliceType (snd $3)) }
             | Struct                                        { ((fst $1), StructType (snd $1)) }
 
@@ -188,6 +186,9 @@ Decl        : var InnerDecl                                 { VarDecl [$2] }
             | var '(' InnerDecls ')' ';'                    { VarDecl (reverse $3) }
             | type ident Type ';'                           { TypeDef [TypeDef' (getIdent $2) $3] }
             | type '(' TypeDefs ')' ';'                     { TypeDef (reverse $3) }
+            -- Allowing a TypeDefs to be nothing for an empty list introduces a shift-reduce conflict, we are unsure whether to shift ident or reduce as empty list
+            -- so it's better to just account for the empty case here
+            | type '(' ')' ';'                              { TypeDef ([]) }
 
 InnerDecl   : Idents DeclBody ';'                           { VarDecl' ((nonEmpty . reverse) $1) $2 }
             | ident DeclBody ';'                            { VarDecl' (nonEmpty [getIdent $1]) $2 }
@@ -248,8 +249,8 @@ Stmts       : Stmts Stmt                                    { $2 : $1 }
 BlockStmt   : '{' Stmts '}'                                 { BlockStmt (reverse $2) }
 
 {- Spec: https://golang.org/ref/spec#SimpleStmt -}
-SimpleStNE  : {- empty -}                                   { EmptyStmt }
-            | Expr "++"                                     { Increment (getOffset $2) $1 } {- Typecheck for identifiers -}
+-- No empty here to not cause shift reduce conflicts for for post stmt, empty in main SimpleStmt
+SimpleStNE  : Expr "++"                                     { Increment (getOffset $2) $1 } {- Typecheck for identifiers -}
             | Expr "--"                                     { Decrement (getOffset $2) $1 } {- Typecheck for identifiers -}
 
             | EIList '=' EIList                             { Assign (getOffset $2) (AssignOp Nothing) (nonEmpty $1) (nonEmpty $3) }
@@ -269,14 +270,13 @@ SimpleStNE  : {- empty -}                                   { EmptyStmt }
 
             | Idents ":=" EIList                            { ShortDeclare ((nonEmpty . reverse) $1) (nonEmpty $3) }
             | ident ":=" Expr                               { ShortDeclare (nonEmpty [getIdent $1]) (nonEmpty [$3]) }
-
 {- Spec: https://golang.org/ref/spec#ExpressionStmt -}
-ExprStmt    : Expr ';'    { ExprStmt $1 }
+            | Expr                                          { ExprStmt $1 }
+            | {- empty -}                                   { EmptyStmt }
 
 {- Spec: https://golang.org/ref/spec#SimpleStmt -}
-{- Keep expression statements separate to prevent r/r conflicts -}
 SimpleStmt  : SimpleStNE ';'                                { $1 }
-            | ExprStmt                                      { $1 }
+--            | {- empty -} ';'                               { EmptyStmt }
 
 {- Spec: https://golang.org/ref/spec#If_statements -}
 IfStmt      : if SimpleStmt Expr BlockStmt Elses            { If ($2, $3) $4 $5 }
@@ -286,10 +286,10 @@ Elses       : else IfStmt                                   { $2 }
             | {- empty -}                                   { blank }
 
 {- Spec: https://golang.org/ref/spec#For_statements -}
-ForStmt     : for BlockStmt                                 { For ForInfinite $2 }
-            | for Expr BlockStmt                            { For (ForCond $2) $3 }
-            | for SimpleStmt Expr ';' SimpleStNE BlockStmt  { For (ForClause $2 $3 $5) $6 }
-            | for SimpleStmt Expr ';' Expr BlockStmt        { For (ForClause $2 $3 (ExprStmt $5)) $6 }
+ForStmt     : for BlockStmt                                 { For (ForClause EmptyStmt Nothing EmptyStmt) $2 }
+            | for Expr BlockStmt                            { For (ForClause EmptyStmt (Just $2) EmptyStmt) $3 }
+            | for SimpleStmt Expr ';' SimpleStNE BlockStmt  { For (ForClause $2 (Just $3) $5) $6 }
+            | for SimpleStmt ';' SimpleStNE BlockStmt       { For (ForClause EmptyStmt Nothing ($4)) $5 }
 
 {- Spec: https://golang.org/ref/spec#Switch_statements -}
 SwitchStmt  : switch SimpleStmt Expr '{' SwitchBody '}'     { Switch $2 (Just $3) (reverse $5) }
