@@ -1,7 +1,8 @@
 {-# OPTIONS_GHC -w #-}
 {-# OPTIONS -fglasgow-exts -cpp #-}
-module Parser ( putExit
+module ParserGen ( putExit
                 , AlexPosn(..)
+                , ParseError(..)
                 , runAlex
                 , pId
                 , pT
@@ -2080,25 +2081,38 @@ getInnerString t = case t of
   Token _ (TIdent val) -> val
 
 -- Main parse function
-parse :: String -> Either String Program
-parse s = either (Left . errODef s) Right (runAlex s $ hparse)
+parse :: String -> Either ErrorMessage Program
+parse s = either (Left . errODef s) Right (runAlex s hparse)
 
 -- Parse function that takes in any parser
-parsef :: (Alex a) -> String -> Either String a
-parsef f s = either (Left . errODef s) Right (runAlex' s $ f)
+parsef :: Alex a -> String -> Either ErrorMessage a
+parsef f s = either (Left . errODef s) Right (runAlex' s f)
 -- runAlex' does not insert newline at end if needed
 
 -- parsef but insert newline if needed at end just like main parse function
-parsefNL :: (Alex a) -> String -> Either String a
-parsefNL f s = either (Left . errODef s) Right (runAlex s $ f)
+parsefNL :: Alex a -> String -> Either ErrorMessage a
+parsefNL f s = either (Left . errODef s) Right (runAlex s f)
 
 -- Extract posn only
 ptokl t = case t of
           Token pos _ -> pos
 
-parseError :: (Token) -> Alex a
+data ParseError
+  = ParseError InnerToken
+  | ParseUnknown String
+  deriving (Show, Eq)
+
+instance ErrorEntry ParseError where
+  errorMessage err =
+    let m =
+          case err of
+            ParseError t        -> humanize t
+            ParseUnknown s      -> s
+     in "Parsing error: unexpected " ++ m ++ "."
+
+parseError :: Token -> Alex a
 parseError (Token (AlexPn o l c) t) =
-           alexError ("Error: parsing error, unexpected " ++ (humanize t) ++ " at: ", o)
+           alexError $ createError (Offset o) (ParseError t)
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
