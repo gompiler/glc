@@ -2,18 +2,22 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Parser where
+module Parser
+  ( Parsable(..)
+  , P.ParseError(..)
+  ) where
 
 import           Data
 import           Data.List.NonEmpty (fromList)
-import qualified ParserGen          as P (pDec, pE, pEl, pIDecl, pId, pPar,
-                                          pSig, pStmt, pT, pTDecl, parse,
-                                          parsef, parsefNL)
+import           ErrorBundle
+import qualified ParserGen          as P (ParseError (..), pDec, pE, pEl,
+                                          pIDecl, pId, pPar, pSig, pStmt, pT,
+                                          pTDecl, parse, parsef, parsefNL)
 
 class (Show a, Eq a) =>
       Parsable a
   where
-  parse :: String -> Either String a
+  parse :: String -> Either ErrorMessage a
 
 instance Parsable Program where
   parse = P.parse

@@ -2,6 +2,7 @@
 
 module Weeding
   ( weed
+  , WeedingError(..)
   ) where
 
 import           Control.Applicative
@@ -12,32 +13,30 @@ import           Data.Maybe          as Maybe
 import           ErrorBundle
 import           Parser
 
-type PureConstraint a = a -> Maybe ErrorBundle'
+type PureConstraint a = a -> Maybe ErrorMessage'
 
 -- | Main weeding function
 -- Takes in input code, will pass through parser
-weed :: String -> Either String Program
+weed :: String -> Either ErrorMessage Program
 weed code = do
   program <- parse code
   maybe
     (Right program)
-    (\eb ->
-       Left $
-       "Error: weeding error at " ++ errorString (eb $ createInitialState code))
+    (\eb -> Left $ eb code `withPrefix` "weeding error at ")
     (verify program)
 
-verify :: Program -> Maybe ErrorBundle'
--- Alternative sum, i.e. sum using <|> over each function mapped to program
+-- | Alternative sum, i.e. sum using <|> over each function mapped to program
+verify :: Program -> Maybe ErrorMessage'
 verify program =
   asum $
   [programVerify, continueVerify, breakVerify, progVerifyDecl, progVerifyBlank] <*>
   [program]
 
-verifyAll :: PureConstraint a -> [a] -> Maybe ErrorBundle'
+verifyAll :: PureConstraint a -> [a] -> Maybe ErrorMessage'
 verifyAll constraint items = asum $ map constraint items
 
 recursiveVerifyAll ::
-     (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorBundle'
+     (Stmt -> [Stmt]) -> PureConstraint Stmt -> [Stmt] -> Maybe ErrorMessage'
 recursiveVerifyAll getScopes c = verifyAll $ recursiveVerify getScopes c
 
 -- | Takes a top level statement verifier and applies it to specified scopes
@@ -62,16 +61,15 @@ stmtRecursiveVerify = recursiveVerify getScopes
         _                -> []
 
 -- | Verification rules for specific statements
-stmtVerify :: Stmt -> Maybe ErrorBundle'
+stmtVerify :: Stmt -> Maybe ErrorMessage'
 -- Verify that expression statements are only function calls
 stmtVerify (SimpleStmt stmt) =
   case stmt of
-    ExprStmt Arguments {} -> Nothing
-    e@(ExprStmt _) ->
-      Just $ createError e "Expression statements must be function calls"
-    (Assign _ _ e1 e2) -> checkListSize (toList e1) (toList e2)
+    ExprStmt Arguments {}    -> Nothing
+    e@(ExprStmt _)           -> Just $ createError e ExprStmtNotFunction
+    (Assign _ _ e1 e2)       -> checkListSize (toList e1) (toList e2)
     (ShortDeclare identl el) -> checkListSize (toList identl) (toList el)
-    _ -> Nothing
+    _                        -> Nothing
 stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 -- | Verify that switch statements only have one default
 -- The [...] pattern matching returns all the examples in the list where the
@@ -82,19 +80,18 @@ stmtVerify (If (stmt, _) _ _) = stmtVerify (SimpleStmt stmt)
 stmtVerify (Switch s _ cases) =
   stmtVerify (SimpleStmt s) <|>
   case [x | x@(Default _ _) <- cases] of
-    (_:d@Default {}:_) -> Just $ createError d "Duplicate default found"
+    (_:d@Default {}:_) -> Just $ createError d DuplicateDefault
     _                  -> Nothing
 -- Verify that for-loop post conditions are not short declarations
 stmtVerify (For (ForClause pre _ post) _) =
   stmtVerify (SimpleStmt pre) <|> stmtVerify (SimpleStmt post) <|>
   case post of
-    s@ShortDeclare {} ->
-      Just $ createError s "For post-statement cannot be declaration"
-    _ -> Nothing
+    s@ShortDeclare {} -> Just $ createError s ForPostDecl
+    _                 -> Nothing
 stmtVerify _ = Nothing
 
 -- Verify declarations (LHS = RHS if an assignment)
-declVerify :: Decl -> Maybe ErrorBundle'
+declVerify :: Decl -> Maybe ErrorMessage'
 declVerify (VarDecl vdl) = asum $ map vdeclVer vdl
   where
     vdeclVer (VarDecl' identl (Right el)) =
@@ -105,10 +102,18 @@ declVerify (VarDecl vdl) = asum $ map vdeclVer vdl
         else checkListSize (toList identl) el
 declVerify _ = Nothing
 
+-- | Given two lists, check if the sizes are equal, if not, output a corresponding error
+checkListSize ::
+     (ErrorBreakpoint a, ErrorBreakpoint b) => [a] -> [b] -> Maybe ErrorMessage'
+checkListSize (_:t1) (_:t2) = checkListSize t1 t2
+checkListSize [] (h2:_)     = Just $ createError h2 ListSizeMismatch
+checkListSize (h1:_) []     = Just $ createError h1 ListSizeMismatch
+checkListSize [] []         = Nothing
+
 progVerifyDecl :: PureConstraint Program
 progVerifyDecl program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors =
       map
         declVerify
@@ -129,19 +134,19 @@ progVerifyDecl program = asum errors
 progVerifyBlank :: PureConstraint Program
 progVerifyBlank program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors = map blankVerify (topLevels program >>= toIdent)
 
-blankVerify :: Identifier -> Maybe ErrorBundle'
+blankVerify :: Identifier -> Maybe ErrorMessage'
 blankVerify (Identifier o str) =
   if str == "_"
-    then Just $ createError o "Invalid use of blank identifier"
+    then Just $ createError o InvalidBlankId
     else Nothing
 
 programVerify :: PureConstraint Program
 programVerify program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors =
       map
         (stmtRecursiveVerify stmtVerify)
@@ -158,15 +163,14 @@ continueRecursiveVerify = recursiveVerify getScopes
         Switch _ _ cases -> map stmtFromCase cases
         _                -> []
 
-continueConstraint :: Stmt -> Maybe ErrorBundle'
-continueConstraint (Continue o) =
-  Just $ createError o "Continue statement must occur in for loop"
-continueConstraint _ = Nothing
+continueConstraint :: Stmt -> Maybe ErrorMessage'
+continueConstraint (Continue o) = Just $ createError o ContinueScope
+continueConstraint _            = Nothing
 
 continueVerify :: PureConstraint Program
 continueVerify program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors =
       map
         (continueRecursiveVerify continueConstraint)
@@ -182,16 +186,14 @@ breakRecursiveVerify = recursiveVerify getScopes
         If _ s1 s2      -> [s1, s2]
         _               -> [] -- Skip for and switch, since breaks can occur there
 
-breakConstraint :: Stmt -> Maybe ErrorBundle'
-breakConstraint (Break o) =
-  Just $
-  createError o "Break statement must occur in for loop or switch statement"
-breakConstraint _ = Nothing
+breakConstraint :: Stmt -> Maybe ErrorMessage'
+breakConstraint (Break o) = Just $ createError o BreakScope
+breakConstraint _         = Nothing
 
 breakVerify :: PureConstraint Program
 breakVerify program = asum errors
   where
-    errors :: [Maybe ErrorBundle']
+    errors :: [Maybe ErrorMessage']
     errors =
       map
         (breakRecursiveVerify breakConstraint)
@@ -304,3 +306,24 @@ instance BlankWeed FieldDecl where
 stmtFromCase :: SwitchCase -> Stmt
 stmtFromCase (Case _ _ stmt)  = stmt
 stmtFromCase (Default _ stmt) = stmt
+
+data WeedingError
+  = ListSizeMismatch
+  | ExprStmtNotFunction
+  | DuplicateDefault
+  | ForPostDecl
+  | InvalidBlankId
+  | ContinueScope
+  | BreakScope
+  deriving (Show, Eq)
+
+instance ErrorEntry WeedingError where
+  errorMessage c =
+    case c of
+      ListSizeMismatch -> "LHS and RHS of assignments must be equal in length"
+      ExprStmtNotFunction -> "Expression statements must be function calls"
+      DuplicateDefault -> "Duplicate default found"
+      InvalidBlankId -> "Invalid use of blank identifier"
+      ForPostDecl -> "For post-statement cannot be declaration"
+      ContinueScope -> "Continue statement must occur in for loop"
+      BreakScope -> "Break statement must occur in for loop or switch statement"

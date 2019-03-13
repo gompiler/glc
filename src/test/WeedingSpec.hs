@@ -19,7 +19,7 @@ expectWeedPass =
              Left err ->
                expectationFailure $
                "Expected success on:\n\n" ++
-               program ++ "\n\nbut got error\n\n" ++ err
+               program ++ "\n\nbut got error\n\n" ++ show err
              _ -> return ())
     toString
     "wrapped stmt"
@@ -34,10 +34,25 @@ expectWeedPassNoMain =
              Left err ->
                expectationFailure $
                "Expected success on:\n\n" ++
-               program ++ "\n\nbut got error\n\n" ++ err
+               program ++ "\n\nbut got error\n\n" ++ show err
              _ -> return ())
     toString
     "wrapped stmt"
+
+expectWeedError :: Stringable s => [(s, WeedingError)] -> SpecWith ()
+expectWeedError =
+  expectBase
+    "weed fail"
+    (\(s, e) ->
+       let s' = toString s
+        in case weed s' of
+             Right p ->
+               expectationFailure $
+               "Expected failure on:\n\n" ++
+               s' ++ "\n\nbut got program\n\n" ++ show p
+             Left err -> err `containsError` e)
+    (toString . fst)
+    "program"
 
 expectWeedFail :: Stringable s => [s] -> SpecWith ()
 expectWeedFail =
@@ -118,6 +133,11 @@ spec = do
       }
       |]
     ]
+  expectWeedError $
+    map
+      (\(s, e) ->
+         ("package main\n\nfunc main() {\n\n" ++ toString s ++ "\n\n}", e))
+      [("break", BreakScope)]
   expectWeedFail
     [ "break"
     , "if t { break; }"
