@@ -120,23 +120,20 @@ data SimpleStmt
   | Decrement Offset
               Expr
   -- | See https://golang.org/ref/spec#Assignments
-  -- Lists should be equal, but verification is left for a later phase.
   | Assign Offset
            AssignOp
-           (NonEmpty Expr)
-           (NonEmpty Expr)
+           (NonEmpty (Expr, Expr))
   -- | See https://golang.org/ref/spec#ShortVarDecl
-  | ShortDeclare Identifiers
-                 (NonEmpty Expr)
+  | ShortDeclare (NonEmpty (Identifiers, Expr))
   deriving (Show, Eq)
 
 instance ErrorBreakpoint SimpleStmt where
-  offset EmptyStmt               = error "EmptyStmt has no offset"
-  offset (ExprStmt e)            = offset e
-  offset (Increment o _)         = o
-  offset (Decrement o _)         = o
-  offset (Assign o _ _ _)        = o
-  offset (ShortDeclare idents _) = offset idents
+  offset EmptyStmt                     = error "EmptyStmt has no offset"
+  offset (ExprStmt e)                  = offset e
+  offset (Increment o _)               = o
+  offset (Decrement o _)               = o
+  offset (Assign o _ _)                = o
+  offset (ShortDeclare ((id, _) :| _)) = offset id
 
 -- | Shortcut for a blank stmt
 blank :: Stmt
