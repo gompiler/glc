@@ -19,7 +19,7 @@ data Action
   | Insert Int
            Int
   | AddMessage Int
-  | CompareMessage [Int]
+  | CheckMessages [Int]
   deriving (Show)
 
 applyAction :: TestSymbolTable -> Action -> Expectation
@@ -28,7 +28,7 @@ applyAction s (Lookup key expect) =
   (`shouldBe` fmap (\(sc, v) -> (Scope sc, v)) expect)
 applyAction s (Insert key value) = stToIO $ insert s (Ident $ show key) value
 applyAction s (AddMessage msg) = stToIO $ addMessage s msg
-applyAction s (CompareMessage msgs) =
+applyAction s (CheckMessages msgs) =
   stToIO (getMessages s) >>= (`shouldBe` msgs)
 
 testPass :: String -> [Action] -> SpecWith ()
@@ -50,3 +50,13 @@ spec :: Spec
 spec = do
   testPass "insert get" [Insert 0 0, Lookup 0 $ Just (0, 0)]
   testError "insert get" [Insert 0 0, Lookup 0 Nothing]
+  testPass
+    "message order"
+    [ CheckMessages []
+    , AddMessage 0
+    , AddMessage 1
+    , AddMessage 2
+    , CheckMessages [0, 1, 2]
+    , AddMessage 3
+    , CheckMessages [0, 1, 2, 3]
+    ]

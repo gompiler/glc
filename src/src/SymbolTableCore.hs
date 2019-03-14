@@ -2,8 +2,7 @@
 {-# LANGUAGE GADTs         #-}
 {-# LANGUAGE TupleSections #-}
 
--- |
--- State based eager symbol table
+-- | State based eager symbol table
 -- Heavily modeled around https://hackage.haskell.org/package/hashtables-1.2.3.1/docs/src/Data-HashTable-ST-Basic.html#HashTable
 module SymbolTableCore
   ( SymbolTable
@@ -60,10 +59,7 @@ instance Hashable Ident where
 
 type HashTable s v = HT.HashTable s Ident v
 
--- | SymbolScope type, one scope for our SymbolTable.
--- * s - st monad state?
--- * k - key type for hashtable
--- * v - value type for hashtable
+-- | SymbolScope type; scope + hashtable
 type SymbolScope s v = (Scope, HashTable s v)
 
 {-# INLINE newRef #-}
