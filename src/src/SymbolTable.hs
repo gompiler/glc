@@ -2,7 +2,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
 module SymbolTable
-  (
+  ( SType(..)
   ) where
 
 import           Control.Applicative     (Alternative)
@@ -25,8 +25,8 @@ import           Numeric                 (readOct)
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
 type Param = (S.Ident, SType)
-
 type Field = (S.Ident, SType)
+type Var = (S.Ident, SType)
 
 data Symbol
   = Base -- Base type, resolve to themselves, i.e. int
@@ -58,6 +58,8 @@ type SymbolInfo = (S.Ident, Symbol, S.Scope)
 
 -- | Params with their respective scopes, for check FuncDecl
 type ParamInfo = (Param, S.Scope)
+-- | For checking short declarations
+type VarInfo = (Var, S.Scope)
 
 -- | Insert n tabs
 tabs :: Int -> String
@@ -154,6 +156,7 @@ instance Symbolize FuncDecl where
         et <- toType t st2 -- Remove ST
         either (return . Left) (\t' -> do
                                    (err, pil) <- checkIds st2 t' idl
+                                   -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
                                    _ <- mapM (S.addMessage st2) (map Just (map parToVar pil)) -- Add list of SymbolInfo to messages
                                    case err of
                                      Just e -> do
@@ -183,6 +186,39 @@ instance Symbolize FuncDecl where
                        Nothing -> Left $ createError ident (AlreadyDecl "Param " ident)
                        Just (_, _, scope) -> Right ((idv, t), scope)
   recurse (FuncDecl _ _ _) st = return Nothing -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
+
+instance Symbolize SimpleStmt where
+  recurse (ShortDeclare idl el) st = checkDecl (toList idl) (toList el)
+    where
+      checkDecl :: [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
+      checkDecl idl el st = do
+        eb <- mapM (uncurry checkDec) (zip idl el)
+        -- either (Left)
+      checkDec :: Identifier -> Expr -> SymbolTable s -> ST s (Either ErrorMessage' Bool)
+      checkDec ident e st = do
+        et <- infer e -- Either ErrorMessage' SType
+        (either (return . Left) (\t -> checkId ident t st) et)
+          where
+            checkId :: Identifier -> SType -> SymbolTable s -> ST s (Either ErrorMessage' Bool) -- Bool is to indicate whether the variable was already declared or not
+      -- Note that short declarations require at least *one* new declaration
+            checkId ident@(Identifier _ vname) t st =
+              let idv = S.Ident vname in
+                do val <- S.lookupCurrent st idv
+                   case val of
+                     Just (_, (Variable t2)) -> return $
+                       if t == t2
+                       then Right False
+                       -- if locally defined, check if type matches
+                       else Left $ createError e (TypeMismatch ident t t2)
+                     Just (_, s) -> return $ Left $ createError ident (NotLVal ident s)
+                     Nothing -> do
+                       msi <- add st idv (Variable t) 
+                       -- This cannot be Nothing, add will always succeed here because lookup returned Nothing, so there is no conflict
+                       _ <- S.addMessage st msi -- Add new symbol
+                       return $ Right True
+                         
+                                                                                                     
+  recurse _ st = return Nothing
 instance Symbolize Decl where
   recurse (VarDecl vdl) st =
     am (recurse' st) vdl
@@ -336,6 +372,8 @@ data SymbolError =
   AlreadyDecl String Identifier
   | NotDecl String Identifier
   | VoidFunc Identifier
+  | TypeMismatch Identifier SType SType
+  | NotLVal Identifier Symbol
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -347,6 +385,10 @@ instance ErrorEntry SymbolError where
         s ++ vname ++ " not declared"
       VoidFunc (Identifier _ vname) ->
         vname ++ " resolves to a void function"
+      TypeMismatch (Identifier _ vname) t1 t2 ->
+        "Expression resolves to type " ++ show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
+      NotLVal (Identifier _ vname) s ->
+        vname ++ " resolves to " ++ show s ++ " and is not an lvalue"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -354,6 +396,9 @@ topScope st = st >>= topScope'
 
 topScope' :: SymbolTable s -> ST s (S.SymbolScope s Symbol)
 topScope' = S.topScope
+
+class TypeInfer a where
+  infer :: a -> SymbolTable s -> ST s (Either ErrorMessage' SType)
 
 -- testing stuff
 z = S.Ident "test"
