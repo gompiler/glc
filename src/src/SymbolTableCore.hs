@@ -31,8 +31,8 @@ import           Data.STRef
 import           Prelude                 hiding (lookup)
 
 -- | SymbolTable, cactus stack of SymbolScope
--- * s - st monad state?
--- * k - key type for hashtable
+-- * s - st monad state
+-- * k - the hashtable key type is hardcoded to Ident
 -- * v - value type for hashtable
 -- * l - type for list data
 newtype SymbolTable s v l =
