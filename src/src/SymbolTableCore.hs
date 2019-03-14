@@ -5,10 +5,12 @@
 -- Heavily modeled around https://hackage.haskell.org/package/hashtables-1.2.3.1/docs/src/Data-HashTable-ST-Basic.html#HashTable
 module SymbolTableCore
   ( SymbolTable
+  , SymbolScope
   , Scope(..)
   , Ident(..)
   , new
   , insert
+  , insert'
   , lookup
   , lookupCurrent
   , enterScope
@@ -45,12 +47,13 @@ data SymbolTable_ s v l =
 -- Scope starts at 0 and increases as you enter new scopes
 newtype Scope =
   Scope Int
+  deriving (Show, Eq)
 
 -- | Hashable key
 -- For symbol tables, we enforce strings
 newtype Ident =
   Ident String
-  deriving (Eq)
+  deriving (Show, Eq)
 
 instance Hashable Ident where
   hashWithSalt i (Ident s) = hashWithSalt i s
@@ -86,6 +89,13 @@ insert :: SymbolTable s v l -> Ident -> v -> ST s ()
 insert st k v = do
   SymbolTable ((_, ht) :| _) _ <- readRef st
   HT.insert ht k v
+  
+-- | Inserts a key value pair at the upper most scope and return scope level
+insert' :: SymbolTable s v l -> Ident -> v -> ST s Scope
+insert' st k v = do
+  SymbolTable ((Scope s, ht) :| _) _ <- readRef st
+  HT.insert ht k v
+  return (Scope $ s + 1)
 
 -- | Look up provided key across all scopes, starting with the top
 lookup :: SymbolTable s v l -> Ident -> ST s (Maybe (Scope, v))
