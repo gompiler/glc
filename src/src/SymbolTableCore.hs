@@ -13,6 +13,8 @@ module SymbolTableCore
   , insert'
   , lookup
   , lookupCurrent
+  , isDef
+  , isDefL
   , enterScope
   , exitScope
   , currentScope
@@ -114,6 +116,22 @@ lookupCurrent st k = do
   (scope, ht) <- currentScope st
   v <- HT.lookup ht k
   return $ fmap (scope, ) v
+
+-- | Use lookup to check if defined
+isDef :: SymbolTable s v l -> Ident -> ST s Bool
+isDef st k = do
+  res <- lookup st k
+  case res of
+    Nothing -> return False
+    Just _ -> return True
+
+-- | isDef but check only current scope
+isDefL :: SymbolTable s v l -> Ident -> ST s Bool
+isDefL st k = do
+  res <- lookupCurrent st k
+  case res of
+    Nothing -> return False
+    Just _ -> return True
 
 -- | Create new scope
 enterScope :: SymbolTable s v l -> ST s ()
