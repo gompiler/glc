@@ -43,14 +43,18 @@ import           Prelude                 hiding (lookup)
 newtype SymbolTable s v l =
   SyT (STRef s (SymbolTable_ s v l))
 
+-- | Underlying symbol table type
 data SymbolTable_ s v l =
   SymbolTable (NonEmpty (SymbolScope s v))
               [l]
 
---STRef s {scopes :: NonEmpty (SymbolScope s k v), list :: [l]}
+-- | Symbol table level
+-- Scope starts at 0 and increases as you enter new scopes
 newtype Scope =
-  Scope Int -- Depth
+  Scope Int
 
+-- | Hashable key
+-- For symbol tables, we enforce strings
 newtype Ident =
   Ident String
   deriving (Eq)
@@ -66,28 +70,23 @@ type HashTable s v = HT.HashTable s Ident v
 -- * v - value type for hashtable
 type SymbolScope s v = (Scope, HashTable s v)
 
+{-# INLINE newRef #-}
 newRef :: SymbolTable_ s v l -> ST s (SymbolTable s v l)
 newRef = fmap SyT . newSTRef
 
-{-# INLINE newRef #-}
+{-# INLINE writeRef #-}
 writeRef :: SymbolTable s v l -> SymbolTable_ s v l -> ST s ()
 writeRef (SyT ref) = writeSTRef ref
 
-{-# INLINE writeRef #-}
+{-# INLINE readRef #-}
 readRef :: SymbolTable s v l -> ST s (SymbolTable_ s v l)
 readRef (SyT ref) = readSTRef ref
 
-{-# INLINE readRef #-}
--- | Initialize a symbol table with base types
+-- | Initialize a symbol table with a single top level scope
 new :: ST s (SymbolTable s v l)
 new = do
   ht <- HT.new
-  newRef $ SymbolTable (fromList [(Scope 0, ht)]) [] -- Depth 0
-
-data Three a b
-  = Error a
-  | Succeed b
-  | SucceedBlank
+  newRef $ SymbolTable (fromList [(Scope 0, ht)]) []
 
 -- | Inserts a key value pair at the upper most scope
 insert :: SymbolTable s v l -> Ident -> v -> ST s ()
