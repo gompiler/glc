@@ -31,8 +31,7 @@ type Field = (S.Ident, SType)
 data Symbol
   = Base -- Base type, resolve to themselves, i.e. int
   | Constant -- For bools only
-  | Function [Param]
-             (Maybe SType)
+  | Func [Param] (Maybe SType)
   | Variable SType
   | SType SType -- Declared types
   deriving (Show, Eq)
@@ -44,7 +43,7 @@ data SType
   | Struct [Field] -- List of fields
   | TypeMap S.Ident SType
   | BaseMap S.Ident
-  | Infer -- Infer the type at typechecking, not at symbol table generation
+  -- | Infer -- Infer the type at typechecking, not at symbol table generation
   deriving (Show, Eq)
 
 -- | SymbolTable, cactus stack of SymbolScope
@@ -168,9 +167,9 @@ instance Symbolize Type where
     where
       checkFields ::
         SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      checkFields st fdl = do
+      checkFields st2 fdl' = do
         structTab <- S.new
-        sfl <- mapM (checkField st structTab) fdl
+        sfl <- mapM (checkField st2 structTab) fdl'
         fl <- sequence sfl
         return $ eitherL concat fl
   
@@ -179,8 +178,8 @@ instance Symbolize Type where
         -> StructTable s2
         -> FieldDecl
         -> ST s1 (ST s2 (Either ErrorMessage' [Field]))
-      checkField st structTab (FieldDecl idl (_, t)) = do
-        et <- toType t st
+      checkField st2 structTab (FieldDecl idl (_, t)) = do
+        et <- toType t st2
         return $ either (return . Left) (\t' -> checkIds structTab t' idl) et
   
       checkIds ::
@@ -188,7 +187,7 @@ instance Symbolize Type where
         -> SType
         -> Identifiers
         -> ST s (Either ErrorMessage' [Field])
-      checkIds st t idl = eConcat <$> mapM (checkId st t) (toList idl)
+      checkIds st2 t idl = eConcat <$> mapM (checkId st2 t) (toList idl)
   
       checkId ::
         StructTable s -> SType -> Identifier -> ST s (Either ErrorMessage' Field)
@@ -200,8 +199,18 @@ instance Symbolize Type where
               if not res
               then Left (createError ident (AlreadyDecl ident))
               else Right (idv, t)
-  -- toType (FuncType sig) = toType sig
   toType (Type ident) st = resolve ident st
+
+-- instance Symbolize Signature where
+  -- toType (Signature (Parameters pdl) (Just t)) st = do
+    -- t' <- toType t st
+    -- (eConcat <$> mapM (toType' st) pdl) >>= (\e -> either Left (\tl -> Func tl t'))
+    -- (do
+    --     tl <- eConcat etl
+    --     Right $ Func tl t
+    --   )
+-- instance Symbolize ParameterDecl where
+--   -- toType (ParameterDecl)
 
 resolve :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' SType)
 resolve ident@(Identifier _ vname) st = let idv = S.Ident vname in
@@ -209,21 +218,18 @@ resolve ident@(Identifier _ vname) st = let idv = S.Ident vname in
                                              case res of
                                                Nothing -> return $ Left $ createError ident (TNotDecl ident)
                                                Just (_, t) ->
-                                                 case resolve' t idv of
-                                                   Nothing -> return $ Left $ createError ident (VoidFunc ident)
-                                                   Just t' -> return $ Right t'
-                                                 where resolve' Base ident' = Just $ BaseMap ident'
-                                                       resolve' Constant _ = Just $ BaseMap (S.Ident "bool") -- Constants reserved for bools only
-                                                       resolve' (Function _ mt) _ = mt
-                                                       resolve' (Variable t') _ = Just t'
-                                                       resolve' (SType t') _ = Just t'
+                                                 return $ Right $ resolve' t idv
+                                                 where resolve' Base ident' = BaseMap ident'
+                                                       resolve' Constant _ = BaseMap (S.Ident "bool") -- Constants reserved for bools only
+                                                       resolve' (Variable t') _ = t'
+                                                       resolve' (SType t') _ = t'
 
 -- instance TypeInfer String where
 --   resolve :: String -> SymbolTable s -> ST s (Either ErrorMessage' SType)
 --   resolve s st = 
 
   
-eConcat :: [Either ErrorMessage' Field] -> Either ErrorMessage' [Field]
+eConcat :: [Either ErrorMessage' a] -> Either ErrorMessage' [a]
 eConcat = eitherL id
 
 
