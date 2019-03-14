@@ -3,9 +3,9 @@
 
 module TypedData where
 
-import           Data               (Identifier (..), Identifiers (..))
+import           Base
+import           Data               (Identifier (..), Identifiers)
 import           Data.List.NonEmpty (NonEmpty (..))
-import           ErrorBundle
 
 type TODO = ()
 
@@ -128,12 +128,12 @@ data SimpleStmt
   deriving (Show, Eq)
 
 instance ErrorBreakpoint SimpleStmt where
-  offset EmptyStmt                     = error "EmptyStmt has no offset"
-  offset (ExprStmt e)                  = offset e
-  offset (Increment o _)               = o
-  offset (Decrement o _)               = o
-  offset (Assign o _ _)                = o
-  offset (ShortDeclare ((id, _) :| _)) = offset id
+  offset EmptyStmt                        = error "EmptyStmt has no offset"
+  offset (ExprStmt e)                     = offset e
+  offset (Increment o _)                  = o
+  offset (Decrement o _)                  = o
+  offset (Assign o _ _)                   = o
+  offset (ShortDeclare ((ident, _) :| _)) = offset ident
 
 -- | Shortcut for a blank stmt
 blank :: Stmt
@@ -369,6 +369,7 @@ data Type
   -- | See https://golang.org/ref/spec#Function_types
   | FuncType Signature
   | Type Identifier
+  -- | Empty return type
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl
@@ -380,6 +381,3 @@ data FieldDecl =
 
 instance ErrorBreakpoint FieldDecl where
   offset (FieldDecl idents _) = offset idents
-
-class Typed a where
-  getType :: a -> Type'
