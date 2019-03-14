@@ -133,20 +133,19 @@ instance Symbolize TopDecl where
 instance Symbolize FuncDecl where
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
-  recurse (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body) st = do
+  recurse (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) st = do
     res <- S.isDef st (S.Ident vname)
     if res then return $ Just $ createError ident (AlreadyDecl "Function " ident)
       else do
       S.enterScope st
       epl <- checkParams st pdl
-      return $ either Just (const Nothing) epl -- Instead of nothing, verify body
+      either (return . Just) (const $ am (recurse' st) sl) epl -- Instead of nothing, verify body
       where
       checkParams ::
         SymbolTable s -> [ParameterDecl] -> ST s (Either ErrorMessage' [Param])
       checkParams st2 pdl' = do
         pl <- mapM (checkParam st2) pdl'
         return $ eitherL concat pl
-  
       checkParam ::
         SymbolTable s
         -> ParameterDecl
@@ -163,8 +162,6 @@ instance Symbolize FuncDecl where
                                      Nothing ->
                                        return $ Right $ map pInfo2p pil
                                    ) et
-        -- return $ either (return . Left) (\t' -> checkIds st2 t' idl) et
-      -- ParamInfo to SymbolInfo, in this case they are all vars because parameters are vars
       parToVar :: ParamInfo -> SymbolInfo
       parToVar ((ident, t), scope) = (ident, (SType t), scope)
       pInfo2p :: ParamInfo -> Param
@@ -185,13 +182,7 @@ instance Symbolize FuncDecl where
             return $ case res of
                        Nothing -> Left $ createError ident (AlreadyDecl "Param " ident)
                        Just (_, _, scope) -> Right ((idv, t), scope)
--- instance Symbolize ParameterDecl where
---   verify :: ParameterDecl -> SymbolTable s -> ST s (Either ErrorMessage' SymbolInfo)
---   verify (ParameterDecl ident@(Identifier _ vname) (_, t)) st = do
---     t' <- toType t st
---     result <- add st (S.Ident vname) (Variable t')
---     case result of
---       Nothing -> return $ Left $ createError ident (AlreadyDecl "Parameter " ident)
+  recurse (FuncDecl _ _ _) st = return Nothing -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
 instance Symbolize Decl where
   recurse (VarDecl vdl) st =
     am (recurse' st) vdl
