@@ -1,8 +1,22 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GADTs                     #-}
+{-# LANGUAGE TupleSections             #-}
 
+-- Heavily modeled around https://hackage.haskell.org/package/hashtables-1.2.3.1/docs/src/Data-HashTable-ST-Basic.html#HashTable
 module SymbolTableCore
-  (
+  ( SymbolTable
+  , Scope(..)
+  , Ident(..)
+  , new
+  , insert
+  , lookup
+  , lookupCurrent
+  , enterScope
+  , exitScope
+  , currentScope
+  , topScope
+  , addMessage
+  , getMessages
   ) where
 
 import           Control.Applicative     (Alternative)
@@ -15,9 +29,11 @@ import           Data.Hashable           (Hashable (..))
 import qualified Data.HashTable.Class    as H
 import qualified Data.HashTable.ST.Basic as HT
 import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, (<|))
+import qualified Data.List.NonEmpty      as NonEmpty (last)
 import           Data.STRef
 import           ErrorBundle
 import           GHC.Base                (liftM)
+import           Prelude                 hiding (lookup)
 
 -- | SymbolTable, cactus stack of SymbolScope
 -- * s - st monad state?
@@ -44,17 +60,11 @@ instance Hashable Ident where
 
 type HashTable s v = HT.HashTable s Ident v
 
---instance Hashable Ident where
---  hashWithSalt :: Int -> Ident -> Int
---  hashWithSalt a (Ident s) = hashWithSalt a s
 -- | SymbolScope type, one scope for our SymbolTable.
 -- * s - st monad state?
 -- * k - key type for hashtable
 -- * v - value type for hashtable
 type SymbolScope s v = (Scope, HashTable s v)
-
--- | SymbolInfo: Extraction of a single value from the hashtable
-type SymbolInfo v = (Scope, Ident, v)
 
 newRef :: SymbolTable_ s v l -> ST s (SymbolTable s v l)
 newRef = fmap SyT . newSTRef
@@ -79,23 +89,63 @@ data Three a b
   | Succeed b
   | SucceedBlank
 
--- | Check if we can add provided key and value
--- We can either error, add something to the list, or proceed without further action
-canAdd :: NonEmpty (SymbolScope s v) -> Ident -> v -> ST s (Three e l)
-canAdd = undefined
-
+-- | Inserts a key value pair at the upper most scope
 insert :: SymbolTable s v l -> Ident -> v -> ST s ()
 insert st k v = do
   SymbolTable ss@((scope, ht) :| _) list <- readRef st
   HT.insert ht k v
 
-newScope :: SymbolTable s v l -> ST s ()
-newScope st = do
+-- | Look up provided key across all scopes, starting with the top
+lookup :: SymbolTable s v l -> Ident -> ST s (Maybe (Scope, v))
+lookup st k = do
+  SymbolTable scopes _ <- readRef st
+  asum <$> mapM lookup' (toList scopes)
+  where
+    lookup' :: SymbolScope s v -> ST s (Maybe (Scope, v))
+    lookup' (scope, ht) = do
+      v <- HT.lookup ht k
+      return $ fmap (scope, ) v
+
+-- | Look up provided key at current scope only
+lookupCurrent :: SymbolTable s v l -> Ident -> ST s (Maybe (Scope, v))
+lookupCurrent st k = do
+  (scope, ht) <- currentScope st
+  v <- HT.lookup ht k
+  return $ fmap (scope, ) v
+
+-- | Create new scope
+enterScope :: SymbolTable s v l -> ST s ()
+enterScope st = do
   SymbolTable st'@((Scope scope, _) :| _) list <- readRef st
   ht <- HT.new
   writeRef st $ SymbolTable ((Scope (scope + 1), ht) <| st') list
 
-topScope :: SymbolTable s v l -> ST s (HashTable s v)
+-- | Discard current scope
+exitScope :: SymbolTable s v l -> ST s ()
+exitScope st = do
+  SymbolTable st'@(_ :| scopes) list <- readRef st
+  writeRef st $ SymbolTable (fromList scopes) list
+
+-- | Retrieve the current symbol scope
+currentScope :: SymbolTable s v l -> ST s (SymbolScope s v)
+currentScope st = do
+  SymbolTable st'@(s :| _) list <- readRef st
+  return s
+
+-- | Retrieve top level scope (scope 0)
+topScope :: SymbolTable s v l -> ST s (SymbolScope s v)
 topScope st = do
-  SymbolTable st'@((_, ht) :| _) list <- readRef st
-  return ht
+  SymbolTable scopes list <- readRef st
+  return $ NonEmpty.last scopes
+
+-- | Add a new message
+addMessage :: SymbolTable s v l -> l -> ST s ()
+addMessage st msg = do
+  SymbolTable scopes list <- readRef st
+  writeRef st $ SymbolTable scopes (msg : list)
+
+-- | Retrieve list of messages in the order they were stored
+getMessages :: SymbolTable s v l -> ST s [l]
+getMessages st = do
+  SymbolTable _ list <- readRef st
+  return $ reverse list
