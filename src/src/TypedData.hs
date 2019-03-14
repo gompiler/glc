@@ -254,9 +254,17 @@ data Expr
           Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
+  -- Note that type must be explicit here since
   | Arguments Offset
               Expr
               [Expr]
+  -- | Variant of arguments that is known to be a type cast
+  -- Eg int(expr)
+  -- Constraint is that there must only be one expression within parentheses,
+  -- and that the cast expression is a known type
+  -- the offset is included within Type'
+  | TypeCast Type'
+             Expr
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
@@ -270,6 +278,7 @@ instance ErrorBreakpoint Expr where
   offset (Selector o _ _)   = o
   offset (Index o _ _)      = o
   offset (Arguments o _ _)  = o
+  offset (TypeCast t _)     = offset t
 
 -- | See https://golang.org/ref/spec#Literal
 -- Type can be inferred from string
@@ -374,3 +383,6 @@ data FieldDecl =
 
 instance ErrorBreakpoint FieldDecl where
   offset (FieldDecl idents _) = offset idents
+
+class Typed a where
+  getType :: a -> Type'
