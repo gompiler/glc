@@ -1,3 +1,4 @@
+{-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE ExistentialQuantification #-}
 
 module SymbolTable
@@ -33,7 +34,7 @@ data Symbol
   | Function [Param]
              (Maybe SType)
   | Variable SType
-  | SType SType
+  | SType SType -- Declared types
   deriving (Show, Eq)
 
 data SType
@@ -41,7 +42,8 @@ data SType
           SType
   | Slice SType
   | Struct [Field] -- List of fields
-  | TypeMap S.Ident
+  | TypeMap S.Ident SType
+  | BaseMap S.Ident
   | Infer -- Infer the type at typechecking, not at symbol table generation
   deriving (Show, Eq)
 
@@ -163,49 +165,67 @@ instance Symbolize Type where
   toType (StructType fdl) st = do
     fl <- checkFields st fdl
     return $ fl >>= Right . Struct
+    where
+      checkFields ::
+        SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
+      checkFields st fdl = do
+        structTab <- S.new
+        sfl <- mapM (checkField st structTab) fdl
+        fl <- sequence sfl
+        return $ eitherL concat fl
+  
+      checkField ::
+        SymbolTable s1
+        -> StructTable s2
+        -> FieldDecl
+        -> ST s1 (ST s2 (Either ErrorMessage' [Field]))
+      checkField st structTab (FieldDecl idl (_, t)) = do
+        et <- toType t st
+        return $ either (return . Left) (\t' -> checkIds structTab t' idl) et
+  
+      checkIds ::
+        StructTable s
+        -> SType
+        -> Identifiers
+        -> ST s (Either ErrorMessage' [Field])
+      checkIds st t idl = eConcat <$> mapM (checkId st t) (toList idl)
+  
+      checkId ::
+        StructTable s -> SType -> Identifier -> ST s (Either ErrorMessage' Field)
+      checkId structTab' t ident@(Identifier _ vname) =
+        let idv = S.Ident vname in
+          do
+            res <- add' structTab' idv (idv, t) -- Should not be declared
+            return $
+              if not res
+              then Left (createError ident (AlreadyDecl ident))
+              else Right (idv, t)
   -- toType (FuncType sig) = toType sig
-  toType (Type ident@(Identifier _ vname)) st = return $ Right Infer-- resolve
+  toType (Type ident) st = resolve ident st
 
--- -- | Resolve the type of an identifier type
--- resolve :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' SType)
--- resolve ident@(Identifier o vname) st =
+resolve :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' SType)
+resolve ident@(Identifier _ vname) st = let idv = S.Ident vname in
+                                          do res <- S.lookup st idv
+                                             case res of
+                                               Nothing -> return $ Left $ createError ident (TNotDecl ident)
+                                               Just (_, t) ->
+                                                 case resolve' t idv of
+                                                   Nothing -> return $ Left $ createError ident (VoidFunc ident)
+                                                   Just t' -> return $ Right t'
+                                                 where resolve' Base ident' = Just $ BaseMap ident'
+                                                       resolve' Constant _ = Just $ BaseMap (S.Ident "bool") -- Constants reserved for bools only
+                                                       resolve' (Function _ mt) _ = mt
+                                                       resolve' (Variable t') _ = Just t'
+                                                       resolve' (SType t') _ = Just t'
+
+-- instance TypeInfer String where
+--   resolve :: String -> SymbolTable s -> ST s (Either ErrorMessage' SType)
+--   resolve s st = 
+
+  
 eConcat :: [Either ErrorMessage' Field] -> Either ErrorMessage' [Field]
 eConcat = eitherL id
 
-checkFields ::
-     SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-checkFields st fdl = do
-  structTab <- S.new
-  sfl <- mapM (checkField st structTab) fdl
-  fl <- sequence sfl
-  return $ eitherL concat fl
-
-checkField ::
-     SymbolTable s1
-  -> StructTable s2
-  -> FieldDecl
-  -> ST s1 (ST s2 (Either ErrorMessage' [Field]))
-checkField st structTab (FieldDecl idl (_, t)) = do
-  et <- toType t st
-  return $ either (return . Left) (\t' -> checkIds structTab t' idl) et
-
-checkIds ::
-     StructTable s
-  -> SType
-  -> Identifiers
-  -> ST s (Either ErrorMessage' [Field])
-checkIds st t idl = eConcat <$> mapM (checkId st t) (toList idl)
-
-checkId ::
-     StructTable s -> SType -> Identifier -> ST s (Either ErrorMessage' Field)
-checkId structTab' t ident@(Identifier _ vname) =
-  let idv = S.Ident vname in
-    do
-      res <- add' structTab' idv (idv, t) -- Should not be declared
-      return $
-        if not res
-        then Left (createError ident (AlreadyDecl ident))
-        else Right (idv, t)
 
 -- | Check if a symbol is valid
 -- isValid :: SymbolTable s -> Symbol -> ST s (Bool)
@@ -255,6 +275,8 @@ checkId structTab' t ident@(Identifier _ vname) =
 -- toString k =
 data SymbolError =
   AlreadyDecl Identifier
+  | TNotDecl Identifier
+  | VoidFunc Identifier
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -262,6 +284,10 @@ instance ErrorEntry SymbolError where
     case c of
       AlreadyDecl (Identifier _ vname) ->
         "Variable " ++ vname ++ " already declared"
+      TNotDecl (Identifier _ vname) ->
+        "Type " ++ vname ++ " not declared"
+      VoidFunc (Identifier _ vname) ->
+        vname ++ " resolves to a void function"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -273,7 +299,7 @@ topScope' = S.topScope
 -- testing stuff
 z = S.Ident "test"
 
-zk = SType (TypeMap $ S.Ident "test")
+zk = SType (TypeMap (S.Ident "test") (BaseMap (S.Ident "int")))
 
 -- t = runST $ (topScope new) >>= H.toList
 -- -- t2 = runST $ topScope ((new >>= (\st -> add st z zk))) >>= H.toList
