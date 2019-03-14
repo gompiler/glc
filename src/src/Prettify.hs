@@ -267,7 +267,6 @@ instance Prettify Type where
   prettify' (ArrayType e t)   = ["[" ++ prettify e ++ "]" ++ prettify t]
   prettify' (StructType fdls) = "struct {" : tab (fdls >>= prettify') ++ ["}"]
   prettify' (SliceType t)     = ["[]" ++ prettify t]
-  prettify' (FuncType s)      = ["func" ++ prettify s]
   prettify' (Type ident)      = [prettify ident]
 
 --  prettify s@StructType {} = intercalate "; " $ prettify' s
