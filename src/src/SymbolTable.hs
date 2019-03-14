@@ -56,6 +56,9 @@ type StructTable s = S.SymbolTable s Field ()
 -- | SymbolInfo: symbol name, corresponding symbol, scope depth
 type SymbolInfo = (S.Ident, Symbol, S.Scope)
 
+-- | Params with their respective scopes, for check FuncDecl
+type ParamInfo = (Param, S.Scope)
+
 -- | Insert n tabs
 tabs :: Int -> String
 tabs n = concat $ replicate n "\t"
@@ -130,18 +133,19 @@ instance Symbolize TopDecl where
 instance Symbolize FuncDecl where
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
-  recurse (FuncDecl ident@(Identifier _ vname) sig body) st = do
+  recurse (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body) st = do
     res <- S.isDef st (S.Ident vname)
     if res then return $ Just $ createError ident (AlreadyDecl "Function " ident)
-      else id
+      else do
+      S.enterScope st
+      epl <- checkParams st pdl
+      return $ either Just (const Nothing) epl -- Instead of nothing, verify body
       where
-      -- checkFields ::
-      --   SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      -- checkFields st2 fdl' = do
-      --   structTab <- S.new
-      --   sfl <- mapM (checkField st2 structTab) fdl'
-      --   fl <- sequence sfl
-      --   return $ eitherL concat fl
+      checkParams ::
+        SymbolTable s -> [ParameterDecl] -> ST s (Either ErrorMessage' [Param])
+      checkParams st2 pdl' = do
+        pl <- mapM (checkParam st2) pdl'
+        return $ eitherL concat pl
   
       checkParam ::
         SymbolTable s
@@ -150,39 +154,37 @@ instance Symbolize FuncDecl where
       checkParam st2 (ParameterDecl idl (o, t)) = do
         et <- toType t st2 -- Remove ST
         either (return . Left) (\t' -> do
-                                   (err, sil) <- checkIds st2 t' idl
-                                   _ <- mapM (S.addMessage st2) (map Just sil) -- Add list of SymbolInfo to messages
+                                   (err, pil) <- checkIds st2 t' idl
+                                   _ <- mapM (S.addMessage st2) (map Just (map parToVar pil)) -- Add list of SymbolInfo to messages
                                    case err of
                                      Just e -> do
                                        _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
                                        return $ Left e
                                      Nothing ->
-                                       return $ case maybeL id (map symbol2Par sil) of -- maybeL returns Nothing if there are any Nothings in the list of maybes, otherwise it returns Just [all just values]
-                                         -- All the symbols here are variables, will not resolve to void, this error should not happen
-                                         -- Nothing -> Left $ createError "Symbols in parameter declaration list should never resolve to void functions, this will never happen"
-                                         Just pl -> Right pl
+                                       return $ Right $ map pInfo2p pil
                                    ) et
         -- return $ either (return . Left) (\t' -> checkIds st2 t' idl) et
-      symbol2Par :: SymbolInfo -> Maybe Param
-      symbol2Par (ident, sym, _) = case resolve' sym ident of
-                                     Nothing -> Nothing
-                                     Just t -> Just (ident, t)
+      -- ParamInfo to SymbolInfo, in this case they are all vars because parameters are vars
+      parToVar :: ParamInfo -> SymbolInfo
+      parToVar ((ident, t), scope) = (ident, (SType t), scope)
+      pInfo2p :: ParamInfo -> Param
+      pInfo2p (p, _) = p
       checkIds ::
         SymbolTable s
         -> SType
         -> Identifiers
-        -> ST s (Maybe ErrorMessage', [SymbolInfo])
+        -> ST s (Maybe ErrorMessage', [ParamInfo])
       checkIds st2 t idl = pEithers <$> mapM (checkId st2 t) (toList idl)
   
       checkId ::
-        SymbolTable s -> SType -> Identifier -> ST s (Either ErrorMessage' SymbolInfo)
+        SymbolTable s -> SType -> Identifier -> ST s (Either ErrorMessage' ParamInfo)
       checkId st t ident@(Identifier _ vname) =
         let idv = S.Ident vname in
           do
             res <- add st idv (Variable t) -- Should not be declared
             return $ case res of
                        Nothing -> Left $ createError ident (AlreadyDecl "Param " ident)
-                       Just si -> Right si
+                       Just (_, _, scope) -> Right ((idv, t), scope)
 -- instance Symbolize ParameterDecl where
 --   verify :: ParameterDecl -> SymbolTable s -> ST s (Either ErrorMessage' SymbolInfo)
 --   verify (ParameterDecl ident@(Identifier _ vname) (_, t)) st = do
