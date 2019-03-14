@@ -1,7 +1,9 @@
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE GADTs                     #-}
-{-# LANGUAGE TupleSections             #-}
+{-# LANGUAGE BangPatterns  #-}
+{-# LANGUAGE GADTs         #-}
+{-# LANGUAGE TupleSections #-}
 
+-- |
+-- State based eager symbol table
 -- Heavily modeled around https://hackage.haskell.org/package/hashtables-1.2.3.1/docs/src/Data-HashTable-ST-Basic.html#HashTable
 module SymbolTableCore
   ( SymbolTable
@@ -45,12 +47,13 @@ data SymbolTable_ s v l =
 -- Scope starts at 0 and increases as you enter new scopes
 newtype Scope =
   Scope Int
+  deriving (Show, Eq)
 
 -- | Hashable key
 -- For symbol tables, we enforce strings
 newtype Ident =
   Ident String
-  deriving (Eq)
+  deriving (Show, Eq)
 
 instance Hashable Ident where
   hashWithSalt i (Ident s) = hashWithSalt i s
@@ -83,13 +86,13 @@ new = do
 
 -- | Inserts a key value pair at the upper most scope
 insert :: SymbolTable s v l -> Ident -> v -> ST s ()
-insert st k v = do
+insert st !k !v = do
   SymbolTable ((_, ht) :| _) _ <- readRef st
   HT.insert ht k v
 
 -- | Look up provided key across all scopes, starting with the top
 lookup :: SymbolTable s v l -> Ident -> ST s (Maybe (Scope, v))
-lookup st k = do
+lookup st !k = do
   SymbolTable scopes _ <- readRef st
   asum <$> mapM lookup' (toList scopes)
   where
@@ -100,7 +103,7 @@ lookup st k = do
 
 -- | Look up provided key at current scope only
 lookupCurrent :: SymbolTable s v l -> Ident -> ST s (Maybe (Scope, v))
-lookupCurrent st k = do
+lookupCurrent st !k = do
   (scope, ht) <- currentScope st
   v <- HT.lookup ht k
   return $ fmap (scope, ) v
@@ -113,6 +116,8 @@ enterScope st = do
   writeRef st $ SymbolTable ((Scope (scope + 1), ht) <| st') list
 
 -- | Discard current scope
+-- Note that if the current scope is the last scope,
+-- A crash will occur
 exitScope :: SymbolTable s v l -> ST s ()
 exitScope st = do
   SymbolTable (_ :| scopes) list <- readRef st
@@ -132,7 +137,7 @@ topScope st = do
 
 -- | Add a new message
 addMessage :: SymbolTable s v l -> l -> ST s ()
-addMessage st msg = do
+addMessage st !msg = do
   SymbolTable scopes list <- readRef st
   writeRef st $ SymbolTable scopes (msg : list)
 

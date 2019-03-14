@@ -24,6 +24,7 @@ dependencies:
 - array
 - megaparsec
 - parser-combinators
+- primitive
 - hashable
 - hashtables
 - containers
