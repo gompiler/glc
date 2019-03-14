@@ -3,9 +3,18 @@
 
 module TypedData where
 
+import           Data               (Identifier (..), Identifiers (..))
 import           Data.List.NonEmpty (NonEmpty (..))
 import           ErrorBundle
-import Data (Identifier(..), Identifiers(..))
+
+type TODO = ()
+
+-- TODO I recommend this be separate from symbol table,
+-- even if it's the same thing since there's no reason to have the
+-- base symbol table be dependent on the data module
+newtype Scope =
+  Scope Int
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
@@ -194,10 +203,10 @@ instance ErrorBreakpoint SwitchCase where
 
 -- | See https://golang.org/ref/spec#For_statements
 -- Golite does not support range statement
-data ForClause
-  = ForClause SimpleStmt
-              (Maybe Expr)
-              SimpleStmt
+data ForClause =
+  ForClause SimpleStmt
+            (Maybe Expr)
+            SimpleStmt
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -268,22 +277,20 @@ instance ErrorBreakpoint Expr where
 -- we might want just string, or store as int and reformat on pretty print
 data Literal
   = IntLit Offset
-           IntType'
-           String
+           Int
   | FloatLit Offset
-             String
+             Float
   | RuneLit Offset
             String
   | StringLit Offset
-              StringType'
               String
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Literal where
-  offset (IntLit o _ _)    = o
-  offset (FloatLit o _)    = o
-  offset (RuneLit o _)     = o
-  offset (StringLit o _ _) = o
+  offset (IntLit o _)    = o
+  offset (FloatLit o _)  = o
+  offset (RuneLit o _)   = o
+  offset (StringLit o _) = o
 
 --  offset (StringLit o _ _) = o
 -- | See https://golang.org/ref/spec#binary_op
@@ -335,28 +342,13 @@ newtype AssignOp =
   AssignOp (Maybe ArithmOp)
   deriving (Show, Eq)
 
--- | See https://golang.org/ref/spec#Integer_literals
-data IntType'
-  -- Eg 123
-  = Decimal
-  -- Eg 0135
-  | Octal
-  -- Eg 0xab90
-  | Hexadecimal
-  deriving (Show, Eq)
-
-data StringType'
-  = Interpreted
-  | Raw
-  deriving (Show, Eq)
-
 -- | Type with offset value
 -- We do not include offsets within types as
 -- it results in unnecessary nested offsets
-type Type' = (Offset, Type)
+type Type' = (Offset, Scope, Identifier, Type)
 
 instance ErrorBreakpoint Type' where
-  offset (o, _) = o
+  offset (o, _, _, _) = o
 
 -- | See https://golang.org/ref/spec#Types
 data Type
