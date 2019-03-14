@@ -19,20 +19,13 @@ module SymbolTableCore
   , getMessages
   ) where
 
-import           Control.Applicative     (Alternative)
 import           Control.Monad.ST
-import           Data
-import           Data.Either             (partitionEithers)
 import           Data.Foldable           (asum)
-import           Data.Functor.Compose    (Compose (..), getCompose)
 import           Data.Hashable           (Hashable (..))
-import qualified Data.HashTable.Class    as H
 import qualified Data.HashTable.ST.Basic as HT
 import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, (<|))
 import qualified Data.List.NonEmpty      as NonEmpty (last)
 import           Data.STRef
-import           ErrorBundle
-import           GHC.Base                (liftM)
 import           Prelude                 hiding (lookup)
 
 -- | SymbolTable, cactus stack of SymbolScope
@@ -91,7 +84,7 @@ new = do
 -- | Inserts a key value pair at the upper most scope
 insert :: SymbolTable s v l -> Ident -> v -> ST s ()
 insert st k v = do
-  SymbolTable ss@((scope, ht) :| _) list <- readRef st
+  SymbolTable ((_, ht) :| _) _ <- readRef st
   HT.insert ht k v
 
 -- | Look up provided key across all scopes, starting with the top
@@ -122,19 +115,19 @@ enterScope st = do
 -- | Discard current scope
 exitScope :: SymbolTable s v l -> ST s ()
 exitScope st = do
-  SymbolTable st'@(_ :| scopes) list <- readRef st
+  SymbolTable (_ :| scopes) list <- readRef st
   writeRef st $ SymbolTable (fromList scopes) list
 
 -- | Retrieve the current symbol scope
 currentScope :: SymbolTable s v l -> ST s (SymbolScope s v)
 currentScope st = do
-  SymbolTable st'@(s :| _) list <- readRef st
+  SymbolTable (s :| _) _ <- readRef st
   return s
 
 -- | Retrieve top level scope (scope 0)
 topScope :: SymbolTable s v l -> ST s (SymbolScope s v)
 topScope st = do
-  SymbolTable scopes list <- readRef st
+  SymbolTable scopes _ <- readRef st
   return $ NonEmpty.last scopes
 
 -- | Add a new message
