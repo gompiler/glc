@@ -672,8 +672,8 @@ infer st ie@(Index _ e1 e2) = do
   e1e <- infer st e1
   e2e <- infer st e2
   return $ case (e1e, e2e) of
-    (Right (Slice t), Right (Primitive (S.Ident "int"))) -> Right t
-    (Right (Array _ t), Right (Primitive (S.Ident "int"))) -> Right t
+    (Right (Slice t), Right (Primitive $ S.Ident "int")) -> Right t
+    (Right (Array _ t), Right (Primitive $ S.Ident "int")) -> Right t
     (Right (Slice t), _) -> Left $ createError ie $ BadIndex "slice" t
     (Right (Array _ t), _) -> Left $ createError ie $ BadIndex "array" t
     (Right t, _)  -> Left $ createError ie $ NonIndexable t
@@ -695,7 +695,7 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
       (Left)
       (\ts ->
          if (and $ NE.map isCorrect ts)
-           then Right (resultSType ts)
+           then Right $ resultSType ts
            else Left $ createError parentExpr (makeError ts))
       (sequence tss)
 
