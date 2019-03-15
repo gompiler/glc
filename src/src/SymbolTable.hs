@@ -2,8 +2,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
 module SymbolTable
-  ( SType(..)
-  ) where
+where
 
 import           Control.Applicative     (Alternative)
 import           Control.Monad           (join)
@@ -115,14 +114,12 @@ am f l = fmap asum (mapM f l)
 -- Class to generalize traverse function for each AST structure
 class Symbolize a where
   recurse :: SymbolTable s -> a -> ST s (Maybe ErrorMessage')
+class Typify a where
   -- Resolve AST types to SType, may return error message if type error
   toType :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
-  -- verify :: a -> SymbolTable s -> ST s (Either ErrorMessage' SymbolInfo)
-  -- -- Verify a list of a, want to keep SymbolInfo even if we have an error to print partial symbol table
-  -- verifyL :: [a] -> SymbolTable s -> ST s (Maybe ErrorMessage', [SymbolInfo])
 
-instance Symbolize HAST where
-  recurse (H a) = recurse a
+-- instance Symbolize HAST where
+--   recurse (H a) = recurse a
 
 instance Symbolize TopDecl where
   recurse st (TopDecl d) = recurse st d
@@ -130,13 +127,21 @@ instance Symbolize TopDecl where
 instance Symbolize FuncDecl where
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
-  recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) = do
+  recurse st (FuncDecl ident@(Identifier _ vname) sig@(Signature (Parameters pdl) t) (BlockStmt sl)) = do
     res <- S.isDef st (S.Ident vname)
     if res then return $ Just $ createError ident (AlreadyDecl "Function " ident)
       else do
       S.enterScope st
       epl <- checkParams st pdl
-      either (return . Just) (const $ am (recurse st) sl) epl -- Instead of nothing, verify body
+      either (return . Just) (\pl -> do
+                                 maybe Nothing (\t' -> do
+                                                   et <- toType st t'
+                                                   either (return . Just) (\tt ->  do
+                                                                              _ <- S.insert st (S.Ident vname) (Func pl (Just tt))
+                                                                              am (recurse st) sl
+                                                                          ) et
+                                               ) t
+                                 ) epl -- Instead of nothing, verify body
       where
       checkParams ::
         SymbolTable s -> [ParameterDecl] -> ST s (Either ErrorMessage' [Param])
@@ -147,10 +152,10 @@ instance Symbolize FuncDecl where
         SymbolTable s
         -> ParameterDecl
         -> ST s (Either ErrorMessage' [Param])
-      checkParam st2 (ParameterDecl idl (o, t)) = do
-        et <- toType st2 t-- Remove ST
-        either (return . Left) (\t' -> do
-                                   (err, pil) <- checkIds st2 t' idl
+      checkParam st2 (ParameterDecl idl (_, t')) = do
+        et <- toType st2 t'-- Remove ST
+        either (return . Left) (\t2 -> do
+                                   (err, pil) <- checkIds st2 t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
                                    _ <- mapM (S.addMessage st2) (map Just (map parToVar pil)) -- Add list of SymbolInfo to messages
                                    case err of
@@ -161,7 +166,7 @@ instance Symbolize FuncDecl where
                                        return $ Right $ map pInfo2p pil
                                    ) et
       parToVar :: ParamInfo -> SymbolInfo
-      parToVar ((ident, t), scope) = (ident, (SType t), scope)
+      parToVar ((ident', t'), scope) = (ident', (SType t'), scope)
       pInfo2p :: ParamInfo -> Param
       pInfo2p (p, _) = p
       checkIds ::
@@ -169,38 +174,42 @@ instance Symbolize FuncDecl where
         -> SType
         -> Identifiers
         -> ST s (Maybe ErrorMessage', [ParamInfo])
-      checkIds st2 t idl = pEithers <$> mapM (checkId st2 t) (toList idl)
+      checkIds st2 t' idl = pEithers <$> mapM (checkId st2 t') (toList idl)
   
       checkId ::
         SymbolTable s -> SType -> Identifier -> ST s (Either ErrorMessage' ParamInfo)
-      checkId st t ident@(Identifier _ vname) =
-        let idv = S.Ident vname in
+      checkId st2 t' ident'@(Identifier _ vname') =
+        let idv = S.Ident vname' in
           do
-            res <- add st idv (Variable t) -- Should not be declared
+            res <- add st2 idv (Variable t') -- Should not be declared
             return $ case res of
-                       Nothing -> Left $ createError ident (AlreadyDecl "Param " ident)
-                       Just (_, _, scope) -> Right ((idv, t), scope)
-  recurse st (FuncDecl _ _ _) = return Nothing -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
+                       Nothing -> Left $ createError ident (AlreadyDecl "Param " ident')
+                       Just (_, _, scope) -> Right ((idv, t'), scope)
+  recurse _ (FuncDecl _ _ _) = undefined -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
 
 instance Symbolize SimpleStmt where
   recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el) st
     where
       checkDecl :: [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
-      checkDecl idl el st = do
-        bl <- mapM (isNewDec st) idl
+      checkDecl idl' _ st' = do
+        bl <- mapM (isNewDec st') idl'
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-        return $ if True `elem` bl then Nothing else Just $ createError (head idl) ShortDec
+        return $ if True `elem` bl then Nothing else Just $ createError (head idl') ShortDec
       isNewDec :: SymbolTable s -> Identifier -> ST s Bool
-      isNewDec st ident@(Identifier _ vname) = let idv = S.Ident vname in
-                                                 do val <- S.lookupCurrent st idv
+      isNewDec st2 (Identifier _ vname) = let idv = S.Ident vname in
+                                                 do val <- S.lookupCurrent st2 idv
                                                     case val of
                                                       Just _ -> return False
                                                       Nothing -> do
-                                                        msi <- add st idv (Variable Infer) 
+                                                        msi <- add st2 idv (Variable Infer) 
                                                         -- This cannot be Nothing, add will always succeed here because lookup returned Nothing, so there is no conflict
-                                                        _ <- S.addMessage st msi -- Add new symbol
+                                                        _ <- S.addMessage st2 msi -- Add new symbol
                                                         return True
-  recurse st _ = return Nothing
+  -- recurse st 
+  recurse _ _ = return Nothing
+
+instance Symbolize Stmt where
+  recurse _ _ = undefined
   
 instance Symbolize Decl where
   recurse st (VarDecl vdl) =
@@ -208,11 +217,11 @@ instance Symbolize Decl where
   recurse st (TypeDef tdl) =
     am (recurse st) tdl
 instance Symbolize VarDecl' where
-  recurse st (VarDecl' neIdl (Left (t, el))) =
-    am (recurse st) ((H t):(map H $ toList neIdl) ++ (map H el))
+  -- recurse st (VarDecl' neIdl (Left (t, el))) = undefined
+  recurse _ _ = undefined
 instance Symbolize TypeDef' where
-  recurse st (TypeDef' ident t) =
-    am (recurse st) [H ident, H t]
+  recurse _ _ = undefined
+  -- recurse st (TypeDef' ident t) = undefined
     
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
@@ -247,7 +256,7 @@ maybeL f ml = if length (catMaybes ml) == length ml then -- All values are Just 
               else
                 Nothing
 
-instance Symbolize Type where
+instance Typify Type where
   toType st (ArrayType (Lit l) t) = do
     sym <- toType st t
     return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
@@ -322,8 +331,8 @@ resolve ident@(Identifier _ vname) st = let idv = S.Ident vname in
 
 -- | Resolve symbol to type
 resolve' :: Symbol -> S.Ident -> Maybe SType
-resolve' Base ident' = Just $ BaseMap ident'
-resolve' Constant _ = Just $ BaseMap (S.Ident "bool") -- Constants reserved for bools only
+resolve' Base ident' = Just $ Primitive ident'
+resolve' Constant _ = Just $ Primitive (S.Ident "bool") -- Constants reserved for bools only
 resolve' (Variable t') _ = Just $ t'
 resolve' (SType t') _ = Just $ t'
 resolve' (Func _ mt) _ = mt
@@ -384,36 +393,24 @@ class TypeInfer a where
   infer :: a -> SymbolTable s -> ST s (Either ErrorMessage' SType)
 
 -- testing stuff
-z = S.Ident "test"
+-- z = S.Ident "test"
 
-zk = SType (TypeMap (S.Ident "test") (BaseMap (S.Ident "int")))
+-- zk = SType (TypeMap (S.Ident "test") (Primitive (S.Ident "int")))
 
--- t = runST $ (topScope new) >>= H.toList
--- -- t2 = runST $ topScope ((new >>= (\st -> add st z zk))) >>= H.toList
--- t2' = runST $ do
---   st <- new
---   _ <- add st z zk
---   topScope' st >>= H.toList
--- t3 = runST $ do
---   st <- new
---   enterScope st
---   _ <- add st z zk
---   topScope' st >>= H.toList
--- st' = StructType [FieldDecl (Identifier (Offset 0) "aaaaa" :| [Identifier (Offset 0) "ggggg"]) (Offset 0, Type (Identifier (Offset 0) "aaaaaaaaa"))]
-st' =
-  StructType
-    [ FieldDecl
-        (Identifier (Offset 0) "aaaaa" :| [])
-        (Offset 0, Type (Identifier (Offset 0) "aaaaaaaaa"))
-    ]
+-- st' =
+--   StructType
+--     [ FieldDecl
+--         (Identifier (Offset 0) "aaaaa" :| [])
+--         (Offset 0, Type (Identifier (Offset 0) "aaaaaaaaa"))
+--     ]
 
--- st2 = Type (Identifier (Offset 0) "a")
-t3 =
-  runST $ do
-    st <- new
-    S.enterScope st
-    t <- toType st' st
-    _ <- either (const $ add st z zk) (add st z . SType) t
-    (_, ht) <- topScope' st
-    H.toList ht -- Base hash table as list
--- runST $ ((new >>= readSTRef) >>= return . snd . head . toList) >>= H.toList
+-- -- st2 = Type (Identifier (Offset 0) "a")
+-- t3 =
+--   runST $ do
+--     st <- new
+--     S.enterScope st
+--     t <- toType st st'
+--     _ <- either (const $ add st z zk) (add st z . SType) t
+--     (_, ht) <- topScope' st
+--     H.toList ht -- Base hash table as list
+-- -- runST $ ((new >>= readSTRef) >>= return . snd . head . toList) >>= H.toList
