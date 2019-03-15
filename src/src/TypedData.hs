@@ -7,7 +7,13 @@ import           Base
 import           Data               (Identifier (..), Identifiers)
 import           Data.List.NonEmpty (NonEmpty (..))
 
-type TODO = ()
+data ScopedIdent =
+  ScopedIdent Scope
+              Identifier
+  deriving (Show, Eq)
+
+instance ErrorBreakpoint ScopedIdent where
+  offset (ScopedIdent _ ident) = offset ident
 
 -- TODO I recommend this be separate from symbol table,
 -- even if it's the same thing since there's no reason to have the
@@ -50,14 +56,14 @@ data Decl
 -- This is necessary for cases like var a float = 5,
 -- where the expression type is not necessarily the same as the declared one
 data VarDecl' =
-  VarDecl' Identifier
+  VarDecl' ScopedIdent
            Expr
            InferredType
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =
-  TypeDef' Identifier
+  TypeDef' ScopedIdent
            Type'
   deriving (Show, Eq)
 
@@ -72,7 +78,7 @@ data TypeDef' =
 -- * Unnamed input parameters
 -- * Variadic parameters
 data FuncDecl =
-  FuncDecl Identifier
+  FuncDecl ScopedIdent
            Signature
            FuncBody
   deriving (Show, Eq)
@@ -85,7 +91,7 @@ instance ErrorBreakpoint FuncDecl where
 -- Golite does not support unnamed parameters
 -- At this stage, we can map each individual identifier to its expected type
 data ParameterDecl =
-  ParameterDecl Identifier
+  ParameterDecl ScopedIdent
                 Type'
   deriving (Show, Eq)
 
@@ -126,7 +132,7 @@ data SimpleStmt
            AssignOp
            (NonEmpty (Expr, Expr))
   -- | See https://golang.org/ref/spec#ShortVarDecl
-  | ShortDeclare (NonEmpty (Identifiers, Expr))
+  | ShortDeclare (NonEmpty (ScopedIdent, Expr))
   deriving (Show, Eq)
 
 instance ErrorBreakpoint SimpleStmt where
@@ -273,17 +279,17 @@ data Expr
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
-  offset (Unary o _ _ _)       = o
-  offset (Binary o _ _ _ _)    = o
+  offset (Unary o _ _ _)     = o
+  offset (Binary o _ _ _ _)  = o
   offset (Lit l)             = offset l
   offset (Var ident _)       = offset ident
   offset (AppendExpr o _ _)  = o
   offset (LenExpr o _)       = o
   offset (CapExpr o _)       = o
-  offset (Selector o _ _ _)    = o
-  offset (Index o _ _ _)       = o
+  offset (Selector o _ _ _)  = o
+  offset (Index o _ _ _)     = o
   offset (Arguments o _ _ _) = o
-  offset (TypeConvert t _ _)   = offset t
+  offset (TypeConvert t _ _) = offset t
 
 -- | See https://golang.org/ref/spec#Literal
 data Literal
@@ -374,14 +380,15 @@ data Type
   -- | See https://golang.org/ref/spec#Struct_types
   | StructType [FieldDecl]
   -- | See https://golang.org/ref/spec#Function_types
-  | TypeMap Identifier
+  | TypeMap ScopedIdent
             Type
-  | Type Identifier
+  | Type ScopedIdent
   -- | Empty return type
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl
 -- Golite does not support embedded fields
+-- Note that these fields aren't scope related
 data FieldDecl =
   FieldDecl Identifier
             Type'
