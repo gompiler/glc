@@ -142,10 +142,12 @@ instance Symbolize FuncDecl where
                                                ) t
                                  ) epl 
       -- We then take the Either ErrorMessage' Symbol, if no error we insert the Symbol (newly declared function) and recurse on statement list sl (from body of func) to declare things in body
-      either (return . Just) (\f -> do
+      res2 <- either (return . Just) (\f -> do
                                  _ <- S.insert st (S.Ident vname) f
                                  am (recurse st) sl
                              ) ef
+      S.exitScope st
+      return res2
       where
       checkParams ::
         SymbolTable s -> [ParameterDecl] -> ST s (Either ErrorMessage' [Param])
@@ -210,10 +212,20 @@ instance Symbolize SimpleStmt where
                                                         -- This cannot be Nothing, add will always succeed here because lookup returned Nothing, so there is no conflict
                                                         _ <- S.addMessage st2 msi -- Add new symbol
                                                         return True
-  -- recurse st 
-  recurse _ _ = return Nothing
+  recurse _ EmptyStmt = return Nothing
+  recurse st (ExprStmt e) = recurse st e -- Verify that expr only uses things that are defined
+  recurse st (Increment _ e) = recurse st e
+  recurse st (Decrement _ e) = recurse st e
+  recurse st (Assign _ _ el _) = am (recurse st) (toList el)
 
 instance Symbolize Stmt where
+  recurse st (BlockStmt sl) = do
+    S.enterScope st -- Open a new scope for the block
+    res <- am (recurse st) sl
+    S.exitScope st
+    return res
+  recurse st (SimpleStmt s) = recurse st s
+  -- recurse st (If (ss, e) s1 s2) = undefined
   recurse _ _ = undefined
   
 instance Symbolize Decl where
@@ -227,6 +239,9 @@ instance Symbolize VarDecl' where
 instance Symbolize TypeDef' where
   recurse _ _ = undefined
   -- recurse st (TypeDef' ident t) = undefined
+
+instance Symbolize Expr where
+  recurse _ _ = undefined
     
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
