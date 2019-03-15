@@ -182,7 +182,7 @@ instance Symbolize FuncDecl
         either
           (return . Left)
           (\t2 -> do
-             (err, pil) <- checkIds st2 t2 idl
+             (err, pil) <- checkIds' st2 t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
              _ <- mapM ((S.addMessage st2) . Just) (map parToVar pil) -- Add list of SymbolInfo to messages
              case err of
@@ -195,18 +195,18 @@ instance Symbolize FuncDecl
       parToVar ((ident', t'), scope) = (ident', SType t', scope)
       pInfo2p :: ParamInfo -> Param
       pInfo2p (p, _) = p
-      checkIds ::
+      checkIds' ::
            SymbolTable s
         -> SType
         -> Identifiers
         -> ST s (Maybe ErrorMessage', [ParamInfo])
-      checkIds st2 t' idl = pEithers <$> mapM (checkId st2 t') (toList idl)
-      checkId ::
+      checkIds' st2 t' idl = pEithers <$> mapM (checkId' st2 t') (toList idl)
+      checkId' ::
            SymbolTable s
         -> SType
         -> Identifier
         -> ST s (Either ErrorMessage' ParamInfo)
-      checkId st2 t' ident'@(Identifier _ vname') =
+      checkId' st2 t' ident'@(Identifier _ vname') =
         let idv = S.Ident vname'
          in do res <- add st2 idv (Variable t') -- Should not be declared
                return $
@@ -214,9 +214,36 @@ instance Symbolize FuncDecl
                    Nothing ->
                      Left $ createError ident (AlreadyDecl "Param " ident')
                    Just (_, _, scope) -> Right ((idv, t'), scope)
-  -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
+-- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
+
+-- | checkId over a list of identifiers, keep first error or return nothing
+checkIds ::
+  SymbolTable s
+  -> SType
+  -> String
+  -> Identifiers
+  -> ST s (Maybe ErrorMessage')
+checkIds st t pfix idl = maybeJ <$> mapM (checkId st t pfix) (toList idl)
+
+-- | Check that we can declare this identifier
+checkId :: 
+  SymbolTable s
+  -> SType
+  -> String -- Error prefix for AlreadyDecl, what are we checking? i.e. Param, Var, Type
+  -> Identifier
+  -> ST s (Maybe ErrorMessage')
+checkId st t pfix ident@(Identifier _ vname) =
+  let idv = S.Ident vname in
+    do res <- add st idv (Variable t) -- Should not be declared
+       case res of
+         Nothing -> do
+           _ <- S.addMessage st Nothing -- Signal error so we don't print symbols beyond this
+           return $ Just $ createError ident (AlreadyDecl pfix ident)
+         Just _ -> do -- Successful insertion, insert symbol info
+           _ <- S.addMessage st res
+           return Nothing
 
 instance Symbolize SimpleStmt where
   recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el) st
@@ -288,16 +315,31 @@ instance Symbolize Decl where
   recurse st (VarDecl vdl) = am (recurse st) vdl
   recurse st (TypeDef tdl) = am (recurse st) tdl
 
-instance Symbolize VarDecl'
-  -- recurse st (VarDecl' neIdl (Left (t, el))) = undefined
-                                                            where
-  recurse _ _ = undefined
+instance Symbolize VarDecl' where
+  recurse st (VarDecl' neIdl edef) =
+    case edef of
+      Left ((_, t), _) -> do
+        et <- toType st t
+        either (return . Just) (\t' -> checkIds st t' "Variable " neIdl) et
+      Right _ -> checkIds st Infer "Variable " neIdl
 
 instance Symbolize TypeDef' where
-  recurse _ _ = undefined
-  -- recurse st (TypeDef' ident t) = undefined
+  recurse st (TypeDef' ident (_, t)) = do
+    et <- toType st t
+    either (return . Just) (\t' -> checkId st t' "Type " ident) et
 
 instance Symbolize Expr where
+  recurse st (Unary _ _ e) = recurse st e
+  recurse st (Binary _ _ e1 e2) = am (recurse st) [e1, e2]
+  recurse _ (Lit _) = return Nothing -- No identifiers to check here
+  recurse st (Var ident@(Identifier _ vname)) = do -- Should be defined, otherwise we're trying to use undefined variable
+    res <- S.isDef st (S.Ident vname)
+    if res then return Nothing
+      else return $ Just $ createError ident (NotDecl "Variable " ident)
+  recurse st (AppendExpr _ e1 e2) = am (recurse st) [e1, e2]
+  recurse st (LenExpr _ e) = recurse st e
+  recurse st (CapExpr _ e) = recurse st e
+  -- recurse st (Selector _ e ident@(Identifier _ vname))
   recurse _ _ = undefined
 
 instance Symbolize SwitchCase where
@@ -367,19 +409,19 @@ instance Typify Type where
         -> ST s1 (ST s2 (Either ErrorMessage' [Field]))
       checkField st2 structTab (FieldDecl idl (_, t)) = do
         et <- toType st2 t
-        return $ either (return . Left) (\t' -> checkIds structTab t' idl) et
-      checkIds ::
+        return $ either (return . Left) (\t' -> checkIds' structTab t' idl) et
+      checkIds' ::
            StructTable s
         -> SType
         -> Identifiers
         -> ST s (Either ErrorMessage' [Field])
-      checkIds st2 t idl = sequence <$> mapM (checkId st2 t) (toList idl)
-      checkId ::
+      checkIds' st2 t idl = sequence <$> mapM (checkId' st2 t) (toList idl)
+      checkId' ::
            StructTable s
         -> SType
         -> Identifier
         -> ST s (Either ErrorMessage' Field)
-      checkId structTab' t ident@(Identifier _ vname) =
+      checkId' structTab' t ident@(Identifier _ vname) =
         let idv = S.Ident vname
          in do res <- add' structTab' idv (idv, t) -- Should not be declared
                return $
