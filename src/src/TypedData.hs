@@ -44,14 +44,10 @@ data Decl
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#VarDecl
--- A single declaration line can declare one or more identifiers
--- There is an optional type, as well as an optional list of expressions.
--- The expression list should match the length of the identifier list,
--- though we make no guarantees at this AST stage
--- Should a type be specified, the expression list is optional
+-- Note that a proper declaration can be mapped to pairs of ids and expressions
+-- The type definition is optional
 data VarDecl' =
-  VarDecl' Identifiers
-           (Either (Type', [Expr]) (NonEmpty Expr))
+  VarDecl' Identifier Expr (Maybe Type)
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
@@ -82,8 +78,9 @@ instance ErrorBreakpoint FuncDecl where
 -- | See https://golang.org/ref/spec#ParameterDecl
 -- Func components
 -- Golite does not support unnamed parameters
+-- At this stage, we can map each individual identifier to its expected type
 data ParameterDecl =
-  ParameterDecl Identifiers
+  ParameterDecl Identifier
                 Type'
   deriving (Show, Eq)
 
