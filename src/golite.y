@@ -412,12 +412,7 @@ newtype ParseError = ParseError InnerToken
   deriving (Show, Eq)
 
 instance ErrorEntry ParseError where
-  errorMessage err =
-    let m =
-          case err of
-            ParseError t        -> humanize t
-            ParseUnknown s      -> s
-     in "Parsing error: unexpected " ++ m ++ "."
+  errorMessage (ParseError t) = "Parsing error: unexpected " ++ humanize t ++ "."
 
 parseError :: Token -> Alex a
 parseError (Token (AlexPn o l c) t) =
