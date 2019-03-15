@@ -1,25 +1,26 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Data where
+module TypedData where
 
+import           Base
+import           Data               (Identifier (..))
 import           Data.List.NonEmpty (NonEmpty (..))
-import           ErrorBundle
 
--- note that I do not classify blank identifiers as a separate type
--- because we can easily pattern match it already
-data Identifier =
-  Identifier Offset
-             String
+data ScopedIdent =
+  ScopedIdent Scope
+              Identifier
   deriving (Show, Eq)
 
-instance ErrorBreakpoint Identifier where
-  offset (Identifier o _) = o
+instance ErrorBreakpoint ScopedIdent where
+  offset (ScopedIdent _ ident) = offset ident
 
-type Identifiers = NonEmpty Identifier
-
-instance ErrorBreakpoint Identifiers where
-  offset (ident :| _) = offset ident
+-- TODO I recommend this be separate from symbol table,
+-- even if it's the same thing since there's no reason to have the
+-- base symbol table be dependent on the data module
+newtype Scope =
+  Scope Int
+  deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
@@ -38,31 +39,24 @@ data TopDecl
 
 -- | See https://golang.org/ref/spec#Declaration
 -- Golite does not support type alias
-data Decl
+newtype Decl
   -- | See https://golang.org/ref/spec#VarDecl
   -- If only one entry exists, it is treated as a single line declaration
   -- Otherwise, it is treated as var ( ... )
-  = VarDecl [VarDecl']
-  -- | See https://golang.org/ref/spec#TypeDecl
-  -- Same spec as VarDecl
-  | TypeDef [TypeDef']
+         =
+  VarDecl [VarDecl']
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#VarDecl
--- A single declaration line can declare one or more identifiers
--- There is an optional type, as well as an optional list of expressions.
--- The expression list should match the length of the identifier list,
--- though we make no guarantees at this AST stage
--- Should a type be specified, the expression list is optional
+-- Note that a proper declaration can be mapped to pairs of ids and expressions
+-- The inferred type here is a valid type after we check that
+-- the expression type matches the declared type, if any.
+-- This is necessary for cases like var a float = 5,
+-- where the expression type is not necessarily the same as the declared one
 data VarDecl' =
-  VarDecl' Identifiers
-           (Either (Type', [Expr]) (NonEmpty Expr))
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#TypeDef
-data TypeDef' =
-  TypeDef' Identifier
-           Type'
+  VarDecl' ScopedIdent
+           Expr
+           InferredType
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -76,7 +70,7 @@ data TypeDef' =
 -- * Unnamed input parameters
 -- * Variadic parameters
 data FuncDecl =
-  FuncDecl Identifier
+  FuncDecl ScopedIdent
            Signature
            FuncBody
   deriving (Show, Eq)
@@ -87,8 +81,9 @@ instance ErrorBreakpoint FuncDecl where
 -- | See https://golang.org/ref/spec#ParameterDecl
 -- Func components
 -- Golite does not support unnamed parameters
+-- At this stage, we can map each individual identifier to its expected type
 data ParameterDecl =
-  ParameterDecl Identifiers
+  ParameterDecl ScopedIdent
                 Type'
   deriving (Show, Eq)
 
@@ -125,23 +120,20 @@ data SimpleStmt
   | Decrement Offset
               Expr
   -- | See https://golang.org/ref/spec#Assignments
-  -- Lists should be equal, but verification is left for a later phase.
   | Assign Offset
            AssignOp
-           (NonEmpty Expr)
-           (NonEmpty Expr)
+           (NonEmpty (Expr, Expr))
   -- | See https://golang.org/ref/spec#ShortVarDecl
-  | ShortDeclare Identifiers
-                 (NonEmpty Expr)
+  | ShortDeclare (NonEmpty (ScopedIdent, Expr))
   deriving (Show, Eq)
 
 instance ErrorBreakpoint SimpleStmt where
-  offset EmptyStmt               = error "EmptyStmt has no offset"
-  offset (ExprStmt e)            = offset e
-  offset (Increment o _)         = o
-  offset (Decrement o _)         = o
-  offset (Assign o _ _ _)        = o
-  offset (ShortDeclare idents _) = offset idents
+  offset EmptyStmt                        = error "EmptyStmt has no offset"
+  offset (ExprStmt e)                     = offset e
+  offset (Increment o _)                  = o
+  offset (Decrement o _)                  = o
+  offset (Assign o _ _)                   = o
+  offset (ShortDeclare ((ident, _) :| _)) = offset ident
 
 -- | Shortcut for a blank stmt
 blank :: Stmt
@@ -208,10 +200,10 @@ instance ErrorBreakpoint SwitchCase where
 
 -- | See https://golang.org/ref/spec#For_statements
 -- Golite does not support range statement
-data ForClause
-  = ForClause SimpleStmt
-              (Maybe Expr)
-              SimpleStmt
+data ForClause =
+  ForClause SimpleStmt
+            (Maybe Expr)
+            SimpleStmt
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -223,14 +215,17 @@ data Expr
   = Unary Offset
           UnaryOp
           Expr
+          InferredType
   | Binary Offset
            BinaryOp
            Expr
            Expr
+           InferredType
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
   | Var Identifier
+        InferredType
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
@@ -252,52 +247,59 @@ data Expr
   | Selector Offset
              Expr
              Identifier
+             InferredType
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
   | Index Offset
           Expr
           Expr
+          InferredType
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   | Arguments Offset
               Expr
               [Expr]
+              Signature
+  -- | Variant of arguments that is known to be a type cast
+  -- Eg int(expr)
+  -- Constraint is that there must only be one expression within parentheses,
+  -- and that the cast expression is a known type
+  -- the offset is included within Type'
+  | TypeConvert Type'
+                Expr
+                InferredType
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
-  offset (Unary o _ _)      = o
-  offset (Binary o _ _ _)   = o
-  offset (Lit l)            = offset l
-  offset (Var ident)        = offset ident
-  offset (AppendExpr o _ _) = o
-  offset (LenExpr o _)      = o
-  offset (CapExpr o _)      = o
-  offset (Selector o _ _)   = o
-  offset (Index o _ _)      = o
-  offset (Arguments o _ _)  = o
+  offset (Unary o _ _ _)     = o
+  offset (Binary o _ _ _ _)  = o
+  offset (Lit l)             = offset l
+  offset (Var ident _)       = offset ident
+  offset (AppendExpr o _ _)  = o
+  offset (LenExpr o _)       = o
+  offset (CapExpr o _)       = o
+  offset (Selector o _ _ _)  = o
+  offset (Index o _ _ _)     = o
+  offset (Arguments o _ _ _) = o
+  offset (TypeConvert t _ _) = offset t
 
 -- | See https://golang.org/ref/spec#Literal
--- Type can be inferred from string
--- If we want to keep erroneous states invalid,
--- we might want just string, or store as int and reformat on pretty print
 data Literal
   = IntLit Offset
-           IntType'
-           String
+           Int
   | FloatLit Offset
-             String
+             Float
   | RuneLit Offset
-            String
+            Char
   | StringLit Offset
-              StringType'
               String
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Literal where
-  offset (IntLit o _ _)    = o
-  offset (FloatLit o _)    = o
-  offset (RuneLit o _)     = o
-  offset (StringLit o _ _) = o
+  offset (IntLit o _)    = o
+  offset (FloatLit o _)  = o
+  offset (RuneLit o _)   = o
+  offset (StringLit o _) = o
 
 --  offset (StringLit o _ _) = o
 -- | See https://golang.org/ref/spec#binary_op
@@ -349,46 +351,38 @@ newtype AssignOp =
   AssignOp (Maybe ArithmOp)
   deriving (Show, Eq)
 
--- | See https://golang.org/ref/spec#Integer_literals
-data IntType'
-  -- Eg 123
-  = Decimal
-  -- Eg 0135
-  | Octal
-  -- Eg 0xab90
-  | Hexadecimal
-  deriving (Show, Eq)
+-- | Type with scope value
+-- Used for caching inferrable types
+type InferredType = (Scope, Type)
 
-data StringType'
-  = Interpreted
-  | Raw
-  deriving (Show, Eq)
-
--- | Type with offset value
--- We do not include offsets within types as
--- it results in unnecessary nested offsets
-type Type' = (Offset, Type)
+-- Type with scope and offset value
+type Type' = (Offset, Scope, Type)
 
 instance ErrorBreakpoint Type' where
-  offset (o, _) = o
+  offset (o, _, _) = o
 
 -- | See https://golang.org/ref/spec#Types
 data Type
   -- | See https://golang.org/ref/spec#Array_types
-  -- Note that expr must evaluate to int const
-  = ArrayType Expr
+  -- Note that golite only supports int literal sizes
+  = ArrayType Int
               Type
   -- | See https://golang.org/ref/spec#Slice_types
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
   | StructType [FieldDecl]
-  | Type Identifier
+  -- | See https://golang.org/ref/spec#Function_types
+  | TypeMap ScopedIdent
+            Type
+  | Type ScopedIdent
+  -- | Empty return type
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl
 -- Golite does not support embedded fields
+-- Note that these fields aren't scope related
 data FieldDecl =
-  FieldDecl Identifiers
+  FieldDecl Identifier
             Type'
   deriving (Show, Eq)
 

@@ -1,13 +1,13 @@
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE GADTs                     #-}
-{-# LANGUAGE TupleSections             #-}
+{-# LANGUAGE BangPatterns  #-}
+{-# LANGUAGE GADTs         #-}
+{-# LANGUAGE TupleSections #-}
 
+-- | State based eager symbol table
 -- Heavily modeled around https://hackage.haskell.org/package/hashtables-1.2.3.1/docs/src/Data-HashTable-ST-Basic.html#HashTable
 module SymbolTableCore
   ( SymbolTable
   , SymbolScope
   , Scope(..)
-  , Ident(..)
   , new
   , insert
   , insert'
@@ -25,7 +25,6 @@ module SymbolTableCore
 
 import           Control.Monad.ST
 import           Data.Foldable           (asum)
-import           Data.Hashable           (Hashable (..))
 import qualified Data.HashTable.ST.Basic as HT
 import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, (<|))
 import qualified Data.List.NonEmpty      as NonEmpty (last)
@@ -33,8 +32,8 @@ import           Data.STRef
 import           Prelude                 hiding (lookup)
 
 -- | SymbolTable, cactus stack of SymbolScope
--- * s - st monad state?
--- * k - key type for hashtable
+-- * s - st monad state
+-- * k - the hashtable key type is hardcoded to String
 -- * v - value type for hashtable
 -- * l - type for list data
 newtype SymbolTable s v l =
@@ -51,21 +50,9 @@ newtype Scope =
   Scope Int
   deriving (Show, Eq)
 
--- | Hashable key
--- For symbol tables, we enforce strings
-newtype Ident =
-  Ident String
-  deriving (Show, Eq)
+type HashTable s v = HT.HashTable s String v
 
-instance Hashable Ident where
-  hashWithSalt i (Ident s) = hashWithSalt i s
-
-type HashTable s v = HT.HashTable s Ident v
-
--- | SymbolScope type, one scope for our SymbolTable.
--- * s - st monad state?
--- * k - key type for hashtable
--- * v - value type for hashtable
+-- | SymbolScope type; scope + hashtable
 type SymbolScope s v = (Scope, HashTable s v)
 
 {-# INLINE newRef #-}
@@ -87,21 +74,21 @@ new = do
   newRef $ SymbolTable (fromList [(Scope 0, ht)]) []
 
 -- | Inserts a key value pair at the upper most scope
-insert :: SymbolTable s v l -> Ident -> v -> ST s ()
-insert st k v = do
+insert :: SymbolTable s v l -> String -> v -> ST s ()
+insert st !k !v = do
   SymbolTable ((_, ht) :| _) _ <- readRef st
   HT.insert ht k v
   
 -- | Inserts a key value pair at the upper most scope and return scope level
-insert' :: SymbolTable s v l -> Ident -> v -> ST s Scope
+insert' :: SymbolTable s v l -> String -> v -> ST s Scope
 insert' st k v = do
   SymbolTable ((Scope s, ht) :| _) _ <- readRef st
   HT.insert ht k v
   return (Scope $ s + 1)
 
 -- | Look up provided key across all scopes, starting with the top
-lookup :: SymbolTable s v l -> Ident -> ST s (Maybe (Scope, v))
-lookup st k = do
+lookup :: SymbolTable s v l -> String -> ST s (Maybe (Scope, v))
+lookup st !k = do
   SymbolTable scopes _ <- readRef st
   asum <$> mapM lookup' (toList scopes)
   where
@@ -111,14 +98,14 @@ lookup st k = do
       return $ fmap (scope, ) v
 
 -- | Look up provided key at current scope only
-lookupCurrent :: SymbolTable s v l -> Ident -> ST s (Maybe (Scope, v))
-lookupCurrent st k = do
+lookupCurrent :: SymbolTable s v l -> String -> ST s (Maybe (Scope, v))
+lookupCurrent st !k = do
   (scope, ht) <- currentScope st
   v <- HT.lookup ht k
   return $ fmap (scope, ) v
 
 -- | Use lookup to check if defined
-isDef :: SymbolTable s v l -> Ident -> ST s Bool
+isDef :: SymbolTable s v l -> String -> ST s Bool
 isDef st k = do
   res <- lookup st k
   case res of
@@ -126,7 +113,7 @@ isDef st k = do
     Just _ -> return True
 
 -- | isDef but check only current scope
-isDefL :: SymbolTable s v l -> Ident -> ST s Bool
+isDefL :: SymbolTable s v l -> String -> ST s Bool
 isDefL st k = do
   res <- lookupCurrent st k
   case res of
@@ -141,6 +128,8 @@ enterScope st = do
   writeRef st $ SymbolTable ((Scope (scope + 1), ht) <| st') list
 
 -- | Discard current scope
+-- Note that if the current scope is the last scope,
+-- A crash will occur
 exitScope :: SymbolTable s v l -> ST s ()
 exitScope st = do
   SymbolTable (_ :| scopes) list <- readRef st
@@ -160,7 +149,7 @@ topScope st = do
 
 -- | Add a new message
 addMessage :: SymbolTable s v l -> l -> ST s ()
-addMessage st msg = do
+addMessage st !msg = do
   SymbolTable scopes list <- readRef st
   writeRef st $ SymbolTable scopes (msg : list)
 
