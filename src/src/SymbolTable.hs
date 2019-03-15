@@ -292,7 +292,7 @@ instance Symbolize Type where
         -> SType
         -> Identifiers
         -> ST s (Either ErrorMessage' [Field])
-      checkIds st2 t idl = eConcat <$> mapM (checkId st2 t) (toList idl)
+      checkIds st2 t idl = sequence <$> mapM (checkId st2 t) (toList idl)
   
       checkId ::
         StructTable s -> SType -> Identifier -> ST s (Either ErrorMessage' Field)
@@ -345,9 +345,6 @@ resolve' (Func _ mt) _ = mt
 --   resolve s st = 
 
   
-eConcat :: [Either a b] -> Either a [b]
-eConcat = eitherL id
-
 -- -- pSymbolTable prog =
 -- -- | print key value pairs for one hash table
 -- pht ht =
