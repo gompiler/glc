@@ -47,7 +47,9 @@ data Decl
 -- Note that a proper declaration can be mapped to pairs of ids and expressions
 -- The type definition is optional
 data VarDecl' =
-  VarDecl' Identifier Expr (Maybe Type)
+  VarDecl' Identifier
+           Expr
+           (Maybe Type)
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
@@ -219,7 +221,8 @@ data Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var Identifier Type'
+  | Var Identifier
+        Type'
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
@@ -248,31 +251,31 @@ data Expr
           Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
-  -- Note that type must be explicit here since
   | Arguments Offset
               Expr
               [Expr]
+              Signature
   -- | Variant of arguments that is known to be a type cast
   -- Eg int(expr)
   -- Constraint is that there must only be one expression within parentheses,
   -- and that the cast expression is a known type
   -- the offset is included within Type'
-  | TypeCast Type'
-             Expr
+  | TypeConvert Type'
+                Expr
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
-  offset (Unary o _ _)      = o
-  offset (Binary o _ _ _)   = o
-  offset (Lit l)            = offset l
-  offset (Var ident)        = offset ident
-  offset (AppendExpr o _ _) = o
-  offset (LenExpr o _)      = o
-  offset (CapExpr o _)      = o
-  offset (Selector o _ _)   = o
-  offset (Index o _ _)      = o
-  offset (Arguments o _ _)  = o
-  offset (TypeCast t _)     = offset t
+  offset (Unary o _ _)       = o
+  offset (Binary o _ _ _)    = o
+  offset (Lit l)             = offset l
+  offset (Var ident _)       = offset ident
+  offset (AppendExpr o _ _)  = o
+  offset (LenExpr o _)       = o
+  offset (CapExpr o _)       = o
+  offset (Selector o _ _)    = o
+  offset (Index o _ _)       = o
+  offset (Arguments o _ _ _) = o
+  offset (TypeConvert t _)   = offset t
 
 -- | See https://golang.org/ref/spec#Literal
 -- Type can be inferred from string
