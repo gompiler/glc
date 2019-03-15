@@ -382,8 +382,6 @@ data Type
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
   | StructType [FieldDecl]
-  -- | See https://golang.org/ref/spec#Function_types
-  | FuncType Signature
   | Type Identifier
   deriving (Show, Eq)
 

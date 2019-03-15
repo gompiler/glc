@@ -295,9 +295,6 @@ instance BlankWeed Type where
   toIdent (ArrayType e t) = toIdent e ++ toIdent t
   toIdent (SliceType t) = toIdent t
   toIdent (StructType fdl) = fdl >>= toIdent
-  toIdent (FuncType (Signature (Parameters pdl) Nothing)) = pdl >>= toIdent
-  toIdent (FuncType (Signature (Parameters pdl) (Just t))) =
-    (pdl >>= toIdent) ++ toIdent t
   toIdent (Type ident) = [ident]
 
 instance BlankWeed FieldDecl where
