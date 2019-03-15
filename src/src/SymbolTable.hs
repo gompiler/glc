@@ -140,31 +140,28 @@ instance Symbolize FuncDecl
     res <- S.isDef st vname -- Check if defined in symbol table
     if res
       then return $ Just $ createError ident (AlreadyDecl "Function " ident)
-      else do
-        S.enterScope st
-        epl <- checkParams st pdl -- Either ErrorMessage' [Param]
+      else wrap
+             st
+             (do epl <- checkParams st pdl -- Either ErrorMessage' [Param]
       -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
-        ef <-
-          either
-            (return . Left)
-            (\pl ->
-               maybe
-                 (return $ Right $ Func pl Nothing)
-                 (\(_, t') -> do
-                    et <- toType st t'
-                    return $ fmap (Func pl . Just) et)
-                 t)
-            epl
+                 ef <-
+                   either
+                     (return . Left)
+                     (\pl ->
+                        maybe
+                          (return $ Right $ Func pl Nothing)
+                          (\(_, t') -> do
+                             et <- toType st t'
+                             return $ fmap (Func pl . Just) et)
+                          t)
+                     epl
       -- We then take the Either ErrorMessage' Symbol, if no error we insert the Symbol (newly declared function) and recurse on statement list sl (from body of func) to declare things in body
-        res2 <-
-          either
-            (return . Just)
-            (\f -> do
-               _ <- S.insert st vname f
-               am (recurse st) sl)
-            ef
-        S.exitScope st
-        return res2
+                 either
+                   (return . Just)
+                   (\f -> do
+                      _ <- S.insert st vname f
+                      am (recurse st) sl)
+                   ef)
     where
       checkParams ::
            SymbolTable s
@@ -274,36 +271,23 @@ instance Symbolize SimpleStmt where
   recurse st (Assign _ _ el _) = am (recurse st) (toList el)
 
 instance Symbolize Stmt where
-  recurse st (BlockStmt sl) = do
-    S.enterScope st -- Open a new scope for the block
-    res <- am (recurse st) sl
-    S.exitScope st
-    return res
+  recurse st (BlockStmt sl) = wrap st $ am (recurse st) sl
   recurse st (SimpleStmt s) = recurse st s
-  recurse st (If (ss, e) s1 s2) = do
-    S.enterScope st
-    res <- am (recurse st) [H ss, H e, H s1, H s2]
-    S.exitScope st
-    return res
-  recurse st (Switch ss me scs) = do
-    S.enterScope st
+  recurse st (If (ss, e) s1 s2) = wrap st $ am (recurse st) [H ss, H e, H s1, H s2]
+  recurse st (Switch ss me scs) = wrap st $ do
     r1 <-
       case me of
         Just e  -> am (recurse st) [H ss, H e]
         Nothing -> recurse st ss
-    S.enterScope st
-    r2 <- am (recurse st) scs
-    S.exitScope st
+    r2 <- wrap st $ am (recurse st) scs
     return $ maybeJ [r1, r2]
-  recurse st (For (ForClause ss1 me ss2) s) = do
-    S.enterScope st
+  recurse st (For (ForClause ss1 me ss2) s) = wrap st $ do
     r1 <-
       am (recurse st) $
       case me of
         Just e  -> [H ss1, H e, H ss2]
         Nothing -> [H ss1, H ss2]
     r2 <- recurse st s
-    S.exitScope st
     return $ maybeJ [r1, r2]
   recurse _ (Break _) = return Nothing
   recurse _ (Continue _) = return Nothing
@@ -343,11 +327,13 @@ instance Symbolize Expr where
   recurse st (AppendExpr _ e1 e2) = am (recurse st) [e1, e2]
   recurse st (LenExpr _ e) = recurse st e
   recurse st (CapExpr _ e) = recurse st e
-  -- recurse st (Selector _ e ident@(Identifier _ vname))
-  recurse _ _ = undefined
+  recurse st (Selector _ e _) = recurse st e
+  recurse st (Index _ e1 e2) = am (recurse st) [e1, e2]
+  recurse st (Arguments _ e el) = am (recurse st) (e:el) 
 
 instance Symbolize SwitchCase where
   recurse _ _ = undefined
+  -- recurse st (Case _ nEl s) = undefined
 
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
@@ -524,6 +510,14 @@ topScope st = st >>= topScope'
 
 topScope' :: SymbolTable s -> ST s (S.SymbolScope s Symbol)
 topScope' = S.topScope
+
+-- | Wrap a result of recurse inside a new scope
+wrap :: SymbolTable s -> ST s (Maybe ErrorMessage') -> ST s (Maybe ErrorMessage')
+wrap st stres = do
+  S.enterScope st
+  res <- stres
+  S.exitScope st
+  return res
 
 -- | Take Symbol table scope and AST identifier to make ScopedIdent
 mkSId :: S.Scope -> Identifier -> SIdent
