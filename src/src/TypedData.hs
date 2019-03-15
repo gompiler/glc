@@ -359,15 +359,16 @@ instance ErrorBreakpoint Type' where
 -- | See https://golang.org/ref/spec#Types
 data Type
   -- | See https://golang.org/ref/spec#Array_types
-  -- Note that expr must evaluate to int const
-  = ArrayType Expr
+  -- Note that golite only supports int literal sizes
+  = ArrayType Int
               Type
   -- | See https://golang.org/ref/spec#Slice_types
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
   | StructType [FieldDecl]
   -- | See https://golang.org/ref/spec#Function_types
-  | FuncType Signature
+  | TypeMap Identifier
+            Type
   | Type Identifier
   -- | Empty return type
   deriving (Show, Eq)
@@ -375,7 +376,7 @@ data Type
 -- | See https://golang.org/ref/spec#FieldDecl
 -- Golite does not support embedded fields
 data FieldDecl =
-  FieldDecl Identifiers
+  FieldDecl Identifier
             Type'
   deriving (Show, Eq)
 
