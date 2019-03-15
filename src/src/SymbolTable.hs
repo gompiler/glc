@@ -422,8 +422,27 @@ instance TypeInfer Expr where
   infer st e@(Unary _ BitComplement inner) =
     inferConstraint st isInteger (\t -> NE.head t) (\t -> BadUnaryOp "integer" t) e (fromList [inner])
 
-  infer st e@(Binary _ Or inner1 inner2) =
-    inferConstraint st isBoolean (\t -> NE.head t) (\t -> BadBinaryOp "boolean" t) e (fromList [inner1, inner2])
+  infer st e@(Binary _ op inner1 inner2)
+    | op `elem` [Or, And] =
+      inferConstraint st isBoolean (\t -> NE.head t)
+        (\t -> BadBinaryOp "boolean" t) e (fromList [inner1, inner2])
+    -- TODO: FIGURE THIS OUT, SINCE STRUCTS ARE COMPARABLE...
+    -- | op `elem` [EQ, NEQ] =
+    --   inferConstraint st isComparable (const "TODO") (\t -> BadBinaryOp "TODO" t) e (fromList [inner1, inner2])
+    | op `elem` [Data.LT, Data.LEQ, Data.GT, Data.GEQ] =
+      -- TODO: NEED REFERENCE TO ORIGINAL!!! (NOT REDECLARED OVERSHADOWING) BOOL
+      inferConstraint st isOrdered (const $ BaseMap (S.Ident "bool"))
+        (\t -> BadBinaryOp "ordered" t) e (fromList [inner1, inner2])
+    | Arithm aop <- op =
+      if aop `elem` [Subtract, Multiply, Divide] then
+        inferConstraint st isNumeric (const $ BaseMap (S.Ident "bool"))
+          (\t -> BadBinaryOp "numeric" t) e (fromList [inner1, inner2])
+      else if aop `elem` [Remainder, BitOr, BitXor, ShiftL, ShiftR, BitAnd, BitClear] then
+        inferConstraint st isInteger (const $ BaseMap (S.Ident "int"))
+          (\t -> BadBinaryOp "int" t) e (fromList [inner1, inner2])
+      else undefined -- TODO: ADD
+    | otherwise = undefined -- TODO: ADD, EQ, NEQ
+
   -- | Infers the inner type for a unary operator and checks if it matches using the fn
     -- May be generalizable
   inferConstraint st isCorrect resultSType makeError parentExpr inners = do
@@ -434,8 +453,12 @@ instance TypeInfer Expr where
               else Left $ createError parentExpr (makeError ts))
       (sequence tss)
 
+-- TODO: CHECK THAT THESE RESOLVE TO OG TYPES, NOT REDECLARED OVERSHADOWING ONES
+
 isNumeric :: SType -> Bool
 isNumeric t = isSomething ["int", "float64", "rune"] t
+
+-- isComparable: many many things...
 
 isOrdered :: SType -> Bool
 isOrdered t = isSomething ["int", "float64", "rune", "string"] t
