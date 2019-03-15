@@ -463,6 +463,8 @@ data SymbolError
   | BadAppend SType SType
   | BadLen SType
   | BadCap SType
+  | NonStruct SType
+  | NoField String
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -485,10 +487,11 @@ instance ErrorEntry SymbolError where
         "Cannot append something of type " ++ show t2 ++ " to slice of type []" ++ show t1
       BadAppend t1 t2 ->
         "Incorrect types " ++ show t1 ++ " and " ++ show t2 ++ " for append"
-      BadLen t1 ->
-        "Incorrect type " ++ show t1 ++ " for len"
-      BadCap t1 ->
-        "Incorrect type " ++ show t1 ++ " for cap"
+      BadLen t1 -> "Incorrect type " ++ show t1 ++ " for len"
+      BadCap t1 -> "Incorrect type " ++ show t1 ++ " for cap"
+      NonStruct t1 -> "Cannot access field on non-struct type " ++ show t1
+      NoField f -> "No field " ++ show f ++ " on struct"
+
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -502,20 +505,24 @@ topScope' = S.topScope
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
 
 infer st e@(Unary _ Pos inner) =
-  inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t) e (fromList [inner])
+  inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t)
+    e (fromList [inner])
 infer st e@(Unary _ Neg inner) =
-  inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t) e (fromList [inner])
+  inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t)
+    e (fromList [inner])
 infer st e@(Unary _ Not inner) =
-  inferConstraint st isBoolean (\t -> NE.head t) (\t -> BadUnaryOp "boolean" t) e (fromList [inner])
+  inferConstraint st isBoolean (\t -> NE.head t) (\t -> BadUnaryOp "boolean" t)
+    e (fromList [inner])
 infer st e@(Unary _ BitComplement inner) =
-  inferConstraint st isInteger (\t -> NE.head t) (\t -> BadUnaryOp "integer" t) e (fromList [inner])
+  inferConstraint st isInteger (\t -> NE.head t) (\t -> BadUnaryOp "integer" t)
+    e (fromList [inner])
 
 infer st e@(Binary _ op inner1 inner2)
   | op `elem` [Or, And] =
     inferConstraint st isBoolean (\t -> NE.head t)
       (\t -> BadBinaryOp "boolean" t) e (fromList [inner1, inner2])
   -- TODO: FIGURE THIS OUT, SINCE STRUCTS ARE COMPARABLE...
-  -- | op `elem` [EQ, NEQ] =
+  | op `elem` [Data.EQ, Data.NEQ] = undefined
   --   inferConstraint st isComparable (const "TODO") (\t -> BadBinaryOp "TODO" t) e (fromList [inner1, inner2])
   | op `elem` [Data.LT, Data.LEQ, Data.GT, Data.GEQ] =
     inferConstraint st isOrdered (const $ Primitive (S.Ident "bool"))
@@ -543,16 +550,16 @@ infer st (Var ident) = resolve ident st
   -- An append expression append(e1, e2) is well-typed if:
   -- * e1 is well-typed, has type S and S resolves to a []T;
   -- * e2 is well-typed and has type T.
-infer st e@(AppendExpr _ e1 e2) = do
+infer st ae@(AppendExpr _ e1 e2) = do
   sle <- infer st e1 -- Infer type of slice (e1)
   exe <- infer st e2 -- Infer type of value to append (e2)
 
   return $ case (sle, exe) of
     (Right slt@(Slice t1), Right t2) ->
-      if t1 == t2 then Right(slt)
-      else Left $ createError e $ AppendMismatch t1 t2
+      if t1 == t2 then Right slt
+      else Left $ createError ae $ AppendMismatch t1 t2
     -- TODO: MORE CASES FOR NICER ERRORS?
-    (Right t1, Right t2) -> Left $ createError e $ BadAppend t1 t2
+    (Right t1, Right t2) -> Left $ createError ae $ BadAppend t1 t2
     (Left em, _) -> Left em
     (_, Left em) -> Left em
 
@@ -570,8 +577,23 @@ infer st ce@(CapExpr _ expr) =
   inferConstraint st isLenCompatible (const $ Primitive $ S.Ident "int")
     (\t -> BadCap $ NE.head t) ce (fromList [expr])
 
--- | TODO
+infer st se@(Selector _ expr (Identifier _ ident)) = do
+  sele <- infer st expr
+  return $ either
+    (Left)
+    (\t -> case t of
+      Struct fdl ->
+        (case (filter (\(S.Ident fid, _) -> fid == ident) fdl) of
+          _:(S.Ident _, sft):_ -> Right sft
+          _ -> Left $ createError se $ NoField ident)
+      _ -> Left $ createError se $ NonStruct t)
+    sele
+
 infer _ _ = undefined
+
+-- infer st ie@(Index _ e1 e2) = undefined
+
+-- infer st ae@(Arguments  _ e el) = undefined
 
 -- | Infers the inner type for a unary operator and checks if it matches using the fn
   -- May be generalizable
