@@ -466,11 +466,10 @@ instance TypeInfer Expr where
       RuneLit {} -> Primitive (S.Ident "rune")
       StringLit {} -> Primitive (S.Ident "string")
 
-  -- | TODO
-  infer _ _ = undefined
+  infer st (Var ident) = resolve ident st
 
   -- | TODO
-  -- infer st e@(Var id) = do
+  infer _ _ = undefined
 
   -- | Infers the inner type for a unary operator and checks if it matches using the fn
     -- May be generalizable
