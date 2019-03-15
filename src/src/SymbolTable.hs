@@ -389,6 +389,9 @@ data SymbolError =
   | ShortDec
   | BadUnaryOp String (NonEmpty SType)
   | BadBinaryOp String (NonEmpty SType)
+  | AppendMismatch SType SType
+  | BadAppend SType SType
+  | BadLen SType
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -410,6 +413,12 @@ instance ErrorEntry SymbolError where
         "Unary operator cannot be used on non-" ++ s ++ " type " ++ (show $ NE.head t)
       BadBinaryOp s t ->
         "Binary operator cannot be used on non-" ++ s ++ " types " ++ (intercalate ", " $ toList $ NE.map show t)
+      AppendMismatch t1 t2 ->
+        "Cannot append something of type " ++ show t2 ++ " to slice of type []" ++ show t1
+      BadAppend t1 t2 ->
+        "Incorrect types " ++ show t1 ++ " and " ++ show t2 ++ " for append"
+      BadLen t1 ->
+        "Incorrect type " ++ show t1 ++ " for len"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -468,6 +477,34 @@ instance TypeInfer Expr where
 
   infer st (Var ident) = resolve ident st
 
+  -- | Infer types of append expressions
+    -- An append expression append(e1, e2) is well-typed if:
+    -- * e1 is well-typed, has type S and S resolves to a []T;
+    -- * e2 is well-typed and has type T.
+  infer st e@(AppendExpr _ e1 e2) = do
+    sle <- infer st e1 -- Infer type of slice (e1)
+    exe <- infer st e2 -- Infer type of value to append (e2)
+
+    return $ case (sle, exe) of
+      (Right slt@(Slice t1), Right t2) ->
+        if t1 == t2 then Right(slt)
+        else Left $ createError e $ AppendMismatch t1 t2
+      -- TODO: MORE CASES FOR NICER ERRORS?
+      (Right t1, Right t2) -> Left $ createError e $ BadAppend t1 t2
+      (Left em, _) -> Left em
+      (_, Left em) -> Left em
+
+  -- | Infer types of len expressions
+    -- A len expression len(expr) is well-typed if expr is well-typed, has
+    -- type S and S resolves to string, []T or [N]T. The result has type int.
+  infer st le@(LenExpr _ expr) = do
+    et <- infer st expr
+    return $ either
+      (Left)
+      (\t -> if isLenCompatible t then Right $ Primitive $ S.Ident "int"
+             else Left $ createError le $ BadLen t)
+      et
+
   -- | TODO
   infer _ _ = undefined
 
@@ -480,6 +517,14 @@ instance TypeInfer Expr where
       (\ts -> if (and $ NE.map isCorrect ts) then Right (resultSType ts)
               else Left $ createError parentExpr (makeError ts))
       (sequence tss)
+
+isLenCompatible :: SType -> Bool
+isLenCompatible t =
+  case t of
+    Primitive (S.Ident "string") -> True
+    Array {} -> True
+    Slice {} -> True
+    _ -> False
 
 isNumeric :: SType -> Bool
 isNumeric t = isSomething ["int", "float64", "rune"] t
