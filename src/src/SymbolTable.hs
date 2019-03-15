@@ -114,14 +114,9 @@ am f l = fmap asum (mapM f l)
 
 -- Class to generalize traverse function for each AST structure
 class Symbolize a where
-  recurse :: a -> SymbolTable s -> ST s (Maybe ErrorMessage')
-  -- Recurse with arguments reversed
-  recurse' :: SymbolTable s -> a -> ST s (Maybe ErrorMessage')
-  recurse' = flip recurse
+  recurse :: SymbolTable s -> a -> ST s (Maybe ErrorMessage')
   -- Resolve AST types to SType, may return error message if type error
-  toType :: a -> SymbolTable s -> ST s (Either ErrorMessage' SType)
-  toType' :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
-  toType' = flip toType
+  toType :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
   -- verify :: a -> SymbolTable s -> ST s (Either ErrorMessage' SymbolInfo)
   -- -- Verify a list of a, want to keep SymbolInfo even if we have an error to print partial symbol table
   -- verifyL :: [a] -> SymbolTable s -> ST s (Maybe ErrorMessage', [SymbolInfo])
@@ -130,18 +125,18 @@ instance Symbolize HAST where
   recurse (H a) = recurse a
 
 instance Symbolize TopDecl where
-  recurse (TopDecl d) = recurse d
-  recurse (TopFuncDecl fd) = recurse fd
+  recurse st (TopDecl d) = recurse st d
+  recurse st (TopFuncDecl fd) = recurse st fd
 instance Symbolize FuncDecl where
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
-  recurse (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) st = do
+  recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) = do
     res <- S.isDef st (S.Ident vname)
     if res then return $ Just $ createError ident (AlreadyDecl "Function " ident)
       else do
       S.enterScope st
       epl <- checkParams st pdl
-      either (return . Just) (const $ am (recurse' st) sl) epl -- Instead of nothing, verify body
+      either (return . Just) (const $ am (recurse st) sl) epl -- Instead of nothing, verify body
       where
       checkParams ::
         SymbolTable s -> [ParameterDecl] -> ST s (Either ErrorMessage' [Param])
@@ -153,7 +148,7 @@ instance Symbolize FuncDecl where
         -> ParameterDecl
         -> ST s (Either ErrorMessage' [Param])
       checkParam st2 (ParameterDecl idl (o, t)) = do
-        et <- toType t st2 -- Remove ST
+        et <- toType st2 t-- Remove ST
         either (return . Left) (\t' -> do
                                    (err, pil) <- checkIds st2 t' idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
@@ -185,10 +180,10 @@ instance Symbolize FuncDecl where
             return $ case res of
                        Nothing -> Left $ createError ident (AlreadyDecl "Param " ident)
                        Just (_, _, scope) -> Right ((idv, t), scope)
-  recurse (FuncDecl _ _ _) st = return Nothing -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
+  recurse st (FuncDecl _ _ _) = return Nothing -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
 
 instance Symbolize SimpleStmt where
-  recurse (ShortDeclare idl el) st = checkDecl (toList idl) (toList el)
+  recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el)
     where
       checkDecl :: [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
       checkDecl idl el st = do
@@ -218,18 +213,18 @@ instance Symbolize SimpleStmt where
                        return $ Right True
                          
                                                                                                      
-  recurse _ st = return Nothing
+  recurse st _ = return Nothing
 instance Symbolize Decl where
-  recurse (VarDecl vdl) st =
-    am (recurse' st) vdl
-  recurse (TypeDef tdl) st =
-    am (recurse' st) tdl
+  recurse st (VarDecl vdl) =
+    am (recurse st) vdl
+  recurse st (TypeDef tdl) =
+    am (recurse st) tdl
 instance Symbolize VarDecl' where
-  recurse (VarDecl' neIdl (Left (t, el))) st =
-    am (recurse' st) ((H t):(map H $ toList neIdl) ++ (map H el))
+  recurse st (VarDecl' neIdl (Left (t, el))) =
+    am (recurse st) ((H t):(map H $ toList neIdl) ++ (map H el))
 instance Symbolize TypeDef' where
-  recurse (TypeDef' ident t) st =
-    am (recurse' st) [H ident, H t]
+  recurse st (TypeDef' ident t) =
+    am (recurse st) [H ident, H t]
     
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
@@ -237,9 +232,9 @@ intTypeToInt (IntLit _ t s) =
     Decimal     -> read s
     Hexadecimal -> read s
     Octal       -> fst $ head $ readOct s
-    _ -> -2147483648 -- This should never happen because we only use this for ArrayType
-                     -- just here for exhaustive pattern matching
-                     -- if we want to remove this we must change ArrayType as mentioned below
+intTypeToInt _ = -2147483648 -- This should never happen because we only use this for ArrayType
+                 -- just here for exhaustive pattern matching
+                 -- if we want to remove this we must change ArrayType as mentioned below
 
 -- | either for a list, if any Left, take first Left, otherwise use lists of Rights
 eitherL :: ([b] -> c) -> [Either a b] -> Either a c
@@ -265,13 +260,13 @@ maybeL f ml = if length (catMaybes ml) == length ml then -- All values are Just 
                 Nothing
 
 instance Symbolize Type where
-  toType (ArrayType (Lit l) t) st = do
-    sym <- toType t st
+  toType st (ArrayType (Lit l) t) = do
+    sym <- toType st t
     return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
-  toType (SliceType t) st = do
-    sym <- toType t st
+  toType st (SliceType t) = do
+    sym <- toType st t
     return $ sym >>= Right . Slice
-  toType (StructType fdl) st = do
+  toType st (StructType fdl) = do
     fl <- checkFields st fdl
     return $ fl >>= Right . Struct
     where
@@ -289,7 +284,7 @@ instance Symbolize Type where
         -> FieldDecl
         -> ST s1 (ST s2 (Either ErrorMessage' [Field]))
       checkField st2 structTab (FieldDecl idl (_, t)) = do
-        et <- toType t st2
+        et <- toType st2 t
         return $ either (return . Left) (\t' -> checkIds structTab t' idl) et
   
       checkIds ::
@@ -309,11 +304,11 @@ instance Symbolize Type where
               if not res
               then Left (createError ident (AlreadyDecl "Field " ident))
               else Right (idv, t)
-  toType (Type ident) st = resolve ident st
+  toType st (Type ident) = resolve ident st
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType (ArrayType _ t) st = toType t st 
+  toType st (ArrayType _ t) = toType st t
 
 -- instance Symbolize Signature where
   -- toType (Signature (Parameters pdl) (Just t)) st = do
@@ -350,7 +345,7 @@ resolve' (Func _ mt) _ = mt
 --   resolve s st = 
 
   
-eConcat :: [Either ErrorMessage' a] -> Either ErrorMessage' [a]
+eConcat :: [Either a b] -> Either ErrorMessage' [b]
 eConcat = eitherL id
 
 -- -- pSymbolTable prog =
