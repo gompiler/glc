@@ -45,11 +45,14 @@ data Decl
 
 -- | See https://golang.org/ref/spec#VarDecl
 -- Note that a proper declaration can be mapped to pairs of ids and expressions
--- The type definition is optional
+-- The inferred type here is a valid type after we check that
+-- the expression type matches the declared type, if any.
+-- This is necessary for cases like var a float = 5,
+-- where the expression type is not necessarily the same as the declared one
 data VarDecl' =
   VarDecl' Identifier
            Expr
-           (Maybe Type)
+           InferredType
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
