@@ -189,7 +189,8 @@ instance Symbolize FuncDecl where
             return $ case res of
                        Nothing -> Left $ createError ident (AlreadyDecl "Param " ident')
                        Just (_, _, scope) -> Right ((idv, t'), scope)
-  recurse _ (FuncDecl _ _ _) = undefined -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
+  -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
+  recurse _ FuncDecl {} = error "Function declaration's body is not a block stmt"
 
 instance Symbolize SimpleStmt where
   recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el) st
@@ -233,7 +234,8 @@ intTypeToInt (IntLit _ t s) =
     Decimal     -> read s
     Hexadecimal -> read s
     Octal       -> fst $ head $ readOct s
-intTypeToInt _ = -2147483648 -- This should never happen because we only use this for ArrayType
+intTypeToInt _ = error "Trying to convert a literal that isn't an int to an int"
+                 -- This should never happen because we only use this for ArrayType
                  -- just here for exhaustive pattern matching
                  -- if we want to remove this we must change ArrayType as mentioned below
 
@@ -309,7 +311,7 @@ instance Typify Type where
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType st (ArrayType _ t) = toType st t
+  toType _ (ArrayType _ _) = error "Trying to convert type of an ArrayType with non literal int as length"
 
 -- instance Symbolize Signature where
   -- toType (Signature (Parameters pdl) (Just t)) st = do
