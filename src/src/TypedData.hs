@@ -39,14 +39,12 @@ data TopDecl
 
 -- | See https://golang.org/ref/spec#Declaration
 -- Golite does not support type alias
-data Decl
+newtype Decl
   -- | See https://golang.org/ref/spec#VarDecl
   -- If only one entry exists, it is treated as a single line declaration
   -- Otherwise, it is treated as var ( ... )
-  = VarDecl [VarDecl']
-  -- | See https://golang.org/ref/spec#TypeDecl
-  -- Same spec as VarDecl
-  | TypeDef [TypeDef']
+         =
+  VarDecl [VarDecl']
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#VarDecl
@@ -59,12 +57,6 @@ data VarDecl' =
   VarDecl' ScopedIdent
            Expr
            InferredType
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#TypeDef
-data TypeDef' =
-  TypeDef' ScopedIdent
-           Type'
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
