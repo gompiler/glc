@@ -8,9 +8,9 @@ import           Control.Applicative (Alternative)
 -- import           Control.Monad           (join)
 import           Control.Monad.ST
 import           Data
-import qualified TypedData as T
 import           Data.Either         (partitionEithers)
 import           Data.Foldable       (asum)
+import qualified TypedData           as T
 
 -- import           Data.Functor.Compose    (Compose (..), getCompose)
 -- import qualified Data.HashTable.Class    as H
@@ -20,6 +20,7 @@ import           Data.Maybe          (catMaybes)
 
 import           ErrorBundle
 import           Numeric             (readOct)
+
 -- import           Data.STRef
 import qualified SymbolTableCore     as S
 
@@ -33,7 +34,6 @@ type Param = (String, SType)
 type Field = (String, SType)
 
 -- type Var = (SIdent, SType)
-
 data Symbol
   = Base -- Base type, resolve to themselves, i.e. int
   | Constant -- For bools only
@@ -66,7 +66,6 @@ type ParamInfo = (Param, S.Scope)
 
 -- -- | For checking short declarations
 -- type VarInfo = (Var, S.Scope)
-
 -- | Insert n tabs
 tabs :: Int -> String
 tabs n = concat $ replicate n "\t"
@@ -76,13 +75,13 @@ new :: ST s (SymbolTable s)
 new = do
   st <- S.new
   -- Base types
-  S.insert st ( "int") Base
-  S.insert st ( "float64") Base
-  S.insert st ( "bool") Base
-  S.insert st ( "rune") Base
-  S.insert st ( "string") Base
-  S.insert st ( "true") Constant
-  S.insert st ( "false") Constant
+  S.insert st "int" Base
+  S.insert st "float64" Base
+  S.insert st "bool" Base
+  S.insert st "rune" Base
+  S.insert st "string" Base
+  S.insert st "true" Constant
+  S.insert st "false" Constant
   return st
 
 add :: SymbolTable s -> String -> Symbol -> ST s (Maybe SymbolInfo)
@@ -103,7 +102,6 @@ add st ident sym = do
 --     Nothing -> do
 --       S.insert st ident fld
 --       return True
-
 -- Heterogeneous type, can represent everything that has an instance of Symbolize
 -- We use this so we can map over different types using recurse
 data HAST =
@@ -184,7 +182,7 @@ instance Symbolize FuncDecl
           (\t2 -> do
              (err, pil) <- checkIds' st2 t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
-             _ <- mapM ((S.addMessage st2) . Just) (map parToVar pil) -- Add list of SymbolInfo to messages
+             _ <- mapM (((S.addMessage st2) . Just) . parToVar) pil -- Add list of SymbolInfo to messages
              case err of
                Just e -> do
                  _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
@@ -207,20 +205,20 @@ instance Symbolize FuncDecl
         -> Identifier
         -> ST s (Either ErrorMessage' ParamInfo)
       checkId' st2 t' ident'@(Identifier _ vname') =
-        let idv =  vname'
+        let idv = vname'
          in do res <- add st2 idv (Variable t') -- Should not be declared
                return $
                  case res of
                    Nothing ->
                      Left $ createError ident (AlreadyDecl "Param " ident')
                    Just (_, _, scope) -> Right ((vname', t'), scope)
--- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
+-- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
 -- | checkId over a list of identifiers, keep first error or return nothing
 checkIds ::
-  SymbolTable s
+     SymbolTable s
   -> SType
   -> String
   -> Identifiers
@@ -228,22 +226,23 @@ checkIds ::
 checkIds st t pfix idl = maybeJ <$> mapM (checkId st t pfix) (toList idl)
 
 -- | Check that we can declare this identifier
-checkId :: 
-  SymbolTable s
+checkId ::
+     SymbolTable s
   -> SType
   -> String -- Error prefix for AlreadyDecl, what are we checking? i.e. Param, Var, Type
   -> Identifier
   -> ST s (Maybe ErrorMessage')
 checkId st t pfix ident@(Identifier _ vname) =
-  let idv =  vname in
-    do res <- add st idv (Variable t) -- Should not be declared
-       case res of
-         Nothing -> do
-           _ <- S.addMessage st Nothing -- Signal error so we don't print symbols beyond this
-           return $ Just $ createError ident (AlreadyDecl pfix ident)
-         Just _ -> do -- Successful insertion, insert symbol info
-           _ <- S.addMessage st res
-           return Nothing
+  let idv = vname
+   in do res <- add st idv (Variable t) -- Should not be declared
+         case res of
+           Nothing -> do
+             _ <- S.addMessage st Nothing -- Signal error so we don't print symbols beyond this
+             return $ Just $ createError ident (AlreadyDecl pfix ident)
+           Just _ -- Successful insertion, insert symbol info
+            -> do
+             _ <- S.addMessage st res
+             return Nothing
 
 instance Symbolize SimpleStmt where
   recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el) st
@@ -259,7 +258,7 @@ instance Symbolize SimpleStmt where
             else Just $ createError (head idl') ShortDec
       isNewDec :: SymbolTable s -> Identifier -> ST s Bool
       isNewDec st2 (Identifier _ vname) =
-        let idv =  vname
+        let idv = vname
          in do val <- S.lookupCurrent st2 idv
                case val of
                  Just _ -> return False
@@ -288,18 +287,21 @@ instance Symbolize Stmt where
     return res
   recurse st (Switch ss me scs) = do
     S.enterScope st
-    r1 <- case me of
-            Just e -> am (recurse st) [H ss, H e]
-            Nothing -> recurse st ss
+    r1 <-
+      case me of
+        Just e  -> am (recurse st) [H ss, H e]
+        Nothing -> recurse st ss
     S.enterScope st
     r2 <- am (recurse st) scs
     S.exitScope st
     return $ maybeJ [r1, r2]
   recurse st (For (ForClause ss1 me ss2) s) = do
     S.enterScope st
-    r1 <- am (recurse st) $ case me of
-                              Just e -> [H ss1, H e, H ss2]
-                              Nothing -> [H ss1, H ss2]
+    r1 <-
+      am (recurse st) $
+      case me of
+        Just e  -> [H ss1, H e, H ss2]
+        Nothing -> [H ss1, H ss2]
     r2 <- recurse st s
     S.exitScope st
     return $ maybeJ [r1, r2]
@@ -332,9 +334,11 @@ instance Symbolize Expr where
   recurse st (Unary _ _ e) = recurse st e
   recurse st (Binary _ _ e1 e2) = am (recurse st) [e1, e2]
   recurse _ (Lit _) = return Nothing -- No identifiers to check here
-  recurse st (Var ident@(Identifier _ vname)) = do -- Should be defined, otherwise we're trying to use undefined variable
-    res <- S.isDef st ( vname)
-    if res then return Nothing
+  recurse st (Var ident@(Identifier _ vname)) -- Should be defined, otherwise we're trying to use undefined variable
+   = do
+    res <- S.isDef st vname
+    if res
+      then return Nothing
       else return $ Just $ createError ident (NotDecl "Variable " ident)
   recurse st (AppendExpr _ e1 e2) = am (recurse st) [e1, e2]
   recurse st (LenExpr _ e) = recurse st e
@@ -378,11 +382,12 @@ pEithers eil =
 --   if length (catMaybes ml) == length ml -- All values are Just values
 --     then Just $ f $ catMaybes ml
 --     else Nothing
-
 -- | List of maybes, return first Just or nothing if all nothing
 maybeJ :: [Maybe b] -> Maybe b
-maybeJ l = if null (catMaybes l) then Nothing
-           else Just $ head $ catMaybes l
+maybeJ l =
+  if null (catMaybes l)
+    then Nothing
+    else Just $ head $ catMaybes l
 
 instance Typify Type where
   toType st (ArrayType (Lit l) t) = do
@@ -450,7 +455,7 @@ instance Typify Type where
 -- | Resolve type of an Identifier
 resolve :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' SType)
 resolve ident@(Identifier _ vname) st =
-  let idv =  vname
+  let idv = vname
    in do res <- S.lookup st idv
          case res of
            Nothing -> return $ Left $ createError ident (NotDecl "Type " ident)
