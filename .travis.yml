@@ -9,6 +9,7 @@ addons:
 branches:
   except:
   - symbol
+  - type-inference
 before_install:
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
