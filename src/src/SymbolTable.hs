@@ -183,15 +183,16 @@ instance Symbolize FuncDecl where
   recurse st (FuncDecl _ _ _) = return Nothing -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
 
 instance Symbolize SimpleStmt where
-  recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el)
+  recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el) st
     where
       checkDecl :: [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
       checkDecl idl el st = do
-        eb <- mapM (uncurry checkDec) (zip idl el)
-        -- either (Left)
+        eb <- mapM (\(ident, e) -> checkDec ident e st) (zip idl el)
+        -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
+        return $ either (Just) (\bl -> if True `elem` bl then Nothing else Just $ createError (head idl) ShortDec) (sequence eb) 
       checkDec :: Identifier -> Expr -> SymbolTable s -> ST s (Either ErrorMessage' Bool)
       checkDec ident e st = do
-        et <- infer e -- Either ErrorMessage' SType
+        et <- infer e st-- Either ErrorMessage' SType
         (either (return . Left) (\t -> checkId ident t st) et)
           where
             checkId :: Identifier -> SType -> SymbolTable s -> ST s (Either ErrorMessage' Bool) -- Bool is to indicate whether the variable was already declared or not
@@ -366,6 +367,7 @@ data SymbolError =
   | VoidFunc Identifier
   | TypeMismatch Identifier SType SType
   | NotLVal Identifier Symbol
+  | ShortDec
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -381,6 +383,8 @@ instance ErrorEntry SymbolError where
         "Expression resolves to type " ++ show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
       NotLVal (Identifier _ vname) s ->
         vname ++ " resolves to " ++ show s ++ " and is not an lvalue"
+      ShortDec ->
+        "Short declaration list contains no new variables"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
