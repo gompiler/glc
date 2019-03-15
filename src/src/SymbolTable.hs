@@ -175,7 +175,7 @@ instance Symbolize FuncDecl where
         -> Identifiers
         -> ST s (Maybe ErrorMessage', [ParamInfo])
       checkIds st2 t idl = pEithers <$> mapM (checkId st2 t) (toList idl)
-  
+
       checkId ::
         SymbolTable s -> SType -> Identifier -> ST s (Either ErrorMessage' ParamInfo)
       checkId st t ident@(Identifier _ vname) =
@@ -212,12 +212,12 @@ instance Symbolize SimpleStmt where
                        else Left $ createError e (TypeMismatch ident t t2)
                      Just (_, s) -> return $ Left $ createError ident (NotLVal ident s)
                      Nothing -> do
-                       msi <- add st idv (Variable t) 
+                       msi <- add st idv (Variable t)
                        -- This cannot be Nothing, add will always succeed here because lookup returned Nothing, so there is no conflict
                        _ <- S.addMessage st msi -- Add new symbol
                        return $ Right True
-                         
-                                                                                                     
+
+
   recurse _ st = return Nothing
 instance Symbolize Decl where
   recurse (VarDecl vdl) st =
@@ -230,7 +230,7 @@ instance Symbolize VarDecl' where
 instance Symbolize TypeDef' where
   recurse (TypeDef' ident t) st =
     am (recurse' st) [H ident, H t]
-    
+
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
   case t of
@@ -282,7 +282,7 @@ instance Symbolize Type where
         sfl <- mapM (checkField st2 structTab) fdl'
         fl <- sequence sfl
         return $ eitherL concat fl
-  
+
       checkField ::
         SymbolTable s1
         -> StructTable s2
@@ -291,14 +291,14 @@ instance Symbolize Type where
       checkField st2 structTab (FieldDecl idl (_, t)) = do
         et <- toType t st2
         return $ either (return . Left) (\t' -> checkIds structTab t' idl) et
-  
+
       checkIds ::
         StructTable s
         -> SType
         -> Identifiers
         -> ST s (Either ErrorMessage' [Field])
       checkIds st2 t idl = eConcat <$> mapM (checkId st2 t) (toList idl)
-  
+
       checkId ::
         StructTable s -> SType -> Identifier -> ST s (Either ErrorMessage' Field)
       checkId structTab' t ident@(Identifier _ vname) =
@@ -313,7 +313,7 @@ instance Symbolize Type where
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType (ArrayType _ t) st = toType t st 
+  toType (ArrayType _ t) st = toType t st
 
 -- instance Symbolize Signature where
   -- toType (Signature (Parameters pdl) (Just t)) st = do
@@ -347,9 +347,9 @@ resolve' (Func _ mt) _ = mt
 
 -- instance TypeInfer String where
 --   resolve :: String -> SymbolTable s -> ST s (Either ErrorMessage' SType)
---   resolve s st = 
+--   resolve s st =
 
-  
+
 eConcat :: [Either ErrorMessage' a] -> Either ErrorMessage' [a]
 eConcat = eitherL id
 
@@ -374,6 +374,8 @@ data SymbolError =
   | VoidFunc Identifier
   | TypeMismatch Identifier SType SType
   | NotLVal Identifier Symbol
+  | BadUnaryOp String (NonEmpty SType)
+  | BadBinaryOp String (NonEmpty SType)
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -389,6 +391,10 @@ instance ErrorEntry SymbolError where
         "Expression resolves to type " ++ show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
       NotLVal (Identifier _ vname) s ->
         vname ++ " resolves to " ++ show s ++ " and is not an lvalue"
+      BadUnaryOp s t ->
+        "Unary operator cannot be used on non-" ++ s ++ " type " ++ (show $ head t)
+      BadBinaryOp s t ->
+        "Binary operator cannot be used on non-" ++ s ++ " types " ++ (intercalate ", " $ map show t)
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -399,6 +405,57 @@ topScope' = S.topScope
 
 class TypeInfer a where
   infer :: a -> SymbolTable s -> ST s (Either ErrorMessage' SType)
+  inferConstraint ::
+    SymbolTable s
+    -> (SType -> Bool)
+    -> (NonEmpty SType -> SType)
+    -> (NonEmpty SType -> ErrorMessage')
+    -> String -> a -> NonEmpty b
+    -> ST s (Either ErrorMessage' SType)
+
+instance TypeInfer Expr where
+  infer e@(Unary _ Pos inner) st = inferConstraint st isNumeric (\t -> head t) e (nonEmpty [inner])
+  infer e@(Unary _ Neg inner) st = inferConstraint st isNumeric (\t -> head t) e (nonEmpty [inner])
+  infer e@(Unary _ Not inner) st = inferConstraint st isBoolean (\t -> head t) e (nonEmpty [inner])
+  infer e@(Unary _ BitComplement inner) st = inferConstraint st isInteger (\t -> head t) e (nonEmpty [inner])
+
+  infer e@(Binary _ Or inner1 inner2) = inferConstraint isBoolean (\t -> head t) e (nonEmpty [inner1, inner2])
+  -- | Infers the inner type for a unary operator and checks if it matches using the fn
+    -- May be generalizable
+  inferConstraint _ isCorrect resultSType makeError s parentExpr inners = do
+    ts <- map infer inners
+    tb <- asum ts
+    return $ case t of
+      Right ->
+        if (and $ map isCorrect ts) then Right (resultSType ts)
+        else Left $ createError parentExpr (makeError inners)
+      _ -> tb
+
+isNumeric :: SType -> Bool
+isNumeric t = isSomething ["int", "float64", "rune"] t
+
+isOrdered :: SType -> Bool
+isOrdered t = isSomething ["int", "float64", "rune", "string"] t
+
+isBoolean :: SType -> Bool
+isBoolean t = isSomething ["bool"] t
+
+isInteger :: SType -> Bool
+isInteger t = isSomething ["int"] t
+
+isSomething :: [String] -> SType -> Bool
+isSomething lts t =
+  case (resolveSType t) of
+    BaseMap S.Ident id -> id `elem` lts
+    _ -> False
+
+-- | Resolves a defined type to a base type
+resolveSType :: SType -> SType
+resolveSType (Array i st) = Array i (resolve st)
+resolveSType (Slice st) = Slice (resolve st)
+resolveSType (Struct fl) = Struct $ map (\(id, st) -> (id, resolve st))
+resolveSType (TypeMap _ st) = resolve st
+resolveSType t = t -- Other types
 
 -- testing stuff
 z = S.Ident "test"
