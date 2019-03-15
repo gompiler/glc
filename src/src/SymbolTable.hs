@@ -259,7 +259,30 @@ instance Symbolize Stmt where
     res <- am (recurse st) [H ss, H e, H s1, H s2]
     S.exitScope st
     return res
-  recurse _ _ = undefined
+  recurse st (Switch ss me scs) = do
+    S.enterScope st
+    r1 <- case me of
+            Just e -> am (recurse st) [H ss, H e]
+            Nothing -> recurse st ss
+    S.enterScope st
+    r2 <- am (recurse st) scs
+    S.exitScope st
+    return $ maybeJ [r1, r2]
+  recurse st (For (ForClause ss1 me ss2) s) = do
+    S.enterScope st
+    r1 <- am (recurse st) $ case me of
+                              Just e -> [H ss1, H e, H ss2]
+                              Nothing -> [H ss1, H ss2]
+    r2 <- recurse st s
+    S.exitScope st
+    return $ maybeJ [r1, r2]
+  recurse _ (Break _) = return Nothing
+  recurse _ (Continue _) = return Nothing
+  recurse st (Declare d) = recurse st d
+  recurse st (Print el) = am (recurse st) el
+  recurse st (Println el) = am (recurse st) el
+  recurse st (Return (Just e)) = recurse st e
+  recurse _ (Return Nothing) = return Nothing
 
 instance Symbolize Decl where
   recurse st (VarDecl vdl) = am (recurse st) vdl
@@ -275,6 +298,9 @@ instance Symbolize TypeDef' where
   -- recurse st (TypeDef' ident t) = undefined
 
 instance Symbolize Expr where
+  recurse _ _ = undefined
+
+instance Symbolize SwitchCase where
   recurse _ _ = undefined
 
 intTypeToInt :: Literal -> Int
@@ -305,11 +331,16 @@ pEithers eil =
         else (Just $ head err, l)
 
 -- | maybe for a list, if any Nothing, take first Nothing, otherwise Just list
-maybeL :: ([b] -> c) -> [Maybe b] -> Maybe c
-maybeL f ml =
-  if length (catMaybes ml) == length ml -- All values are Just values
-    then Just $ f $ catMaybes ml
-    else Nothing
+-- maybeN :: ([b] -> c) -> [Maybe b] -> Maybe c
+-- maybeN f ml =
+--   if length (catMaybes ml) == length ml -- All values are Just values
+--     then Just $ f $ catMaybes ml
+--     else Nothing
+
+-- | List of maybes, return first Just or nothing if all nothing
+maybeJ :: [Maybe b] -> Maybe b
+maybeJ l = if null (catMaybes l) then Nothing
+           else Just $ head $ catMaybes l
 
 instance Typify Type where
   toType st (ArrayType (Lit l) t) = do
