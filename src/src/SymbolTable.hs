@@ -518,32 +518,32 @@ infer st e@(Unary _ Pos inner) =
   inferConstraint
     st
     isNumeric
-    (\t -> NE.head t)
-    (\t -> BadUnaryOp "numeric" t)
+    NE.head
+    (BadUnaryOp "numeric")
     e
     (fromList [inner])
 infer st e@(Unary _ Neg inner) =
   inferConstraint
     st
     isNumeric
-    (\t -> NE.head t)
-    (\t -> BadUnaryOp "numeric" t)
+    NE.head
+    (BadUnaryOp "numeric")
     e
     (fromList [inner])
 infer st e@(Unary _ Not inner) =
   inferConstraint
     st
     isBoolean
-    (\t -> NE.head t)
-    (\t -> BadUnaryOp "boolean" t)
+    NE.head
+    (BadUnaryOp "boolean")
     e
     (fromList [inner])
 infer st e@(Unary _ BitComplement inner) =
   inferConstraint
     st
     isInteger
-    (\t -> NE.head t)
-    (\t -> BadUnaryOp "integer" t)
+    NE.head
+    (BadUnaryOp "integer")
     e
     (fromList [inner])
 infer st e@(Binary _ op inner1 inner2)
@@ -551,8 +551,8 @@ infer st e@(Binary _ op inner1 inner2)
     inferConstraint
       st
       isBoolean
-      (\t -> NE.head t)
-      (\t -> BadBinaryOp "boolean" t)
+      NE.head
+      (BadBinaryOp "boolean")
       e
       (fromList [inner1, inner2])
   -- TODO: FIGURE THIS OUT, SINCE STRUCTS ARE COMPARABLE...
@@ -563,7 +563,7 @@ infer st e@(Binary _ op inner1 inner2)
       st
       isOrdered
       (const $ Primitive (S.Ident "bool"))
-      (\t -> BadBinaryOp "ordered" t)
+      (BadBinaryOp "ordered")
       e
       (fromList [inner1, inner2])
   | Arithm aop <- op =
@@ -572,7 +572,7 @@ infer st e@(Binary _ op inner1 inner2)
              st
              isNumeric
              (const $ Primitive (S.Ident "bool"))
-             (\t -> BadBinaryOp "numeric" t)
+             (BadBinaryOp "numeric")
              e
              (fromList [inner1, inner2])
       else if aop `elem`
@@ -581,7 +581,7 @@ infer st e@(Binary _ op inner1 inner2)
                     st
                     isInteger
                     (const $ Primitive (S.Ident "int"))
-                    (\t -> BadBinaryOp "int" t)
+                    (BadBinaryOp "int")
                     e
                     (fromList [inner1, inner2])
              else undefined -- TODO: ADD
@@ -611,7 +611,7 @@ infer st ae@(AppendExpr _ e1 e2) = do
     -- TODO: MORE CASES FOR NICER ERRORS?
       (Right t1, Right t2) -> Left $ createError ae $ BadAppend t1 t2
       (Left em, _) -> Left em
-      (_, Left em) -> Left em-- A len expression len(expr) is well-typed if expr is well-typed, has
+      (_, Left em) -> Left em -- A len expression len(expr) is well-typed if expr is well-typed, has
   -- type S and S resolves to string, []T or [N]T. The result has type int.
 -- | Infer types of len expressions
 infer st le@(LenExpr _ expr) =
@@ -619,9 +619,9 @@ infer st le@(LenExpr _ expr) =
     st
     isLenCompatible
     (const $ Primitive $ S.Ident "int")
-    (\t -> BadLen $ NE.head t)
+    (BadLen . NE.head)
     le
-    (fromList [expr])-- A cap expression cap(expr) is well-typed if expr is well-typed, has
+    (fromList [expr]) -- A cap expression cap(expr) is well-typed if expr is well-typed, has
   -- type S and S resolves to []T or [N]T. The result has type int.
 -- | Infer types of cap expressions
 infer st ce@(CapExpr _ expr) =
@@ -629,24 +629,24 @@ infer st ce@(CapExpr _ expr) =
     st
     isLenCompatible
     (const $ Primitive $ S.Ident "int")
-    (\t -> BadCap $ NE.head t)
+    (BadCap . NE.head)
     ce
-    (fromList [expr])-- * expr is well-typed and has type S;
+    (fromList [expr]) -- * expr is well-typed and has type S;
   -- * S resolves to a struct type that has a field named id.
 -- | Selecting a field in a struct (expr.id) is well-typed if:
 infer st se@(Selector _ expr (Identifier _ ident)) = do
   sele <- infer st expr
   return $
     either
-      (Left)
+      Left
       (\t ->
          case t of
            Struct fdl ->
-             (case (filter (\(S.Ident fid, _) -> fid == ident) fdl) of
-                _:(S.Ident _, sft):_ -> Right sft
-                _                    -> Left $ createError se $ NoField ident)
+             case filter (\(S.Ident fid, _) -> fid == ident) fdl of
+               _:((S.Ident _, sft):_) -> Right sft
+               _ -> Left $ createError se $ NoField ident
            _ -> Left $ createError se $ NonStruct t)
-      sele-- * expr is well-typed and resolves to []T or [N]T;
+      sele -- * expr is well-typed and resolves to []T or [N]T;
   -- * index is well-typed and resolves to int.
   -- The result of the indexing expression is T.
 -- | Indexing into a slice or an array (expr[index]) is well-typed if:
@@ -674,9 +674,9 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   tss <- sequence $ NE.map (infer st) inners
   return $
     either
-      (Left)
+      Left
       (\ts ->
-         if (and $ NE.map isCorrect ts)
+         if and $ NE.map isCorrect ts
            then Right (resultSType ts)
            else Left $ createError parentExpr (makeError ts))
       (sequence tss)
@@ -697,21 +697,21 @@ isCapCompatible t =
     _        -> False
 
 isNumeric :: SType -> Bool
-isNumeric t = isSomething ["int", "float64", "rune"] t
+isNumeric = isSomething ["int", "float64", "rune"]
 
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
-isOrdered t = isSomething ["int", "float64", "rune", "string"] t
+isOrdered = isSomething ["int", "float64", "rune", "string"]
 
 isBoolean :: SType -> Bool
-isBoolean t = isSomething ["bool"] t
+isBoolean = isSomething ["bool"]
 
 isInteger :: SType -> Bool
-isInteger t = isSomething ["int"] t
+isInteger = isSomething ["int"]
 
 isSomething :: [String] -> SType -> Bool
 isSomething lts t =
-  case (resolveSType t) of
+  case resolveSType t of
     Primitive (S.Ident ident) -> ident `elem` lts
     _                         -> False
 
