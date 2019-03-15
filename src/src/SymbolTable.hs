@@ -14,9 +14,9 @@ import           Data.Foldable           (asum)
 -- import qualified Data.HashTable.Class    as H
 -- import qualified Data.HashTable.ST.Basic as HT
 import           Data.List               (intercalate)
-import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, nonEmpty, (<|))
+import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList)
 import qualified Data.List.NonEmpty as NE (head, map)
-import           Data.Maybe              (isJust, catMaybes)
+import           Data.Maybe              (catMaybes)
 -- import           Data.STRef
 import qualified SymbolTableCore as S
 import           ErrorBundle
@@ -459,12 +459,15 @@ instance TypeInfer Expr where
       else undefined -- TODO: ADD
     | otherwise = undefined -- TODO: ADD, EQ, NEQ
 
-  infer st (Lit l) =
+  infer _ (Lit l) =
     return $ Right $ case l of
       IntLit {} -> Primitive (S.Ident "int")
       FloatLit {} -> Primitive (S.Ident "float64")
       RuneLit {} -> Primitive (S.Ident "rune")
       StringLit {} -> Primitive (S.Ident "string")
+
+  -- | TODO
+  infer _ _ = undefined
 
   -- | TODO
   -- infer st e@(Var id) = do
@@ -496,14 +499,15 @@ isInteger t = isSomething ["int"] t
 isSomething :: [String] -> SType -> Bool
 isSomething lts t =
   case (resolveSType t) of
-    Primitive (S.Ident id) -> id `elem` lts
+    Primitive (S.Ident ident) -> ident `elem` lts
     _ -> False
 
 -- | Resolves a defined type to a base type
 resolveSType :: SType -> SType
 resolveSType (Array i st) = Array i (resolveSType st)
 resolveSType (Slice st) = Slice (resolveSType st)
-resolveSType (Struct fl) = Struct $ map (\(id, st) -> (id, resolveSType st)) fl
+resolveSType (Struct fl) =
+  Struct $ map (\(ident, st) -> (ident, resolveSType st)) fl
 resolveSType (TypeMap _ st) = resolveSType st
 resolveSType t = t -- Other types
 
