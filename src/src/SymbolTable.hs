@@ -492,24 +492,16 @@ infer st e@(AppendExpr _ e1 e2) = do
 -- | Infer types of len expressions
   -- A len expression len(expr) is well-typed if expr is well-typed, has
   -- type S and S resolves to string, []T or [N]T. The result has type int.
-infer st le@(LenExpr _ expr) = do
-  et <- infer st expr
-  return $ either
-    (Left)
-    (\t -> if isLenCompatible t then Right $ Primitive $ S.Ident "int"
-            else Left $ createError le $ BadLen t)
-    et
+infer st le@(LenExpr _ expr) =
+  inferConstraint st isLenCompatible (const $ Primitive $ S.Ident "int")
+    (\t -> BadLen $ NE.head t) le (fromList [expr])
 
 -- | Infer types of cap expressions
   -- A cap expression cap(expr) is well-typed if expr is well-typed, has
   -- type S and S resolves to []T or [N]T. The result has type int.
-infer st ce@(CapExpr _ expr) = do
-  et <- infer st expr
-  return $ either
-    (Left)
-    (\t -> if isCapCompatible t then Right $ Primitive $ S.Ident "int"
-            else Left $ createError ce $ BadCap t)
-    et
+infer st ce@(CapExpr _ expr) =
+  inferConstraint st isLenCompatible (const $ Primitive $ S.Ident "int")
+    (\t -> BadCap $ NE.head t) ce (fromList [expr])
 
 -- | TODO
 infer _ _ = undefined
