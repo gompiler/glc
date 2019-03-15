@@ -430,7 +430,6 @@ instance TypeInfer Expr where
     -- | op `elem` [EQ, NEQ] =
     --   inferConstraint st isComparable (const "TODO") (\t -> BadBinaryOp "TODO" t) e (fromList [inner1, inner2])
     | op `elem` [Data.LT, Data.LEQ, Data.GT, Data.GEQ] =
-      -- TODO: NEED REFERENCE TO ORIGINAL!!! (NOT REDECLARED OVERSHADOWING) BOOL
       inferConstraint st isOrdered (const $ BaseMap (S.Ident "bool"))
         (\t -> BadBinaryOp "ordered" t) e (fromList [inner1, inner2])
     | Arithm aop <- op =
@@ -450,6 +449,9 @@ instance TypeInfer Expr where
       RuneLit {} -> BaseMap (S.Ident "rune")
       StringLit {} -> BaseMap (S.Ident "string")
 
+  -- | TODO
+  -- infer st e@(Var id) = do
+
   -- | Infers the inner type for a unary operator and checks if it matches using the fn
     -- May be generalizable
   inferConstraint st isCorrect resultSType makeError parentExpr inners = do
@@ -459,8 +461,6 @@ instance TypeInfer Expr where
       (\ts -> if (and $ NE.map isCorrect ts) then Right (resultSType ts)
               else Left $ createError parentExpr (makeError ts))
       (sequence tss)
-
--- TODO: CHECK THAT THESE RESOLVE TO OG TYPES, NOT REDECLARED OVERSHADOWING ONES
 
 isNumeric :: SType -> Bool
 isNumeric t = isSomething ["int", "float64", "rune"] t
