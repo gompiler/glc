@@ -4,7 +4,7 @@
 module TypedData where
 
 import           Base
-import           Data               (Identifier (..), Identifiers)
+import           Data               (Identifier (..))
 import           Data.List.NonEmpty (NonEmpty (..))
 
 data ScopedIdent =
