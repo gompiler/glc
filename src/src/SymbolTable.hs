@@ -42,8 +42,8 @@ data SType
   | Slice SType
   | Struct [Field] -- List of fields
   | TypeMap S.Ident SType
-  | BaseMap S.Ident
-  -- | Infer -- Infer the type at typechecking, not at symbol table generation
+  | Primitive S.Ident
+  | Infer -- Infer the type at typechecking, not at symbol table generation
   deriving (Show, Eq)
 
 -- | SymbolTable, cactus stack of SymbolScope
@@ -190,11 +190,10 @@ instance Symbolize SimpleStmt where
         eb <- mapM (\(ident, e) -> checkDec ident e st) (zip idl el)
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
         return $ either (Just) (\bl -> if True `elem` bl then Nothing else Just $ createError (head idl) ShortDec) (sequence eb) 
-      checkDec :: Identifier -> Expr -> SymbolTable s -> ST s (Either ErrorMessage' Bool)
-      checkDec ident e st = do
-        et <- infer e st-- Either ErrorMessage' SType
-        (either (return . Left) (\t -> checkId ident t st) et)
-          where
+      checkDec :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' Bool)
+      checkDec ident@(Identifier _ vname) st = let idv = S.Ident vname in
+                                                 do val <- S.lookupCurrent
+        where
             checkId :: Identifier -> SType -> SymbolTable s -> ST s (Either ErrorMessage' Bool) -- Bool is to indicate whether the variable was already declared or not
       -- Note that short declarations require at least *one* new declaration
             checkId ident@(Identifier _ vname) t st =
@@ -212,6 +211,33 @@ instance Symbolize SimpleStmt where
                        -- This cannot be Nothing, add will always succeed here because lookup returned Nothing, so there is no conflict
                        _ <- S.addMessage st msi -- Add new symbol
                        return $ Right True
+      -- checkDecl :: [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
+      -- checkDecl idl el st = do
+      --   eb <- mapM (\(ident, e) -> checkDec ident e st) (zip idl el)
+      --   -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
+      --   return $ either (Just) (\bl -> if True `elem` bl then Nothing else Just $ createError (head idl) ShortDec) (sequence eb) 
+      -- checkDec :: Identifier -> Expr -> SymbolTable s -> ST s (Either ErrorMessage' Bool)
+      -- checkDec ident e st = do
+      --   et <- infer e st-- Either ErrorMessage' SType
+      --   (either (return . Left) (\t -> checkId ident t st) et)
+      --     where
+      --       checkId :: Identifier -> SType -> SymbolTable s -> ST s (Either ErrorMessage' Bool) -- Bool is to indicate whether the variable was already declared or not
+      -- -- Note that short declarations require at least *one* new declaration
+      --       checkId ident@(Identifier _ vname) t st =
+      --         let idv = S.Ident vname in
+      --           do val <- S.lookupCurrent st idv
+      --              case val of
+      --                Just (_, (Variable t2)) -> return $
+      --                  if t == t2
+      --                  then Right False
+      --                  -- if locally defined, check if type matches
+      --                  else Left $ createError e (TypeMismatch ident t t2)
+      --                Just (_, s) -> return $ Left $ createError ident (NotLVal ident s)
+      --                Nothing -> do
+      --                  msi <- add st idv (Variable t) 
+      --                  -- This cannot be Nothing, add will always succeed here because lookup returned Nothing, so there is no conflict
+      --                  _ <- S.addMessage st msi -- Add new symbol
+      --                  return $ Right True
                          
                                                                                                      
   recurse st _ = return Nothing
