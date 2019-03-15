@@ -443,6 +443,13 @@ instance TypeInfer Expr where
       else undefined -- TODO: ADD
     | otherwise = undefined -- TODO: ADD, EQ, NEQ
 
+  infer st (Lit l) =
+    return $ Right $ case l of
+      IntLit {} -> BaseMap (S.Ident "int")
+      FloatLit {} -> BaseMap (S.Ident "float64")
+      RuneLit {} -> BaseMap (S.Ident "rune")
+      StringLit {} -> BaseMap (S.Ident "string")
+
   -- | Infers the inner type for a unary operator and checks if it matches using the fn
     -- May be generalizable
   inferConstraint st isCorrect resultSType makeError parentExpr inners = do
