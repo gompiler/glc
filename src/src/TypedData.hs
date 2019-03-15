@@ -35,7 +35,7 @@ data TopDecl
 -- Golite does not support type alias
 data Decl
   -- | See https://golang.org/ref/spec#VarDecl
-  -- If only on entry exists, it is treated as a single line declaration
+  -- If only one entry exists, it is treated as a single line declaration
   -- Otherwise, it is treated as var ( ... )
   = VarDecl [VarDecl']
   -- | See https://golang.org/ref/spec#TypeDecl
