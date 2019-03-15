@@ -475,6 +475,8 @@ data SymbolError
   | BadCap SType
   | NonStruct SType
   | NoField String
+  | BadIndex String SType
+  | NonIndexable SType
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -503,7 +505,9 @@ instance ErrorEntry SymbolError where
       BadLen t1 -> "Incorrect type " ++ show t1 ++ " for len"
       BadCap t1 -> "Incorrect type " ++ show t1 ++ " for cap"
       NonStruct t1 -> "Cannot access field on non-struct type " ++ show t1
-      NoField f -> "No field " ++ show f ++ " on struct"
+      NoField f -> "No field " ++ f ++ " on struct"
+      BadIndex ts ti -> "Cannot use type " ++ show ti ++ " as index for " ++ ts
+      NonIndexable t -> show t ++ " is not indexable"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -522,8 +526,8 @@ infer st e@(Unary _ Pos inner) =
   inferConstraint
     st
     isNumeric
-    (\t -> NE.head t)
-    (\t -> BadUnaryOp "numeric" t)
+    (NE.head)
+    (BadUnaryOp "numeric")
     e
     (fromList [inner])
 -- | Infers the types of '-' unary operator expressions
@@ -531,8 +535,8 @@ infer st e@(Unary _ Neg inner) =
   inferConstraint
     st
     isNumeric
-    (\t -> NE.head t)
-    (\t -> BadUnaryOp "numeric" t)
+    NE.head
+    (BadUnaryOp "numeric")
     e
     (fromList [inner])
 -- | Infers the types of '!' unary operator expressions
@@ -540,8 +544,8 @@ infer st e@(Unary _ Not inner) =
   inferConstraint
     st
     isBoolean
-    (\t -> NE.head t)
-    (\t -> BadUnaryOp "boolean" t)
+    NE.head
+    (BadUnaryOp "boolean")
     e
     (fromList [inner])
 -- | Infers the types of '^' unary operator expressions
@@ -549,8 +553,8 @@ infer st e@(Unary _ BitComplement inner) =
   inferConstraint
     st
     isInteger
-    (\t -> NE.head t)
-    (\t -> BadUnaryOp "integer" t)
+    NE.head
+    (BadUnaryOp "integer")
     e
     (fromList [inner])
 -- | Infer types of binary expressions
@@ -559,8 +563,8 @@ infer st e@(Binary _ op inner1 inner2)
     inferConstraint
       st
       isBoolean
-      (\t -> NE.head t)
-      (\t -> BadBinaryOp "boolean" t)
+      NE.head
+      (BadBinaryOp "boolean")
       e
       (fromList [inner1, inner2])
   -- TODO: FIGURE THIS OUT, SINCE STRUCTS ARE COMPARABLE...
@@ -571,7 +575,7 @@ infer st e@(Binary _ op inner1 inner2)
       st
       isOrdered
       (const $ Primitive (S.Ident "bool"))
-      (\t -> BadBinaryOp "ordered" t)
+      (BadBinaryOp "ordered")
       e
       (fromList [inner1, inner2])
   | Arithm aop <- op =
@@ -580,7 +584,7 @@ infer st e@(Binary _ op inner1 inner2)
              st
              isNumeric
              (const $ Primitive (S.Ident "bool"))
-             (\t -> BadBinaryOp "numeric" t)
+             (BadBinaryOp "numeric")
              e
              (fromList [inner1, inner2])
       else if aop `elem`
@@ -589,7 +593,7 @@ infer st e@(Binary _ op inner1 inner2)
                     st
                     isInteger
                     (const $ Primitive (S.Ident "int"))
-                    (\t -> BadBinaryOp "int" t)
+                    (BadBinaryOp "int")
                     e
                     (fromList [inner1, inner2])
              else undefined -- TODO: ADD
@@ -619,9 +623,10 @@ infer st ae@(AppendExpr _ e1 e2) = do
     -- TODO: MORE CASES FOR NICER ERRORS?
       (Right t1, Right t2) -> Left $ createError ae $ BadAppend t1 t2
       (Left em, _) -> Left em
-      (_, Left em) -> Left em-- A len expression len(expr) is well-typed if expr is well-typed, has
-  -- type S and S resolves to string, []T or [N]T. The result has type int.
+      (_, Left em) -> Left em
 -- | Infer types of len expressions
+-- A len expression len(expr) is well-typed if expr is well-typed, has
+-- type S and S resolves to string, []T or [N]T. The result has type int.
 infer st le@(LenExpr _ expr) =
   inferConstraint
     st
@@ -629,9 +634,10 @@ infer st le@(LenExpr _ expr) =
     (const $ Primitive $ S.Ident "int")
     (\t -> BadLen $ NE.head t)
     le
-    (fromList [expr])-- A cap expression cap(expr) is well-typed if expr is well-typed, has
-  -- type S and S resolves to []T or [N]T. The result has type int.
+    (fromList [expr])
 -- | Infer types of cap expressions
+-- A cap expression cap(expr) is well-typed if expr is well-typed, has
+-- type S and S resolves to []T or [N]T. The result has type int.
 infer st ce@(CapExpr _ expr) =
   inferConstraint
     st
@@ -640,8 +646,8 @@ infer st ce@(CapExpr _ expr) =
     (\t -> BadCap $ NE.head t)
     ce
     (fromList [expr])
-
--- | Selecting a field in a struct (expr.id) is well-typed if:
+-- | Infer types of selector expressions
+-- Selecting a field in a struct (expr.id) is well-typed if:
 -- * expr is well-typed and has type S;
 -- * S resolves to a struct type that has a field named id.
 infer st se@(Selector _ expr (Identifier _ ident)) = do
@@ -656,18 +662,23 @@ infer st se@(Selector _ expr (Identifier _ ident)) = do
                 _:(S.Ident _, sft):_ -> Right sft
                 _                    -> Left $ createError se $ NoField ident)
            _ -> Left $ createError se $ NonStruct t)
-      sele-- * expr is well-typed and resolves to []T or [N]T;
-  -- * index is well-typed and resolves to int.
-  -- The result of the indexing expression is T.
--- | Indexing into a slice or an array (expr[index]) is well-typed if:
--- infer st ie@(Index _ e1 e2) = do
---   e1e <- infer st e1
---   e2e <- infer st e2
---   return $ case (e1e, e2e) of
---     (Right (Slice t1), Right (Primitive (S.Ident "int"))) ->
---     TODO
+      sele
+-- | Infer types of index expressions
+-- Indexing into a slice or an array (expr[index]) is well-typed if:
+-- * expr is well-typed and resolves to []T or [N]T;
+-- * index is well-typed and resolves to int.
+-- The result of the indexing expression is T.
+infer st ie@(Index _ e1 e2) = do
+  e1e <- infer st e1
+  e2e <- infer st e2
+  return $ case (e1e, e2e) of
+    (Right (Slice t), Right (Primitive (S.Ident "int"))) -> Right t
+    (Right (Array _ t), Right (Primitive (S.Ident "int"))) -> Right t
+    (Right (Slice t), _) -> Left $ createError ie $ BadIndex "slice" t
+    (Right (Array _ t), _) -> Left $ createError ie $ BadIndex "array" t
+    (Right t, _)  -> Left $ createError ie $ NonIndexable t
+    (Left e, _) -> Left e
 infer _ _ = undefined
-  -- May be generalizable
 
 inferConstraint ::
      SymbolTable s -- st
