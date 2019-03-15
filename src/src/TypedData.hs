@@ -214,15 +214,17 @@ data Expr
   = Unary Offset
           UnaryOp
           Expr
+          InferredType
   | Binary Offset
            BinaryOp
            Expr
            Expr
+           InferredType
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
   | Var Identifier
-        Type'
+        InferredType
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
@@ -244,11 +246,13 @@ data Expr
   | Selector Offset
              Expr
              Identifier
+             InferredType
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
   | Index Offset
           Expr
           Expr
+          InferredType
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   | Arguments Offset
@@ -262,20 +266,21 @@ data Expr
   -- the offset is included within Type'
   | TypeConvert Type'
                 Expr
+                InferredType
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
-  offset (Unary o _ _)       = o
-  offset (Binary o _ _ _)    = o
+  offset (Unary o _ _ _)       = o
+  offset (Binary o _ _ _ _)    = o
   offset (Lit l)             = offset l
   offset (Var ident _)       = offset ident
   offset (AppendExpr o _ _)  = o
   offset (LenExpr o _)       = o
   offset (CapExpr o _)       = o
-  offset (Selector o _ _)    = o
-  offset (Index o _ _)       = o
+  offset (Selector o _ _ _)    = o
+  offset (Index o _ _ _)       = o
   offset (Arguments o _ _ _) = o
-  offset (TypeConvert t _)   = offset t
+  offset (TypeConvert t _ _)   = offset t
 
 -- | See https://golang.org/ref/spec#Literal
 data Literal
@@ -345,13 +350,15 @@ newtype AssignOp =
   AssignOp (Maybe ArithmOp)
   deriving (Show, Eq)
 
--- | Type with offset value
--- We do not include offsets within types as
--- it results in unnecessary nested offsets
-type Type' = (Offset, Scope, Identifier, Type)
+-- | Type with scope value
+-- Used for caching inferrable types
+type InferredType = (Scope, Type)
+
+-- Type with scope and offset value
+type Type' = (Offset, Scope, Type)
 
 instance ErrorBreakpoint Type' where
-  offset (o, _, _, _) = o
+  offset (o, _, _) = o
 
 -- | See https://golang.org/ref/spec#Types
 data Type
