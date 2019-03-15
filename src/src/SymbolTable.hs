@@ -118,8 +118,8 @@ class Typify a where
   -- Resolve AST types to SType, may return error message if type error
   toType :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
 
--- instance Symbolize HAST where
---   recurse (H a) = recurse a
+instance Symbolize HAST where
+  recurse st (H a) = recurse st a
 
 instance Symbolize TopDecl where
   recurse st (TopDecl d) = recurse st d
@@ -225,7 +225,11 @@ instance Symbolize Stmt where
     S.exitScope st
     return res
   recurse st (SimpleStmt s) = recurse st s
-  -- recurse st (If (ss, e) s1 s2) = undefined
+  recurse st (If (ss, e) s1 s2) = do
+    S.enterScope st
+    res <- am (recurse st) [H ss, H e, H s1, H s2]
+    S.exitScope st
+    return res
   recurse _ _ = undefined
   
 instance Symbolize Decl where
