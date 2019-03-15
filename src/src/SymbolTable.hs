@@ -16,11 +16,13 @@ import           Data.Foldable       (asum)
 -- import qualified Data.HashTable.ST.Basic as HT
 import           Data.List           (intercalate)
 import           Data.List.NonEmpty  (NonEmpty (..), fromList, toList)
-import qualified Data.List.NonEmpty as NE (head, map)
+import qualified Data.List.NonEmpty  as NE (head, map)
 import           Data.Maybe          (catMaybes)
+
 -- import           Data.STRef
 import           ErrorBundle
 import           Numeric             (readOct)
+
 -- import           Data.STRef
 import qualified SymbolTableCore     as S
 
@@ -263,18 +265,21 @@ instance Symbolize Stmt where
     return res
   recurse st (Switch ss me scs) = do
     S.enterScope st
-    r1 <- case me of
-            Just e -> am (recurse st) [H ss, H e]
-            Nothing -> recurse st ss
+    r1 <-
+      case me of
+        Just e  -> am (recurse st) [H ss, H e]
+        Nothing -> recurse st ss
     S.enterScope st
     r2 <- am (recurse st) scs
     S.exitScope st
     return $ maybeJ [r1, r2]
   recurse st (For (ForClause ss1 me ss2) s) = do
     S.enterScope st
-    r1 <- am (recurse st) $ case me of
-                              Just e -> [H ss1, H e, H ss2]
-                              Nothing -> [H ss1, H ss2]
+    r1 <-
+      am (recurse st) $
+      case me of
+        Just e  -> [H ss1, H e, H ss2]
+        Nothing -> [H ss1, H ss2]
     r2 <- recurse st s
     S.exitScope st
     return $ maybeJ [r1, r2]
@@ -338,11 +343,12 @@ pEithers eil =
 --   if length (catMaybes ml) == length ml -- All values are Just values
 --     then Just $ f $ catMaybes ml
 --     else Nothing
-
 -- | List of maybes, return first Just or nothing if all nothing
 maybeJ :: [Maybe b] -> Maybe b
-maybeJ l = if null (catMaybes l) then Nothing
-           else Just $ head $ catMaybes l
+maybeJ l =
+  if null (catMaybes l)
+    then Nothing
+    else Just $ head $ catMaybes l
 
 instance Typify Type where
   toType st (ArrayType (Lit l) t) = do
@@ -457,10 +463,14 @@ data SymbolError
   | NotLVal Identifier
             Symbol
   | ShortDec
-  | BadUnaryOp String (NonEmpty SType)
-  | BadBinaryOp String (NonEmpty SType)
-  | AppendMismatch SType SType
-  | BadAppend SType SType
+  | BadUnaryOp String
+               (NonEmpty SType)
+  | BadBinaryOp String
+                (NonEmpty SType)
+  | AppendMismatch SType
+                   SType
+  | BadAppend SType
+              SType
   | BadLen SType
   | BadCap SType
   | NonStruct SType
@@ -480,18 +490,20 @@ instance ErrorEntry SymbolError where
         vname ++ " resolves to " ++ show s ++ " and is not an lvalue"
       ShortDec -> "Short declaration list contains no new variables"
       BadUnaryOp s t ->
-        "Unary operator cannot be used on non-" ++ s ++ " type " ++ (show $ NE.head t)
+        "Unary operator cannot be used on non-" ++
+        s ++ " type " ++ (show $ NE.head t)
       BadBinaryOp s t ->
-        "Binary operator cannot be used on non-" ++ s ++ " types " ++ (intercalate ", " $ toList $ NE.map show t)
+        "Binary operator cannot be used on non-" ++
+        s ++ " types " ++ (intercalate ", " $ toList $ NE.map show t)
       AppendMismatch t1 t2 ->
-        "Cannot append something of type " ++ show t2 ++ " to slice of type []" ++ show t1
+        "Cannot append something of type " ++
+        show t2 ++ " to slice of type []" ++ show t1
       BadAppend t1 t2 ->
         "Incorrect types " ++ show t1 ++ " and " ++ show t2 ++ " for append"
       BadLen t1 -> "Incorrect type " ++ show t1 ++ " for len"
       BadCap t1 -> "Incorrect type " ++ show t1 ++ " for cap"
       NonStruct t1 -> "Cannot access field on non-struct type " ++ show t1
       NoField f -> "No field " ++ show f ++ " on struct"
-
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -501,119 +513,157 @@ topScope' :: SymbolTable s -> ST s (S.SymbolScope s Symbol)
 topScope' = S.topScope
 
 -- | Main type inference function
-
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
-
 infer st e@(Unary _ Pos inner) =
-  inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t)
-    e (fromList [inner])
+  inferConstraint
+    st
+    isNumeric
+    (\t -> NE.head t)
+    (\t -> BadUnaryOp "numeric" t)
+    e
+    (fromList [inner])
 infer st e@(Unary _ Neg inner) =
-  inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t)
-    e (fromList [inner])
+  inferConstraint
+    st
+    isNumeric
+    (\t -> NE.head t)
+    (\t -> BadUnaryOp "numeric" t)
+    e
+    (fromList [inner])
 infer st e@(Unary _ Not inner) =
-  inferConstraint st isBoolean (\t -> NE.head t) (\t -> BadUnaryOp "boolean" t)
-    e (fromList [inner])
+  inferConstraint
+    st
+    isBoolean
+    (\t -> NE.head t)
+    (\t -> BadUnaryOp "boolean" t)
+    e
+    (fromList [inner])
 infer st e@(Unary _ BitComplement inner) =
-  inferConstraint st isInteger (\t -> NE.head t) (\t -> BadUnaryOp "integer" t)
-    e (fromList [inner])
-
+  inferConstraint
+    st
+    isInteger
+    (\t -> NE.head t)
+    (\t -> BadUnaryOp "integer" t)
+    e
+    (fromList [inner])
 infer st e@(Binary _ op inner1 inner2)
   | op `elem` [Or, And] =
-    inferConstraint st isBoolean (\t -> NE.head t)
-      (\t -> BadBinaryOp "boolean" t) e (fromList [inner1, inner2])
+    inferConstraint
+      st
+      isBoolean
+      (\t -> NE.head t)
+      (\t -> BadBinaryOp "boolean" t)
+      e
+      (fromList [inner1, inner2])
   -- TODO: FIGURE THIS OUT, SINCE STRUCTS ARE COMPARABLE...
   | op `elem` [Data.EQ, Data.NEQ] = undefined
   --   inferConstraint st isComparable (const "TODO") (\t -> BadBinaryOp "TODO" t) e (fromList [inner1, inner2])
   | op `elem` [Data.LT, Data.LEQ, Data.GT, Data.GEQ] =
-    inferConstraint st isOrdered (const $ Primitive (S.Ident "bool"))
-      (\t -> BadBinaryOp "ordered" t) e (fromList [inner1, inner2])
+    inferConstraint
+      st
+      isOrdered
+      (const $ Primitive (S.Ident "bool"))
+      (\t -> BadBinaryOp "ordered" t)
+      e
+      (fromList [inner1, inner2])
   | Arithm aop <- op =
-    if aop `elem` [Subtract, Multiply, Divide] then
-      inferConstraint st isNumeric (const $ Primitive (S.Ident "bool"))
-        (\t -> BadBinaryOp "numeric" t) e (fromList [inner1, inner2])
-    else if aop `elem` [Remainder, BitOr, BitXor, ShiftL, ShiftR, BitAnd, BitClear] then
-      inferConstraint st isInteger (const $ Primitive (S.Ident "int"))
-        (\t -> BadBinaryOp "int" t) e (fromList [inner1, inner2])
-    else undefined -- TODO: ADD
+    if aop `elem` [Subtract, Multiply, Divide]
+      then inferConstraint
+             st
+             isNumeric
+             (const $ Primitive (S.Ident "bool"))
+             (\t -> BadBinaryOp "numeric" t)
+             e
+             (fromList [inner1, inner2])
+      else if aop `elem`
+              [Remainder, BitOr, BitXor, ShiftL, ShiftR, BitAnd, BitClear]
+             then inferConstraint
+                    st
+                    isInteger
+                    (const $ Primitive (S.Ident "int"))
+                    (\t -> BadBinaryOp "int" t)
+                    e
+                    (fromList [inner1, inner2])
+             else undefined -- TODO: ADD
   | otherwise = undefined -- TODO: ADD, EQ, NEQ
-
 infer _ (Lit l) =
-  return $ Right $ case l of
-    IntLit {} -> Primitive (S.Ident "int")
-    FloatLit {} -> Primitive (S.Ident "float64")
-    RuneLit {} -> Primitive (S.Ident "rune")
+  return $
+  Right $
+  case l of
+    IntLit {}    -> Primitive (S.Ident "int")
+    FloatLit {}  -> Primitive (S.Ident "float64")
+    RuneLit {}   -> Primitive (S.Ident "rune")
     StringLit {} -> Primitive (S.Ident "string")
-
 infer st (Var ident) = resolve ident st
-
--- | Infer types of append expressions
   -- An append expression append(e1, e2) is well-typed if:
   -- * e1 is well-typed, has type S and S resolves to a []T;
   -- * e2 is well-typed and has type T.
+-- | Infer types of append expressions
 infer st ae@(AppendExpr _ e1 e2) = do
   sle <- infer st e1 -- Infer type of slice (e1)
   exe <- infer st e2 -- Infer type of value to append (e2)
-
-  return $ case (sle, exe) of
-    (Right slt@(Slice t1), Right t2) ->
-      if t1 == t2 then Right slt
-      else Left $ createError ae $ AppendMismatch t1 t2
+  return $
+    case (sle, exe) of
+      (Right slt@(Slice t1), Right t2) ->
+        if t1 == t2
+          then Right slt
+          else Left $ createError ae $ AppendMismatch t1 t2
     -- TODO: MORE CASES FOR NICER ERRORS?
-    (Right t1, Right t2) -> Left $ createError ae $ BadAppend t1 t2
-    (Left em, _) -> Left em
-    (_, Left em) -> Left em
-
--- | Infer types of len expressions
-  -- A len expression len(expr) is well-typed if expr is well-typed, has
+      (Right t1, Right t2) -> Left $ createError ae $ BadAppend t1 t2
+      (Left em, _) -> Left em
+      (_, Left em) -> Left em-- A len expression len(expr) is well-typed if expr is well-typed, has
   -- type S and S resolves to string, []T or [N]T. The result has type int.
+-- | Infer types of len expressions
 infer st le@(LenExpr _ expr) =
-  inferConstraint st isLenCompatible (const $ Primitive $ S.Ident "int")
-    (\t -> BadLen $ NE.head t) le (fromList [expr])
-
--- | Infer types of cap expressions
-  -- A cap expression cap(expr) is well-typed if expr is well-typed, has
+  inferConstraint
+    st
+    isLenCompatible
+    (const $ Primitive $ S.Ident "int")
+    (\t -> BadLen $ NE.head t)
+    le
+    (fromList [expr])-- A cap expression cap(expr) is well-typed if expr is well-typed, has
   -- type S and S resolves to []T or [N]T. The result has type int.
+-- | Infer types of cap expressions
 infer st ce@(CapExpr _ expr) =
-  inferConstraint st isLenCompatible (const $ Primitive $ S.Ident "int")
-    (\t -> BadCap $ NE.head t) ce (fromList [expr])
-
--- | Selecting a field in a struct (expr.id) is well-typed if:
-  -- * expr is well-typed and has type S;
+  inferConstraint
+    st
+    isLenCompatible
+    (const $ Primitive $ S.Ident "int")
+    (\t -> BadCap $ NE.head t)
+    ce
+    (fromList [expr])-- * expr is well-typed and has type S;
   -- * S resolves to a struct type that has a field named id.
+-- | Selecting a field in a struct (expr.id) is well-typed if:
 infer st se@(Selector _ expr (Identifier _ ident)) = do
   sele <- infer st expr
-  return $ either
-    (Left)
-    (\t -> case t of
-      Struct fdl ->
-        (case (filter (\(S.Ident fid, _) -> fid == ident) fdl) of
-          _:(S.Ident _, sft):_ -> Right sft
-          _ -> Left $ createError se $ NoField ident)
-      _ -> Left $ createError se $ NonStruct t)
-    sele
-
--- | Indexing into a slice or an array (expr[index]) is well-typed if:
-  -- * expr is well-typed and resolves to []T or [N]T;
+  return $
+    either
+      (Left)
+      (\t ->
+         case t of
+           Struct fdl ->
+             (case (filter (\(S.Ident fid, _) -> fid == ident) fdl) of
+                _:(S.Ident _, sft):_ -> Right sft
+                _                    -> Left $ createError se $ NoField ident)
+           _ -> Left $ createError se $ NonStruct t)
+      sele-- * expr is well-typed and resolves to []T or [N]T;
   -- * index is well-typed and resolves to int.
   -- The result of the indexing expression is T.
+-- | Indexing into a slice or an array (expr[index]) is well-typed if:
 -- infer st ie@(Index _ e1 e2) = do
 --   e1e <- infer st e1
 --   e2e <- infer st e2
-
 --   return $ case (e1e, e2e) of
 --     (Right (Slice t1), Right (Primitive (S.Ident "int"))) ->
 --     TODO
-
 infer _ _ = undefined
+  -- May be generalizable
 
 -- infer st ie@(Index _ e1 e2) = undefined
-
 -- infer st ae@(Arguments  _ e el) = undefined
-
 -- | Infers the inner type for a unary operator and checks if it matches using the fn
-  -- May be generalizable
 inferConstraint ::
-  SymbolTable s -- st
+     SymbolTable s -- st
   -> (SType -> Bool) -- isCorrect
   -> (NonEmpty SType -> SType) -- resultSType
   -> (NonEmpty SType -> SymbolError) -- makeError
@@ -622,32 +672,34 @@ inferConstraint ::
   -> ST s (Either ErrorMessage' SType)
 inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   tss <- sequence $ NE.map (infer st) inners
-  return $ either
-    (Left)
-    (\ts -> if (and $ NE.map isCorrect ts) then Right (resultSType ts)
-            else Left $ createError parentExpr (makeError ts))
-    (sequence tss)
+  return $
+    either
+      (Left)
+      (\ts ->
+         if (and $ NE.map isCorrect ts)
+           then Right (resultSType ts)
+           else Left $ createError parentExpr (makeError ts))
+      (sequence tss)
 
 isLenCompatible :: SType -> Bool
 isLenCompatible t =
   case t of
     Primitive (S.Ident "string") -> True
-    Array {} -> True
-    Slice {} -> True
-    _ -> False
+    Array {}                     -> True
+    Slice {}                     -> True
+    _                            -> False
 
 isCapCompatible :: SType -> Bool
 isCapCompatible t =
   case t of
     Array {} -> True
     Slice {} -> True
-    _ -> False
+    _        -> False
 
 isNumeric :: SType -> Bool
 isNumeric t = isSomething ["int", "float64", "rune"] t
 
 -- isComparable: many many things...
-
 isOrdered :: SType -> Bool
 isOrdered t = isSomething ["int", "float64", "rune", "string"] t
 
@@ -661,7 +713,7 @@ isSomething :: [String] -> SType -> Bool
 isSomething lts t =
   case (resolveSType t) of
     Primitive (S.Ident ident) -> ident `elem` lts
-    _ -> False
+    _                         -> False
 
 -- | Resolves a defined type to a base type
 resolveSType :: SType -> SType
@@ -671,7 +723,6 @@ resolveSType (Struct fl) =
   Struct $ map (\(ident, st) -> (ident, resolveSType st)) fl
 resolveSType (TypeMap _ st) = resolveSType st
 resolveSType t = t -- Other types
-
 -- testing stuff
 -- z = S.Ident "test"
 -- zk = SType (TypeMap (S.Ident "test") (Primitive (S.Ident "int")))
