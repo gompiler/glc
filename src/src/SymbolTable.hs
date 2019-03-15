@@ -5,17 +5,17 @@ module SymbolTable
 where
 
 import           Control.Applicative     (Alternative)
-import           Control.Monad           (join)
+-- import           Control.Monad           (join)
 import           Control.Monad.ST
 import           Data
 import           Data.Either             (partitionEithers)
 import           Data.Foldable           (asum)
-import           Data.Functor.Compose    (Compose (..), getCompose)
-import qualified Data.HashTable.Class    as H
-import qualified Data.HashTable.ST.Basic as HT
-import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, (<|))
-import           Data.Maybe              (isJust, catMaybes)
-import           Data.STRef
+-- import           Data.Functor.Compose    (Compose (..), getCompose)
+-- import qualified Data.HashTable.Class    as H
+-- import qualified Data.HashTable.ST.Basic as HT
+import           Data.List.NonEmpty      (toList)
+import           Data.Maybe              (catMaybes)
+-- import           Data.STRef
 import qualified SymbolTableCore as S
 import           ErrorBundle
 import           Numeric                 (readOct)
@@ -67,16 +67,16 @@ tabs n = concat $ replicate n "\t"
 -- | Initialize a symbol table with base types
 new :: ST s (SymbolTable s)
 new = do
-  ht <- S.new
+  st <- S.new
   -- Base types
-  S.insert ht (S.Ident "int") Base
-  S.insert ht (S.Ident "float64") Base
-  S.insert ht (S.Ident "bool") Base
-  S.insert ht (S.Ident "rune") Base
-  S.insert ht (S.Ident "string") Base
-  S.insert ht (S.Ident "true") Constant
-  S.insert ht (S.Ident "false") Constant
-  return ht
+  S.insert st (S.Ident "int") Base
+  S.insert st (S.Ident "float64") Base
+  S.insert st (S.Ident "bool") Base
+  S.insert st (S.Ident "rune") Base
+  S.insert st (S.Ident "string") Base
+  S.insert st (S.Ident "true") Constant
+  S.insert st (S.Ident "false") Constant
+  return st
 
 add :: SymbolTable s -> S.Ident -> Symbol -> ST s (Maybe SymbolInfo)
 add st ident sym = do
@@ -127,21 +127,25 @@ instance Symbolize TopDecl where
 instance Symbolize FuncDecl where
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
-  recurse st (FuncDecl ident@(Identifier _ vname) sig@(Signature (Parameters pdl) t) (BlockStmt sl)) = do
-    res <- S.isDef st (S.Ident vname)
+  recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) = do
+    res <- S.isDef st (S.Ident vname) -- Check if defined in symbol table
     if res then return $ Just $ createError ident (AlreadyDecl "Function " ident)
       else do
       S.enterScope st
-      epl <- checkParams st pdl
-      either (return . Just) (\pl -> do
-                                 maybe Nothing (\t' -> do
+      epl <- checkParams st pdl -- Either ErrorMessage' [Param]
+      -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
+      ef <- either (return . Left) (\pl ->
+                                 maybe (return $ Right $ Func pl Nothing) (\(_, t') -> do
                                                    et <- toType st t'
-                                                   either (return . Just) (\tt ->  do
-                                                                              _ <- S.insert st (S.Ident vname) (Func pl (Just tt))
-                                                                              am (recurse st) sl
+                                                   return $ either Left (\tt -> Right $ Func pl (Just tt)
                                                                           ) et
                                                ) t
-                                 ) epl -- Instead of nothing, verify body
+                                 ) epl 
+      -- We then take the Either ErrorMessage' Symbol, if no error we insert the Symbol (newly declared function) and recurse on statement list sl (from body of func) to declare things in body
+      either (return . Just) (\f -> do
+                                 _ <- S.insert st (S.Ident vname) f
+                                 am (recurse st) sl
+                             ) ef
       where
       checkParams ::
         SymbolTable s -> [ParameterDecl] -> ST s (Either ErrorMessage' [Param])
