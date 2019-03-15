@@ -278,9 +278,6 @@ instance ErrorBreakpoint Expr where
   offset (TypeConvert t _)   = offset t
 
 -- | See https://golang.org/ref/spec#Literal
--- Type can be inferred from string
--- If we want to keep erroneous states invalid,
--- we might want just string, or store as int and reformat on pretty print
 data Literal
   = IntLit Offset
            Int
