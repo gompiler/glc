@@ -24,9 +24,9 @@ data Action
 
 applyAction :: TestSymbolTable -> Action -> Expectation
 applyAction s (Lookup key expect) =
-  stToIO (lookup s (Ident $ show key)) >>=
+  stToIO (lookup s (show key)) >>=
   (`shouldBe` fmap (\(sc, v) -> (Scope sc, v)) expect)
-applyAction s (Insert key value) = stToIO $ insert s (Ident $ show key) value
+applyAction s (Insert key value) = stToIO $ insert s (show key) value
 applyAction s (AddMessage msg) = stToIO $ addMessage s msg
 applyAction s (CheckMessages msgs) =
   stToIO (getMessages s) >>= (`shouldBe` msgs)
