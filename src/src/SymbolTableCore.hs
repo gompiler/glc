@@ -6,12 +6,16 @@
 -- Heavily modeled around https://hackage.haskell.org/package/hashtables-1.2.3.1/docs/src/Data-HashTable-ST-Basic.html#HashTable
 module SymbolTableCore
   ( SymbolTable
+  , SymbolScope
   , Scope(..)
   , Ident(..)
   , new
   , insert
+  , insert'
   , lookup
   , lookupCurrent
+  , isDef
+  , isDefL
   , enterScope
   , exitScope
   , currentScope
@@ -85,6 +89,13 @@ insert :: SymbolTable s v l -> Ident -> v -> ST s ()
 insert st !k !v = do
   SymbolTable ((_, ht) :| _) _ <- readRef st
   HT.insert ht k v
+  
+-- | Inserts a key value pair at the upper most scope and return scope level
+insert' :: SymbolTable s v l -> Ident -> v -> ST s Scope
+insert' st k v = do
+  SymbolTable ((Scope s, ht) :| _) _ <- readRef st
+  HT.insert ht k v
+  return (Scope $ s + 1)
 
 -- | Look up provided key across all scopes, starting with the top
 lookup :: SymbolTable s v l -> Ident -> ST s (Maybe (Scope, v))
@@ -103,6 +114,22 @@ lookupCurrent st !k = do
   (scope, ht) <- currentScope st
   v <- HT.lookup ht k
   return $ fmap (scope, ) v
+
+-- | Use lookup to check if defined
+isDef :: SymbolTable s v l -> Ident -> ST s Bool
+isDef st k = do
+  res <- lookup st k
+  case res of
+    Nothing -> return False
+    Just _ -> return True
+
+-- | isDef but check only current scope
+isDefL :: SymbolTable s v l -> Ident -> ST s Bool
+isDefL st k = do
+  res <- lookupCurrent st k
+  case res of
+    Nothing -> return False
+    Just _ -> return True
 
 -- | Create new scope
 enterScope :: SymbolTable s v l -> ST s ()
