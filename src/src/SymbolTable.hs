@@ -577,6 +577,9 @@ infer st ce@(CapExpr _ expr) =
   inferConstraint st isLenCompatible (const $ Primitive $ S.Ident "int")
     (\t -> BadCap $ NE.head t) ce (fromList [expr])
 
+-- | Selecting a field in a struct (expr.id) is well-typed if:
+  -- * expr is well-typed and has type S;
+  -- * S resolves to a struct type that has a field named id.
 infer st se@(Selector _ expr (Identifier _ ident)) = do
   sele <- infer st expr
   return $ either
@@ -588,6 +591,18 @@ infer st se@(Selector _ expr (Identifier _ ident)) = do
           _ -> Left $ createError se $ NoField ident)
       _ -> Left $ createError se $ NonStruct t)
     sele
+
+-- | Indexing into a slice or an array (expr[index]) is well-typed if:
+  -- * expr is well-typed and resolves to []T or [N]T;
+  -- * index is well-typed and resolves to int.
+  -- The result of the indexing expression is T.
+-- infer st ie@(Index _ e1 e2) = do
+--   e1e <- infer st e1
+--   e2e <- infer st e2
+
+--   return $ case (e1e, e2e) of
+--     (Right (Slice t1), Right (Primitive (S.Ident "int"))) ->
+--     TODO
 
 infer _ _ = undefined
 
