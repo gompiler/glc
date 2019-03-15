@@ -14,7 +14,9 @@ import           Data.Foldable           (asum)
 import           Data.Functor.Compose    (Compose (..), getCompose)
 import qualified Data.HashTable.Class    as H
 import qualified Data.HashTable.ST.Basic as HT
-import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, (<|))
+import           Data.List               (intercalate)
+import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, nonEmpty, (<|))
+import qualified Data.List.NonEmpty as NE (head, map)
 import           Data.Maybe              (isJust, catMaybes)
 import           Data.STRef
 import qualified SymbolTableCore as S
@@ -388,9 +390,9 @@ instance ErrorEntry SymbolError where
       ShortDec ->
         "Short declaration list contains no new variables"
       BadUnaryOp s t ->
-        "Unary operator cannot be used on non-" ++ s ++ " type " ++ (show $ head t)
+        "Unary operator cannot be used on non-" ++ s ++ " type " ++ (show $ NE.head t)
       BadBinaryOp s t ->
-        "Binary operator cannot be used on non-" ++ s ++ " types " ++ (intercalate ", " $ map show t)
+        "Binary operator cannot be used on non-" ++ s ++ " types " ++ (intercalate ", " $ toList $ NE.map show t)
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -400,32 +402,37 @@ topScope' :: SymbolTable s -> ST s (S.SymbolScope s Symbol)
 topScope' = S.topScope
 
 class TypeInfer a where
-  infer :: a -> SymbolTable s -> ST s (Either ErrorMessage' SType)
-  inferConstraint ::
-    SymbolTable s
-    -> (SType -> Bool)
-    -> (NonEmpty SType -> SType)
-    -> (NonEmpty SType -> ErrorMessage')
-    -> String -> a -> NonEmpty b
+  infer :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
+  inferConstraint :: TypeInfer b =>
+    SymbolTable s -- st
+    -> (SType -> Bool) -- isCorrect
+    -> (NonEmpty SType -> SType) -- resultSType
+    -> (NonEmpty SType -> SymbolError) -- makeError
+    -> a -- parentExpr
+    -> NonEmpty b -- childs
     -> ST s (Either ErrorMessage' SType)
 
 instance TypeInfer Expr where
-  infer e@(Unary _ Pos inner) st = inferConstraint st isNumeric (\t -> head t) e (nonEmpty [inner])
-  infer e@(Unary _ Neg inner) st = inferConstraint st isNumeric (\t -> head t) e (nonEmpty [inner])
-  infer e@(Unary _ Not inner) st = inferConstraint st isBoolean (\t -> head t) e (nonEmpty [inner])
-  infer e@(Unary _ BitComplement inner) st = inferConstraint st isInteger (\t -> head t) e (nonEmpty [inner])
+  infer st e@(Unary _ Pos inner) =
+    inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t) e (fromList [inner])
+  infer st e@(Unary _ Neg inner) =
+    inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t) e (fromList [inner])
+  infer st e@(Unary _ Not inner) =
+    inferConstraint st isBoolean (\t -> NE.head t) (\t -> BadUnaryOp "boolean" t) e (fromList [inner])
+  infer st e@(Unary _ BitComplement inner) =
+    inferConstraint st isInteger (\t -> NE.head t) (\t -> BadUnaryOp "integer" t) e (fromList [inner])
 
-  infer e@(Binary _ Or inner1 inner2) = inferConstraint isBoolean (\t -> head t) e (nonEmpty [inner1, inner2])
+  infer st e@(Binary _ Or inner1 inner2) =
+    inferConstraint st isBoolean (\t -> NE.head t) (\t -> BadBinaryOp "boolean" t) e (fromList [inner1, inner2])
   -- | Infers the inner type for a unary operator and checks if it matches using the fn
     -- May be generalizable
-  inferConstraint _ isCorrect resultSType makeError s parentExpr inners = do
-    ts <- map infer inners
-    tb <- asum ts
-    return $ case t of
-      Right ->
-        if (and $ map isCorrect ts) then Right (resultSType ts)
-        else Left $ createError parentExpr (makeError inners)
-      _ -> tb
+  inferConstraint st isCorrect resultSType makeError parentExpr inners = do
+    tss <- sequence $ NE.map (infer st) inners
+    return $ either
+      (Left)
+      (\ts -> if (and $ NE.map isCorrect ts) then Right (resultSType ts)
+              else Left $ createError parentExpr (makeError ts))
+      (sequence tss)
 
 isNumeric :: SType -> Bool
 isNumeric t = isSomething ["int", "float64", "rune"] t
@@ -442,15 +449,15 @@ isInteger t = isSomething ["int"] t
 isSomething :: [String] -> SType -> Bool
 isSomething lts t =
   case (resolveSType t) of
-    BaseMap S.Ident id -> id `elem` lts
+    BaseMap (S.Ident id) -> id `elem` lts
     _ -> False
 
 -- | Resolves a defined type to a base type
 resolveSType :: SType -> SType
-resolveSType (Array i st) = Array i (resolve st)
-resolveSType (Slice st) = Slice (resolve st)
-resolveSType (Struct fl) = Struct $ map (\(id, st) -> (id, resolve st))
-resolveSType (TypeMap _ st) = resolve st
+resolveSType (Array i st) = Array i (resolveSType st)
+resolveSType (Slice st) = Slice (resolveSType st)
+resolveSType (Struct fl) = Struct $ map (\(id, st) -> (id, resolveSType st)) fl
+resolveSType (TypeMap _ st) = resolveSType st
 resolveSType t = t -- Other types
 
 -- testing stuff
