@@ -345,7 +345,7 @@ resolve' (Func _ mt) _ = mt
 --   resolve s st = 
 
   
-eConcat :: [Either a b] -> Either ErrorMessage' [b]
+eConcat :: [Either a b] -> Either a [b]
 eConcat = eitherL id
 
 -- -- pSymbolTable prog =
