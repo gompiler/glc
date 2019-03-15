@@ -279,7 +279,7 @@ instance Symbolize Stmt where
       case me of
         Just e  -> am (recurse st) [H ss, H e]
         Nothing -> recurse st ss
-    r2 <- wrap st $ am (recurse st) scs
+    r2 <- am (recurse st) scs
     return $ maybeJ [r1, r2]
   recurse st (For (ForClause ss1 me ss2) s) = wrap st $ do
     r1 <-
@@ -332,8 +332,8 @@ instance Symbolize Expr where
   recurse st (Arguments _ e el) = am (recurse st) (e:el) 
 
 instance Symbolize SwitchCase where
-  recurse _ _ = undefined
-  -- recurse st (Case _ nEl s) = undefined
+  recurse st (Case _ nEl s) = am (recurse st) $ map H (toList nEl) ++ [H s]
+  recurse st (Default _ s) = recurse st s
 
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
