@@ -44,8 +44,8 @@ data SType
   | Slice SType
   | Struct [Field] -- List of fields
   | TypeMap S.Ident SType
-  | BaseMap S.Ident
-  -- | Infer -- Infer the type at typechecking, not at symbol table generation
+  | Primitive S.Ident
+  | Infer -- Infer the type at typechecking, not at symbol table generation
   deriving (Show, Eq)
 
 -- | SymbolTable, cactus stack of SymbolScope
@@ -192,11 +192,10 @@ instance Symbolize SimpleStmt where
         eb <- mapM (\(ident, e) -> checkDec ident e st) (zip idl el)
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
         return $ either (Just) (\bl -> if True `elem` bl then Nothing else Just $ createError (head idl) ShortDec) (sequence eb)
-      checkDec :: Identifier -> Expr -> SymbolTable s -> ST s (Either ErrorMessage' Bool)
-      checkDec ident e st = do
-        et <- infer e st-- Either ErrorMessage' SType
-        (either (return . Left) (\t -> checkId ident t st) et)
-          where
+      checkDec :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' Bool)
+      checkDec ident@(Identifier _ vname) st = let idv = S.Ident vname in
+                                                 do val <- S.lookupCurrent
+        where
             checkId :: Identifier -> SType -> SymbolTable s -> ST s (Either ErrorMessage' Bool) -- Bool is to indicate whether the variable was already declared or not
       -- Note that short declarations require at least *one* new declaration
             checkId ident@(Identifier _ vname) t st =
@@ -214,6 +213,33 @@ instance Symbolize SimpleStmt where
                        -- This cannot be Nothing, add will always succeed here because lookup returned Nothing, so there is no conflict
                        _ <- S.addMessage st msi -- Add new symbol
                        return $ Right True
+      -- checkDecl :: [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
+      -- checkDecl idl el st = do
+      --   eb <- mapM (\(ident, e) -> checkDec ident e st) (zip idl el)
+      --   -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
+      --   return $ either (Just) (\bl -> if True `elem` bl then Nothing else Just $ createError (head idl) ShortDec) (sequence eb)
+      -- checkDec :: Identifier -> Expr -> SymbolTable s -> ST s (Either ErrorMessage' Bool)
+      -- checkDec ident e st = do
+      --   et <- infer e st-- Either ErrorMessage' SType
+      --   (either (return . Left) (\t -> checkId ident t st) et)
+      --     where
+      --       checkId :: Identifier -> SType -> SymbolTable s -> ST s (Either ErrorMessage' Bool) -- Bool is to indicate whether the variable was already declared or not
+      -- -- Note that short declarations require at least *one* new declaration
+      --       checkId ident@(Identifier _ vname) t st =
+      --         let idv = S.Ident vname in
+      --           do val <- S.lookupCurrent st idv
+      --              case val of
+      --                Just (_, (Variable t2)) -> return $
+      --                  if t == t2
+      --                  then Right False
+      --                  -- if locally defined, check if type matches
+      --                  else Left $ createError e (TypeMismatch ident t t2)
+      --                Just (_, s) -> return $ Left $ createError ident (NotLVal ident s)
+      --                Nothing -> do
+      --                  msi <- add st idv (Variable t)
+      --                  -- This cannot be Nothing, add will always succeed here because lookup returned Nothing, so there is no conflict
+      --                  _ <- S.addMessage st msi -- Add new symbol
+      --                  return $ Right True
 
 
   recurse st _ = return Nothing
@@ -337,8 +363,8 @@ resolve ident@(Identifier _ vname) st = let idv = S.Ident vname in
 
 -- | Resolve symbol to type
 resolve' :: Symbol -> S.Ident -> Maybe SType
-resolve' Base ident' = Just $ BaseMap ident'
-resolve' Constant _ = Just $ BaseMap (S.Ident "bool") -- Constants reserved for bools only
+resolve' Base ident' = Just $ Primitive ident'
+resolve' Constant _ = Just $ Primitive (S.Ident "bool") -- Constants reserved for bools only
 resolve' (Variable t') _ = Just $ t'
 resolve' (SType t') _ = Just $ t'
 resolve' (Func _ mt) _ = mt
@@ -430,24 +456,24 @@ instance TypeInfer Expr where
     -- | op `elem` [EQ, NEQ] =
     --   inferConstraint st isComparable (const "TODO") (\t -> BadBinaryOp "TODO" t) e (fromList [inner1, inner2])
     | op `elem` [Data.LT, Data.LEQ, Data.GT, Data.GEQ] =
-      inferConstraint st isOrdered (const $ BaseMap (S.Ident "bool"))
+      inferConstraint st isOrdered (const $ Primitive (S.Ident "bool"))
         (\t -> BadBinaryOp "ordered" t) e (fromList [inner1, inner2])
     | Arithm aop <- op =
       if aop `elem` [Subtract, Multiply, Divide] then
-        inferConstraint st isNumeric (const $ BaseMap (S.Ident "bool"))
+        inferConstraint st isNumeric (const $ Primitive (S.Ident "bool"))
           (\t -> BadBinaryOp "numeric" t) e (fromList [inner1, inner2])
       else if aop `elem` [Remainder, BitOr, BitXor, ShiftL, ShiftR, BitAnd, BitClear] then
-        inferConstraint st isInteger (const $ BaseMap (S.Ident "int"))
+        inferConstraint st isInteger (const $ Primitive (S.Ident "int"))
           (\t -> BadBinaryOp "int" t) e (fromList [inner1, inner2])
       else undefined -- TODO: ADD
     | otherwise = undefined -- TODO: ADD, EQ, NEQ
 
   infer st (Lit l) =
     return $ Right $ case l of
-      IntLit {} -> BaseMap (S.Ident "int")
-      FloatLit {} -> BaseMap (S.Ident "float64")
-      RuneLit {} -> BaseMap (S.Ident "rune")
-      StringLit {} -> BaseMap (S.Ident "string")
+      IntLit {} -> Primitive (S.Ident "int")
+      FloatLit {} -> Primitive (S.Ident "float64")
+      RuneLit {} -> Primitive (S.Ident "rune")
+      StringLit {} -> Primitive (S.Ident "string")
 
   -- | TODO
   -- infer st e@(Var id) = do
@@ -479,7 +505,7 @@ isInteger t = isSomething ["int"] t
 isSomething :: [String] -> SType -> Bool
 isSomething lts t =
   case (resolveSType t) of
-    BaseMap (S.Ident id) -> id `elem` lts
+    Primitive (S.Ident id) -> id `elem` lts
     _ -> False
 
 -- | Resolves a defined type to a base type
