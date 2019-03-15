@@ -514,6 +514,10 @@ topScope' = S.topScope
 
 -- | Main type inference function
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
+-- Infers the inner type for a unary operator and checks if it matches using the fn
+-- infer st ie@(Index _ e1 e2) = undefined
+-- infer st ae@(Arguments  _ e el) = undefined
+-- | Infers the types of '+' unary operator expressions
 infer st e@(Unary _ Pos inner) =
   inferConstraint
     st
@@ -522,6 +526,7 @@ infer st e@(Unary _ Pos inner) =
     (\t -> BadUnaryOp "numeric" t)
     e
     (fromList [inner])
+-- | Infers the types of '-' unary operator expressions
 infer st e@(Unary _ Neg inner) =
   inferConstraint
     st
@@ -530,6 +535,7 @@ infer st e@(Unary _ Neg inner) =
     (\t -> BadUnaryOp "numeric" t)
     e
     (fromList [inner])
+-- | Infers the types of '!' unary operator expressions
 infer st e@(Unary _ Not inner) =
   inferConstraint
     st
@@ -538,6 +544,7 @@ infer st e@(Unary _ Not inner) =
     (\t -> BadUnaryOp "boolean" t)
     e
     (fromList [inner])
+-- | Infers the types of '^' unary operator expressions
 infer st e@(Unary _ BitComplement inner) =
   inferConstraint
     st
@@ -546,6 +553,7 @@ infer st e@(Unary _ BitComplement inner) =
     (\t -> BadUnaryOp "integer" t)
     e
     (fromList [inner])
+-- | Infer types of binary expressions
 infer st e@(Binary _ op inner1 inner2)
   | op `elem` [Or, And] =
     inferConstraint
@@ -661,9 +669,6 @@ infer st se@(Selector _ expr (Identifier _ ident)) = do
 infer _ _ = undefined
   -- May be generalizable
 
--- | Infers the inner type for a unary operator and checks if it matches using the fn
--- infer st ie@(Index _ e1 e2) = undefined
--- infer st ae@(Arguments  _ e el) = undefined
 inferConstraint ::
      SymbolTable s -- st
   -> (SType -> Bool) -- isCorrect
