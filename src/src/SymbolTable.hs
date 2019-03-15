@@ -392,6 +392,7 @@ data SymbolError =
   | AppendMismatch SType SType
   | BadAppend SType SType
   | BadLen SType
+  | BadCap SType
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -419,6 +420,8 @@ instance ErrorEntry SymbolError where
         "Incorrect types " ++ show t1 ++ " and " ++ show t2 ++ " for append"
       BadLen t1 ->
         "Incorrect type " ++ show t1 ++ " for len"
+      BadCap t1 ->
+        "Incorrect type " ++ show t1 ++ " for cap"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -497,6 +500,17 @@ infer st le@(LenExpr _ expr) = do
             else Left $ createError le $ BadLen t)
     et
 
+-- | Infer types of cap expressions
+  -- A cap expression cap(expr) is well-typed if expr is well-typed, has
+  -- type S and S resolves to []T or [N]T. The result has type int.
+infer st ce@(CapExpr _ expr) = do
+  et <- infer st expr
+  return $ either
+    (Left)
+    (\t -> if isCapCompatible t then Right $ Primitive $ S.Ident "int"
+            else Left $ createError ce $ BadCap t)
+    et
+
 -- | TODO
 infer _ _ = undefined
 
@@ -522,6 +536,13 @@ isLenCompatible :: SType -> Bool
 isLenCompatible t =
   case t of
     Primitive (S.Ident "string") -> True
+    Array {} -> True
+    Slice {} -> True
+    _ -> False
+
+isCapCompatible :: SType -> Bool
+isCapCompatible t =
+  case t of
     Array {} -> True
     Slice {} -> True
     _ -> False
