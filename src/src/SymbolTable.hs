@@ -427,96 +427,96 @@ topScope st = st >>= topScope'
 topScope' :: SymbolTable s -> ST s (S.SymbolScope s Symbol)
 topScope' = S.topScope
 
-class TypeInfer a where
-  infer :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
-  inferConstraint :: TypeInfer b =>
-    SymbolTable s -- st
-    -> (SType -> Bool) -- isCorrect
-    -> (NonEmpty SType -> SType) -- resultSType
-    -> (NonEmpty SType -> SymbolError) -- makeError
-    -> a -- parentExpr
-    -> NonEmpty b -- childs
-    -> ST s (Either ErrorMessage' SType)
+-- | Main type inference function
 
-instance TypeInfer Expr where
-  infer st e@(Unary _ Pos inner) =
-    inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t) e (fromList [inner])
-  infer st e@(Unary _ Neg inner) =
-    inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t) e (fromList [inner])
-  infer st e@(Unary _ Not inner) =
-    inferConstraint st isBoolean (\t -> NE.head t) (\t -> BadUnaryOp "boolean" t) e (fromList [inner])
-  infer st e@(Unary _ BitComplement inner) =
-    inferConstraint st isInteger (\t -> NE.head t) (\t -> BadUnaryOp "integer" t) e (fromList [inner])
+infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
 
-  infer st e@(Binary _ op inner1 inner2)
-    | op `elem` [Or, And] =
-      inferConstraint st isBoolean (\t -> NE.head t)
-        (\t -> BadBinaryOp "boolean" t) e (fromList [inner1, inner2])
-    -- TODO: FIGURE THIS OUT, SINCE STRUCTS ARE COMPARABLE...
-    -- | op `elem` [EQ, NEQ] =
-    --   inferConstraint st isComparable (const "TODO") (\t -> BadBinaryOp "TODO" t) e (fromList [inner1, inner2])
-    | op `elem` [Data.LT, Data.LEQ, Data.GT, Data.GEQ] =
-      inferConstraint st isOrdered (const $ Primitive (S.Ident "bool"))
-        (\t -> BadBinaryOp "ordered" t) e (fromList [inner1, inner2])
-    | Arithm aop <- op =
-      if aop `elem` [Subtract, Multiply, Divide] then
-        inferConstraint st isNumeric (const $ Primitive (S.Ident "bool"))
-          (\t -> BadBinaryOp "numeric" t) e (fromList [inner1, inner2])
-      else if aop `elem` [Remainder, BitOr, BitXor, ShiftL, ShiftR, BitAnd, BitClear] then
-        inferConstraint st isInteger (const $ Primitive (S.Ident "int"))
-          (\t -> BadBinaryOp "int" t) e (fromList [inner1, inner2])
-      else undefined -- TODO: ADD
-    | otherwise = undefined -- TODO: ADD, EQ, NEQ
+infer st e@(Unary _ Pos inner) =
+  inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t) e (fromList [inner])
+infer st e@(Unary _ Neg inner) =
+  inferConstraint st isNumeric (\t -> NE.head t) (\t -> BadUnaryOp "numeric" t) e (fromList [inner])
+infer st e@(Unary _ Not inner) =
+  inferConstraint st isBoolean (\t -> NE.head t) (\t -> BadUnaryOp "boolean" t) e (fromList [inner])
+infer st e@(Unary _ BitComplement inner) =
+  inferConstraint st isInteger (\t -> NE.head t) (\t -> BadUnaryOp "integer" t) e (fromList [inner])
 
-  infer _ (Lit l) =
-    return $ Right $ case l of
-      IntLit {} -> Primitive (S.Ident "int")
-      FloatLit {} -> Primitive (S.Ident "float64")
-      RuneLit {} -> Primitive (S.Ident "rune")
-      StringLit {} -> Primitive (S.Ident "string")
+infer st e@(Binary _ op inner1 inner2)
+  | op `elem` [Or, And] =
+    inferConstraint st isBoolean (\t -> NE.head t)
+      (\t -> BadBinaryOp "boolean" t) e (fromList [inner1, inner2])
+  -- TODO: FIGURE THIS OUT, SINCE STRUCTS ARE COMPARABLE...
+  -- | op `elem` [EQ, NEQ] =
+  --   inferConstraint st isComparable (const "TODO") (\t -> BadBinaryOp "TODO" t) e (fromList [inner1, inner2])
+  | op `elem` [Data.LT, Data.LEQ, Data.GT, Data.GEQ] =
+    inferConstraint st isOrdered (const $ Primitive (S.Ident "bool"))
+      (\t -> BadBinaryOp "ordered" t) e (fromList [inner1, inner2])
+  | Arithm aop <- op =
+    if aop `elem` [Subtract, Multiply, Divide] then
+      inferConstraint st isNumeric (const $ Primitive (S.Ident "bool"))
+        (\t -> BadBinaryOp "numeric" t) e (fromList [inner1, inner2])
+    else if aop `elem` [Remainder, BitOr, BitXor, ShiftL, ShiftR, BitAnd, BitClear] then
+      inferConstraint st isInteger (const $ Primitive (S.Ident "int"))
+        (\t -> BadBinaryOp "int" t) e (fromList [inner1, inner2])
+    else undefined -- TODO: ADD
+  | otherwise = undefined -- TODO: ADD, EQ, NEQ
 
-  infer st (Var ident) = resolve ident st
+infer _ (Lit l) =
+  return $ Right $ case l of
+    IntLit {} -> Primitive (S.Ident "int")
+    FloatLit {} -> Primitive (S.Ident "float64")
+    RuneLit {} -> Primitive (S.Ident "rune")
+    StringLit {} -> Primitive (S.Ident "string")
 
-  -- | Infer types of append expressions
-    -- An append expression append(e1, e2) is well-typed if:
-    -- * e1 is well-typed, has type S and S resolves to a []T;
-    -- * e2 is well-typed and has type T.
-  infer st e@(AppendExpr _ e1 e2) = do
-    sle <- infer st e1 -- Infer type of slice (e1)
-    exe <- infer st e2 -- Infer type of value to append (e2)
+infer st (Var ident) = resolve ident st
 
-    return $ case (sle, exe) of
-      (Right slt@(Slice t1), Right t2) ->
-        if t1 == t2 then Right(slt)
-        else Left $ createError e $ AppendMismatch t1 t2
-      -- TODO: MORE CASES FOR NICER ERRORS?
-      (Right t1, Right t2) -> Left $ createError e $ BadAppend t1 t2
-      (Left em, _) -> Left em
-      (_, Left em) -> Left em
+-- | Infer types of append expressions
+  -- An append expression append(e1, e2) is well-typed if:
+  -- * e1 is well-typed, has type S and S resolves to a []T;
+  -- * e2 is well-typed and has type T.
+infer st e@(AppendExpr _ e1 e2) = do
+  sle <- infer st e1 -- Infer type of slice (e1)
+  exe <- infer st e2 -- Infer type of value to append (e2)
 
-  -- | Infer types of len expressions
-    -- A len expression len(expr) is well-typed if expr is well-typed, has
-    -- type S and S resolves to string, []T or [N]T. The result has type int.
-  infer st le@(LenExpr _ expr) = do
-    et <- infer st expr
-    return $ either
-      (Left)
-      (\t -> if isLenCompatible t then Right $ Primitive $ S.Ident "int"
-             else Left $ createError le $ BadLen t)
-      et
+  return $ case (sle, exe) of
+    (Right slt@(Slice t1), Right t2) ->
+      if t1 == t2 then Right(slt)
+      else Left $ createError e $ AppendMismatch t1 t2
+    -- TODO: MORE CASES FOR NICER ERRORS?
+    (Right t1, Right t2) -> Left $ createError e $ BadAppend t1 t2
+    (Left em, _) -> Left em
+    (_, Left em) -> Left em
 
-  -- | TODO
-  infer _ _ = undefined
+-- | Infer types of len expressions
+  -- A len expression len(expr) is well-typed if expr is well-typed, has
+  -- type S and S resolves to string, []T or [N]T. The result has type int.
+infer st le@(LenExpr _ expr) = do
+  et <- infer st expr
+  return $ either
+    (Left)
+    (\t -> if isLenCompatible t then Right $ Primitive $ S.Ident "int"
+            else Left $ createError le $ BadLen t)
+    et
 
-  -- | Infers the inner type for a unary operator and checks if it matches using the fn
-    -- May be generalizable
-  inferConstraint st isCorrect resultSType makeError parentExpr inners = do
-    tss <- sequence $ NE.map (infer st) inners
-    return $ either
-      (Left)
-      (\ts -> if (and $ NE.map isCorrect ts) then Right (resultSType ts)
-              else Left $ createError parentExpr (makeError ts))
-      (sequence tss)
+-- | TODO
+infer _ _ = undefined
+
+-- | Infers the inner type for a unary operator and checks if it matches using the fn
+  -- May be generalizable
+inferConstraint ::
+  SymbolTable s -- st
+  -> (SType -> Bool) -- isCorrect
+  -> (NonEmpty SType -> SType) -- resultSType
+  -> (NonEmpty SType -> SymbolError) -- makeError
+  -> Expr -- parentExpr
+  -> NonEmpty Expr -- childs
+  -> ST s (Either ErrorMessage' SType)
+inferConstraint st isCorrect resultSType makeError parentExpr inners = do
+  tss <- sequence $ NE.map (infer st) inners
+  return $ either
+    (Left)
+    (\ts -> if (and $ NE.map isCorrect ts) then Right (resultSType ts)
+            else Left $ createError parentExpr (makeError ts))
+    (sequence tss)
 
 isLenCompatible :: SType -> Bool
 isLenCompatible t =
