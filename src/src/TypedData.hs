@@ -284,7 +284,7 @@ data Literal
   | FloatLit Offset
              Float
   | RuneLit Offset
-            String
+            Char
   | StringLit Offset
               String
   deriving (Show, Eq)
