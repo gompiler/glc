@@ -514,6 +514,10 @@ topScope' = S.topScope
 
 -- | Main type inference function
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
+-- Infers the inner type for a unary operator and checks if it matches using the fn
+-- infer st ie@(Index _ e1 e2) = undefined
+-- infer st ae@(Arguments  _ e el) = undefined
+-- | Infers the types of '+' unary operator expressions
 infer st e@(Unary _ Pos inner) =
   inferConstraint
     st
@@ -522,6 +526,7 @@ infer st e@(Unary _ Pos inner) =
     (BadUnaryOp "numeric")
     e
     (fromList [inner])
+-- | Infers the types of '-' unary operator expressions
 infer st e@(Unary _ Neg inner) =
   inferConstraint
     st
@@ -530,6 +535,7 @@ infer st e@(Unary _ Neg inner) =
     (BadUnaryOp "numeric")
     e
     (fromList [inner])
+-- | Infers the types of '!' unary operator expressions
 infer st e@(Unary _ Not inner) =
   inferConstraint
     st
@@ -538,6 +544,7 @@ infer st e@(Unary _ Not inner) =
     (BadUnaryOp "boolean")
     e
     (fromList [inner])
+-- | Infers the types of '^' unary operator expressions
 infer st e@(Unary _ BitComplement inner) =
   inferConstraint
     st
@@ -546,6 +553,7 @@ infer st e@(Unary _ BitComplement inner) =
     (BadUnaryOp "integer")
     e
     (fromList [inner])
+-- | Infer types of binary expressions
 infer st e@(Binary _ op inner1 inner2)
   | op `elem` [Or, And] =
     inferConstraint
@@ -595,10 +603,10 @@ infer _ (Lit l) =
     RuneLit {}   -> Primitive (S.Ident "rune")
     StringLit {} -> Primitive (S.Ident "string")
 infer st (Var ident) = resolve ident st
-  -- An append expression append(e1, e2) is well-typed if:
-  -- * e1 is well-typed, has type S and S resolves to a []T;
-  -- * e2 is well-typed and has type T.
 -- | Infer types of append expressions
+-- An append expression append(e1, e2) is well-typed if:
+-- * e1 is well-typed, has type S and S resolves to a []T;
+-- * e2 is well-typed and has type T.
 infer st ae@(AppendExpr _ e1 e2) = do
   sle <- infer st e1 -- Infer type of slice (e1)
   exe <- infer st e2 -- Infer type of value to append (e2)
@@ -631,9 +639,10 @@ infer st ce@(CapExpr _ expr) =
     (const $ Primitive $ S.Ident "int")
     (BadCap . NE.head)
     ce
-    (fromList [expr]) -- * expr is well-typed and has type S;
-  -- * S resolves to a struct type that has a field named id.
+    (fromList [expr])
 -- | Selecting a field in a struct (expr.id) is well-typed if:
+-- * expr is well-typed and has type S;
+-- * S resolves to a struct type that has a field named id.
 infer st se@(Selector _ expr (Identifier _ ident)) = do
   sele <- infer st expr
   return $
@@ -656,12 +665,8 @@ infer st se@(Selector _ expr (Identifier _ ident)) = do
 --   return $ case (e1e, e2e) of
 --     (Right (Slice t1), Right (Primitive (S.Ident "int"))) ->
 --     TODO
-infer _ _ = undefined
-  -- May be generalizable
+infer _ _ = undefined-- May be generalizable
 
--- infer st ie@(Index _ e1 e2) = undefined
--- infer st ae@(Arguments  _ e el) = undefined
--- | Infers the inner type for a unary operator and checks if it matches using the fn
 inferConstraint ::
      SymbolTable s -- st
   -> (SType -> Bool) -- isCorrect
