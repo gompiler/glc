@@ -10,6 +10,7 @@ import           Control.Monad.ST
 import           Data
 import           Data.Either         (partitionEithers)
 import           Data.Foldable       (asum)
+import qualified TypedData           as T
 
 -- import           Data.Functor.Compose    (Compose (..), getCompose)
 -- import qualified Data.HashTable.Class    as H
@@ -29,12 +30,13 @@ import qualified SymbolTableCore     as S
 -- import Weeding (weed)
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
-type Param = (S.Ident, SType)
+type SIdent = T.ScopedIdent
 
-type Field = (S.Ident, SType)
+type Param = (String, SType)
 
-type Var = (S.Ident, SType)
+type Field = (String, SType)
 
+-- type Var = (SIdent, SType)
 data Symbol
   = Base -- Base type, resolve to themselves, i.e. int
   | Constant -- For bools only
@@ -49,9 +51,9 @@ data SType
           SType
   | Slice SType
   | Struct [Field] -- List of fields
-  | TypeMap S.Ident
+  | TypeMap SIdent
             SType
-  | Primitive S.Ident
+  | Primitive SIdent
   | Infer -- Infer the type at typechecking, not at symbol table generation
   deriving (Show, Eq)
 
@@ -59,18 +61,14 @@ data SType
 -- specific instantiation for our uses
 type SymbolTable s = S.SymbolTable s Symbol (Maybe SymbolInfo)
 
--- | StructTable is a version of SymbolTable for struct fields
-type StructTable s = S.SymbolTable s Field ()
-
 -- | SymbolInfo: symbol name, corresponding symbol, scope depth
-type SymbolInfo = (S.Ident, Symbol, S.Scope)
+type SymbolInfo = (String, Symbol, S.Scope)
 
 -- | Params with their respective scopes, for check FuncDecl
 type ParamInfo = (Param, S.Scope)
 
--- | For checking short declarations
-type VarInfo = (Var, S.Scope)
-
+-- -- | For checking short declarations
+-- type VarInfo = (Var, S.Scope)
 -- | Insert n tabs
 tabs :: Int -> String
 tabs n = concat $ replicate n "\t"
@@ -80,16 +78,16 @@ new :: ST s (SymbolTable s)
 new = do
   st <- S.new
   -- Base types
-  S.insert st (S.Ident "int") Base
-  S.insert st (S.Ident "float64") Base
-  S.insert st (S.Ident "bool") Base
-  S.insert st (S.Ident "rune") Base
-  S.insert st (S.Ident "string") Base
-  S.insert st (S.Ident "true") Constant
-  S.insert st (S.Ident "false") Constant
+  S.insert st "int" Base
+  S.insert st "float64" Base
+  S.insert st "bool" Base
+  S.insert st "rune" Base
+  S.insert st "string" Base
+  S.insert st "true" Constant
+  S.insert st "false" Constant
   return st
 
-add :: SymbolTable s -> S.Ident -> Symbol -> ST s (Maybe SymbolInfo)
+add :: SymbolTable s -> String -> Symbol -> ST s (Maybe SymbolInfo)
 add st ident sym = do
   result <- S.lookupCurrent st ident -- We only need to check current scope for declarations
   case result of
@@ -99,15 +97,14 @@ add st ident sym = do
       return $ Just (ident, sym, scope)
 
 -- | Insert field to struct table and return success or fail
-add' :: StructTable s -> S.Ident -> Field -> ST s Bool
-add' st ident fld = do
-  result <- S.lookup st ident -- We only need to check current scope for declarations
-  case result of
-    Just _ -> return False -- If we found a result, don't insert anything
-    Nothing -> do
-      S.insert st ident fld
-      return True
-
+-- add' :: StructTable s -> String -> Field -> ST s Bool
+-- add' st ident fld = do
+--   result <- S.lookup st ident -- We only need to check current scope for declarations
+--   case result of
+--     Just _ -> return False -- If we found a result, don't insert anything
+--     Nothing -> do
+--       S.insert st ident fld
+--       return True
 -- Heterogeneous type, can represent everything that has an instance of Symbolize
 -- We use this so we can map over different types using recurse
 data HAST =
@@ -143,7 +140,7 @@ instance Symbolize FuncDecl
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) = do
-    res <- S.isDef st (S.Ident vname) -- Check if defined in symbol table
+    res <- S.isDef st vname -- Check if defined in symbol table
     if res
       then return $ Just $ createError ident (AlreadyDecl "Function " ident)
       else do
@@ -158,7 +155,7 @@ instance Symbolize FuncDecl
                  (return $ Right $ Func pl Nothing)
                  (\(_, t') -> do
                     et <- toType st t'
-                    return $ either Left (Right . Func pl . Just) et)
+                    return $ fmap (Func pl . Just) et)
                  t)
             epl
       -- We then take the Either ErrorMessage' Symbol, if no error we insert the Symbol (newly declared function) and recurse on statement list sl (from body of func) to declare things in body
@@ -166,7 +163,7 @@ instance Symbolize FuncDecl
           either
             (return . Just)
             (\f -> do
-               _ <- S.insert st (S.Ident vname) f
+               _ <- S.insert st vname f
                am (recurse st) sl)
             ef
         S.exitScope st
@@ -186,9 +183,9 @@ instance Symbolize FuncDecl
         either
           (return . Left)
           (\t2 -> do
-             (err, pil) <- checkIds st2 t2 idl
+             (err, pil) <- checkIds' st2 t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
-             _ <- mapM ((S.addMessage st2) . Just) (map parToVar pil) -- Add list of SymbolInfo to messages
+             _ <- mapM (((S.addMessage st2) . Just) . parToVar) pil -- Add list of SymbolInfo to messages
              case err of
                Just e -> do
                  _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
@@ -199,28 +196,56 @@ instance Symbolize FuncDecl
       parToVar ((ident', t'), scope) = (ident', SType t', scope)
       pInfo2p :: ParamInfo -> Param
       pInfo2p (p, _) = p
-      checkIds ::
+      checkIds' ::
            SymbolTable s
         -> SType
         -> Identifiers
         -> ST s (Maybe ErrorMessage', [ParamInfo])
-      checkIds st2 t' idl = pEithers <$> mapM (checkId st2 t') (toList idl)
-      checkId ::
+      checkIds' st2 t' idl = pEithers <$> mapM (checkId' st2 t') (toList idl)
+      checkId' ::
            SymbolTable s
         -> SType
         -> Identifier
         -> ST s (Either ErrorMessage' ParamInfo)
-      checkId st2 t' ident'@(Identifier _ vname') =
-        let idv = S.Ident vname'
+      checkId' st2 t' ident'@(Identifier _ vname') =
+        let idv = vname'
          in do res <- add st2 idv (Variable t') -- Should not be declared
                return $
                  case res of
                    Nothing ->
                      Left $ createError ident (AlreadyDecl "Param " ident')
-                   Just (_, _, scope) -> Right ((idv, t'), scope)
-  -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
+                   Just (_, _, scope) -> Right ((vname', t'), scope)
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
+
+-- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
+-- | checkId over a list of identifiers, keep first error or return nothing
+checkIds ::
+     SymbolTable s
+  -> SType
+  -> String
+  -> Identifiers
+  -> ST s (Maybe ErrorMessage')
+checkIds st t pfix idl = maybeJ <$> mapM (checkId st t pfix) (toList idl)
+
+-- | Check that we can declare this identifier
+checkId ::
+     SymbolTable s
+  -> SType
+  -> String -- Error prefix for AlreadyDecl, what are we checking? i.e. Param, Var, Type
+  -> Identifier
+  -> ST s (Maybe ErrorMessage')
+checkId st t pfix ident@(Identifier _ vname) =
+  let idv = vname
+   in do res <- add st idv (Variable t) -- Should not be declared
+         case res of
+           Nothing -> do
+             _ <- S.addMessage st Nothing -- Signal error so we don't print symbols beyond this
+             return $ Just $ createError ident (AlreadyDecl pfix ident)
+           Just _ -- Successful insertion, insert symbol info
+            -> do
+             _ <- S.addMessage st res
+             return Nothing
 
 instance Symbolize SimpleStmt where
   recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el) st
@@ -236,7 +261,7 @@ instance Symbolize SimpleStmt where
             else Just $ createError (head idl') ShortDec
       isNewDec :: SymbolTable s -> Identifier -> ST s Bool
       isNewDec st2 (Identifier _ vname) =
-        let idv = S.Ident vname
+        let idv = vname
          in do val <- S.lookupCurrent st2 idv
                case val of
                  Just _ -> return False
@@ -295,16 +320,33 @@ instance Symbolize Decl where
   recurse st (VarDecl vdl) = am (recurse st) vdl
   recurse st (TypeDef tdl) = am (recurse st) tdl
 
-instance Symbolize VarDecl'
-  -- recurse st (VarDecl' neIdl (Left (t, el))) = undefined
-                                                            where
-  recurse _ _ = undefined
+instance Symbolize VarDecl' where
+  recurse st (VarDecl' neIdl edef) =
+    case edef of
+      Left ((_, t), _) -> do
+        et <- toType st t
+        either (return . Just) (\t' -> checkIds st t' "Variable " neIdl) et
+      Right _ -> checkIds st Infer "Variable " neIdl
 
 instance Symbolize TypeDef' where
-  recurse _ _ = undefined
-  -- recurse st (TypeDef' ident t) = undefined
+  recurse st (TypeDef' ident (_, t)) = do
+    et <- toType st t
+    either (return . Just) (\t' -> checkId st t' "Type " ident) et
 
 instance Symbolize Expr where
+  recurse st (Unary _ _ e) = recurse st e
+  recurse st (Binary _ _ e1 e2) = am (recurse st) [e1, e2]
+  recurse _ (Lit _) = return Nothing -- No identifiers to check here
+  recurse st (Var ident@(Identifier _ vname)) -- Should be defined, otherwise we're trying to use undefined variable
+   = do
+    res <- S.isDef st vname
+    if res
+      then return Nothing
+      else return $ Just $ createError ident (NotDecl "Variable " ident)
+  recurse st (AppendExpr _ e1 e2) = am (recurse st) [e1, e2]
+  recurse st (LenExpr _ e) = recurse st e
+  recurse st (CapExpr _ e) = recurse st e
+  -- recurse st (Selector _ e ident@(Identifier _ vname))
   recurse _ _ = undefined
 
 instance Symbolize SwitchCase where
@@ -357,43 +399,44 @@ instance Typify Type where
   toType st (SliceType t) = do
     sym <- toType st t
     return $ sym >>= Right . Slice
-  toType st (StructType fdl) = do
-    fl <- checkFields st fdl
-    return $ fl >>= Right . Struct
-    where
-      checkFields ::
-           SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      checkFields st2 fdl' = do
-        structTab <- S.new
-        sfl <- mapM (checkField st2 structTab) fdl'
-        fl <- sequence sfl
-        return $ eitherL concat fl
-      checkField ::
-           SymbolTable s1
-        -> StructTable s2
-        -> FieldDecl
-        -> ST s1 (ST s2 (Either ErrorMessage' [Field]))
-      checkField st2 structTab (FieldDecl idl (_, t)) = do
-        et <- toType st2 t
-        return $ either (return . Left) (\t' -> checkIds structTab t' idl) et
-      checkIds ::
-           StructTable s
-        -> SType
-        -> Identifiers
-        -> ST s (Either ErrorMessage' [Field])
-      checkIds st2 t idl = sequence <$> mapM (checkId st2 t) (toList idl)
-      checkId ::
-           StructTable s
-        -> SType
-        -> Identifier
-        -> ST s (Either ErrorMessage' Field)
-      checkId structTab' t ident@(Identifier _ vname) =
-        let idv = S.Ident vname
-         in do res <- add' structTab' idv (idv, t) -- Should not be declared
-               return $
-                 if not res
-                   then Left (createError ident (AlreadyDecl "Field " ident))
-                   else Right (idv, t)
+  toType _ (StructType _) = undefined
+  -- toType st (StructType fdl) = do
+  --   fl <- checkFields st fdl
+  --   return $ fl >>= Right . Struct
+  --   where
+  --     checkFields ::
+  --          SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
+  --     checkFields st2 fdl' = do
+  --       structTab <- S.new
+  --       sfl <- mapM (checkField st2 structTab) fdl'
+  --       fl <- sequence sfl
+  --       return $ eitherL concat fl
+  --     checkField ::
+  --          SymbolTable s1
+  --       -> StructTable s2
+  --       -> FieldDecl
+  --       -> ST s1 (ST s2 (Either ErrorMessage' [Field]))
+  --     checkField st2 structTab (FieldDecl idl (_, t)) = do
+  --       et <- toType st2 t
+  --       return $ either (return . Left) (\t' -> checkIds' structTab t' idl) et
+  --     checkIds' ::
+  --          StructTable s
+  --       -> SType
+  --       -> Identifiers
+  --       -> ST s (Either ErrorMessage' [Field])
+  --     checkIds' st2 t idl = sequence <$> mapM (checkId' st2 t) (toList idl)
+  --     checkId' ::
+  --          StructTable s
+  --       -> SType
+  --       -> Identifier
+  --       -> ST s (Either ErrorMessage' Field)
+  --     checkId' structTab' t ident@(Identifier _ vname) =
+  --       let idv =  vname
+  --        in do res <- add' structTab' idv (idv, t) -- Should not be declared
+  --              return $
+  --                if not res
+  --                  then Left (createError ident (AlreadyDecl "Field " ident))
+  --                  else Right (idv, t)
   toType st (Type ident) = resolve ident st
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
@@ -415,7 +458,7 @@ instance Typify Type where
 -- | Resolve type of an Identifier
 resolve :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' SType)
 resolve ident@(Identifier _ vname) st =
-  let idv = S.Ident vname
+  let idv = vname
    in do res <- S.lookup st idv
          case res of
            Nothing -> return $ Left $ createError ident (NotDecl "Type " ident)
@@ -426,9 +469,9 @@ resolve ident@(Identifier _ vname) st =
                Just t' -> Right t'
 
 -- | Resolve symbol to type
-resolve' :: Symbol -> S.Ident -> Maybe SType
-resolve' Base ident'     = Just $ Primitive ident'
-resolve' Constant _      = Just $ Primitive (S.Ident "bool") -- Constants reserved for bools only
+resolve' :: Symbol -> String -> Maybe SType
+resolve' Base ident'     = Just $ Primitive (mkBase ident')
+resolve' Constant _      = Just $ Primitive (mkBase "bool") -- Constants reserved for bools only
 resolve' (Variable t') _ = Just t'
 resolve' (SType t') _    = Just t'
 resolve' (Func _ mt) _   = mt
@@ -475,6 +518,9 @@ data SymbolError
   | BadCap SType
   | NonStruct SType
   | NoField String
+  | BadIndex String
+             SType
+  | NonIndexable SType
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -491,10 +537,10 @@ instance ErrorEntry SymbolError where
       ShortDec -> "Short declaration list contains no new variables"
       BadUnaryOp s t ->
         "Unary operator cannot be used on non-" ++
-        s ++ " type " ++ (show $ NE.head t)
+        s ++ " type " ++ show (NE.head t)
       BadBinaryOp s t ->
         "Binary operator cannot be used on non-" ++
-        s ++ " types " ++ (intercalate ", " $ toList $ NE.map show t)
+        s ++ " types " ++ intercalate ", " (toList $ NE.map show t)
       AppendMismatch t1 t2 ->
         "Cannot append something of type " ++
         show t2 ++ " to slice of type []" ++ show t1
@@ -503,7 +549,9 @@ instance ErrorEntry SymbolError where
       BadLen t1 -> "Incorrect type " ++ show t1 ++ " for len"
       BadCap t1 -> "Incorrect type " ++ show t1 ++ " for cap"
       NonStruct t1 -> "Cannot access field on non-struct type " ++ show t1
-      NoField f -> "No field " ++ show f ++ " on struct"
+      NoField f -> "No field " ++ f ++ " on struct"
+      BadIndex ts ti -> "Cannot use type " ++ show ti ++ " as index for " ++ ts
+      NonIndexable t -> show t ++ " is not indexable"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -570,7 +618,7 @@ infer st e@(Binary _ op inner1 inner2)
     inferConstraint
       st
       isOrdered
-      (const $ Primitive (S.Ident "bool"))
+      (const $ Primitive $ mkBase "bool")
       (BadBinaryOp "ordered")
       e
       (fromList [inner1, inner2])
@@ -579,7 +627,7 @@ infer st e@(Binary _ op inner1 inner2)
       then inferConstraint
              st
              isNumeric
-             (const $ Primitive (S.Ident "bool"))
+             (const $ Primitive $ mkBase "int")
              (BadBinaryOp "numeric")
              e
              (fromList [inner1, inner2])
@@ -588,7 +636,7 @@ infer st e@(Binary _ op inner1 inner2)
              then inferConstraint
                     st
                     isInteger
-                    (const $ Primitive (S.Ident "int"))
+                    (const $ Primitive $ mkBase "int")
                     (BadBinaryOp "int")
                     e
                     (fromList [inner1, inner2])
@@ -598,10 +646,10 @@ infer _ (Lit l) =
   return $
   Right $
   case l of
-    IntLit {}    -> Primitive (S.Ident "int")
-    FloatLit {}  -> Primitive (S.Ident "float64")
-    RuneLit {}   -> Primitive (S.Ident "rune")
-    StringLit {} -> Primitive (S.Ident "string")
+    IntLit {}    -> Primitive (mkBase "int")
+    FloatLit {}  -> Primitive (mkBase "float64")
+    RuneLit {}   -> Primitive (mkBase "rune")
+    StringLit {} -> Primitive (mkBase "string")
 infer st (Var ident) = resolve ident st
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
@@ -619,28 +667,31 @@ infer st ae@(AppendExpr _ e1 e2) = do
     -- TODO: MORE CASES FOR NICER ERRORS?
       (Right t1, Right t2) -> Left $ createError ae $ BadAppend t1 t2
       (Left em, _) -> Left em
-      (_, Left em) -> Left em -- A len expression len(expr) is well-typed if expr is well-typed, has
-  -- type S and S resolves to string, []T or [N]T. The result has type int.
+      (_, Left em) -> Left em
 -- | Infer types of len expressions
+-- A len expression len(expr) is well-typed if expr is well-typed, has
+-- type S and S resolves to string, []T or [N]T. The result has type int.
 infer st le@(LenExpr _ expr) =
   inferConstraint
     st
     isLenCompatible
-    (const $ Primitive $ S.Ident "int")
+    (const $ Primitive $ mkBase "int")
     (BadLen . NE.head)
     le
-    (fromList [expr]) -- A cap expression cap(expr) is well-typed if expr is well-typed, has
-  -- type S and S resolves to []T or [N]T. The result has type int.
+    (fromList [expr])
 -- | Infer types of cap expressions
+-- A cap expression cap(expr) is well-typed if expr is well-typed, has
+-- type S and S resolves to []T or [N]T. The result has type int.
 infer st ce@(CapExpr _ expr) =
   inferConstraint
     st
-    isLenCompatible
-    (const $ Primitive $ S.Ident "int")
+    isCapCompatible
+    (const $ Primitive $ mkBase "int")
     (BadCap . NE.head)
     ce
     (fromList [expr])
--- | Selecting a field in a struct (expr.id) is well-typed if:
+-- | Infer types of selector expressions
+-- Selecting a field in a struct (expr.id) is well-typed if:
 -- * expr is well-typed and has type S;
 -- * S resolves to a struct type that has a field named id.
 infer st se@(Selector _ expr (Identifier _ ident)) = do
@@ -651,21 +702,30 @@ infer st se@(Selector _ expr (Identifier _ ident)) = do
       (\t ->
          case t of
            Struct fdl ->
-             case filter (\(S.Ident fid, _) -> fid == ident) fdl of
-               _:((S.Ident _, sft):_) -> Right sft
-               _ -> Left $ createError se $ NoField ident
+             case filter (\(fid, _) -> fid == ident) fdl of
+               _:((_, sft):_) -> Right sft
+               _              -> Left $ createError se $ NoField ident
            _ -> Left $ createError se $ NonStruct t)
-      sele -- * expr is well-typed and resolves to []T or [N]T;
-  -- * index is well-typed and resolves to int.
-  -- The result of the indexing expression is T.
--- | Indexing into a slice or an array (expr[index]) is well-typed if:
--- infer st ie@(Index _ e1 e2) = do
---   e1e <- infer st e1
---   e2e <- infer st e2
---   return $ case (e1e, e2e) of
---     (Right (Slice t1), Right (Primitive (S.Ident "int"))) ->
---     TODO
-infer _ _ = undefined-- May be generalizable
+      sele
+-- | Infer types of index expressions
+-- Indexing into a slice or an array (expr[index]) is well-typed if:
+-- * expr is well-typed and resolves to []T or [N]T;
+-- * index is well-typed and resolves to int.
+-- The result of the indexing expression is T.
+infer st ie@(Index _ e1 e2) = do
+  e1e <- infer st e1
+  e2e <- infer st e2
+  return $
+    case (e1e, e2e) of
+      (Right (Slice t), Right (Primitive (T.ScopedIdent _ (Identifier _ "int")))) ->
+        Right t
+      (Right (Array _ t), Right (Primitive (T.ScopedIdent _ (Identifier _ "int")))) ->
+        Right t
+      (Right (Slice t), _) -> Left $ createError ie $ BadIndex "slice" t
+      (Right (Array _ t), _) -> Left $ createError ie $ BadIndex "array" t
+      (Right t, _) -> Left $ createError ie $ NonIndexable t
+      (Left e, _) -> Left e
+infer _ _ = undefined
 
 inferConstraint ::
      SymbolTable s -- st
@@ -676,23 +736,20 @@ inferConstraint ::
   -> NonEmpty Expr -- childs
   -> ST s (Either ErrorMessage' SType)
 inferConstraint st isCorrect resultSType makeError parentExpr inners = do
-  tss <- sequence $ NE.map (infer st) inners
-  return $
-    either
-      Left
-      (\ts ->
-         if and $ NE.map isCorrect ts
-           then Right (resultSType ts)
-           else Left $ createError parentExpr (makeError ts))
-      (sequence tss)
+  eitherTs <- sequence <$> mapM (infer st) inners
+  return $ do
+    ts <- eitherTs
+    if all isCorrect ts
+      then Right $ resultSType ts
+      else Left $ createError parentExpr (makeError ts)
 
 isLenCompatible :: SType -> Bool
 isLenCompatible t =
   case t of
-    Primitive (S.Ident "string") -> True
-    Array {}                     -> True
-    Slice {}                     -> True
-    _                            -> False
+    Primitive (T.ScopedIdent _ (Identifier _ "string")) -> True
+    Array {}                                            -> True
+    Slice {}                                            -> True
+    _                                                   -> False
 
 isCapCompatible :: SType -> Bool
 isCapCompatible t =
@@ -717,8 +774,8 @@ isInteger = isSomething ["int"]
 isSomething :: [String] -> SType -> Bool
 isSomething lts t =
   case resolveSType t of
-    Primitive (S.Ident ident) -> ident `elem` lts
-    _                         -> False
+    Primitive (T.ScopedIdent _ (Identifier _ ident)) -> ident `elem` lts
+    _                                                -> False
 
 -- | Resolves a defined type to a base type
 resolveSType :: SType -> SType
@@ -728,9 +785,17 @@ resolveSType (Struct fl) =
   Struct $ map (\(ident, st) -> (ident, resolveSType st)) fl
 resolveSType (TypeMap _ st) = resolveSType st
 resolveSType t = t -- Other types
+
+-- | Take Symbol table scope and AST identifier to make ScopedIdent
+mkSId :: S.Scope -> Identifier -> SIdent
+mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
+
+-- | Take string to make base type/primitive for ScopedIdent
+mkBase :: String -> SIdent -- Base => scope = 0
+mkBase s = T.ScopedIdent (T.Scope 0) (Identifier (Offset 0) s)
 -- testing stuff
--- z = S.Ident "test"
--- zk = SType (TypeMap (S.Ident "test") (Primitive (S.Ident "int")))
+-- z =  "test"
+-- zk = SType (TypeMap ( "test") (Primitive ( "int")))
 -- st' =
 --   StructType
 --     [ FieldDecl
