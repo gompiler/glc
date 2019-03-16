@@ -16,7 +16,7 @@ import qualified TypedData           as T
 -- import qualified Data.HashTable.ST.Basic as HT
 import           Data.List           (intercalate)
 import           Data.List.NonEmpty  (NonEmpty (..), fromList, toList)
-import qualified Data.List.NonEmpty  as NE (head, map)
+import qualified Data.List.NonEmpty  as NE (head, map, nub)
 import           Data.Maybe          (catMaybes)
 
 -- import           Data.STRef
@@ -619,46 +619,41 @@ infer st e@(Unary _ BitComplement inner) =
     e
     (fromList [inner])
 -- | Infer types of binary expressions
-infer st e@(Binary _ op inner1 inner2)
-  | op `elem` [Or, And] =
-    inferConstraint
-      st
-      isBoolean
-      NE.head
-      (BadBinaryOp "boolean")
-      e
-      (fromList [inner1, inner2])
-  -- TODO: FIGURE THIS OUT, SINCE STRUCTS ARE COMPARABLE...
-  | op `elem` [Data.EQ, Data.NEQ] = undefined
-  --   inferConstraint st isComparable (const "TODO") (\t -> BadBinaryOp "TODO" t) e (fromList [inner1, inner2])
-  | op `elem` [Data.LT, Data.LEQ, Data.GT, Data.GEQ] =
-    inferConstraint
-      st
-      isOrdered
-      (const PBool)
-      (BadBinaryOp "ordered")
-      e
-      (fromList [inner1, inner2])
-  | Arithm aop <- op =
-    if aop `elem` [Subtract, Multiply, Divide]
-      then inferConstraint
-             st
-             isNumeric
-             (const PInt)
-             (BadBinaryOp "numeric")
-             e
-             (fromList [inner1, inner2])
-      else if aop `elem`
-              [Remainder, BitOr, BitXor, ShiftL, ShiftR, BitAnd, BitClear]
-             then inferConstraint
-                    st
-                    isInteger
-                    (const PInt)
-                    (BadBinaryOp "int")
-                    e
-                    (fromList [inner1, inner2])
-             else undefined -- TODO: ADD
-  | otherwise = undefined -- TODO: ADD, EQ, NEQ
+infer st e@(Binary _ op i1 i2) =
+  (case op of
+     And             -> andOrConstraint
+     Or              -> andOrConstraint
+     Data.EQ         -> undefined
+     Data.NEQ        -> undefined
+     Data.LT         -> orderConstraint
+     Data.LEQ        -> orderConstraint
+     Data.GEQ        -> orderConstraint
+     Data.GT         -> orderConstraint
+     Arithm Add      -> addConstraint
+     Arithm Subtract -> arithConstraint
+     Arithm Multiply -> arithConstraint
+     Arithm Divide   -> arithConstraint
+     _               -> arithIntConstraint -- other arithmetic operators
+  ) e innerList
+  where
+    innerList :: NonEmpty Expr
+    innerList = fromList [i1, i2]
+    andOrConstraint =
+      inferConstraint st isBoolean NE.head (BadBinaryOp "boolean")
+    orderConstraint =
+      inferConstraint st isOrdered (const PBool) (BadBinaryOp "ordered")
+    addConstraint =
+      inferConstraint
+        st
+        isAddable
+        NE.head
+        (\ts -> BadBinaryOp (case (NE.head ts) of
+                               PString -> "string"
+                               _       -> "numeric") ts)
+    arithConstraint =
+      inferConstraint st isNumeric NE.head (BadBinaryOp "numeric")
+    arithIntConstraint =
+      inferConstraint st isInteger NE.head (BadBinaryOp "integer")
 infer _ (Lit l) =
   return $
   Right $
@@ -777,7 +772,8 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   eitherTs <- sequence <$> mapM (infer st) inners
   return $ do
     ts <- eitherTs
-    if all isCorrect ts
+     -- all the same and one of the valid types:
+    if (length $ NE.nub ts) == 1 && (isCorrect (NE.head ts))
       then Right $ resultSType ts
       else Left $ createError parentExpr (makeError ts)
 
@@ -798,6 +794,9 @@ isCapCompatible t =
 
 isNumeric :: SType -> Bool
 isNumeric = (flip elem) [PInt, PFloat64, PRune]
+
+isAddable :: SType -> Bool
+isAddable = isOrdered
 
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
