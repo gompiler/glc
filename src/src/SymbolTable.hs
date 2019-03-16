@@ -106,17 +106,6 @@ add st ident sym = do
       _ <- S.addMessage st $ Just (ident, sym, scope) -- Add the symbol info of what we added
       return True
 
--- | Insert field to struct table and return success or fail
--- add' :: StructTable s -> String -> Field -> ST s Bool
--- add' st ident fld = do
---   result <- S.lookup st ident -- We only need to check current scope for declarations
---   case result of
---     Just _ -> return False -- If we found a result, don't insert anything
---     Nothing -> do
---       S.insert st ident fld
---       return True
--- Heterogeneous type, can represent everything that has an instance of Symbolize
--- We use this so we can map over different types using recurse
 data HAST =
   forall a. Symbolize a =>
             H a
@@ -226,22 +215,22 @@ instance Symbolize FuncDecl
 -- | checkId over a list of identifiers, keep first error or return nothing
 checkIds ::
      SymbolTable s
-  -> SType
+  -> Symbol
   -> String
   -> Identifiers
   -> ST s (Maybe ErrorMessage')
-checkIds st t pfix idl = maybeJ <$> mapM (checkId st t pfix) (toList idl)
+checkIds st s pfix idl = maybeJ <$> mapM (checkId st s pfix) (toList idl)
 
 -- | Check that we can declare this identifier
 checkId ::
      SymbolTable s
-  -> SType
+  -> Symbol
   -> String -- Error prefix for AlreadyDecl, what are we checking? i.e. Param, Var, Type
   -> Identifier
   -> ST s (Maybe ErrorMessage')
-checkId st t pfix ident@(Identifier _ vname) =
+checkId st s pfix ident@(Identifier _ vname) =
   let idv = vname
-   in do success <- add st idv (Variable t) -- Should not be declared
+   in do success <- add st idv s -- Should not be declared
          return $
            if success
              then Nothing
@@ -311,13 +300,13 @@ instance Symbolize VarDecl' where
     case edef of
       Left ((_, t), _) -> do
         et <- toType st t
-        either (return . Just) (\t' -> checkIds st t' "Variable " neIdl) et
-      Right _ -> checkIds st Infer "Variable " neIdl
+        either (return . Just) (\t' -> checkIds st (Variable t') "Variable " neIdl) et
+      Right _ -> checkIds st (Variable Infer) "Variable " neIdl
 
 instance Symbolize TypeDef' where
   recurse st (TypeDef' ident (_, t)) = do
     et <- toType st t
-    either (return . Just) (\t' -> checkId st t' "Type " ident) et
+    either (return . Just) (\t' -> checkId st (SType t') "Type " ident) et
 
 instance Symbolize Expr where
   recurse st (Unary _ _ e) = recurse st e
@@ -823,8 +812,14 @@ instance Show Symbol where
         intercalate "," (map (\(_, t') -> show t') pl) ++
         ") -> " ++ maybe "void" show mt
       Variable t' -> " [variable] = " ++ show t'
-      SType t' -> " [type] = " ++ show t'
+      SType t' -> " [type] = " ++ showDef t'
       _ -> ""
+
+-- | Fully resolve SType as a string, alternative to show when you want to show the complete mapping
+showDef :: SType -> String
+showDef t = case t of
+              TypeMap (T.ScopedIdent _ (Identifier _ name)) t' -> name ++ " -> " ++ showDef t'
+              _ -> show t
 
 instance Show SType where
   show t =
@@ -832,9 +827,9 @@ instance Show SType where
       Array i t' -> "[" ++ show i ++ "]" ++ show t'
       Slice t' -> "[]" ++ show t'
       Struct fds ->
-        "struct { " ++ concatMap (\(s, t') -> s ++ show t' ++ "; ") fds ++ "}"
-      TypeMap (T.ScopedIdent _ (Identifier _ name)) t' ->
-        name ++ " -> " ++ show t'
+        "struct { " ++ concatMap (\(s, t') -> s ++ " " ++ show t' ++ "; ") fds ++ "}"
+      TypeMap (T.ScopedIdent _ (Identifier _ name)) _ ->
+        name -- ++ " -> " ++ show t'
       PInt -> "int"
       PFloat64 -> "float64"
       PBool -> "bool"
