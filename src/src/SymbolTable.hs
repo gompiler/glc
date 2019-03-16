@@ -1,4 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module SymbolTable where
 
@@ -84,9 +87,9 @@ isDef st k = do
       _ <- S.addMessage st Nothing -- Signal error, key should be defined
       return False
 
-data HAST =
-  forall a. Symbolize a =>
-            H a
+-- data HAST =
+--   forall a. Symbolize a =>
+--             H a
 
 -- | Alias for asum <$> mapM f l
 am ::
@@ -98,7 +101,7 @@ am f l = fmap asum (mapM f l)
 
 -- Class to generalize traverse function for each AST structure
 -- also return the typechecked AST
-class Symbolize a where
+class Symbolize a b where
   recurse :: SymbolTable s -> a -> ST s (Either ErrorMessage' b)
 
 class Typify a
@@ -106,17 +109,19 @@ class Typify a
   where
   toType :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
 
-instance Symbolize HAST where
-  recurse st (H a) = recurse st a
+-- instance Symbolize HAST where
+--   recurse st (H a) = recurse st a
 
-instance Symbolize Program where
-  recurse st (Program _ tdl) = wrap st $ am (recurse st) tdl
+seqRec st a = (recurse st) a >>= sequence
 
-instance Symbolize TopDecl where
-  recurse st (TopDecl d)      = recurse st d
-  recurse st (TopFuncDecl fd) = recurse st fd
+instance Symbolize Program C.Program where
+  recurse st (Program pkg tdl) = wrap st $ ((recurse st) tdl >>= sequence) >>= return . Right . C.Program pkg
 
-instance Symbolize FuncDecl
+instance Symbolize TopDecl C.TopDecl where
+  recurse st (TopDecl d)      = seqRec st d >>= return . Right . C.TopDecl
+  recurse st (TopFuncDecl fd) = seqRec st fd >>= return . Right . C.TopFuncDecl
+
+instance Symbolize FuncDecl C.FuncDecl
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
@@ -140,10 +145,10 @@ instance Symbolize FuncDecl
             epl
       -- We then take the Either ErrorMessage' Symbol, if no error we exit dummy scope so we're at the right scope level, insert the Symbol (newly declared function) and then wrap the real scope of the function, adding all the parameters that are already resolved as symbols and recursing on statement list sl (from body of func) to declare things in body
         either
-          (return . Just)
+          (return . Left)
           (\(f, sil) -> do
              _ <- S.exitScope st
-             _ <- add st vname f
+             scope <- add st vname f
              wrap
                st
                (do mapM_ (\(k, sym, _) -> add st k sym) sil
@@ -225,101 +230,104 @@ checkId st s pfix ident@(Identifier _ vname) =
              then Nothing
              else Just $ createError ident (AlreadyDecl pfix ident)
 
-instance Symbolize SimpleStmt where
-  recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el) st
-    where
-      checkDecl ::
-           [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
-      checkDecl idl' _ st' = do
-        bl <- mapM (isNewDec st') idl'
-        -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-        return $
-          if True `elem` bl
-            then Nothing
-            else Just $ createError (head idl') ShortDec
-      isNewDec :: SymbolTable s -> Identifier -> ST s Bool
-      isNewDec st2 (Identifier _ vname) =
-        let idv = vname
-         in do val <- S.lookupCurrent st2 idv
-               case val of
-                 Just _  -> return False
-                 Nothing -> add st2 idv (Variable Infer)
-  recurse _ EmptyStmt = return Nothing
-  recurse st (ExprStmt e) = recurse st e -- Verify that expr only uses things that are defined
-  recurse st (Increment _ e) = recurse st e
-  recurse st (Decrement _ e) = recurse st e
-  recurse st (Assign _ _ el _) = am (recurse st) (toList el)
+instance Symbolize SimpleStmt C.SimpleStmt where
+  recurse st (ShortDeclare idl el) = undefined
+  -- checkDecl (toList idl) (toList el) st
+  --   where
+  --     checkDecl ::
+  --          [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
+  --     checkDecl idl' _ st' = do
+  --       bl <- mapM (isNewDec st') idl'
+  --       -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
+  --       return $
+  --         if True `elem` bl
+  --           then Nothing
+  --           else Just $ createError (head idl') ShortDec
+  --     isNewDec :: SymbolTable s -> Identifier -> ST s Bool
+  --     isNewDec st2 (Identifier _ vname) =
+  --       let idv = vname
+  --        in do val <- S.lookupCurrent st2 idv
+  --              case val of
+  --                Just _  -> return False
+  --                Nothing -> add st2 idv (Variable Infer)
+  recurse _ EmptyStmt = undefined -- return Nothing
+  recurse st (ExprStmt e) = undefined -- recurse st e -- Verify that expr only uses things that are defined
+  recurse st (Increment _ e) = undefined -- recurse st e
+  recurse st (Decrement _ e) = undefined -- recurse st e
+  recurse st (Assign _ _ el _) = undefined -- am (recurse st) (toList el)
 
-instance Symbolize Stmt where
-  recurse st (BlockStmt sl) = wrap st $ am (recurse st) sl
-  recurse st (SimpleStmt s) = recurse st s
-  recurse st (If (ss, e) s1 s2) =
-    wrap st $ am (recurse st) [H ss, H e, H s1, H s2]
-  recurse st (Switch ss me scs) =
-    wrap st $ do
-      r1 <-
-        case me of
-          Just e  -> am (recurse st) [H ss, H e]
-          Nothing -> recurse st ss
-      r2 <- am (recurse st) scs
-      return $ maybeJ [r1, r2]
-  recurse st (For (ForClause ss1 me ss2) s) =
-    wrap st $ do
-      r1 <-
-        am (recurse st) $
-        case me of
-          Just e  -> [H ss1, H e, H ss2]
-          Nothing -> [H ss1, H ss2]
-      r2 <- recurse st s
-      return $ maybeJ [r1, r2]
-  recurse _ (Break _) = return Nothing
-  recurse _ (Continue _) = return Nothing
-  recurse st (Declare d) = recurse st d
-  recurse st (Print el) = am (recurse st) el
-  recurse st (Println el) = am (recurse st) el
-  recurse st (Return (Just e)) = recurse st e
-  recurse _ (Return Nothing) = return Nothing
+instance Symbolize Stmt C.Stmt where
+  recurse st (BlockStmt sl) = undefined -- wrap st $ am (recurse st) sl
+  recurse st (SimpleStmt s) = undefined -- recurse st s
+  recurse st (If (ss, e) s1 s2) = undefined
+--    wrap st $ am (recurse st) [H ss, H e, H s1, H s2]
+  recurse st (Switch ss me scs) = undefined
+    -- wrap st $ do
+    --   r1 <-
+    --     case me of
+    --       Just e  -> am (recurse st) [H ss, H e]
+    --       Nothing -> recurse st ss
+    --   r2 <- am (recurse st) scs
+    --   return $ maybeJ [r1, r2]
+  recurse st (For (ForClause ss1 me ss2) s) = undefined
+    -- wrap st $ do
+    --   r1 <-
+    --     am (recurse st) $
+    --     case me of
+    --       Just e  -> [H ss1, H e, H ss2]
+    --       Nothing -> [H ss1, H ss2]
+    --   r2 <- recurse st s
+    --   return $ maybeJ [r1, r2]
+  recurse _ (Break _) = undefined -- return Nothing
+  recurse _ (Continue _) = undefined -- return Nothing
+  recurse st (Declare d) = undefined -- recurse st d
+  recurse st (Print el) = undefined -- am (recurse st) el
+  recurse st (Println el) = undefined -- am (recurse st) el
+  recurse st (Return (Just e)) = undefined -- recurse st e
+  recurse _ (Return Nothing) = undefined -- return Nothing
 
-instance Symbolize Decl where
-  recurse st (VarDecl vdl) = am (recurse st) vdl
-  recurse st (TypeDef tdl) = am (recurse st) tdl
+instance Symbolize Decl C.Decl where
+  recurse st (VarDecl vdl) = undefined -- am (recurse st) vdl
+  recurse st (TypeDef tdl) = undefined -- am (recurse st) tdl
 
-instance Symbolize VarDecl' where
-  recurse st (VarDecl' neIdl edef) =
-    case edef of
-      Left ((_, t), _) -> do
-        et <- toType st t
-        either
-          (return . Just)
-          (\t' -> checkIds st (Variable t') "Variable " neIdl)
-          et
-      Right _ -> checkIds st (Variable Infer) "Variable " neIdl
+instance Symbolize VarDecl' C.VarDecl' where
+  recurse st (VarDecl' neIdl edef) = undefined
+    -- case edef of
+    --   Left ((_, t), _) -> do
+    --     et <- toType st t
+    --     either
+    --       (return . Just)
+    --       (\t' -> checkIds st (Variable t') "Variable " neIdl)
+    --       et
+    --   Right _ -> checkIds st (Variable Infer) "Variable " neIdl
 
-instance Symbolize TypeDef' where
-  recurse st (TypeDef' ident (_, t)) = do
-    et <- toType st t
-    either (return . Just) (\t' -> checkId st (SType t') "Type " ident) et
+instance Symbolize TypeDef' C.TypeDef' where
+  recurse st (TypeDef' ident (_, t)) = undefined
+    -- do
+    -- et <- toType st t
+    -- either (return . Just) (\t' -> checkId st (SType t') "Type " ident) et
 
-instance Symbolize Expr where
-  recurse st (Unary _ _ e) = recurse st e
-  recurse st (Binary _ _ e1 e2) = am (recurse st) [e1, e2]
-  recurse _ (Lit _) = return Nothing -- No identifiers to check here
+instance Symbolize Expr C.Expr where
+  recurse st (Unary _ _ e) = undefined -- recurse st e
+  recurse st (Binary _ _ e1 e2) = undefined -- am (recurse st) [e1, e2]
+  recurse _ (Lit _) = undefined -- return Nothing -- No identifiers to check here
   recurse st (Var ident@(Identifier _ vname)) -- Should be defined, otherwise we're trying to use undefined variable
-   = do
-    isdef <- isDef st vname
-    if isdef
-      then return Nothing
-      else return $ Just $ createError ident (NotDecl "Variable " ident)
-  recurse st (AppendExpr _ e1 e2) = am (recurse st) [e1, e2]
-  recurse st (LenExpr _ e) = recurse st e
-  recurse st (CapExpr _ e) = recurse st e
-  recurse st (Selector _ e _) = recurse st e
-  recurse st (Index _ e1 e2) = am (recurse st) [e1, e2]
-  recurse st (Arguments _ e el) = am (recurse st) (e : el)
+   = undefined
+    -- do
+    -- isdef <- isDef st vname
+    -- if isdef
+    --   then return Nothing
+    --   else return $ Just $ createError ident (NotDecl "Variable " ident)
+  recurse st (AppendExpr _ e1 e2) = undefined -- am (recurse st) [e1, e2]
+  recurse st (LenExpr _ e) = undefined -- recurse st e
+  recurse st (CapExpr _ e) = undefined -- recurse st e
+  recurse st (Selector _ e _) = undefined -- recurse st e
+  recurse st (Index _ e1 e2) = undefined -- am (recurse st) [e1, e2]
+  recurse st (Arguments _ e el) = undefined -- am (recurse st) (e : el)
 
-instance Symbolize SwitchCase where
-  recurse st (Case _ nEl s) = am (recurse st) $ map H (toList nEl) ++ [H s]
-  recurse st (Default _ s)  = recurse st s
+instance Symbolize SwitchCase C.SwitchCase where
+  recurse st (Case _ nEl s) = undefined -- am (recurse st) $ map H (toList nEl) ++ [H s]
+  recurse st (Default _ s)  = undefined -- recurse st s
 
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
@@ -439,7 +447,7 @@ topScope' = S.topScope
 
 -- | Wrap a result of recurse inside a new scope
 wrap ::
-     SymbolTable s -> ST s (Maybe ErrorMessage') -> ST s (Maybe ErrorMessage')
+     SymbolTable s -> ST s (Either ErrorMessage' a) -> ST s (Either ErrorMessage' a)
 wrap st stres = do
   S.enterScope st
   res <- stres
@@ -453,6 +461,23 @@ getFirstDuplicate (x:xs) =
   if x `elem` xs
     then Just x
     else getFirstDuplicate xs
+
+-- | Convert SType to base type, aka Type from CheckedData
+toBase :: SType -> C.Type
+toBase (Array i t) = C.ArrayType i (toBase t)
+toBase (Slice t) = C.SliceType (toBase t)
+toBase (Struct fls) = C.StructType (map f2fd fls)
+  where
+    f2fd :: Field -> C.FieldDecl
+    f2fd (s, t) = C.FieldDecl s (toBase t)
+toBase (TypeMap _ t) = toBase t
+toBase t = case t of
+             PInt -> C.Type "int"
+             PFloat64 -> C.Type "float64"
+             PBool -> C.Type "bool"
+             PRune -> C.Type "rune"
+             PString -> C.Type "string"
+             _ -> error "Infer has no base type" -- Should not happen
 
 -- | Convert SymbolInfo list to String (pass through show) to get string representation of symbol table
 -- ignore error if not a symbol table error (i.e. typecheck error)
