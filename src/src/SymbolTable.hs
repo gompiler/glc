@@ -812,8 +812,8 @@ sl2str' (mh:mt) (S.Scope pScope) acc =
 -- | Account for braces given previous scope and current scope
 br :: Int -> Int -> String
 br prev cur
-  | prev > cur = tabs (prev - 1) ++ "}\n"
-  | cur > prev = tabs (cur - 1) ++ "{\n"
+  | prev > cur = tabs (prev - 1) ++ "}\n" ++ br (prev - 1) cur
+  | cur > prev = tabs prev ++ "{\n" ++ br (prev + 1) cur
   | otherwise = ""
 
 instance Show Symbol where
