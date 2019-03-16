@@ -521,6 +521,10 @@ data SymbolError
   | BadIndex String
              SType
   | NonIndexable SType
+  | NonFunctionCall
+  | NonFunctionId String
+  | ArgumentMismatch [SType]
+                     [SType]
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -552,6 +556,10 @@ instance ErrorEntry SymbolError where
       NoField f -> "No field " ++ f ++ " on struct"
       BadIndex ts ti -> "Cannot use type " ++ show ti ++ " as index for " ++ ts
       NonIndexable t -> show t ++ " is not indexable"
+      NonFunctionCall -> "Cannot call non-function"
+      NonFunctionId ident -> show ident ++ "is not a function"
+      ArgumentMismatch as1 as2 ->
+        "Argument mismatch between " ++ show as1 ++ " and " ++ show as2
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -724,8 +732,28 @@ infer st ie@(Index _ e1 e2) = do
     indexable :: SType -> SType -> String -> Either ErrorMessage' SType
     indexable t (Primitive (T.ScopedIdent _ (Identifier _ "int"))) _ = Right t
     indexable t _ errTag = Left $ createError ie $ BadIndex errTag t
-infer _ _ = undefined
+-- | Infer types of arguments (function call) expressions
+-- A function call expr(arg1, arg2, ..., argk) is well-typed if:
+-- * arg1, arg2, . . . , argk are well-typed and have types T1, T2, . . . , Tk respectively;
+-- * expr is well-typed and has function type (T1 * T2 * ... * Tk) -> Tr.
+-- The type of a function call is Tr.
+infer st ae@(Arguments _ expr args) = do
+  as <- mapM (infer st) args -- Moves ST out
+  case (expr, sequence as) of
+    (Var i@(Identifier _ ident), Right ts) -> do
+      fn <- S.lookup st ident
+      return $
+        case fn of
+          Just (_, Func pl rtm) ->
+            if map snd pl == ts
+              then maybe (Left $ createError ae $ VoidFunc i) Right rtm
+              else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
+          Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
+          Nothing -> Left $ createError ae $ NotDecl "Function " i -- not declared
+    (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
+    (_, Left err) -> return $ Left err
 
+-- TODO: TYPECAST
 inferConstraint ::
      SymbolTable s -- st
   -> (SType -> Bool) -- isCorrect
