@@ -307,10 +307,7 @@ data Type
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
   | StructType [FieldDecl]
-  -- | See https://golang.org/ref/spec#Function_types
-  | TypeMap ScopedIdent
-            Type
-  | Type ScopedIdent
+  | Type Ident
   -- | Empty return type
   deriving (Show, Eq)
 
