@@ -22,10 +22,11 @@ import           Data.Maybe          (catMaybes)
 -- import           Data.STRef
 import           ErrorBundle
 import           Numeric             (readOct)
+import           Weeding             (weed)
 
 -- import           Data.STRef
 import qualified SymbolTableCore     as S
-import Weeding (weed)
+
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
 type SIdent = T.ScopedIdent
@@ -80,23 +81,29 @@ new :: ST s (SymbolTable s)
 new = do
   st <- S.new
   -- Base types
-  add st "int" Base
-  add st "float64" Base
-  add st "bool" Base
-  add st "rune" Base
-  add st "string" Base
-  add st "true" Constant
-  add st "false" Constant
+  mapM_
+    (uncurry $ add st)
+    [ ("int", Base)
+    , ("float64", Base)
+    , ("bool", Base)
+    , ("rune", Base)
+    , ("string", Base)
+    , ("true", Constant)
+    , ("false", Constant)
+    ]
   return st
 
-add :: SymbolTable s -> String -> Symbol -> ST s (Maybe SymbolInfo)
+add :: SymbolTable s -> String -> Symbol -> ST s Bool -- Did we add successfully?
 add st ident sym = do
   result <- S.lookupCurrent st ident -- We only need to check current scope for declarations
   case result of
-    Just _ -> return Nothing -- If we found a result, don't insert anything
+    Just _ -> do
+      _ <- S.addMessage st Nothing -- Found something, aka a conflict, so stop printing symbol table after this
+      return False
     Nothing -> do
       scope <- S.insert' st ident sym
-      return $ Just (ident, sym, scope)
+      _ <- S.addMessage st $ Just (ident, sym, scope) -- Add the symbol info of what we added
+      return True
 
 -- | Insert field to struct table and return success or fail
 -- add' :: StructTable s -> String -> Field -> ST s Bool
@@ -187,36 +194,30 @@ instance Symbolize FuncDecl
           (\t2 -> do
              (err, pil) <- checkIds' st2 t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
-             _ <- mapM_ ((S.addMessage st2 . Just) . parToVar) pil -- Add list of SymbolInfo to messages
              case err of
                Just e -> do
                  _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
                  return $ Left e
-               Nothing -> return $ Right $ map pInfo2p pil)
+               Nothing -> return $ Right pil)
           et
-      parToVar :: ParamInfo -> SymbolInfo
-      parToVar ((ident', t'), scope) = (ident', SType t', scope)
-      pInfo2p :: ParamInfo -> Param
-      pInfo2p (p, _) = p
       checkIds' ::
            SymbolTable s
         -> SType
         -> Identifiers
-        -> ST s (Maybe ErrorMessage', [ParamInfo])
+        -> ST s (Maybe ErrorMessage', [Param])
       checkIds' st2 t' idl = pEithers <$> mapM (checkId' st2 t') (toList idl)
       checkId' ::
            SymbolTable s
         -> SType
         -> Identifier
-        -> ST s (Either ErrorMessage' ParamInfo)
+        -> ST s (Either ErrorMessage' Param)
       checkId' st2 t' ident'@(Identifier _ vname') =
         let idv = vname'
-         in do res <- add st2 idv (Variable t') -- Should not be declared
+         in do success <- add st2 idv (Variable t') -- Should not be declared
                return $
-                 case res of
-                   Nothing ->
-                     Left $ createError ident (AlreadyDecl "Param " ident')
-                   Just (_, _, scope) -> Right ((vname', t'), scope)
+                 if success
+                   then Right (vname', t')
+                   else Left $ createError ident (AlreadyDecl "Param " ident')
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
@@ -239,15 +240,11 @@ checkId ::
   -> ST s (Maybe ErrorMessage')
 checkId st t pfix ident@(Identifier _ vname) =
   let idv = vname
-   in do res <- add st idv (Variable t) -- Should not be declared
-         case res of
-           Nothing -> do
-             _ <- S.addMessage st Nothing -- Signal error so we don't print symbols beyond this
-             return $ Just $ createError ident (AlreadyDecl pfix ident)
-           Just _ -- Successful insertion, insert symbol info
-            -> do
-             _ <- S.addMessage st res
-             return Nothing
+   in do success <- add st idv (Variable t) -- Should not be declared
+         return $
+           if success
+             then Nothing
+             else Just $ createError ident (AlreadyDecl pfix ident)
 
 instance Symbolize SimpleStmt where
   recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el) st
@@ -266,12 +263,8 @@ instance Symbolize SimpleStmt where
         let idv = vname
          in do val <- S.lookupCurrent st2 idv
                case val of
-                 Just _ -> return False
-                 Nothing -> do
-                   msi <- add st2 idv (Variable Infer)
-                                                        -- This cannot be Nothing, add will always succeed here because lookup returned Nothing, so there is no conflict
-                   _ <- S.addMessage st2 msi -- Add new symbol
-                   return True
+                 Just _  -> return False
+                 Nothing -> add st2 idv (Variable Infer)
   recurse _ EmptyStmt = return Nothing
   recurse st (ExprStmt e) = recurse st e -- Verify that expr only uses things that are defined
   recurse st (Increment _ e) = recurse st e
@@ -393,44 +386,28 @@ instance Typify Type where
   toType st (SliceType t) = do
     sym <- toType st t
     return $ sym >>= Right . Slice
-  toType _ (StructType _) = undefined
-  -- toType st (StructType fdl) = do
-  --   fl <- checkFields st fdl
-  --   return $ fl >>= Right . Struct
-  --   where
-  --     checkFields ::
-  --          SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-  --     checkFields st2 fdl' = do
-  --       structTab <- S.new
-  --       sfl <- mapM (checkField st2 structTab) fdl'
-  --       fl <- sequence sfl
-  --       return $ eitherL concat fl
-  --     checkField ::
-  --          SymbolTable s1
-  --       -> StructTable s2
-  --       -> FieldDecl
-  --       -> ST s1 (ST s2 (Either ErrorMessage' [Field]))
-  --     checkField st2 structTab (FieldDecl idl (_, t)) = do
-  --       et <- toType st2 t
-  --       return $ either (return . Left) (\t' -> checkIds' structTab t' idl) et
-  --     checkIds' ::
-  --          StructTable s
-  --       -> SType
-  --       -> Identifiers
-  --       -> ST s (Either ErrorMessage' [Field])
-  --     checkIds' st2 t idl = sequence <$> mapM (checkId' st2 t) (toList idl)
-  --     checkId' ::
-  --          StructTable s
-  --       -> SType
-  --       -> Identifier
-  --       -> ST s (Either ErrorMessage' Field)
-  --     checkId' structTab' t ident@(Identifier _ vname) =
-  --       let idv =  vname
-  --        in do res <- add' structTab' idv (idv, t) -- Should not be declared
-  --              return $
-  --                if not res
-  --                  then Left (createError ident (AlreadyDecl "Field " ident))
-  --                  else Right (idv, t)
+  toType st (StructType fdl) = do
+    fl <- checkFields st fdl
+    return $ fl >>= Right . Struct
+    where
+      checkFields ::
+           SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
+      checkFields st' fdl' = eitherL concat <$> mapM (checkField st') fdl'
+      checkField ::
+           SymbolTable s -> FieldDecl -> ST s (Either ErrorMessage' [Field])
+      checkField st' (FieldDecl idl (_, t)) = do
+        et <- toType st' t
+        return $
+          either
+            Left
+            (\t' ->
+               case getFirstDuplicate (toList idl) of
+                 Nothing ->
+                   Right $
+                   map (\(Identifier _ vname) -> (vname, t')) (toList idl)
+                 Just ident ->
+                   Left $ createError ident (AlreadyDecl "Field " ident))
+            et
   toType st (Type ident) = resolve ident st
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
@@ -438,17 +415,7 @@ instance Typify Type where
   toType _ (ArrayType _ _) =
     error
       "Trying to convert type of an ArrayType with non literal int as length"
-  -- toType (Signature (Parameters pdl) (Just t)) st = do
-    -- t' <- toType t st
-    -- (eConcat <$> mapM (toType' st) pdl) >>= (\e -> either Left (\tl -> Func tl t'))
-    -- (do
-    --     tl <- eConcat etl
-    --     Right $ Func tl t
-    --   )
 
--- instance Symbolize Signature where
--- instance Symbolize ParameterDecl where
---   -- toType (ParameterDecl)
 -- | Resolve type of an Identifier
 resolve :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' SType)
 resolve ident@(Identifier _ vname) st =
@@ -478,24 +445,6 @@ resolve' (Variable t') _ = Just t'
 resolve' (SType t') _ = Just t'
 resolve' (Func _ mt) _ = mt
 
--- instance TypeInfer String where
---   resolve :: String -> SymbolTable s -> ST s (Either ErrorMessage' SType)
---   resolve s st =
--- -- pSymbolTable prog =
--- -- | print key value pairs for one hash table
--- pht ht =
---   H.foldM f "" ht
---   -- return s
---   where
---     f s (k,v) = return (s ++ k ++ ": " ++ show v ++ "\n")
--- htIs k ht = do
---   val <- HT.lookup ht k
---   case val of
---     Nothing -> return "not found"
---     Just i -> return $ "found " ++ k ++ ": " ++ show i
--- basic = weed "package main;"
--- toString :: SymbolTable s -> String
--- toString k =
 data SymbolError
   = AlreadyDecl String
                 Identifier
@@ -748,7 +697,7 @@ infer st ie@(Index _ e1 e2) = do
      -- | Checks that second type is an int before returning type or error
   where
     indexable :: SType -> SType -> String -> Either ErrorMessage' SType
-    indexable t PInt _ = Right t
+    indexable t PInt _   = Right t
     indexable t _ errTag = Left $ createError ie $ BadIndex errTag t
 -- | Infer types of arguments (function call / typecast) expressions
 -- A function call expr(arg1, arg2, ..., argk) is well-typed if:
@@ -763,13 +712,13 @@ infer st ae@(Arguments _ expr args) = do
       return $
         case fn of
           Just (_, Func pl rtm) ->
-            if (map snd pl) == ts
-              then maybe (Left $ createError ae $ VoidFunc i) (Right) rtm
+            if map snd pl == ts
+              then maybe (Left $ createError ae $ VoidFunc i) Right rtm
               else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
           -- Just (_, Base) -> undefined -- TODO: BASE TYPE CAST
           -- Just (_, SType ct) -> undefined -- TODO: DEFINED TYPE CAST
-          Just _             -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
-          Nothing            -> Left $ createError ae $ NotDecl "Function " i  -- not declared
+          Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
+          Nothing -> Left $ createError ae $ NotDecl "Function " i -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
 
@@ -807,14 +756,14 @@ isCapCompatible t =
     _        -> False
 
 isNumeric :: SType -> Bool
-isNumeric = (flip elem) [PInt, PFloat64, PRune]
+isNumeric = flip elem [PInt, PFloat64, PRune]
 
 isAddable :: SType -> Bool
 isAddable = isOrdered
 
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
-isOrdered = (flip elem) [PInt, PFloat64, PRune, PString]
+isOrdered = flip elem [PInt, PFloat64, PRune, PString]
 
 isBoolean :: SType -> Bool
 isBoolean = (==) PBool
@@ -831,38 +780,34 @@ resolveSType (Struct fl) =
 resolveSType (TypeMap _ st) = resolveSType st
 resolveSType t = t -- Other types
 
+-- | Get the first duplicate in a list, for checking if fields of a struct are all unique
+getFirstDuplicate :: Eq a => [a] -> Maybe a
+getFirstDuplicate [] = Nothing
+getFirstDuplicate (x:xs) =
+  if x `elem` xs
+    then Just x
+    else getFirstDuplicate xs
+
 -- | Take Symbol table scope and AST identifier to make ScopedIdent
 mkSId :: S.Scope -> Identifier -> SIdent
 mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
 
+-- | String that goes through weeding
+-- Get either an error message from weeding or success/error message with string of symbol table
+-- Note this isn't an either because if the left side checks, we always want the string/partial symbol table even on error so we can print it out
 pTable :: String -> Either ErrorMessage (Maybe ErrorMessage, String)
-pTable code = fmap (\p -> let (me, syml) = pTable' p in
-                       (me >>= (\e -> Just $ e code `withPrefix` "symbol table error at "), syml)) (weed code)
+pTable code =
+  fmap
+    (\p ->
+       let (me, syml) = pTable' p
+        in ( me >>= (\e -> Just $ e code `withPrefix` "symbol table error at ")
+           , syml))
+    (weed code)
 
 pTable' :: Program -> (Maybe ErrorMessage', String)
-pTable' p = runST $ do
-  st <- new
-  res <- recurse st p
-  syml <- S.getMessages st
-  return (res, show syml)
-
--- printTable s = either ()
-
--- z =  "test"
--- zk = SType (TypeMap ( "test") (Primitive ( "int")))
--- st' =
---   StructType
---     [ FieldDecl
---         (Identifier (Offset 0) "aaaaa" :| [])
---         (Offset 0, Type (Identifier (Offset 0) "aaaaaaaaa"))
---     ]
--- -- st2 = Type (Identifier (Offset 0) "a")
--- t3 =
---   runST $ do
---     st <- new
---     S.enterScope st
---     t <- toType st st'
---     _ <- either (const $ add st z zk) (add st z . SType) t
---     (_, ht) <- topScope' st
---     H.toList ht -- Base hash table as list
--- -- runST $ ((new >>= readSTRef) >>= return . snd . head . toList) >>= H.toList
+pTable' p =
+  runST $ do
+    st <- new
+    res <- recurse st p
+    syml <- S.getMessages st
+    return (res, show syml)
