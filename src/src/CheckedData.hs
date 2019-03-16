@@ -273,15 +273,15 @@ data Expr
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
-  offset (Unary o _ _ _)     = o
-  offset (Binary o _ _ _ _)  = o
+  offset (Unary o _ _)     = o
+  offset (Binary o _ _ _)  = o
   offset (Lit l)             = offset l
-  offset (Var ident _)       = offset ident
+  offset (Var ident)       = offset ident
   offset (AppendExpr o _ _)  = o
   offset (LenExpr o _)       = o
   offset (CapExpr o _)       = o
-  offset (Selector o _ _ _)  = o
-  offset (Index o _ _ _)     = o
+  offset (Selector o _ _)  = o
+  offset (Index o _ _)     = o
   offset (Arguments o _ _ _) = o
   offset (TypeConvert t _ _) = offset t
 
