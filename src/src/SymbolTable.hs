@@ -695,18 +695,15 @@ infer st ce@(CapExpr _ expr) =
 -- * expr is well-typed and has type S;
 -- * S resolves to a struct type that has a field named id.
 infer st se@(Selector _ expr (Identifier _ ident)) = do
-  sele <- infer st expr
-  return $
-    either
-      Left
-      (\t ->
-         case t of
-           Struct fdl ->
-             case filter (\(fid, _) -> fid == ident) fdl of
-               _:((_, sft):_) -> Right sft
-               _              -> Left $ createError se $ NoField ident
-           _ -> Left $ createError se $ NonStruct t)
-      sele
+  eitherSele <- infer st expr
+  return $ eitherSele >>= infer'
+  where
+    infer' :: SType -> Either ErrorMessage' SType
+    infer' (Struct fdl) =
+      case filter (\(fid, _) -> fid == ident) fdl of
+        _:(_, sft):_ -> Right sft
+        _            -> Left $ createError se $ NoField ident
+    infer' t = Left $ createError se $ NonStruct t
 -- | Infer types of index expressions
 -- Indexing into a slice or an array (expr[index]) is well-typed if:
 -- * expr is well-typed and resolves to []T or [N]T;
@@ -715,16 +712,18 @@ infer st se@(Selector _ expr (Identifier _ ident)) = do
 infer st ie@(Index _ e1 e2) = do
   e1e <- infer st e1
   e2e <- infer st e2
-  return $
-    case (e1e, e2e) of
-      (Right (Slice t), Right (Primitive (T.ScopedIdent _ (Identifier _ "int")))) ->
-        Right t
-      (Right (Array _ t), Right (Primitive (T.ScopedIdent _ (Identifier _ "int")))) ->
-        Right t
-      (Right (Slice t), _) -> Left $ createError ie $ BadIndex "slice" t
-      (Right (Array _ t), _) -> Left $ createError ie $ BadIndex "array" t
-      (Right t, _) -> Left $ createError ie $ NonIndexable t
-      (Left e, _) -> Left e
+  return $ do
+    e1 <- e1e
+    e2 <- e2e
+    case (e1, e2) of
+      (Slice t, t')   -> indexable t t' "slice"
+      (Array _ t, t') -> indexable t t' "array"
+      (t, _)          -> Left $ createError ie $ NonIndexable t
+     -- | Checks that second type is an int before returning type or error
+  where
+    indexable :: SType -> SType -> String -> Either ErrorMessage' SType
+    indexable t (Primitive (T.ScopedIdent _ (Identifier _ "int"))) _ = Right t
+    indexable t _ errTag = Left $ createError ie $ BadIndex errTag t
 infer _ _ = undefined
 
 inferConstraint ::
