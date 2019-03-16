@@ -1,5 +1,4 @@
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE InstanceSigs              #-}
 
 module SymbolTable where
 
@@ -50,7 +49,11 @@ data SType
   | Struct [Field] -- List of fields
   | TypeMap SIdent
             SType
-  | Primitive SIdent
+  | PInt
+  | PFloat64
+  | PBool
+  | PRune
+  | PString
   | Infer -- Infer the type at typechecking, not at symbol table generation
   deriving (Show, Eq)
 
@@ -453,8 +456,14 @@ resolve ident@(Identifier _ vname) st =
 
 -- | Resolve symbol to type
 resolve' :: Symbol -> String -> Maybe SType
-resolve' Base ident'     = Just $ Primitive (mkBase ident')
-resolve' Constant _      = Just $ Primitive (mkBase "bool") -- Constants reserved for bools only
+resolve' Base ident'     = Just $ case ident' of
+                                    "int" -> PInt
+                                    "float64" -> PFloat64
+                                    "bool" -> PBool
+                                    "rune" -> PRune
+                                    "string" -> PString
+                                    _ -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
+resolve' Constant _      = Just PBool -- Constants reserved for bools only
 resolve' (Variable t') _ = Just t'
 resolve' (SType t') _    = Just t'
 resolve' (Func _ mt) _   = mt
@@ -519,13 +528,22 @@ wrap st stres = do
   S.exitScope st
   return res
 
+-- | Get the first duplicate in a list, for checking if fields of a struct are all unique
+getFirstDuplicate :: Eq a => [a] -> Maybe a
+getFirstDuplicate [] = Nothing
+getFirstDuplicate (x:xs) =
+  if x `elem` xs
+    then Just x
+    else getFirstDuplicate xs
+         
 -- | Take Symbol table scope and AST identifier to make ScopedIdent
 mkSId :: S.Scope -> Identifier -> SIdent
 mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
 
--- | Take string to make base type/primitive for ScopedIdent
-mkBase :: String -> SIdent -- Base => scope = 0
-mkBase s = T.ScopedIdent (T.Scope 0) (Identifier (Offset 0) s)
+-- pTable' :: Program -> (Maybe ErrorMessage', String)
+-- pTable' p = do
+--   st <- new
+  
 
 class TypeInfer a where
   infer :: a -> SymbolTable s -> ST s (Either ErrorMessage' SType)
