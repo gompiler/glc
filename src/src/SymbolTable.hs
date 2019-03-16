@@ -20,8 +20,9 @@ import           Data.Maybe          (catMaybes)
 -- import           Data.STRef
 import           ErrorBundle
 import           Numeric             (readOct)
-import           Scanner             (putExit, putSucc)
-import           Weeding             (weed)
+-- import           Scanner             (putExit, putSucc)
+-- import           Weeding             (weed)
+import qualified CheckedData as C
 
 import           Symbol
 
@@ -96,8 +97,9 @@ am ::
 am f l = fmap asum (mapM f l)
 
 -- Class to generalize traverse function for each AST structure
+-- also return the typechecked AST
 class Symbolize a where
-  recurse :: SymbolTable s -> a -> ST s (Maybe ErrorMessage')
+  recurse :: SymbolTable s -> a -> ST s (Either ErrorMessage' b)
 
 class Typify a
   -- Resolve AST types to SType, may return error message if type error

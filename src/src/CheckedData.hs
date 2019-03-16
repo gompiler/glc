@@ -57,13 +57,13 @@ data Decl
 data VarDecl' =
   VarDecl' ScopedIdent
            Expr
-           InferredType
+           Type
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =
   TypeDef' Identifier
-           InferredType
+           Type
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -222,17 +222,14 @@ data Expr
   = Unary Offset
           UnaryOp
           Expr
-          InferredType
   | Binary Offset
            BinaryOp
            Expr
            Expr
-           InferredType
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
   | Var Identifier
-        InferredType
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
@@ -254,13 +251,11 @@ data Expr
   | Selector Offset
              Expr
              Identifier
-             InferredType
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
   | Index Offset
           Expr
           Expr
-          InferredType
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   | Arguments Offset
@@ -274,7 +269,7 @@ data Expr
   -- the offset is included within Type'
   | TypeConvert Type'
                 Expr
-                InferredType
+                Type
   deriving (Show, Eq)
 
 instance ErrorBreakpoint Expr where
@@ -360,7 +355,9 @@ newtype AssignOp =
 
 -- | Type with scope value
 -- Used for caching inferrable types
-type InferredType = (Scope, Type)
+-- type InferredType = (Scope, Type)
+
+-- Use Type for base type resolution instead
 
 -- Type with scope and offset value
 type Type' = (Offset, Scope, Type)
