@@ -3,9 +3,10 @@ module Main where
 import           ErrorBundle
 import qualified Options.Applicative as Op
 import           ParseCLI
-import           Prettify
-import           Scanner
-import           Weeding
+import           Prettify            (checkPrettifyInvariance, prettify)
+import           Scanner             (putExit, putSucc, scanC, scanP)
+import           SymbolTable         (symbol)
+import           Weeding             (weed)
 
 main :: IO ()
 main = do
@@ -23,7 +24,7 @@ main = do
         Pretty -> either putExit putStrLn . (fmap Prettify.prettify . weed)
         PrettyInvar ->
           either putExit (const $ putSucc "OK") . checkPrettifyInvariance
-        Symbol -> const $ putStrLn "symbol not yet implemented"
+        Symbol -> symbol
         Typecheck -> const $ putStrLn "typecheck not yet implemented"
         Codegen ->
           const $ putExit $ createError' "codegen called without filename" -- This should never happen because of case above
