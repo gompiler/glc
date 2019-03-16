@@ -15,6 +15,7 @@ import qualified TypedData           as T
 -- import qualified Data.HashTable.Class    as H
 -- import qualified Data.HashTable.ST.Basic as HT
 import           Data.List           (intercalate)
+import           Data.List.Extra     (concatUnzip)
 import           Data.List.NonEmpty  (NonEmpty (..), fromList, toList)
 import qualified Data.List.NonEmpty  as NE (head, map)
 import           Data.Maybe          (catMaybes)
@@ -145,38 +146,40 @@ instance Symbolize FuncDecl
     res <- S.isDef st vname -- Check if defined in symbol table
     if res
       then return $ Just $ createError ident (AlreadyDecl "Function " ident)
-      else wrap
-             st
-             (do epl <- checkParams st pdl -- Either ErrorMessage' [Param]
+      else do _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
+              epl <- checkParams st pdl -- Either ErrorMessage' [Param]
       -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
-                 ef <-
-                   either
-                     (return . Left)
-                     (\pl ->
-                        maybe
-                          (return $ Right $ Func pl Nothing)
-                          (\(_, t') -> do
-                             et <- toType st t'
-                             return $ fmap (Func pl . Just) et)
-                          t)
-                     epl
-      -- We then take the Either ErrorMessage' Symbol, if no error we insert the Symbol (newly declared function) and recurse on statement list sl (from body of func) to declare things in body
-                 either
-                   (return . Just)
-                   (\f -> do
-                      _ <- S.insert st vname f
-                      am (recurse st) sl)
-                   ef)
+              ef <-
+                either
+                (return . Left)
+                (\(pl,sil) ->
+                    maybe
+                    (return $ Right $ (Func pl Nothing, sil))
+                    (\(_, t') -> do
+                        et <- toType st t'
+                        return $ fmap (\ret -> (Func pl (Just ret), sil)) et)
+                  t)
+                epl
+      -- We then take the Either ErrorMessage' Symbol, if no error we exit dummy scope so we're at the right scope level, insert the Symbol (newly declared function) and then wrap the real scope of the function, adding all the parameters that are already resolved as symbols and recursing on statement list sl (from body of func) to declare things in body
+              either
+                (return . Just)
+                (\(f, sil) -> (do
+                                  _ <- S.exitScope st
+                                  _ <- add st vname f
+                                  wrap st (do
+                                              mapM_ (\(k, sym, _) -> add st k sym) sil
+                                              am (recurse st) sl)))
+                ef
     where
       checkParams ::
            SymbolTable s
         -> [ParameterDecl]
-        -> ST s (Either ErrorMessage' [Param])
+        -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkParams st2 pdl' = do
         pl <- mapM (checkParam st2) pdl'
-        return $ eitherL concat pl
+        return $ eitherL concatUnzip pl
       checkParam ::
-           SymbolTable s -> ParameterDecl -> ST s (Either ErrorMessage' [Param])
+           SymbolTable s -> ParameterDecl -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkParam st2 (ParameterDecl idl (_, t')) = do
         et <- toType st2 t' -- Remove ST
         either
@@ -194,20 +197,21 @@ instance Symbolize FuncDecl
            SymbolTable s
         -> SType
         -> Identifiers
-        -> ST s (Maybe ErrorMessage', [Param])
-      checkIds' st2 t' idl = pEithers <$> mapM (checkId' st2 t') (toList idl)
+        -> ST s (Maybe ErrorMessage', ([Param], [SymbolInfo]))
+      checkIds' st2 t' idl = (\(a,b) -> (a, unzip b)) . pEithers <$> mapM (checkId' st2 t') (toList idl)
       checkId' ::
            SymbolTable s
         -> SType
         -> Identifier
-        -> ST s (Either ErrorMessage' Param)
+        -> ST s (Either ErrorMessage' (Param, SymbolInfo))
       checkId' st2 t' ident'@(Identifier _ vname') =
         let idv = vname'
-         in do success <- add st2 idv (Variable t') -- Should not be declared
-               return $
-                 if success
-                   then Right (vname', t')
-                   else Left $ createError ident (AlreadyDecl "Param " ident')
+         in do isdef <- S.isDef st2 idv -- Should not be declared
+               if isdef
+                 then return $ Left $ createError ident (AlreadyDecl "Param " ident')
+                 else do
+                   scope <- S.insert' st2 vname' (Variable t')
+                   return $ Right ((vname', t'), (vname', Variable t', scope))
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
@@ -785,7 +789,10 @@ sl2str' ::
   -> S.Scope -- Previous scope
   -> String -- Accumulated string
   -> String -- Result
-sl2str' [] (S.Scope scope) acc = acc ++ tabs (scope - 1) ++ "}"
+-- Base case, no more scopes to close and nothing to convert, just return accumulator
+sl2str' [] (S.Scope (0)) acc = acc
+-- Close each scope's brace at end
+sl2str' [] (S.Scope scope) acc = sl2str' [] (S.Scope (scope - 1)) $ acc ++ tabs (scope - 1) ++ "}\n"
 sl2str' (mh:mt) (S.Scope pScope) acc =
   maybe
     acc

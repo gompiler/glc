@@ -33,6 +33,7 @@ dependencies:
 - neat-interpolation
 - QuickCheck
 - split
+- extra
 
 library:
   source-dirs: [src, src/generated]
