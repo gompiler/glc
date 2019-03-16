@@ -107,6 +107,26 @@ add st ident sym = do
       _ <- S.addMessage st $ Just (ident, sym, scope) -- Add the symbol info of what we added
       return True
 
+-- | lookupCurrent wrapper but insert message on if declared, because we want to declare something ourself
+isNDefL :: SymbolTable s -> String -> ST s Bool
+isNDefL st k = do
+  res <- S.lookupCurrent st k
+  case res of
+    Nothing -> return True
+    Just _ -> do
+               _ <- S.addMessage st Nothing -- Signal error, key should not be defined
+               return False
+    
+-- | S.isDef  wrapper but insert message if not declared
+isDef :: SymbolTable s -> String -> ST s Bool
+isDef st k = do
+  res <- S.lookup st k
+  case res of
+    Just _ -> return True
+    Nothing -> do
+      _ <- S.addMessage st Nothing -- Signal error, key should be defined
+      return False
+    
 data HAST =
   forall a. Symbolize a =>
             H a
@@ -143,10 +163,9 @@ instance Symbolize FuncDecl
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) = do
-    res <- S.isDef st vname -- Check if defined in symbol table
-    if res
-      then return $ Just $ createError ident (AlreadyDecl "Function " ident)
-      else do _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
+    notdef <- isNDefL st vname -- Check if defined in symbol table
+    if notdef
+      then do _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
               epl <- checkParams st pdl -- Either ErrorMessage' [Param]
       -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
               ef <-
@@ -170,6 +189,7 @@ instance Symbolize FuncDecl
                                               mapM_ (\(k, sym, _) -> add st k sym) sil
                                               am (recurse st) sl)))
                 ef
+      else return $ Just $ createError ident (AlreadyDecl "Function " ident)
     where
       checkParams ::
            SymbolTable s
@@ -206,12 +226,12 @@ instance Symbolize FuncDecl
         -> ST s (Either ErrorMessage' (Param, SymbolInfo))
       checkId' st2 t' ident'@(Identifier _ vname') =
         let idv = vname'
-         in do isdef <- S.isDef st2 idv -- Should not be declared
-               if isdef
-                 then return $ Left $ createError ident (AlreadyDecl "Param " ident')
-                 else do
+         in do notdef <- isNDefL st2 idv -- Should not be declared
+               if notdef
+                 then do
                    scope <- S.insert' st2 vname' (Variable t')
                    return $ Right ((vname', t'), (vname', Variable t', scope))
+                 else return $ Left $ createError ident (AlreadyDecl "Param " ident')
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
@@ -318,8 +338,8 @@ instance Symbolize Expr where
   recurse _ (Lit _) = return Nothing -- No identifiers to check here
   recurse st (Var ident@(Identifier _ vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
-    res <- S.isDef st vname
-    if res
+    isdef <- isDef st vname
+    if isdef
       then return Nothing
       else return $ Just $ createError ident (NotDecl "Variable " ident)
   recurse st (AppendExpr _ e1 e2) = am (recurse st) [e1, e2]
@@ -779,23 +799,26 @@ getFirstDuplicate (x:xs) =
 mkSIdStr :: S.Scope -> String -> SIdent
 mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
 
--- | Convert SymbolInfo list to String (pass through prettify) to get string representation of symbol table
-sl2str :: [Maybe SymbolInfo] -> String
-sl2str sl = sl2str' sl (S.Scope 0) ""
+-- | Convert SymbolInfo list to String (pass through show) to get string representation of symbol table
+-- ignore error if not a symbol table error (i.e. typecheck error)
+sl2str :: (Maybe ErrorMessage', [Maybe SymbolInfo]) -> (Maybe ErrorMessage', String)
+sl2str (em, sl) = let (pt, b) = sl2str' sl (S.Scope 0) "" in
+                    if b then (Nothing, pt) -- Ignore error as we fully printed the symbol table
+                    else (em, pt)
 
 -- | Recursive helper for sl2str with accumulator
 sl2str' ::
      [Maybe SymbolInfo]
   -> S.Scope -- Previous scope
   -> String -- Accumulated string
-  -> String -- Result
+  -> (String, Bool) -- Result, bool is to determine whether we finished printing the whole list or not to differentiate between symbol table errors and typecheck errors
 -- Base case, no more scopes to close and nothing to convert, just return accumulator
-sl2str' [] (S.Scope (0)) acc = acc
+sl2str' [] (S.Scope (0)) acc = (acc, True)
 -- Close each scope's brace at end
-sl2str' [] (S.Scope scope) acc = sl2str' [] (S.Scope (scope - 1)) $ acc ++ tabs (scope - 1) ++ "}\n"
+sl2str' [] (S.Scope scope) acc = sl2str' [] (S.Scope (scope - 1)) (acc ++ tabs (scope - 1) ++ "}\n")
 sl2str' (mh:mt) (S.Scope pScope) acc =
   maybe
-    acc
+    (acc, False)
     (\(key, sym, S.Scope scope) ->
        sl2str' mt (S.Scope scope) $
        acc ++
@@ -873,8 +896,8 @@ pTable code =
 
 pTable' :: Program -> (Maybe ErrorMessage', String)
 pTable' p =
-  runST $ do
+  sl2str $ runST $ do
     st <- new
     res <- recurse st p
     syml <- S.getMessages st
-    return (res, sl2str syml)
+    return (res, syml)
