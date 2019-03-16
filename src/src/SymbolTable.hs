@@ -25,8 +25,7 @@ import           Numeric             (readOct)
 
 -- import           Data.STRef
 import qualified SymbolTableCore     as S
-
--- import Weeding (weed)
+import Weeding (weed)
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
 type SIdent = T.ScopedIdent
@@ -81,13 +80,13 @@ new :: ST s (SymbolTable s)
 new = do
   st <- S.new
   -- Base types
-  S.insert st "int" Base
-  S.insert st "float64" Base
-  S.insert st "bool" Base
-  S.insert st "rune" Base
-  S.insert st "string" Base
-  S.insert st "true" Constant
-  S.insert st "false" Constant
+  add st "int" Base
+  add st "float64" Base
+  add st "bool" Base
+  add st "rune" Base
+  add st "string" Base
+  add st "true" Constant
+  add st "false" Constant
   return st
 
 add :: SymbolTable s -> String -> Symbol -> ST s (Maybe SymbolInfo)
@@ -133,6 +132,9 @@ class Typify a
 
 instance Symbolize HAST where
   recurse st (H a) = recurse st a
+
+instance Symbolize Program where
+  recurse st (Program _ tdl) = am (recurse st) tdl
 
 instance Symbolize TopDecl where
   recurse st (TopDecl d)      = recurse st d
@@ -821,12 +823,19 @@ resolveSType t = t -- Other types
 mkSId :: S.Scope -> Identifier -> SIdent
 mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
 
--- pTable' :: Program -> (Maybe ErrorMessage', String)
--- pTable' p = do
---   st <- new
---   res <- recurse st p
---   syml <- S.getMessages st
---   runST $ return (res, show syml)
+pTable :: String -> Either ErrorMessage (Maybe ErrorMessage, String)
+pTable code = fmap (\p -> let (me, syml) = pTable' p in
+                       (me >>= (\e -> Just $ e code `withPrefix` "symbol table error at "), syml)) (weed code)
+
+pTable' :: Program -> (Maybe ErrorMessage', String)
+pTable' p = runST $ do
+  st <- new
+  res <- recurse st p
+  syml <- S.getMessages st
+  return (res, show syml)
+
+-- printTable s = either ()
+
 -- z =  "test"
 -- zk = SType (TypeMap ( "test") (Primitive ( "int")))
 -- st' =
