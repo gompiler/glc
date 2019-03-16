@@ -27,11 +27,21 @@ parseAndInferNoST expStr =
     runExpr e =
       runST $ do
         st <- SymTab.new
+
         _ <- SymTab.add st "bool_var" (Variable PBool)
         _ <- SymTab.add st "int_var" (Variable PInt)
         _ <- SymTab.add st "float_var" (Variable PFloat64)
         _ <- SymTab.add st "rune_var" (Variable PRune)
         _ <- SymTab.add st "string_var" (Variable PString)
+
+        _ <- SymTab.add st "int_5_arr" (Variable (Array 5 PInt))
+        _ <- SymTab.add st "int_slice" (Variable (Slice PInt))
+
+        _ <- SymTab.add
+          st
+          "fi_func"
+          (Func [("a", PFloat64), ("b", PInt)] (Just PInt))
+
         infer st e >>= (\et -> return $ either (Left . errgen) Right et)
 
 expectPass :: Stringable s => [(s, SType)]  -> SpecWith ()
@@ -73,6 +83,10 @@ spec = do
     , ("'a' + 'b'", PRune)
     , ("\"a\" + \"b\"", PString)
 
+    -- Int arrays
+    -- TODO: SHOULD TYPE INFERENCE HANDLE OUT OF BOUNDS ARRAY STUFF? PROBABLY
+    , ("int_5_arr[0]", PInt)
+
     -- Identity casts
     , ("int(5)", PInt)
     , ("float64(5.0)", PFloat64)
@@ -97,7 +111,20 @@ spec = do
     , ("int_var", PInt)
     , ("float_var", PFloat64)
     , ("rune_var", PRune)
-    , ("string_var", PString)]
+    , ("string_var", PString)
+
+    -- Built-ins
+    , ("len(int_5_arr)", PInt)
+    , ("len(int_slice)", PInt)
+    , ("len(string_var)", PInt)
+
+    , ("cap(int_5_arr)", PInt)
+    , ("cap(int_slice)", PInt)
+
+    , ("append(int_slice, 5)", Slice PInt)
+
+    -- Functions
+    , ("fi_func(5.0, 6)", PInt)]
   expectFail
     [ "5-\"9\""
     , "5 + \"5\""
@@ -113,4 +140,42 @@ spec = do
 
     -- Bad string casts
     , "string(5.0)"
-    , "string(true)"]
+    , "string(true)"
+
+    -- Bad built-ins - TODO
+    , "len()"
+    , "len(bool_var)"
+    , "len(int_var)"
+    , "len(float_var)"
+    , "len(rune_var)"
+    , "len(does_not_exist)"
+
+    , "cap()"
+    , "cap(bool_var)"
+    , "cap(int_var)"
+    , "cap(float_var)"
+    , "cap(rune_var)"
+    , "cap(string_var)"
+
+    , "append(bool_var, true)"
+    , "append(int_var, 5)"
+    , "append(float_var, 5.0)"
+    , "append(rune_var, 'a')"
+    , "append(string_var, \"b\")"
+
+    , "append(int_slice)"
+    , "append(int_slice, 5.0)"
+    , "append(int_slice, 'a')"
+    , "append(int_slice, true)"
+
+    -- Bad identifier
+    , "does_not_exist"
+    , "does_not_exist()"
+    , "does_not_exist.field"
+
+    -- Arrays
+    , "int_var[0]"
+
+    -- Functions
+    , ("fi_func()")
+    , ("fi_func(5.0)")]
