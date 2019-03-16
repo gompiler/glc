@@ -9,15 +9,12 @@ import           Control.Monad.ST
 import           Data
 import           Data.Either         (partitionEithers)
 import           Data.Foldable       (asum)
-import qualified TypedData           as T
 
 -- import           Data.Functor.Compose    (Compose (..), getCompose)
 -- import qualified Data.HashTable.Class    as H
 -- import qualified Data.HashTable.ST.Basic as HT
-import           Data.List           (intercalate)
 import           Data.List.Extra     (concatUnzip)
-import           Data.List.NonEmpty  (NonEmpty (..), fromList, toList)
-import qualified Data.List.NonEmpty  as NE (head, map, nub)
+import           Data.List.NonEmpty  (toList)
 import           Data.Maybe          (catMaybes)
 
 -- import           Data.STRef
@@ -28,49 +25,7 @@ import           Weeding             (weed)
 
 -- import           Data.STRef
 import qualified SymbolTableCore     as S
-
--- We define new types for symbols and types here
--- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
-type SIdent = T.ScopedIdent
-
-type Param = (String, SType)
-
-type Field = (String, SType)
-
--- type Var = (SIdent, SType)
-data Symbol
-  = Base -- Base type, resolve to themselves, i.e. int
-  | Constant -- For bools only
-  | Func [Param]
-         (Maybe SType)
-  | Variable SType
-  | SType SType -- Declared types
-  deriving (Eq)
-
-data SType
-  = Array Int
-          SType
-  | Slice SType
-  | Struct [Field] -- List of fields
-  | TypeMap SIdent
-            SType
-  | PInt
-  | PFloat64
-  | PBool
-  | PRune
-  | PString
-  | Infer -- Infer the type at typechecking, not at symbol table generation
-  deriving (Eq)
-
--- | SymbolTable, cactus stack of SymbolScope
--- specific instantiation for our uses
-type SymbolTable s = S.SymbolTable s Symbol (Maybe SymbolInfo)
-
--- | SymbolInfo: symbol name, corresponding symbol, scope depth
-type SymbolInfo = (String, Symbol, S.Scope)
-
--- | Params with their respective scopes, for check FuncDecl
-type ParamInfo = (Param, S.Scope)
+import Symbol
 
 -- -- | For checking short declarations
 -- type VarInfo = (Var, S.Scope)
@@ -432,42 +387,18 @@ instance Typify Type where
                  Just ident ->
                    Left $ createError ident (AlreadyDecl "Field " ident))
             et
-  toType st (Type ident) = resolve ident st
+  toType st (Type ident) =
+    resolve
+      ident
+      st
+      (createError ident (NotDecl "Type " ident))
+      (createError ident (VoidFunc ident))
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
   toType _ (ArrayType _ _) =
     error
       "Trying to convert type of an ArrayType with non literal int as length"
-
--- | Resolve type of an Identifier
-resolve :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' SType)
-resolve ident@(Identifier _ vname) st =
-  let idv = vname
-   in do res <- S.lookup st idv
-         case res of
-           Nothing -> return $ Left $ createError ident (NotDecl "Type " ident)
-           Just (scope, t) ->
-             return $
-             case resolve' t scope idv of
-               Nothing -> Left $ createError ident (VoidFunc ident)
-               Just t' -> Right t'
-
--- | Resolve symbol to type
-resolve' :: Symbol -> S.Scope -> String -> Maybe SType
-resolve' Base _ ident' =
-  Just $
-  case ident' of
-    "int"     -> PInt
-    "float64" -> PFloat64
-    "bool"    -> PBool
-    "rune"    -> PRune
-    "string"  -> PString
-    _         -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
-resolve' Constant _ _ = Just PBool -- Constants reserved for bools only
-resolve' (Variable t') _ _ = Just t'
-resolve' (SType t') scope ident' = Just $ TypeMap (mkSIdStr scope ident') t'
-resolve' (Func _ mt) _ _ = mt
 
 data SymbolError
   = AlreadyDecl String
@@ -496,69 +427,6 @@ instance ErrorEntry SymbolError where
         vname ++ " resolves to " ++ show s ++ " and is not an lvalue"
       ShortDec -> "Short declaration list contains no new variables"
 
-data ExpressionTypeError
-  = BadUnaryOp String
-               (NonEmpty SType)
-  | BadBinaryOp String
-                (NonEmpty SType)
-  | AppendMismatch SType
-                   SType
-  | BadAppend SType
-              SType
-  | BadLen SType
-  | BadCap SType
-  | NonStruct SType
-  | NoField String
-  | BadIndex String
-             SType
-  | NonIndexable SType
-  | NonFunctionCall
-  | NonFunctionId String
-  | ArgumentMismatch [SType]
-                     [SType]
-  | CompareMismatch SType
-                    SType
-  | IncompatibleCast SType
-                     SType
-  | CastArguments Int
-  | ExprNotDecl String
-                Identifier
-  | ExprVoidFunc Identifier
-  deriving (Show, Eq)
-
-instance ErrorEntry ExpressionTypeError where
-  errorMessage c =
-    case c of
-      BadUnaryOp s t ->
-        "Unary operator cannot be used on non-" ++
-        s ++ " type " ++ show (NE.head t)
-      BadBinaryOp s t ->
-        "Binary operator cannot be used on non-" ++
-        s ++ " types " ++ intercalate ", " (toList $ NE.map show t)
-      AppendMismatch t1 t2 ->
-        "Cannot append something of type " ++
-        show t2 ++ " to slice of type []" ++ show t1
-      BadAppend t1 t2 ->
-        "Incorrect types " ++ show t1 ++ " and " ++ show t2 ++ " for append"
-      BadLen t1 -> "Incorrect type " ++ show t1 ++ " for len"
-      BadCap t1 -> "Incorrect type " ++ show t1 ++ " for cap"
-      NonStruct t1 -> "Cannot access field on non-struct type " ++ show t1
-      NoField f -> "No field " ++ f ++ " on struct"
-      BadIndex ts ti -> "Cannot use type " ++ show ti ++ " as index for " ++ ts
-      NonIndexable t -> show t ++ " is not indexable"
-      NonFunctionCall -> "Cannot call non-function"
-      NonFunctionId ident -> show ident ++ "is not a function"
-      ArgumentMismatch as1 as2 ->
-        "Argument mismatch between " ++ show as1 ++ " and " ++ show as2
-      CompareMismatch t1 t2 ->
-        "Cannot compare different types " ++ show t1 ++ " and " ++ show t2
-      IncompatibleCast t1 t2 ->
-        "Cannot cast type " ++ show t2 ++ " to incompatible type " ++ show t1
-      CastArguments l -> "Too many arguments for cast (" ++ show l ++ ")"
-      ExprNotDecl s (Identifier _ vname) -> s ++ vname ++ " not declared"
-      ExprVoidFunc (Identifier _ vname) ->
-        "Void function " ++  vname ++ " cannot be used in expression"
-
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
 topScope st = st >>= topScope'
@@ -575,277 +443,6 @@ wrap st stres = do
   S.exitScope st
   return res
 
--- | Main type inference function
-infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
--- Infers the inner type for a unary operator and checks if it matches using the fn
--- infer st ie@(Index _ e1 e2) = undefined
--- infer st ae@(Arguments  _ e el) = undefined
--- | Infers the types of '+' unary operator expressions
-infer st e@(Unary _ Pos inner) =
-  inferConstraint
-    st
-    isNumeric
-    NE.head
-    (BadUnaryOp "numeric")
-    e
-    (fromList [inner])
--- | Infers the types of '-' unary operator expressions
-infer st e@(Unary _ Neg inner) =
-  inferConstraint
-    st
-    isNumeric
-    NE.head
-    (BadUnaryOp "numeric")
-    e
-    (fromList [inner])
--- | Infers the types of '!' unary operator expressions
-infer st e@(Unary _ Not inner) =
-  inferConstraint
-    st
-    isBoolean
-    NE.head
-    (BadUnaryOp "boolean")
-    e
-    (fromList [inner])
--- | Infers the types of '^' unary operator expressions
-infer st e@(Unary _ BitComplement inner) =
-  inferConstraint
-    st
-    isInteger
-    NE.head
-    (BadUnaryOp "integer")
-    e
-    (fromList [inner])
--- | Infer types of binary expressions
-infer st e@(Binary _ op i1 i2) =
-  (case op of
-     And             -> andOrConstraint
-     Or              -> andOrConstraint
-     Data.EQ         -> comparableConstraint
-     Data.NEQ        -> comparableConstraint
-     Data.LT         -> orderConstraint
-     Data.LEQ        -> orderConstraint
-     Data.GEQ        -> orderConstraint
-     Data.GT         -> orderConstraint
-     Arithm Add      -> addConstraint
-     Arithm Subtract -> arithConstraint
-     Arithm Multiply -> arithConstraint
-     Arithm Divide   -> arithConstraint
-     _               -> arithIntConstraint -- other arithmetic operators
-  ) e innerList
-  where
-    innerList :: NonEmpty Expr
-    innerList = fromList [i1, i2]
-    andOrConstraint =
-      inferConstraint st isBoolean NE.head (BadBinaryOp "boolean")
-    comparableConstraint _ _ = do -- Special ugly case
-      ei1 <- infer st i1
-      ei2 <- infer st i2
-      return $ do
-        t1 <- ei1
-        t2 <- ei2
-        if t1 == t2
-          then Right t1
-          else Left $ createError e $ CompareMismatch t1 t2
-    orderConstraint =
-      inferConstraint st isOrdered (const PBool) (BadBinaryOp "ordered")
-    addConstraint =
-      inferConstraint
-        st
-        isAddable
-        NE.head
-        (\ts -> BadBinaryOp (case (NE.head ts) of
-                               PString -> "string"
-                               _       -> "numeric") ts)
-    arithConstraint =
-      inferConstraint st isNumeric NE.head (BadBinaryOp "numeric")
-    arithIntConstraint =
-      inferConstraint st isInteger NE.head (BadBinaryOp "integer")
--- | "Infer" the types of base literals
-infer _ (Lit l) =
-  return $
-  Right $
-  case l of
-    IntLit {}    -> PInt
-    FloatLit {}  -> PFloat64
-    RuneLit {}   -> PRune
-    StringLit {} -> PString
--- | Resolve variables to the type their identifier points to in the scope
-infer st (Var ident) = resolve ident st -- TODO: SWITCH OFF OF RESOLVE??
--- | Infer types of append expressions
--- An append expression append(e1, e2) is well-typed if:
--- * e1 is well-typed, has type S and S resolves to a []T;
--- * e2 is well-typed and has type T.
-infer st ae@(AppendExpr _ e1 e2) = do
-  sle <- infer st e1 -- Infer type of slice (e1)
-  exe <- infer st e2 -- Infer type of value to append (e2)
-  return $
-    case (sle, exe) of
-      (Right slt@(Slice t1), Right t2) ->
-        if t1 == t2
-          then Right slt
-          else Left $ createError ae $ AppendMismatch t1 t2
-    -- TODO: MORE CASES FOR NICER ERRORS?
-      (Right t1, Right t2) -> Left $ createError ae $ BadAppend t1 t2
-      (Left em, _) -> Left em
-      (_, Left em) -> Left em
--- | Infer types of len expressions
--- A len expression len(expr) is well-typed if expr is well-typed, has
--- type S and S resolves to string, []T or [N]T. The result has type int.
-infer st le@(LenExpr _ expr) =
-  inferConstraint
-    st
-    isLenCompatible
-    (const PInt)
-    (BadLen . NE.head)
-    le
-    (fromList [expr])
--- | Infer types of cap expressions
--- A cap expression cap(expr) is well-typed if expr is well-typed, has
--- type S and S resolves to []T or [N]T. The result has type int.
-infer st ce@(CapExpr _ expr) =
-  inferConstraint
-    st
-    isCapCompatible
-    (const PInt)
-    (BadCap . NE.head)
-    ce
-    (fromList [expr])
--- | Infer types of selector expressions
--- Selecting a field in a struct (expr.id) is well-typed if:
--- * expr is well-typed and has type S;
--- * S resolves to a struct type that has a field named id.
-infer st se@(Selector _ expr (Identifier _ ident)) = do
-  eitherSele <- infer st expr
-  return $ eitherSele >>= infer'
-  where
-    infer' :: SType -> Either ErrorMessage' SType
-    infer' (Struct fdl) =
-      case filter (\(fid, _) -> fid == ident) fdl of
-        _:(_, sft):_ -> Right sft
-        _            -> Left $ createError se $ NoField ident
-    infer' t = Left $ createError se $ NonStruct t
--- | Infer types of index expressions
--- Indexing into a slice or an array (expr[index]) is well-typed if:
--- * expr is well-typed and resolves to []T or [N]T;
--- * index is well-typed and resolves to int.
--- The result of the indexing expression is T.
-infer st ie@(Index _ e1 e2) = do
-  e1e <- infer st e1
-  e2e <- infer st e2
-  return $ do
-    t1 <- e1e
-    t2 <- e2e
-    case (t1, t2) of
-      (Slice t, t')   -> indexable t t' "slice"
-      (Array _ t, t') -> indexable t t' "array"
-      (t, _)          -> Left $ createError ie $ NonIndexable t
-     -- | Checks that second type is an int before returning type or error
-  where
-    indexable :: SType -> SType -> String -> Either ErrorMessage' SType
-    indexable t PInt _   = Right t
-    indexable t _ errTag = Left $ createError ie $ BadIndex errTag t
--- | Infer types of arguments (function call / typecast) expressions
--- A function call expr(arg1, arg2, ..., argk) is well-typed if:
--- * arg1, arg2, . . . , argk are well-typed and have types T1, T2, . . . , Tk respectively;
--- * expr is well-typed and has function type (T1 * T2 * ... * Tk) -> Tr.
--- The type of a function call is Tr.
-infer st ae@(Arguments _ expr args) = do
-  as <- mapM (infer st) args -- Moves ST out
-  case (expr, sequence as) of
-    (Var i@(Identifier _ ident), Right ts) -> do
-      fl <- S.lookup st ident
-      fn <- resolve i st
-      return $
-        case fl of
-          Just (_, Func pl rtm) ->
-            if map snd pl == ts
-              then maybe (Left $ createError ae $ ExprVoidFunc i) Right rtm
-              else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
-          Just (_, Base) -> do
-            ft <- fn
-            case ts of
-              ct:[] -> tryCast ft ct
-              _ -> Left $ createError ae $ CastArguments (length ts)
-          Just (_, SType ft) ->
-            case ts of
-              ct:[] -> tryCast ft ct
-              _ -> Left $ createError ae $ CastArguments (length ts)
-          Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
-          Nothing -> Left $ createError ae $ ExprNotDecl "Function " i -- not declared
-    (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
-    (_, Left err) -> return $ Left err
-  where
-    tryCast :: SType -> SType -> Either ErrorMessage' SType
-    tryCast ft ct =
-      if (resolveSType ct) == (resolveSType ft)
-        || ((isNumeric $ resolveSType ct)
-             && (isNumeric $ resolveSType ft))
-        || ((resolveSType ft) == PString
-             && (isIntegerLike $ resolveSType ct))
-        then Right ft
-        else Left $ createError ae $ IncompatibleCast ft ct
-
-inferConstraint ::
-     SymbolTable s -- st
-  -> (SType -> Bool) -- isCorrect
-  -> (NonEmpty SType -> SType) -- resultSType
-  -> (NonEmpty SType -> ExpressionTypeError) -- makeError
-  -> Expr -- parentExpr
-  -> NonEmpty Expr -- childs
-  -> ST s (Either ErrorMessage' SType)
-inferConstraint st isCorrect resultSType makeError parentExpr inners = do
-  eitherTs <- sequence <$> mapM (infer st) inners
-  return $ do
-    ts <- eitherTs
-     -- all the same and one of the valid types:
-    if (length (NE.nub ts)) == 1 && (isCorrect (NE.head ts))
-      then Right $ resultSType ts
-      else Left $ createError parentExpr (makeError ts)
-
-isLenCompatible :: SType -> Bool
-isLenCompatible t =
-  case t of
-    PString  -> True
-    Array {} -> True
-    Slice {} -> True
-    _        -> False
-
-isCapCompatible :: SType -> Bool
-isCapCompatible t =
-  case t of
-    Array {} -> True
-    Slice {} -> True
-    _        -> False
-
-isNumeric :: SType -> Bool
-isNumeric = flip elem [PInt, PFloat64, PRune]
-
-isAddable :: SType -> Bool
-isAddable = isOrdered
-
--- isComparable: many many things...
-isOrdered :: SType -> Bool
-isOrdered = flip elem [PInt, PFloat64, PRune, PString]
-
-isBoolean :: SType -> Bool
-isBoolean = (==) PBool
-
-isInteger :: SType -> Bool
-isInteger = (==) PInt
-
-isIntegerLike :: SType -> Bool
-isIntegerLike = flip elem [PInt, PRune]
-
--- | Resolves a defined type to a base type
-resolveSType :: SType -> SType
-resolveSType (Array i st) = Array i (resolveSType st)
-resolveSType (Slice st) = Slice (resolveSType st)
-resolveSType (Struct fl) =
-  Struct $ map (\(ident, st) -> (ident, resolveSType st)) fl
-resolveSType (TypeMap _ st) = resolveSType st
-resolveSType t = t -- Other types
-
 -- | Get the first duplicate in a list, for checking if fields of a struct are all unique
 getFirstDuplicate :: Eq a => [a] -> Maybe a
 getFirstDuplicate [] = Nothing
@@ -853,13 +450,6 @@ getFirstDuplicate (x:xs) =
   if x `elem` xs
     then Just x
     else getFirstDuplicate xs
-
--- | Take Symbol table scope and AST identifier to make ScopedIdent
--- mkSId :: S.Scope -> Identifier -> SIdent
--- mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
--- | Take Symbol table scope and string to make ScopedIdent, add dummy offset
-mkSIdStr :: S.Scope -> String -> SIdent
-mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
 
 -- | Convert SymbolInfo list to String (pass through show) to get string representation of symbol table
 -- ignore error if not a symbol table error (i.e. typecheck error)
@@ -904,42 +494,6 @@ br prev cur
   | prev > cur = tabs (prev - 1) ++ "}\n" ++ br (prev - 1) cur
   | cur > prev = tabs prev ++ "{\n" ++ br (prev + 1) cur
   | otherwise = ""
-
-instance Show Symbol where
-  show s =
-    case s of
-      Func pl mt ->
-        " [function] = (" ++
-        intercalate "," (map (\(_, t') -> show t') pl) ++
-        ") -> " ++ maybe "void" show mt
-      Variable t' -> " [variable] = " ++ show t'
-      SType t' -> " [type] = " ++ showDef t'
-      _ -> ""
-
--- | Fully resolve SType as a string, alternative to show when you want to show the complete mapping
-showDef :: SType -> String
-showDef t =
-  case t of
-    TypeMap (T.ScopedIdent _ (Identifier _ name)) t' ->
-      name ++ " -> " ++ showDef t'
-    _ -> show t
-
-instance Show SType where
-  show t =
-    case t of
-      Array i t' -> "[" ++ show i ++ "]" ++ show t'
-      Slice t' -> "[]" ++ show t'
-      Struct fds ->
-        "struct { " ++
-        concatMap (\(s, t') -> s ++ " " ++ show t' ++ "; ") fds ++ "}"
-      TypeMap (T.ScopedIdent _ (Identifier _ name)) _ ->
-        name -- ++ " -> " ++ show t'
-      PInt -> "int"
-      PFloat64 -> "float64"
-      PBool -> "bool"
-      PRune -> "rune"
-      PString -> "string"
-      Infer -> "<infer>"
 
 -- | Top level function for cli
 symbol :: String -> IO ()
