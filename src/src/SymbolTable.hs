@@ -479,6 +479,7 @@ data SymbolError
                      [SType]
   | CompareMismatch SType SType
   | IncompatibleCast SType SType
+  | CastArguments Int
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -518,6 +519,7 @@ instance ErrorEntry SymbolError where
         "Cannot compare different types " ++ show t1 ++ " and " ++ show t2
       IncompatibleCast t1 t2 ->
         "Cannot cast type " ++ show t2 ++ " to incompatible type " ++ show t1
+      CastArguments l -> "Too many arguments for cast (" ++ show l ++ ")"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -728,10 +730,10 @@ infer st ae@(Arguments _ expr args) = do
                   || ((isNumeric $ resolveSType ct)
                        && (isNumeric $ resolveSType ft))
                   || ((resolveSType ft) == PString
-                       && ((resolveSType ct) `elem` [PInt, PRune]))
+                       && (isIntegerLike $ resolveSType ct))
                   then Right ft
                   else Left $ createError ae $ IncompatibleCast ft ct
-              _ -> undefined) -- TODO: TOO MANY ARGUMENTS FOR CAST
+              _ -> Left $ createError ae $ CastArguments (length ts))
           -- Just (_, SType ct) -> undefined -- TODO: DEFINED TYPE CAST
           Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
           Nothing -> Left $ createError ae $ NotDecl "Function " i -- not declared
@@ -786,6 +788,9 @@ isBoolean = (==) PBool
 
 isInteger :: SType -> Bool
 isInteger = (==) PInt
+
+isIntegerLike :: SType -> Bool
+isIntegerLike = flip elem [PInt, PRune]
 
 -- | Resolves a defined type to a base type
 resolveSType :: SType -> SType
