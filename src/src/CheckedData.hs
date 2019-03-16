@@ -11,8 +11,9 @@ data ScopedIdent =
               Ident
   deriving (Show, Eq)
 
-newtype Ident = Ident String
-                deriving (Show, Eq)
+newtype Ident =
+  Ident String
+  deriving (Show, Eq)
 
 -- TODO I recommend this be separate from symbol table,
 -- even if it's the same thing since there's no reason to have the
@@ -42,8 +43,7 @@ data Decl
   -- | See https://golang.org/ref/spec#VarDecl
   -- If only one entry exists, it is treated as a single line declaration
   -- Otherwise, it is treated as var ( ... )
-         =
-  VarDecl [VarDecl']
+  = VarDecl [VarDecl']
   | TypeDef [TypeDef']
   deriving (Show, Eq)
 
@@ -115,13 +115,10 @@ data SimpleStmt
   -- Note that expr must be some function
   | ExprStmt Expr
   -- | See https://golang.org/ref/spec#IncDecStmt
-  | Increment
-              Expr
-  | Decrement
-              Expr
+  | Increment Expr
+  | Decrement Expr
   -- | See https://golang.org/ref/spec#Assignments
-  | Assign
-           AssignOp
+  | Assign AssignOp
            (NonEmpty (Expr, Expr))
   -- | See https://golang.org/ref/spec#ShortVarDecl
   | ShortDeclare (NonEmpty (ScopedIdent, Expr))
@@ -177,11 +174,9 @@ data Stmt
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
 data SwitchCase
-  = Case 
-         (NonEmpty Expr)
+  = Case (NonEmpty Expr)
          Stmt
-  | Default
-            Stmt
+  | Default Stmt
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#For_statements
@@ -198,11 +193,9 @@ data ForClause =
 -- Note that we don't care about parentheses here;
 -- We can infer them from the AST
 data Expr
-  = Unary 
-          UnaryOp
+  = Unary UnaryOp
           Expr
-  | Binary
-           BinaryOp
+  | Binary BinaryOp
            Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
@@ -212,33 +205,27 @@ data Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
-  | AppendExpr
-               Expr
+  | AppendExpr Expr
                Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports strings, arrays, and slices
-  | LenExpr
-            Expr
+  | LenExpr Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
   -- Supports arrays and slices
-  | CapExpr
-            Expr
+  | CapExpr Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
-  | Selector
-             Expr
+  | Selector Expr
              Identifier
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
-  | Index
-          Expr
+  | Index Expr
           Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
-  | Arguments
-              Expr
+  | Arguments Expr
               [Expr]
               Signature
   -- | Variant of arguments that is known to be a type cast
@@ -252,14 +239,10 @@ data Expr
 
 -- | See https://golang.org/ref/spec#Literal
 data Literal
-  = IntLit
-           Int
-  | FloatLit
-             Float
-  | RuneLit
-            Char
-  | StringLit
-              String
+  = IntLit Int
+  | FloatLit Float
+  | RuneLit Char
+  | StringLit String
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#binary_op
@@ -314,9 +297,7 @@ newtype AssignOp =
 -- | Type with scope value
 -- Used for caching inferrable types
 -- type InferredType = (Scope, Type)
-
 -- Use Type for base type resolution instead
-
 -- | See https://golang.org/ref/spec#Types
 data Type
   -- | See https://golang.org/ref/spec#Array_types

@@ -1,11 +1,12 @@
 module Symbol where
 
+import qualified CheckedData      as T (Ident (..), Scope (..),
+                                        ScopedIdent (..))
 import           Control.Monad.ST
-import Data (Identifier (..))
+import           Data             (Identifier (..))
 import           Data.List        (intercalate)
 import           ErrorBundle
 import qualified SymbolTableCore  as S
-import qualified CheckedData        as T (Scope (..), ScopedIdent (..), Ident(..))
 
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
@@ -73,8 +74,7 @@ instance Show SType where
       Struct fds ->
         "struct { " ++
         concatMap (\(s, t') -> s ++ " " ++ show t' ++ "; ") fds ++ "}"
-      TypeMap (T.ScopedIdent _ (T.Ident name)) _ ->
-        name -- ++ " -> " ++ show t'
+      TypeMap (T.ScopedIdent _ (T.Ident name)) _ -> name -- ++ " -> " ++ show t'
       PInt -> "int"
       PFloat64 -> "float64"
       PBool -> "bool"
