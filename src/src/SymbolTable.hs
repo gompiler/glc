@@ -477,6 +477,7 @@ data SymbolError
   | ArgumentMismatch [SType]
                      [SType]
   | CompareMismatch SType SType
+  | IncompatibleCast SType SType
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -514,6 +515,8 @@ instance ErrorEntry SymbolError where
         "Argument mismatch between " ++ show as1 ++ " and " ++ show as2
       CompareMismatch t1 t2 ->
         "Cannot compare different types " ++ show t1 ++ " and " ++ show t2
+      IncompatibleCast t1 t2 ->
+        "Cannot cast type " ++ show t2 ++ " to incompatible type " ++ show t1
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -708,14 +711,26 @@ infer st ae@(Arguments _ expr args) = do
   as <- mapM (infer st) args -- Moves ST out
   case (expr, sequence as) of
     (Var i@(Identifier _ ident), Right ts) -> do
-      fn <- S.lookup st ident
+      fl <- S.lookup st ident
+      fn <- resolve i st
       return $
-        case fn of
+        case fl of
           Just (_, Func pl rtm) ->
             if map snd pl == ts
               then maybe (Left $ createError ae $ VoidFunc i) Right rtm
               else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
-          -- Just (_, Base) -> undefined -- TODO: BASE TYPE CAST
+          Just (_, Base) -> do
+            ft <- fn
+            (case ts of
+              ct:[] ->
+                if (resolveSType ct) == (resolveSType ft)
+                  || ((isNumeric $ resolveSType ct)
+                       && (isNumeric $ resolveSType ft))
+                  || ((resolveSType ft) == PString
+                       && ((resolveSType ct) `elem` [PInt, PRune]))
+                  then Right ft
+                  else Left $ createError ae $ IncompatibleCast ft ct
+              _ -> undefined) -- TODO: TOO MANY ARGUMENTS FOR CAST
           -- Just (_, SType ct) -> undefined -- TODO: DEFINED TYPE CAST
           Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
           Nothing -> Left $ createError ae $ NotDecl "Function " i -- not declared
