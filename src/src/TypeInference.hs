@@ -179,7 +179,7 @@ infer st (Var ident) =
   resolve
     ident
     st
-    (createError ident (ExprNotDecl "Type " ident))
+    (createError ident (ExprNotDecl "Identifier " ident))
     (createError ident (ExprVoidFunc ident))
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
