@@ -713,9 +713,9 @@ infer st ie@(Index _ e1 e2) = do
   e1e <- infer st e1
   e2e <- infer st e2
   return $ do
-    e1 <- e1e
-    e2 <- e2e
-    case (e1, e2) of
+    t1 <- e1e
+    t2 <- e2e
+    case (t1, t2) of
       (Slice t, t')   -> indexable t t' "slice"
       (Array _ t, t') -> indexable t t' "array"
       (t, _)          -> Left $ createError ie $ NonIndexable t
