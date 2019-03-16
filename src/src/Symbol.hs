@@ -5,7 +5,7 @@ import           Data             (Identifier (..))
 import           Data.List        (intercalate)
 import           ErrorBundle
 import qualified SymbolTableCore  as S
-import qualified TypedData        as T (Scope (..), ScopedIdent (..))
+import qualified CheckedData        as T (Scope (..), ScopedIdent (..))
 
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table

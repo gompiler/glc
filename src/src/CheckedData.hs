@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module TypedData where
+module CheckedData where
 
 import           Base
 import           Data               (Identifier (..))
@@ -39,12 +39,13 @@ data TopDecl
 
 -- | See https://golang.org/ref/spec#Declaration
 -- Golite does not support type alias
-newtype Decl
+data Decl
   -- | See https://golang.org/ref/spec#VarDecl
   -- If only one entry exists, it is treated as a single line declaration
   -- Otherwise, it is treated as var ( ... )
          =
   VarDecl [VarDecl']
+  | TypeDef [TypeDef']
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#VarDecl
@@ -56,6 +57,12 @@ newtype Decl
 data VarDecl' =
   VarDecl' ScopedIdent
            Expr
+           InferredType
+  deriving (Show, Eq)
+
+-- | See https://golang.org/ref/spec#TypeDef
+data TypeDef' =
+  TypeDef' Identifier
            InferredType
   deriving (Show, Eq)
 
