@@ -1,13 +1,17 @@
-module TypeInference (ExpressionTypeError, infer) where
+module TypeInference
+  ( ExpressionTypeError
+  , infer
+  ) where
 
-import Control.Monad.ST
-import Data
-import           Data.List           (intercalate)
-import           Data.List.NonEmpty  (NonEmpty (..), fromList, toList)
-import qualified Data.List.NonEmpty  as NE (head, map, nub)
-import ErrorBundle
-import Symbol (SymbolTable, Symbol (..), SType (..), resolve)
-import qualified SymbolTableCore     as S
+import           Control.Monad.ST
+import           Data
+import           Data.List          (intercalate)
+import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
+import qualified Data.List.NonEmpty as NE (head, map, nub)
+import           ErrorBundle
+import           Symbol             (SType (..), Symbol (..), SymbolTable,
+                                     resolve)
+import qualified SymbolTableCore    as S
 
 data ExpressionTypeError
   = BadUnaryOp String
@@ -70,7 +74,7 @@ instance ErrorEntry ExpressionTypeError where
       CastArguments l -> "Too many arguments for cast (" ++ show l ++ ")"
       ExprNotDecl s (Identifier _ vname) -> s ++ vname ++ " not declared"
       ExprVoidFunc (Identifier _ vname) ->
-        "Void function " ++  vname ++ " cannot be used in expression"
+        "Void function " ++ vname ++ " cannot be used in expression"
 
 -- | Main type inference function
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
@@ -126,13 +130,16 @@ infer st e@(Binary _ op i1 i2) =
      Arithm Multiply -> arithConstraint
      Arithm Divide   -> arithConstraint
      _               -> arithIntConstraint -- other arithmetic operators
-  ) e innerList
+   )
+    e
+    innerList
   where
     innerList :: NonEmpty Expr
     innerList = fromList [i1, i2]
     andOrConstraint =
       inferConstraint st isBoolean NE.head (BadBinaryOp "boolean")
-    comparableConstraint _ _ = do -- Special ugly case
+    comparableConstraint _ _ -- Special ugly case
+     = do
       ei1 <- infer st i1
       ei2 <- infer st i2
       return $ do
@@ -148,9 +155,12 @@ infer st e@(Binary _ op i1 i2) =
         st
         isAddable
         NE.head
-        (\ts -> BadBinaryOp (case (NE.head ts) of
-                               PString -> "string"
-                               _       -> "numeric") ts)
+        (\ts ->
+           BadBinaryOp
+             (case NE.head ts of
+                PString -> "string"
+                _       -> "numeric")
+             ts)
     arithConstraint =
       inferConstraint st isNumeric NE.head (BadBinaryOp "numeric")
     arithIntConstraint =
@@ -254,11 +264,12 @@ infer st ae@(Arguments _ expr args) = do
   case (expr, sequence as) of
     (Var i@(Identifier _ ident), Right ts) -> do
       fl <- S.lookup st ident
-      fn <- resolve
-        i
-        st
-        (createError i (ExprNotDecl "Type " i))
-        (createError i (ExprVoidFunc i))
+      fn <-
+        resolve
+          i
+          st
+          (createError i (ExprNotDecl "Type " i))
+          (createError i (ExprVoidFunc i))
       return $
         case fl of
           Just (_, Func pl rtm) ->
@@ -268,12 +279,12 @@ infer st ae@(Arguments _ expr args) = do
           Just (_, Base) -> do
             ft <- fn
             case ts of
-              ct:[] -> tryCast ft ct
-              _ -> Left $ createError ae $ CastArguments (length ts)
+              [ct] -> tryCast ft ct
+              _    -> Left $ createError ae $ CastArguments (length ts)
           Just (_, SType ft) ->
             case ts of
-              ct:[] -> tryCast ft ct
-              _ -> Left $ createError ae $ CastArguments (length ts)
+              [ct] -> tryCast ft ct
+              _    -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
           Nothing -> Left $ createError ae $ ExprNotDecl "Function " i -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
@@ -281,11 +292,9 @@ infer st ae@(Arguments _ expr args) = do
   where
     tryCast :: SType -> SType -> Either ErrorMessage' SType
     tryCast ft ct =
-      if (resolveSType ct) == (resolveSType ft)
-        || ((isNumeric $ resolveSType ct)
-             && (isNumeric $ resolveSType ft))
-        || ((resolveSType ft) == PString
-             && (isIntegerLike $ resolveSType ct))
+      if resolveSType ct == resolveSType ft ||
+         (isNumeric (resolveSType ct) && isNumeric (resolveSType ft)) ||
+         (resolveSType ft == PString && isIntegerLike (resolveSType ct))
         then Right ft
         else Left $ createError ae $ IncompatibleCast ft ct
 
@@ -302,7 +311,7 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   return $ do
     ts <- eitherTs
      -- all the same and one of the valid types:
-    if (length (NE.nub ts)) == 1 && (isCorrect (NE.head ts))
+    if length (NE.nub ts) == 1 && isCorrect (NE.head ts)
       then Right $ resultSType ts
       else Left $ createError parentExpr (makeError ts)
 

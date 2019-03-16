@@ -1,11 +1,11 @@
 module Symbol where
 
-import Control.Monad.ST
-import Data (Identifier (..))
-import           Data.List           (intercalate)
-import ErrorBundle
-import qualified SymbolTableCore as S
-import qualified TypedData as T (ScopedIdent (..), Scope (..))
+import           Control.Monad.ST
+import           Data             (Identifier (..))
+import           Data.List        (intercalate)
+import           ErrorBundle
+import qualified SymbolTableCore  as S
+import qualified TypedData        as T (Scope (..), ScopedIdent (..))
 
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
@@ -56,8 +56,8 @@ instance Show Symbol where
       Variable t' -> " [variable] = " ++ show t'
       SType t' -> " [type] = " ++ showDef t'
       _ -> ""
-    where
       -- | Fully resolve SType as a string, alternative to show when you want to show the complete mapping
+    where
       showDef :: SType -> String
       showDef t =
         case t of
@@ -84,7 +84,7 @@ instance Show SType where
 
 -- | Resolve type of an Identifier
 resolve ::
-  Identifier
+     Identifier
   -> SymbolTable s
   -> ErrorMessage'
   -> ErrorMessage'
@@ -99,8 +99,8 @@ resolve (Identifier _ vname) st notDeclError voidFuncError =
              case resolve' t scope idv of
                Nothing -> Left voidFuncError -- createError ident (VoidFunc ident)
                Just t' -> Right t'
-  where
     -- | Resolve symbol to type
+  where
     resolve' :: Symbol -> S.Scope -> String -> Maybe SType
     resolve' Base _ ident' =
       Just $

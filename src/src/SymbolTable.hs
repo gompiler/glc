@@ -23,9 +23,10 @@ import           Numeric             (readOct)
 import           Scanner             (putExit, putSucc)
 import           Weeding             (weed)
 
+import           Symbol
+
 -- import           Data.STRef
 import qualified SymbolTableCore     as S
-import Symbol
 
 -- -- | For checking short declarations
 -- type VarInfo = (Var, S.Scope)
