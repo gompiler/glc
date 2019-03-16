@@ -742,14 +742,16 @@ infer st ae@(Arguments _ expr args) = do
   case (expr, sequence as) of
     (Var i@(Identifier _ ident), Right ts) -> do
       fn <- S.lookup st ident
-      return $ case fn of
-        Just (_, Func pl rtm) -> if (map snd pl) == ts
-          then maybe (Left $ createError ae $ VoidFunc i) (Right) rtm
-          else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
-        Just (_, Base) -> undefined -- TODO: BASE TYPE CAST
-        Just (_, SType ct) -> undefined -- TODO: DEFINED TYPE CAST
-        Just _             -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
-        Nothing            -> Left $ createError ae $ NotDecl "Function " i  -- not declared
+      return $
+        case fn of
+          Just (_, Func pl rtm) ->
+            if (map snd pl) == ts
+              then maybe (Left $ createError ae $ VoidFunc i) (Right) rtm
+              else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
+          -- Just (_, Base) -> undefined -- TODO: BASE TYPE CAST
+          -- Just (_, SType ct) -> undefined -- TODO: DEFINED TYPE CAST
+          Just _             -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
+          Nothing            -> Left $ createError ae $ NotDecl "Function " i  -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
 
