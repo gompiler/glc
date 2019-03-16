@@ -91,7 +91,7 @@ instance ErrorBreakpoint FuncDecl where
 -- At this stage, we can map each individual identifier to its expected type
 data ParameterDecl =
   ParameterDecl ScopedIdent
-                Type'
+                Type
   deriving (Show, Eq)
 
 instance ErrorBreakpoint ParameterDecl where
@@ -108,7 +108,7 @@ newtype Parameters =
 -- No result type needed
 data Signature =
   Signature Parameters
-            (Maybe Type')
+            (Maybe Type)
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -267,7 +267,7 @@ data Expr
   -- Constraint is that there must only be one expression within parentheses,
   -- and that the cast expression is a known type
   -- the offset is included within Type'
-  | TypeConvert Type'
+  | TypeConvert Type
                 Expr
                 Type
   deriving (Show, Eq)
@@ -283,7 +283,7 @@ instance ErrorBreakpoint Expr where
   offset (Selector o _ _)  = o
   offset (Index o _ _)     = o
   offset (Arguments o _ _ _) = o
-  offset (TypeConvert t _ _) = offset t
+  offset (TypeConvert _ e _) = offset e
 
 -- | See https://golang.org/ref/spec#Literal
 data Literal
@@ -387,7 +387,7 @@ data Type
 -- Note that these fields aren't scope related
 data FieldDecl =
   FieldDecl Identifier
-            Type'
+            Type
   deriving (Show, Eq)
 
 instance ErrorBreakpoint FieldDecl where
