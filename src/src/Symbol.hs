@@ -1,11 +1,11 @@
 module Symbol where
 
 import           Control.Monad.ST
-import           Data             (Identifier (..))
+import Data (Identifier (..))
 import           Data.List        (intercalate)
 import           ErrorBundle
 import qualified SymbolTableCore  as S
-import qualified CheckedData        as T (Scope (..), ScopedIdent (..))
+import qualified CheckedData        as T (Scope (..), ScopedIdent (..), Ident(..))
 
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
@@ -61,7 +61,7 @@ instance Show Symbol where
       showDef :: SType -> String
       showDef t =
         case t of
-          TypeMap (T.ScopedIdent _ (Identifier _ name)) t' ->
+          TypeMap (T.ScopedIdent _ (T.Ident name)) t' ->
             name ++ " -> " ++ showDef t'
           _ -> show t
 
@@ -73,7 +73,7 @@ instance Show SType where
       Struct fds ->
         "struct { " ++
         concatMap (\(s, t') -> s ++ " " ++ show t' ++ "; ") fds ++ "}"
-      TypeMap (T.ScopedIdent _ (Identifier _ name)) _ ->
+      TypeMap (T.ScopedIdent _ (T.Ident name)) _ ->
         name -- ++ " -> " ++ show t'
       PInt -> "int"
       PFloat64 -> "float64"
@@ -118,4 +118,4 @@ resolve (Identifier _ vname) st notDeclError voidFuncError =
 
 -- | Take Symbol table scope and string to make ScopedIdent, add dummy offset
 mkSIdStr :: S.Scope -> String -> SIdent
-mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
+mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (T.Ident str)
