@@ -451,7 +451,23 @@ data SymbolError
   | NotLVal Identifier
             Symbol
   | ShortDec
-  | BadUnaryOp String
+  deriving (Show, Eq)
+
+instance ErrorEntry SymbolError where
+  errorMessage c =
+    case c of
+      AlreadyDecl s (Identifier _ vname) -> s ++ vname ++ " already declared"
+      NotDecl s (Identifier _ vname) -> s ++ vname ++ " not declared"
+      VoidFunc (Identifier _ vname) -> vname ++ " resolves to a void function"
+      TypeMismatch (Identifier _ vname) t1 t2 ->
+        "Expression resolves to type " ++
+        show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
+      NotLVal (Identifier _ vname) s ->
+        vname ++ " resolves to " ++ show s ++ " and is not an lvalue"
+      ShortDec -> "Short declaration list contains no new variables"
+
+data ExpressionTypeError
+  = BadUnaryOp String
                (NonEmpty SType)
   | BadBinaryOp String
                 (NonEmpty SType)
@@ -470,23 +486,19 @@ data SymbolError
   | NonFunctionId String
   | ArgumentMismatch [SType]
                      [SType]
-  | CompareMismatch SType SType
-  | IncompatibleCast SType SType
+  | CompareMismatch SType
+                    SType
+  | IncompatibleCast SType
+                     SType
   | CastArguments Int
+  | ExprNotDecl String
+                Identifier
+  | ExprVoidFunc Identifier
   deriving (Show, Eq)
 
-instance ErrorEntry SymbolError where
+instance ErrorEntry ExpressionTypeError where
   errorMessage c =
     case c of
-      AlreadyDecl s (Identifier _ vname) -> s ++ vname ++ " already declared"
-      NotDecl s (Identifier _ vname) -> s ++ vname ++ " not declared"
-      VoidFunc (Identifier _ vname) -> vname ++ " resolves to a void function"
-      TypeMismatch (Identifier _ vname) t1 t2 ->
-        "Expression resolves to type " ++
-        show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
-      NotLVal (Identifier _ vname) s ->
-        vname ++ " resolves to " ++ show s ++ " and is not an lvalue"
-      ShortDec -> "Short declaration list contains no new variables"
       BadUnaryOp s t ->
         "Unary operator cannot be used on non-" ++
         s ++ " type " ++ show (NE.head t)
@@ -513,6 +525,9 @@ instance ErrorEntry SymbolError where
       IncompatibleCast t1 t2 ->
         "Cannot cast type " ++ show t2 ++ " to incompatible type " ++ show t1
       CastArguments l -> "Too many arguments for cast (" ++ show l ++ ")"
+      ExprNotDecl s (Identifier _ vname) -> s ++ vname ++ " not declared"
+      ExprVoidFunc (Identifier _ vname) ->
+        "Void function " ++  vname ++ " cannot be used in expression"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -715,7 +730,7 @@ infer st ae@(Arguments _ expr args) = do
         case fl of
           Just (_, Func pl rtm) ->
             if map snd pl == ts
-              then maybe (Left $ createError ae $ VoidFunc i) Right rtm
+              then maybe (Left $ createError ae $ ExprVoidFunc i) Right rtm
               else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
           Just (_, Base) -> do
             ft <- fn
@@ -727,7 +742,7 @@ infer st ae@(Arguments _ expr args) = do
               ct:[] -> tryCast ft ct
               _ -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
-          Nothing -> Left $ createError ae $ NotDecl "Function " i -- not declared
+          Nothing -> Left $ createError ae $ ExprNotDecl "Function " i -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
   where
@@ -745,7 +760,7 @@ inferConstraint ::
      SymbolTable s -- st
   -> (SType -> Bool) -- isCorrect
   -> (NonEmpty SType -> SType) -- resultSType
-  -> (NonEmpty SType -> SymbolError) -- makeError
+  -> (NonEmpty SType -> ExpressionTypeError) -- makeError
   -> Expr -- parentExpr
   -> NonEmpty Expr -- childs
   -> ST s (Either ErrorMessage' SType)
