@@ -518,11 +518,13 @@ data SymbolError
   | BadCap SType
   | NonStruct SType
   | NoField String
-  | BadIndex String SType
+  | BadIndex String
+             SType
   | NonIndexable SType
   | NonFunctionCall
   | NonFunctionId String
-  | ArgumentMismatch [SType] [SType]
+  | ArgumentMismatch [SType]
+                     [SType]
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -539,10 +541,10 @@ instance ErrorEntry SymbolError where
       ShortDec -> "Short declaration list contains no new variables"
       BadUnaryOp s t ->
         "Unary operator cannot be used on non-" ++
-        s ++ " type " ++ (show $ NE.head t)
+        s ++ " type " ++ show (NE.head t)
       BadBinaryOp s t ->
         "Binary operator cannot be used on non-" ++
-        s ++ " types " ++ (intercalate ", " $ toList $ NE.map show t)
+        s ++ " types " ++ intercalate ", " (toList $ NE.map show t)
       AppendMismatch t1 t2 ->
         "Cannot append something of type " ++
         show t2 ++ " to slice of type []" ++ show t1
@@ -576,7 +578,7 @@ infer st e@(Unary _ Pos inner) =
   inferConstraint
     st
     isNumeric
-    (NE.head)
+    NE.head
     (BadUnaryOp "numeric")
     e
     (fromList [inner])
@@ -682,7 +684,7 @@ infer st le@(LenExpr _ expr) =
     st
     isLenCompatible
     (const $ Primitive $ mkBase "int")
-    (\t -> BadLen $ NE.head t)
+    (BadLen . NE.head)
     le
     (fromList [expr])
 -- | Infer types of cap expressions
@@ -693,7 +695,7 @@ infer st ce@(CapExpr _ expr) =
     st
     isCapCompatible
     (const $ Primitive $ mkBase "int")
-    (\t -> BadCap $ NE.head t)
+    (BadCap . NE.head)
     ce
     (fromList [expr])
 -- | Infer types of selector expressions
@@ -701,18 +703,15 @@ infer st ce@(CapExpr _ expr) =
 -- * expr is well-typed and has type S;
 -- * S resolves to a struct type that has a field named id.
 infer st se@(Selector _ expr (Identifier _ ident)) = do
-  sele <- infer st expr
-  return $
-    either
-      (Left)
-      (\t ->
-         case t of
-           Struct fdl ->
-             (case (filter (\(fid, _) -> fid == ident) fdl) of
-                _:(_, sft):_ -> Right sft
-                _            -> Left $ createError se $ NoField ident)
-           _ -> Left $ createError se $ NonStruct t)
-      sele
+  eitherSele <- infer st expr
+  return $ eitherSele >>= infer'
+  where
+    infer' :: SType -> Either ErrorMessage' SType
+    infer' (Struct fdl) =
+      case filter (\(fid, _) -> fid == ident) fdl of
+        _:(_, sft):_ -> Right sft
+        _            -> Left $ createError se $ NoField ident
+    infer' t = Left $ createError se $ NonStruct t
 -- | Infer types of index expressions
 -- Indexing into a slice or an array (expr[index]) is well-typed if:
 -- * expr is well-typed and resolves to []T or [N]T;
@@ -721,20 +720,25 @@ infer st se@(Selector _ expr (Identifier _ ident)) = do
 infer st ie@(Index _ e1 e2) = do
   e1e <- infer st e1
   e2e <- infer st e2
-  return $ case (e1e, e2e) of
-    (Right (Slice t), Right (Primitive (T.ScopedIdent _ (Identifier _ "int")))) -> Right t
-    (Right (Array _ t), Right (Primitive (T.ScopedIdent _ (Identifier _ "int")))) -> Right t
-    (Right (Slice t), _) -> Left $ createError ie $ BadIndex "slice" t
-    (Right (Array _ t), _) -> Left $ createError ie $ BadIndex "array" t
-    (Right t, _)  -> Left $ createError ie $ NonIndexable t
-    (err@(Left _), _) -> err
+  return $ do
+    t1 <- e1e
+    t2 <- e2e
+    case (t1, t2) of
+      (Slice t, t')   -> indexable t t' "slice"
+      (Array _ t, t') -> indexable t t' "array"
+      (t, _)          -> Left $ createError ie $ NonIndexable t
+     -- | Checks that second type is an int before returning type or error
+  where
+    indexable :: SType -> SType -> String -> Either ErrorMessage' SType
+    indexable t (Primitive (T.ScopedIdent _ (Identifier _ "int"))) _ = Right t
+    indexable t _ errTag = Left $ createError ie $ BadIndex errTag t
 -- | Infer types of arguments (function call / typecast) expressions
 -- A function call expr(arg1, arg2, ..., argk) is well-typed if:
 -- * arg1, arg2, . . . , argk are well-typed and have types T1, T2, . . . , Tk respectively;
 -- * expr is well-typed and has function type (T1 * T2 * ... * Tk) -> Tr.
 -- The type of a function call is Tr.
 infer st ae@(Arguments _ expr args) = do
-  as <- sequence $ map (infer st) args -- Moves ST out
+  as <- mapM (infer st) args -- Moves ST out
   case (expr, sequence as) of
     (Var i@(Identifier _ ident), Right ts) -> do
       fn <- S.lookup st ident
@@ -749,6 +753,7 @@ infer st ae@(Arguments _ expr args) = do
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
 
+-- TODO: TYPECAST
 inferConstraint ::
      SymbolTable s -- st
   -> (SType -> Bool) -- isCorrect
@@ -758,15 +763,12 @@ inferConstraint ::
   -> NonEmpty Expr -- childs
   -> ST s (Either ErrorMessage' SType)
 inferConstraint st isCorrect resultSType makeError parentExpr inners = do
-  tss <- sequence $ NE.map (infer st) inners
-  return $
-    either
-      (Left)
-      (\ts ->
-         if (and $ NE.map isCorrect ts)
-           then Right $ resultSType ts
-           else Left $ createError parentExpr (makeError ts))
-      (sequence tss)
+  eitherTs <- sequence <$> mapM (infer st) inners
+  return $ do
+    ts <- eitherTs
+    if all isCorrect ts
+      then Right $ resultSType ts
+      else Left $ createError parentExpr (makeError ts)
 
 isLenCompatible :: SType -> Bool
 isLenCompatible t =
@@ -784,21 +786,21 @@ isCapCompatible t =
     _        -> False
 
 isNumeric :: SType -> Bool
-isNumeric t = isSomething ["int", "float64", "rune"] t
+isNumeric = isSomething ["int", "float64", "rune"]
 
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
-isOrdered t = isSomething ["int", "float64", "rune", "string"] t
+isOrdered = isSomething ["int", "float64", "rune", "string"]
 
 isBoolean :: SType -> Bool
-isBoolean t = isSomething ["bool"] t
+isBoolean = isSomething ["bool"]
 
 isInteger :: SType -> Bool
-isInteger t = isSomething ["int"] t
+isInteger = isSomething ["int"]
 
 isSomething :: [String] -> SType -> Bool
 isSomething lts t =
-  case (resolveSType t) of
+  case resolveSType t of
     Primitive (T.ScopedIdent _ (Identifier _ ident)) -> ident `elem` lts
     _                                                -> False
 
@@ -818,7 +820,6 @@ mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
 -- | Take string to make base type/primitive for ScopedIdent
 mkBase :: String -> SIdent -- Base => scope = 0
 mkBase s = T.ScopedIdent (T.Scope 0) (Identifier (Offset 0) s)
-
 -- testing stuff
 -- z =  "test"
 -- zk = SType (TypeMap ( "test") (Primitive ( "int")))
