@@ -413,15 +413,15 @@ resolve ident@(Identifier _ vname) st =
    in do res <- S.lookup st idv
          case res of
            Nothing -> return $ Left $ createError ident (NotDecl "Type " ident)
-           Just (_, t) ->
+           Just (scope, t) ->
              return $
-             case resolve' t idv of
+             case resolve' t scope idv of
                Nothing -> Left $ createError ident (VoidFunc ident)
                Just t' -> Right t'
 
 -- | Resolve symbol to type
-resolve' :: Symbol -> String -> Maybe SType
-resolve' Base ident' =
+resolve' :: Symbol -> S.Scope -> String -> Maybe SType
+resolve' Base _ ident' =
   Just $
   case ident' of
     "int"     -> PInt
@@ -430,10 +430,10 @@ resolve' Base ident' =
     "rune"    -> PRune
     "string"  -> PString
     _         -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
-resolve' Constant _ = Just PBool -- Constants reserved for bools only
-resolve' (Variable t') _ = Just t'
-resolve' (SType t') _ = Just t'
-resolve' (Func _ mt) _ = mt
+resolve' Constant _ _ = Just PBool -- Constants reserved for bools only
+resolve' (Variable t') _ _ = Just $ t'
+resolve' (SType t') scope ident' = Just $ TypeMap (mkSIdStr scope ident') t'
+resolve' (Func _ mt) _ _ = mt
 
 data SymbolError
   = AlreadyDecl String
@@ -770,6 +770,11 @@ getFirstDuplicate (x:xs) =
 -- | Take Symbol table scope and AST identifier to make ScopedIdent
 -- mkSId :: S.Scope -> Identifier -> SIdent
 -- mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
+  
+-- | Take Symbol table scope and string to make ScopedIdent, add dummy offset
+mkSIdStr :: S.Scope -> String -> SIdent
+mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
+
 -- | Convert SymbolInfo list to String (pass through prettify) to get string representation of symbol table
 sl2str :: [Maybe SymbolInfo] -> String
 sl2str sl = sl2str' sl (S.Scope 0) ""
