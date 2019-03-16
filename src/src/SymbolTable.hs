@@ -1,5 +1,4 @@
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE InstanceSigs              #-}
 
 module SymbolTable where
 
@@ -53,7 +52,11 @@ data SType
   | Struct [Field] -- List of fields
   | TypeMap SIdent
             SType
-  | Primitive SIdent
+  | PInt
+  | PFloat64
+  | PBool
+  | PRune
+  | PString
   | Infer -- Infer the type at typechecking, not at symbol table generation
   deriving (Show, Eq)
 
@@ -143,31 +146,28 @@ instance Symbolize FuncDecl
     res <- S.isDef st vname -- Check if defined in symbol table
     if res
       then return $ Just $ createError ident (AlreadyDecl "Function " ident)
-      else do
-        S.enterScope st
-        epl <- checkParams st pdl -- Either ErrorMessage' [Param]
+      else wrap
+             st
+             (do epl <- checkParams st pdl -- Either ErrorMessage' [Param]
       -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
-        ef <-
-          either
-            (return . Left)
-            (\pl ->
-               maybe
-                 (return $ Right $ Func pl Nothing)
-                 (\(_, t') -> do
-                    et <- toType st t'
-                    return $ fmap (Func pl . Just) et)
-                 t)
-            epl
+                 ef <-
+                   either
+                     (return . Left)
+                     (\pl ->
+                        maybe
+                          (return $ Right $ Func pl Nothing)
+                          (\(_, t') -> do
+                             et <- toType st t'
+                             return $ fmap (Func pl . Just) et)
+                          t)
+                     epl
       -- We then take the Either ErrorMessage' Symbol, if no error we insert the Symbol (newly declared function) and recurse on statement list sl (from body of func) to declare things in body
-        res2 <-
-          either
-            (return . Just)
-            (\f -> do
-               _ <- S.insert st vname f
-               am (recurse st) sl)
-            ef
-        S.exitScope st
-        return res2
+                 either
+                   (return . Just)
+                   (\f -> do
+                      _ <- S.insert st vname f
+                      am (recurse st) sl)
+                   ef)
     where
       checkParams ::
            SymbolTable s
@@ -185,7 +185,7 @@ instance Symbolize FuncDecl
           (\t2 -> do
              (err, pil) <- checkIds' st2 t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
-             _ <- mapM (((S.addMessage st2) . Just) . parToVar) pil -- Add list of SymbolInfo to messages
+             _ <- mapM_ ((S.addMessage st2 . Just) . parToVar) pil -- Add list of SymbolInfo to messages
              case err of
                Just e -> do
                  _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
@@ -277,37 +277,27 @@ instance Symbolize SimpleStmt where
   recurse st (Assign _ _ el _) = am (recurse st) (toList el)
 
 instance Symbolize Stmt where
-  recurse st (BlockStmt sl) = do
-    S.enterScope st -- Open a new scope for the block
-    res <- am (recurse st) sl
-    S.exitScope st
-    return res
+  recurse st (BlockStmt sl) = wrap st $ am (recurse st) sl
   recurse st (SimpleStmt s) = recurse st s
-  recurse st (If (ss, e) s1 s2) = do
-    S.enterScope st
-    res <- am (recurse st) [H ss, H e, H s1, H s2]
-    S.exitScope st
-    return res
-  recurse st (Switch ss me scs) = do
-    S.enterScope st
-    r1 <-
-      case me of
-        Just e  -> am (recurse st) [H ss, H e]
-        Nothing -> recurse st ss
-    S.enterScope st
-    r2 <- am (recurse st) scs
-    S.exitScope st
-    return $ maybeJ [r1, r2]
-  recurse st (For (ForClause ss1 me ss2) s) = do
-    S.enterScope st
-    r1 <-
-      am (recurse st) $
-      case me of
-        Just e  -> [H ss1, H e, H ss2]
-        Nothing -> [H ss1, H ss2]
-    r2 <- recurse st s
-    S.exitScope st
-    return $ maybeJ [r1, r2]
+  recurse st (If (ss, e) s1 s2) =
+    wrap st $ am (recurse st) [H ss, H e, H s1, H s2]
+  recurse st (Switch ss me scs) =
+    wrap st $ do
+      r1 <-
+        case me of
+          Just e  -> am (recurse st) [H ss, H e]
+          Nothing -> recurse st ss
+      r2 <- am (recurse st) scs
+      return $ maybeJ [r1, r2]
+  recurse st (For (ForClause ss1 me ss2) s) =
+    wrap st $ do
+      r1 <-
+        am (recurse st) $
+        case me of
+          Just e  -> [H ss1, H e, H ss2]
+          Nothing -> [H ss1, H ss2]
+      r2 <- recurse st s
+      return $ maybeJ [r1, r2]
   recurse _ (Break _) = return Nothing
   recurse _ (Continue _) = return Nothing
   recurse st (Declare d) = recurse st d
@@ -346,11 +336,13 @@ instance Symbolize Expr where
   recurse st (AppendExpr _ e1 e2) = am (recurse st) [e1, e2]
   recurse st (LenExpr _ e) = recurse st e
   recurse st (CapExpr _ e) = recurse st e
-  -- recurse st (Selector _ e ident@(Identifier _ vname))
-  recurse _ _ = undefined
+  recurse st (Selector _ e _) = recurse st e
+  recurse st (Index _ e1 e2) = am (recurse st) [e1, e2]
+  recurse st (Arguments _ e el) = am (recurse st) (e : el)
 
 instance Symbolize SwitchCase where
-  recurse _ _ = undefined
+  recurse st (Case _ nEl s) = am (recurse st) $ map H (toList nEl) ++ [H s]
+  recurse st (Default _ s)  = recurse st s
 
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
@@ -470,11 +462,19 @@ resolve ident@(Identifier _ vname) st =
 
 -- | Resolve symbol to type
 resolve' :: Symbol -> String -> Maybe SType
-resolve' Base ident'     = Just $ Primitive (mkBase ident')
-resolve' Constant _      = Just $ Primitive (mkBase "bool") -- Constants reserved for bools only
+resolve' Base ident' =
+  Just $
+  case ident' of
+    "int"     -> PInt
+    "float64" -> PFloat64
+    "bool"    -> PBool
+    "rune"    -> PRune
+    "string"  -> PString
+    _         -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
+resolve' Constant _ = Just PBool -- Constants reserved for bools only
 resolve' (Variable t') _ = Just t'
-resolve' (SType t') _    = Just t'
-resolve' (Func _ mt) _   = mt
+resolve' (SType t') _ = Just t'
+resolve' (Func _ mt) _ = mt
 
 -- instance TypeInfer String where
 --   resolve :: String -> SymbolTable s -> ST s (Either ErrorMessage' SType)
@@ -626,7 +626,7 @@ infer st e@(Binary _ op inner1 inner2)
     inferConstraint
       st
       isOrdered
-      (const $ Primitive $ mkBase "bool")
+      (const PBool)
       (BadBinaryOp "ordered")
       e
       (fromList [inner1, inner2])
@@ -635,7 +635,7 @@ infer st e@(Binary _ op inner1 inner2)
       then inferConstraint
              st
              isNumeric
-             (const $ Primitive $ mkBase "int")
+             (const PInt)
              (BadBinaryOp "numeric")
              e
              (fromList [inner1, inner2])
@@ -644,7 +644,7 @@ infer st e@(Binary _ op inner1 inner2)
              then inferConstraint
                     st
                     isInteger
-                    (const $ Primitive $ mkBase "int")
+                    (const PInt)
                     (BadBinaryOp "int")
                     e
                     (fromList [inner1, inner2])
@@ -654,10 +654,10 @@ infer _ (Lit l) =
   return $
   Right $
   case l of
-    IntLit {}    -> Primitive (mkBase "int")
-    FloatLit {}  -> Primitive (mkBase "float64")
-    RuneLit {}   -> Primitive (mkBase "rune")
-    StringLit {} -> Primitive (mkBase "string")
+    IntLit {}    -> PInt
+    FloatLit {}  -> PFloat64
+    RuneLit {}   -> PRune
+    StringLit {} -> PString
 infer st (Var ident) = resolve ident st
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
@@ -683,7 +683,7 @@ infer st le@(LenExpr _ expr) =
   inferConstraint
     st
     isLenCompatible
-    (const $ Primitive $ mkBase "int")
+    (const PInt)
     (BadLen . NE.head)
     le
     (fromList [expr])
@@ -694,7 +694,7 @@ infer st ce@(CapExpr _ expr) =
   inferConstraint
     st
     isCapCompatible
-    (const $ Primitive $ mkBase "int")
+    (const PInt)
     (BadCap . NE.head)
     ce
     (fromList [expr])
@@ -730,7 +730,7 @@ infer st ie@(Index _ e1 e2) = do
      -- | Checks that second type is an int before returning type or error
   where
     indexable :: SType -> SType -> String -> Either ErrorMessage' SType
-    indexable t (Primitive (T.ScopedIdent _ (Identifier _ "int"))) _ = Right t
+    indexable t PInt _ = Right t
     indexable t _ errTag = Left $ createError ie $ BadIndex errTag t
 -- | Infer types of arguments (function call / typecast) expressions
 -- A function call expr(arg1, arg2, ..., argk) is well-typed if:
@@ -775,10 +775,10 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
 isLenCompatible :: SType -> Bool
 isLenCompatible t =
   case t of
-    Primitive (T.ScopedIdent _ (Identifier _ "string")) -> True
-    Array {}                                            -> True
-    Slice {}                                            -> True
-    _                                                   -> False
+    PString  -> True
+    Array {} -> True
+    Slice {} -> True
+    _        -> False
 
 isCapCompatible :: SType -> Bool
 isCapCompatible t =
@@ -788,23 +788,17 @@ isCapCompatible t =
     _        -> False
 
 isNumeric :: SType -> Bool
-isNumeric = isSomething ["int", "float64", "rune"]
+isNumeric = (flip elem) [PInt, PFloat64, PRune]
 
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
-isOrdered = isSomething ["int", "float64", "rune", "string"]
+isOrdered = (flip elem) [PInt, PFloat64, PRune, PString]
 
 isBoolean :: SType -> Bool
-isBoolean = isSomething ["bool"]
+isBoolean = (==) PBool
 
 isInteger :: SType -> Bool
-isInteger = isSomething ["int"]
-
-isSomething :: [String] -> SType -> Bool
-isSomething lts t =
-  case resolveSType t of
-    Primitive (T.ScopedIdent _ (Identifier _ ident)) -> ident `elem` lts
-    _                                                -> False
+isInteger = (==) PInt
 
 -- | Resolves a defined type to a base type
 resolveSType :: SType -> SType
@@ -819,10 +813,10 @@ resolveSType t = t -- Other types
 mkSId :: S.Scope -> Identifier -> SIdent
 mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
 
--- | Take string to make base type/primitive for ScopedIdent
-mkBase :: String -> SIdent -- Base => scope = 0
-mkBase s = T.ScopedIdent (T.Scope 0) (Identifier (Offset 0) s)
--- testing stuff
+-- pTable' :: Program -> (Maybe ErrorMessage', String)
+-- pTable' p = do
+--   st <- new
+--   res <- recurse st p
 -- z =  "test"
 -- zk = SType (TypeMap ( "test") (Primitive ( "int")))
 -- st' =
