@@ -76,7 +76,7 @@ insert :: SymbolTable s v l -> String -> v -> ST s ()
 insert st !k !v = do
   SymbolTable ((_, ht) :| _) _ <- readRef st
   HT.insert ht k v
-  
+
 -- | Inserts a key value pair at the upper most scope and return scope level
 insert' :: SymbolTable s v l -> String -> v -> ST s Scope
 insert' st k v = do
