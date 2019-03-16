@@ -22,7 +22,7 @@ import           Data.Maybe          (catMaybes)
 -- import           Data.STRef
 import           ErrorBundle
 import           Numeric             (readOct)
-import Scanner (putExit, putSucc)
+import           Scanner             (putExit, putSucc)
 import           Weeding             (weed)
 
 -- import           Data.STRef
@@ -44,7 +44,7 @@ data Symbol
          (Maybe SType)
   | Variable SType
   | SType SType -- Declared types
-  deriving Eq
+  deriving (Eq)
 
 data SType
   = Array Int
@@ -59,7 +59,7 @@ data SType
   | PRune
   | PString
   | Infer -- Infer the type at typechecking, not at symbol table generation
-  deriving Eq
+  deriving (Eq)
 
 -- | SymbolTable, cactus stack of SymbolScope
 -- specific instantiation for our uses
@@ -781,58 +781,77 @@ getFirstDuplicate (x:xs) =
 -- | Take Symbol table scope and AST identifier to make ScopedIdent
 -- mkSId :: S.Scope -> Identifier -> SIdent
 -- mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
-
 -- | Convert SymbolInfo list to String (pass through prettify) to get string representation of symbol table
 sl2str :: [Maybe SymbolInfo] -> String
 sl2str sl = sl2str' sl (S.Scope 0) ""
 
 -- | Recursive helper for sl2str with accumulator
-sl2str' :: [Maybe SymbolInfo]
-        -> S.Scope -- Previous scope
-        -> String -- Accumulated string
-        -> String -- Result
-sl2str' [] (S.Scope scope) acc = acc ++ (tabs (scope - 1)) ++ "}"
-sl2str' (mh : mt) (S.Scope pScope) acc = maybe acc (\(key, sym, S.Scope scope) -> sl2str' mt (S.Scope scope) $ acc ++ br pScope scope ++ tabs scope ++ key ++
-                                                      (case sym of
-                                                        Base -> " [type] = " ++ key
-                                                        Constant -> " [constant] = bool"
-                                                        _ -> show sym) ++ "\n") mh
+sl2str' ::
+     [Maybe SymbolInfo]
+  -> S.Scope -- Previous scope
+  -> String -- Accumulated string
+  -> String -- Result
+sl2str' [] (S.Scope scope) acc = acc ++ tabs (scope - 1) ++ "}"
+sl2str' (mh:mt) (S.Scope pScope) acc =
+  maybe
+    acc
+    (\(key, sym, S.Scope scope) ->
+       sl2str' mt (S.Scope scope) $
+       acc ++
+       br pScope scope ++
+       tabs scope ++
+       key ++
+       (case sym of
+          Base     -> " [type] = " ++ key
+          Constant -> " [constant] = bool"
+          _        -> show sym) ++
+       "\n")
+    mh
 
 -- | Account for braces given previous scope and current scope
 br :: Int -> Int -> String
 br prev cur
-  | prev > cur = (tabs (prev - 1)) ++ "}\n"
-  | cur > prev = (tabs (cur - 1)) ++ "{\n"
+  | prev > cur = tabs (prev - 1) ++ "}\n"
+  | cur > prev = tabs (cur - 1) ++ "{\n"
   | otherwise = ""
 
 instance Show Symbol where
-  show s = case s of
-             Func pl mt -> " [function] = (" ++ (intercalate "," $ map (\(_,t') -> show t') pl) ++ ") -> " ++ maybe "void" show mt
-             Variable t' -> " [variable] = " ++ show t'
-             SType t' -> " [type] = " ++ show t'
-             _ -> ""
+  show s =
+    case s of
+      Func pl mt ->
+        " [function] = (" ++
+        intercalate "," (map (\(_, t') -> show t') pl) ++
+        ") -> " ++ maybe "void" show mt
+      Variable t' -> " [variable] = " ++ show t'
+      SType t' -> " [type] = " ++ show t'
+      _ -> ""
 
 instance Show SType where
-  show t = case t of
-             Array i t' -> "[" ++ show i ++ "]" ++ show t'
-             Slice t' -> "[]" ++ show t'
-             Struct fds -> "struct { " ++ concat (map (\(s, t')-> s ++ show t' ++ "; ") fds) ++ "}"
-             TypeMap (T.ScopedIdent _ (Identifier _ name)) t' -> name ++ " -> " ++ show t'
-             PInt -> "int"
-             PFloat64 -> "float64"
-             PBool -> "bool"
-             PRune -> "rune"
-             PString -> "string"
-             Infer -> "<infer>"
-                  
+  show t =
+    case t of
+      Array i t' -> "[" ++ show i ++ "]" ++ show t'
+      Slice t' -> "[]" ++ show t'
+      Struct fds ->
+        "struct { " ++ concatMap (\(s, t') -> s ++ show t' ++ "; ") fds ++ "}"
+      TypeMap (T.ScopedIdent _ (Identifier _ name)) t' ->
+        name ++ " -> " ++ show t'
+      PInt -> "int"
+      PFloat64 -> "float64"
+      PBool -> "bool"
+      PRune -> "rune"
+      PString -> "string"
+      Infer -> "<infer>"
 
 -- | Top level function for cli
 symbol :: String -> IO ()
-symbol s = either putExit (\(me, s') -> do
-                              _ <- putStrLn s'
-                              maybe (putSucc "") putExit me
-                          ) (pTable s)
-  
+symbol s =
+  either
+    putExit
+    (\(me, s') -> do
+       _ <- putStrLn s'
+       maybe (putSucc "") putExit me)
+    (pTable s)
+
 -- | String that goes through weeding
 -- Get either an error message from weeding or success/error message with string of symbol table
 -- Note this isn't an either because if the left side checks, we always want the string/partial symbol table even on error so we can print it out

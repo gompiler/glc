@@ -3,10 +3,10 @@ module Main where
 import           ErrorBundle
 import qualified Options.Applicative as Op
 import           ParseCLI
-import           Prettify (prettify, checkPrettifyInvariance)
-import           Scanner (scanC, scanP, putExit, putSucc)
-import           Weeding (weed)
-import           SymbolTable (symbol)
+import           Prettify            (checkPrettifyInvariance, prettify)
+import           Scanner             (putExit, putSucc, scanC, scanP)
+import           SymbolTable         (symbol)
+import           Weeding             (weed)
 
 main :: IO ()
 main = do
