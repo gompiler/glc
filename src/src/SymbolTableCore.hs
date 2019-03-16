@@ -16,6 +16,7 @@ module SymbolTableCore
   , enterScope
   , exitScope
   , currentScope
+  , scopeLevel
   , topScope
   , addMessage
   , getMessages
@@ -116,6 +117,12 @@ exitScope :: SymbolTable s v l -> ST s ()
 exitScope st = do
   SymbolTable (_ :| scopes) list <- readRef st
   writeRef st $ SymbolTable (fromList scopes) list
+
+-- | Retrieve current scope level
+scopeLevel :: SymbolTable s v l -> ST s Scope
+scopeLevel st = do
+  SymbolTable ((scope, _) :| _) _ <- readRef st
+  return scope
 
 -- | Retrieve the current symbol scope
 currentScope :: SymbolTable s v l -> ST s (SymbolScope s v)
