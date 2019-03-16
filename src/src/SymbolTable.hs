@@ -568,6 +568,15 @@ topScope st = st >>= topScope'
 topScope' :: SymbolTable s -> ST s (S.SymbolScope s Symbol)
 topScope' = S.topScope
 
+-- | Wrap a result of recurse inside a new scope
+wrap ::
+     SymbolTable s -> ST s (Maybe ErrorMessage') -> ST s (Maybe ErrorMessage')
+wrap st stres = do
+  S.enterScope st
+  res <- stres
+  S.exitScope st
+  return res
+
 -- | Main type inference function
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
 -- Infers the inner type for a unary operator and checks if it matches using the fn
@@ -817,6 +826,8 @@ mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
 -- pTable' p = do
 --   st <- new
 --   res <- recurse st p
+--   syml <- S.getMessages st
+--   runST $ return (res, show syml)
 -- z =  "test"
 -- zk = SType (TypeMap ( "test") (Primitive ( "int")))
 -- st' =
