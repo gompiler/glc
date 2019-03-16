@@ -527,6 +527,7 @@ data SymbolError
   | NonFunctionId String
   | ArgumentMismatch [SType]
                      [SType]
+  | CompareMismatch SType SType
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -562,6 +563,8 @@ instance ErrorEntry SymbolError where
       NonFunctionId ident -> show ident ++ "is not a function"
       ArgumentMismatch as1 as2 ->
         "Argument mismatch between " ++ show as1 ++ " and " ++ show as2
+      CompareMismatch t1 t2 ->
+        "Cannot compare different types " ++ show t1 ++ " and " ++ show t2
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -625,8 +628,8 @@ infer st e@(Binary _ op i1 i2) =
   (case op of
      And             -> andOrConstraint
      Or              -> andOrConstraint
-     Data.EQ         -> undefined
-     Data.NEQ        -> undefined
+     Data.EQ         -> comparableConstraint
+     Data.NEQ        -> comparableConstraint
      Data.LT         -> orderConstraint
      Data.LEQ        -> orderConstraint
      Data.GEQ        -> orderConstraint
@@ -642,6 +645,15 @@ infer st e@(Binary _ op i1 i2) =
     innerList = fromList [i1, i2]
     andOrConstraint =
       inferConstraint st isBoolean NE.head (BadBinaryOp "boolean")
+    comparableConstraint _ _ = do -- Special ugly case
+      ei1 <- infer st i1
+      ei2 <- infer st i2
+      return $ do
+        t1 <- ei1
+        t2 <- ei2
+        if t1 == t2
+          then Right t1
+          else Left $ createError e $ CompareMismatch t1 t2
     orderConstraint =
       inferConstraint st isOrdered (const PBool) (BadBinaryOp "ordered")
     addConstraint =
@@ -664,7 +676,7 @@ infer _ (Lit l) =
     FloatLit {}  -> PFloat64
     RuneLit {}   -> PRune
     StringLit {} -> PString
-infer st (Var ident) = resolve ident st
+infer st (Var ident) = resolve ident st -- TODO: SWITCH OFF OF RESOLVE??
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
