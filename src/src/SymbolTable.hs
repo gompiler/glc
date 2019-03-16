@@ -728,7 +728,7 @@ infer st ie@(Index _ e1 e2) = do
     (Right (Array _ t), _) -> Left $ createError ie $ BadIndex "array" t
     (Right t, _)  -> Left $ createError ie $ NonIndexable t
     (err@(Left _), _) -> err
--- | Infer types of arguments (function call) expressions
+-- | Infer types of arguments (function call / typecast) expressions
 -- A function call expr(arg1, arg2, ..., argk) is well-typed if:
 -- * arg1, arg2, . . . , argk are well-typed and have types T1, T2, . . . , Tk respectively;
 -- * expr is well-typed and has function type (T1 * T2 * ... * Tk) -> Tr.
@@ -742,11 +742,12 @@ infer st ae@(Arguments _ expr args) = do
         Just (_, Func pl rtm) -> if (map snd pl) == ts
           then maybe (Left $ createError ae $ VoidFunc i) (Right) rtm
           else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
+        Just (_, Base) -> undefined -- TODO: BASE TYPE CAST
+        Just (_, SType ct) -> undefined -- TODO: DEFINED TYPE CAST
         Just _             -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
         Nothing            -> Left $ createError ae $ NotDecl "Function " i  -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
--- TODO: TYPECAST
 
 inferConstraint ::
      SymbolTable s -- st
