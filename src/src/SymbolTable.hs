@@ -22,10 +22,11 @@ import           Data.Maybe          (catMaybes)
 -- import           Data.STRef
 import           ErrorBundle
 import           Numeric             (readOct)
-import Weeding (weed)
+import           Weeding             (weed)
 
 -- import           Data.STRef
 import qualified SymbolTableCore     as S
+
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
 type SIdent = T.ScopedIdent
@@ -80,7 +81,16 @@ new :: ST s (SymbolTable s)
 new = do
   st <- S.new
   -- Base types
-  mapM_ (uncurry $ add st) [("int", Base), ("float64", Base), ("bool", Base), ("rune", Base), ("string", Base), ("true", Constant), ("false", Constant)]
+  mapM_
+    (uncurry $ add st)
+    [ ("int", Base)
+    , ("float64", Base)
+    , ("bool", Base)
+    , ("rune", Base)
+    , ("string", Base)
+    , ("true", Constant)
+    , ("false", Constant)
+    ]
   return st
 
 add :: SymbolTable s -> String -> Symbol -> ST s Bool -- Did we add successfully?
@@ -204,8 +214,10 @@ instance Symbolize FuncDecl
       checkId' st2 t' ident'@(Identifier _ vname') =
         let idv = vname'
          in do success <- add st2 idv (Variable t') -- Should not be declared
-               return $ if success then Right (vname', t')
-                        else Left $ createError ident (AlreadyDecl "Param " ident')
+               return $
+                 if success
+                   then Right (vname', t')
+                   else Left $ createError ident (AlreadyDecl "Param " ident')
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
@@ -229,8 +241,10 @@ checkId ::
 checkId st t pfix ident@(Identifier _ vname) =
   let idv = vname
    in do success <- add st idv (Variable t) -- Should not be declared
-         return $ if success then Nothing
-           else Just $ createError ident (AlreadyDecl pfix ident)
+         return $
+           if success
+             then Nothing
+             else Just $ createError ident (AlreadyDecl pfix ident)
 
 instance Symbolize SimpleStmt where
   recurse st (ShortDeclare idl el) = checkDecl (toList idl) (toList el) st
@@ -249,9 +263,8 @@ instance Symbolize SimpleStmt where
         let idv = vname
          in do val <- S.lookupCurrent st2 idv
                case val of
-                 Just _ -> return False
-                 Nothing -> do
-                   add st2 idv (Variable Infer)
+                 Just _  -> return False
+                 Nothing -> add st2 idv (Variable Infer)
   recurse _ EmptyStmt = return Nothing
   recurse st (ExprStmt e) = recurse st e -- Verify that expr only uses things that are defined
   recurse st (Increment _ e) = recurse st e
@@ -381,9 +394,7 @@ instance Typify Type where
            SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
       checkFields st' fdl' = eitherL concat <$> mapM (checkField st') fdl'
       checkField ::
-           SymbolTable s
-        -> FieldDecl
-        -> ST s (Either ErrorMessage' [Field])
+           SymbolTable s -> FieldDecl -> ST s (Either ErrorMessage' [Field])
       checkField st' (FieldDecl idl (_, t)) = do
         et <- toType st' t
         return $
@@ -392,8 +403,10 @@ instance Typify Type where
             (\t' ->
                case getFirstDuplicate (toList idl) of
                  Nothing ->
-                   Right $ map (\(Identifier _ vname) -> (vname, t')) (toList idl)
-                 Just ident -> Left $ createError ident (AlreadyDecl "Field " ident))
+                   Right $
+                   map (\(Identifier _ vname) -> (vname, t')) (toList idl)
+                 Just ident ->
+                   Left $ createError ident (AlreadyDecl "Field " ident))
             et
   toType st (Type ident) = resolve ident st
   -- This should never happen, this is here for exhaustive pattern matching
@@ -402,7 +415,7 @@ instance Typify Type where
   toType _ (ArrayType _ _) =
     error
       "Trying to convert type of an ArrayType with non literal int as length"
-  
+
 -- | Resolve type of an Identifier
 resolve :: Identifier -> SymbolTable s -> ST s (Either ErrorMessage' SType)
 resolve ident@(Identifier _ vname) st =
@@ -677,7 +690,7 @@ infer st ie@(Index _ e1 e2) = do
      -- | Checks that second type is an int before returning type or error
   where
     indexable :: SType -> SType -> String -> Either ErrorMessage' SType
-    indexable t PInt _ = Right t
+    indexable t PInt _   = Right t
     indexable t _ errTag = Left $ createError ie $ BadIndex errTag t
 -- | Infer types of arguments (function call / typecast) expressions
 -- A function call expr(arg1, arg2, ..., argk) is well-typed if:
@@ -692,13 +705,13 @@ infer st ae@(Arguments _ expr args) = do
       return $
         case fn of
           Just (_, Func pl rtm) ->
-            if (map snd pl) == ts
-              then maybe (Left $ createError ae $ VoidFunc i) (Right) rtm
+            if map snd pl == ts
+              then maybe (Left $ createError ae $ VoidFunc i) Right rtm
               else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
           -- Just (_, Base) -> undefined -- TODO: BASE TYPE CAST
           -- Just (_, SType ct) -> undefined -- TODO: DEFINED TYPE CAST
-          Just _             -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
-          Nothing            -> Left $ createError ae $ NotDecl "Function " i  -- not declared
+          Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
+          Nothing -> Left $ createError ae $ NotDecl "Function " i -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
 
@@ -735,11 +748,11 @@ isCapCompatible t =
     _        -> False
 
 isNumeric :: SType -> Bool
-isNumeric = (flip elem) [PInt, PFloat64, PRune]
+isNumeric = flip elem [PInt, PFloat64, PRune]
 
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
-isOrdered = (flip elem) [PInt, PFloat64, PRune, PString]
+isOrdered = flip elem [PInt, PFloat64, PRune, PString]
 
 isBoolean :: SType -> Bool
 isBoolean = (==) PBool
@@ -763,7 +776,7 @@ getFirstDuplicate (x:xs) =
   if x `elem` xs
     then Just x
     else getFirstDuplicate xs
-         
+
 -- | Take Symbol table scope and AST identifier to make ScopedIdent
 mkSId :: S.Scope -> Identifier -> SIdent
 mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
@@ -772,13 +785,18 @@ mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
 -- Get either an error message from weeding or success/error message with string of symbol table
 -- Note this isn't an either because if the left side checks, we always want the string/partial symbol table even on error so we can print it out
 pTable :: String -> Either ErrorMessage (Maybe ErrorMessage, String)
-pTable code = fmap (\p -> let (me, syml) = pTable' p in
-                       (me >>= (\e -> Just $ e code `withPrefix` "symbol table error at "), syml)) (weed code)
+pTable code =
+  fmap
+    (\p ->
+       let (me, syml) = pTable' p
+        in ( me >>= (\e -> Just $ e code `withPrefix` "symbol table error at ")
+           , syml))
+    (weed code)
 
 pTable' :: Program -> (Maybe ErrorMessage', String)
-pTable' p = runST $ do
-  st <- new
-  res <- recurse st p
-  syml <- S.getMessages st
-  return (res, show syml)
-
+pTable' p =
+  runST $ do
+    st <- new
+    res <- recurse st p
+    syml <- S.getMessages st
+    return (res, show syml)
