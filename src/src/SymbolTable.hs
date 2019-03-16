@@ -754,7 +754,7 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   return $ do
     ts <- eitherTs
      -- all the same and one of the valid types:
-    if (length $ NE.nub ts) == 1 && (isCorrect (NE.head ts))
+    if (length (NE.nub ts)) == 1 && (isCorrect (NE.head ts))
       then Right $ resultSType ts
       else Left $ createError parentExpr (makeError ts)
 
