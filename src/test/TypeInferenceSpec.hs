@@ -10,7 +10,7 @@ import ErrorBundle
 import Parser        (parse)
 import Test.Hspec
 import Symbol
-import qualified SymbolTable        as SymTab (new)
+import qualified SymbolTable        as SymTab (new, add)
 import TypeInference (infer)
 
 parseAndInferNoST :: String -> Either ErrorMessage SType
@@ -27,6 +27,11 @@ parseAndInferNoST expStr =
     runExpr e =
       runST $ do
         st <- SymTab.new
+        _ <- SymTab.add st "bool_var" (Variable PBool)
+        _ <- SymTab.add st "int_var" (Variable PInt)
+        _ <- SymTab.add st "float_var" (Variable PFloat64)
+        _ <- SymTab.add st "rune_var" (Variable PRune)
+        _ <- SymTab.add st "string_var" (Variable PString)
         infer st e >>= (\et -> return $ either (Left . errgen) Right et)
 
 expectPass :: Stringable s => [(s, SType)]  -> SpecWith ()
@@ -85,7 +90,14 @@ spec = do
 
     -- String casts
     , ("string(5)", PString)
-    , ("string('a')", PString)]
+    , ("string('a')", PString)
+
+    -- Primitive variables
+    , ("bool_var", PBool)
+    , ("int_var", PInt)
+    , ("float_var", PFloat64)
+    , ("rune_var", PRune)
+    , ("string_var", PString)]
   expectFail
     [ "5-\"9\""
     , "5 + \"5\""
