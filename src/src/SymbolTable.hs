@@ -15,6 +15,7 @@ import qualified TypedData           as T
 -- import qualified Data.HashTable.Class    as H
 -- import qualified Data.HashTable.ST.Basic as HT
 import           Data.List           (intercalate)
+import           Data.List.Extra     (concatUnzip)
 import           Data.List.NonEmpty  (NonEmpty (..), fromList, toList)
 import qualified Data.List.NonEmpty  as NE (head, map, nub)
 import           Data.Maybe          (catMaybes)
@@ -106,17 +107,6 @@ add st ident sym = do
       _ <- S.addMessage st $ Just (ident, sym, scope) -- Add the symbol info of what we added
       return True
 
--- | Insert field to struct table and return success or fail
--- add' :: StructTable s -> String -> Field -> ST s Bool
--- add' st ident fld = do
---   result <- S.lookup st ident -- We only need to check current scope for declarations
---   case result of
---     Just _ -> return False -- If we found a result, don't insert anything
---     Nothing -> do
---       S.insert st ident fld
---       return True
--- Heterogeneous type, can represent everything that has an instance of Symbolize
--- We use this so we can map over different types using recurse
 data HAST =
   forall a. Symbolize a =>
             H a
@@ -156,38 +146,40 @@ instance Symbolize FuncDecl
     res <- S.isDef st vname -- Check if defined in symbol table
     if res
       then return $ Just $ createError ident (AlreadyDecl "Function " ident)
-      else wrap
-             st
-             (do epl <- checkParams st pdl -- Either ErrorMessage' [Param]
+      else do _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
+              epl <- checkParams st pdl -- Either ErrorMessage' [Param]
       -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
-                 ef <-
-                   either
-                     (return . Left)
-                     (\pl ->
-                        maybe
-                          (return $ Right $ Func pl Nothing)
-                          (\(_, t') -> do
-                             et <- toType st t'
-                             return $ fmap (Func pl . Just) et)
-                          t)
-                     epl
-      -- We then take the Either ErrorMessage' Symbol, if no error we insert the Symbol (newly declared function) and recurse on statement list sl (from body of func) to declare things in body
-                 either
-                   (return . Just)
-                   (\f -> do
-                      _ <- S.insert st vname f
-                      am (recurse st) sl)
-                   ef)
+              ef <-
+                either
+                (return . Left)
+                (\(pl,sil) ->
+                    maybe
+                    (return $ Right $ (Func pl Nothing, sil))
+                    (\(_, t') -> do
+                        et <- toType st t'
+                        return $ fmap (\ret -> (Func pl (Just ret), sil)) et)
+                  t)
+                epl
+      -- We then take the Either ErrorMessage' Symbol, if no error we exit dummy scope so we're at the right scope level, insert the Symbol (newly declared function) and then wrap the real scope of the function, adding all the parameters that are already resolved as symbols and recursing on statement list sl (from body of func) to declare things in body
+              either
+                (return . Just)
+                (\(f, sil) -> (do
+                                  _ <- S.exitScope st
+                                  _ <- add st vname f
+                                  wrap st (do
+                                              mapM_ (\(k, sym, _) -> add st k sym) sil
+                                              am (recurse st) sl)))
+                ef
     where
       checkParams ::
            SymbolTable s
         -> [ParameterDecl]
-        -> ST s (Either ErrorMessage' [Param])
+        -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkParams st2 pdl' = do
         pl <- mapM (checkParam st2) pdl'
-        return $ eitherL concat pl
+        return $ eitherL concatUnzip pl
       checkParam ::
-           SymbolTable s -> ParameterDecl -> ST s (Either ErrorMessage' [Param])
+           SymbolTable s -> ParameterDecl -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkParam st2 (ParameterDecl idl (_, t')) = do
         et <- toType st2 t' -- Remove ST
         either
@@ -205,20 +197,21 @@ instance Symbolize FuncDecl
            SymbolTable s
         -> SType
         -> Identifiers
-        -> ST s (Maybe ErrorMessage', [Param])
-      checkIds' st2 t' idl = pEithers <$> mapM (checkId' st2 t') (toList idl)
+        -> ST s (Maybe ErrorMessage', ([Param], [SymbolInfo]))
+      checkIds' st2 t' idl = (\(a,b) -> (a, unzip b)) . pEithers <$> mapM (checkId' st2 t') (toList idl)
       checkId' ::
            SymbolTable s
         -> SType
         -> Identifier
-        -> ST s (Either ErrorMessage' Param)
+        -> ST s (Either ErrorMessage' (Param, SymbolInfo))
       checkId' st2 t' ident'@(Identifier _ vname') =
         let idv = vname'
-         in do success <- add st2 idv (Variable t') -- Should not be declared
-               return $
-                 if success
-                   then Right (vname', t')
-                   else Left $ createError ident (AlreadyDecl "Param " ident')
+         in do isdef <- S.isDef st2 idv -- Should not be declared
+               if isdef
+                 then return $ Left $ createError ident (AlreadyDecl "Param " ident')
+                 else do
+                   scope <- S.insert' st2 vname' (Variable t')
+                   return $ Right ((vname', t'), (vname', Variable t', scope))
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
@@ -226,22 +219,22 @@ instance Symbolize FuncDecl
 -- | checkId over a list of identifiers, keep first error or return nothing
 checkIds ::
      SymbolTable s
-  -> SType
+  -> Symbol
   -> String
   -> Identifiers
   -> ST s (Maybe ErrorMessage')
-checkIds st t pfix idl = maybeJ <$> mapM (checkId st t pfix) (toList idl)
+checkIds st s pfix idl = maybeJ <$> mapM (checkId st s pfix) (toList idl)
 
 -- | Check that we can declare this identifier
 checkId ::
      SymbolTable s
-  -> SType
+  -> Symbol
   -> String -- Error prefix for AlreadyDecl, what are we checking? i.e. Param, Var, Type
   -> Identifier
   -> ST s (Maybe ErrorMessage')
-checkId st t pfix ident@(Identifier _ vname) =
+checkId st s pfix ident@(Identifier _ vname) =
   let idv = vname
-   in do success <- add st idv (Variable t) -- Should not be declared
+   in do success <- add st idv s -- Should not be declared
          return $
            if success
              then Nothing
@@ -311,13 +304,13 @@ instance Symbolize VarDecl' where
     case edef of
       Left ((_, t), _) -> do
         et <- toType st t
-        either (return . Just) (\t' -> checkIds st t' "Variable " neIdl) et
-      Right _ -> checkIds st Infer "Variable " neIdl
+        either (return . Just) (\t' -> checkIds st (Variable t') "Variable " neIdl) et
+      Right _ -> checkIds st (Variable Infer) "Variable " neIdl
 
 instance Symbolize TypeDef' where
   recurse st (TypeDef' ident (_, t)) = do
     et <- toType st t
-    either (return . Just) (\t' -> checkId st t' "Type " ident) et
+    either (return . Just) (\t' -> checkId st (SType t') "Type " ident) et
 
 instance Symbolize Expr where
   recurse st (Unary _ _ e) = recurse st e
@@ -424,15 +417,15 @@ resolve ident@(Identifier _ vname) st =
    in do res <- S.lookup st idv
          case res of
            Nothing -> return $ Left $ createError ident (NotDecl "Type " ident)
-           Just (_, t) ->
+           Just (scope, t) ->
              return $
-             case resolve' t idv of
+             case resolve' t scope idv of
                Nothing -> Left $ createError ident (VoidFunc ident)
                Just t' -> Right t'
 
 -- | Resolve symbol to type
-resolve' :: Symbol -> String -> Maybe SType
-resolve' Base ident' =
+resolve' :: Symbol -> S.Scope -> String -> Maybe SType
+resolve' Base _ ident' =
   Just $
   case ident' of
     "int"     -> PInt
@@ -441,10 +434,10 @@ resolve' Base ident' =
     "rune"    -> PRune
     "string"  -> PString
     _         -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
-resolve' Constant _ = Just PBool -- Constants reserved for bools only
-resolve' (Variable t') _ = Just t'
-resolve' (SType t') _ = Just t'
-resolve' (Func _ mt) _ = mt
+resolve' Constant _ _ = Just PBool -- Constants reserved for bools only
+resolve' (Variable t') _ _ = Just $ t'
+resolve' (SType t') scope ident' = Just $ TypeMap (mkSIdStr scope ident') t'
+resolve' (Func _ mt) _ _ = mt
 
 data SymbolError
   = AlreadyDecl String
@@ -812,6 +805,11 @@ getFirstDuplicate (x:xs) =
 -- | Take Symbol table scope and AST identifier to make ScopedIdent
 -- mkSId :: S.Scope -> Identifier -> SIdent
 -- mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
+  
+-- | Take Symbol table scope and string to make ScopedIdent, add dummy offset
+mkSIdStr :: S.Scope -> String -> SIdent
+mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
+
 -- | Convert SymbolInfo list to String (pass through prettify) to get string representation of symbol table
 sl2str :: [Maybe SymbolInfo] -> String
 sl2str sl = sl2str' sl (S.Scope 0) ""
@@ -822,7 +820,10 @@ sl2str' ::
   -> S.Scope -- Previous scope
   -> String -- Accumulated string
   -> String -- Result
-sl2str' [] (S.Scope scope) acc = acc ++ tabs (scope - 1) ++ "}"
+-- Base case, no more scopes to close and nothing to convert, just return accumulator
+sl2str' [] (S.Scope (0)) acc = acc
+-- Close each scope's brace at end
+sl2str' [] (S.Scope scope) acc = sl2str' [] (S.Scope (scope - 1)) $ acc ++ tabs (scope - 1) ++ "}\n"
 sl2str' (mh:mt) (S.Scope pScope) acc =
   maybe
     acc
@@ -854,8 +855,14 @@ instance Show Symbol where
         intercalate "," (map (\(_, t') -> show t') pl) ++
         ") -> " ++ maybe "void" show mt
       Variable t' -> " [variable] = " ++ show t'
-      SType t' -> " [type] = " ++ show t'
+      SType t' -> " [type] = " ++ showDef t'
       _ -> ""
+
+-- | Fully resolve SType as a string, alternative to show when you want to show the complete mapping
+showDef :: SType -> String
+showDef t = case t of
+              TypeMap (T.ScopedIdent _ (Identifier _ name)) t' -> name ++ " -> " ++ showDef t'
+              _ -> show t
 
 instance Show SType where
   show t =
@@ -863,9 +870,9 @@ instance Show SType where
       Array i t' -> "[" ++ show i ++ "]" ++ show t'
       Slice t' -> "[]" ++ show t'
       Struct fds ->
-        "struct { " ++ concatMap (\(s, t') -> s ++ show t' ++ "; ") fds ++ "}"
-      TypeMap (T.ScopedIdent _ (Identifier _ name)) t' ->
-        name ++ " -> " ++ show t'
+        "struct { " ++ concatMap (\(s, t') -> s ++ " " ++ show t' ++ "; ") fds ++ "}"
+      TypeMap (T.ScopedIdent _ (Identifier _ name)) _ ->
+        name -- ++ " -> " ++ show t'
       PInt -> "int"
       PFloat64 -> "float64"
       PBool -> "bool"
