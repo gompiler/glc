@@ -717,21 +717,27 @@ infer st ae@(Arguments _ expr args) = do
               else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
           Just (_, Base) -> do
             ft <- fn
-            (case ts of
-              ct:[] ->
-                if (resolveSType ct) == (resolveSType ft)
-                  || ((isNumeric $ resolveSType ct)
-                       && (isNumeric $ resolveSType ft))
-                  || ((resolveSType ft) == PString
-                       && (isIntegerLike $ resolveSType ct))
-                  then Right ft
-                  else Left $ createError ae $ IncompatibleCast ft ct
-              _ -> Left $ createError ae $ CastArguments (length ts))
-          -- Just (_, SType ct) -> undefined -- TODO: DEFINED TYPE CAST
+            case ts of
+              ct:[] -> tryCast ft ct
+              _ -> Left $ createError ae $ CastArguments (length ts)
+          Just (_, SType ft) ->
+            case ts of
+              ct:[] -> tryCast ft ct
+              _ -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
           Nothing -> Left $ createError ae $ NotDecl "Function " i -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
+  where
+    tryCast :: SType -> SType -> Either ErrorMessage' SType
+    tryCast ft ct =
+      if (resolveSType ct) == (resolveSType ft)
+        || ((isNumeric $ resolveSType ct)
+             && (isNumeric $ resolveSType ft))
+        || ((resolveSType ft) == PString
+             && (isIntegerLike $ resolveSType ct))
+        then Right ft
+        else Left $ createError ae $ IncompatibleCast ft ct
 
 -- TODO: TYPECAST
 inferConstraint ::
@@ -805,7 +811,7 @@ getFirstDuplicate (x:xs) =
 -- | Take Symbol table scope and AST identifier to make ScopedIdent
 -- mkSId :: S.Scope -> Identifier -> SIdent
 -- mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
-  
+
 -- | Take Symbol table scope and string to make ScopedIdent, add dummy offset
 mkSIdStr :: S.Scope -> String -> SIdent
 mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
