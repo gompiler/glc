@@ -182,7 +182,7 @@ instance Symbolize FuncDecl
           (\t2 -> do
              (err, pil) <- checkIds' st2 t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
-             _ <- mapM (((S.addMessage st2) . Just) . parToVar) pil -- Add list of SymbolInfo to messages
+             _ <- mapM_ ((S.addMessage st2 . Just) . parToVar) pil -- Add list of SymbolInfo to messages
              case err of
                Just e -> do
                  _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
@@ -276,22 +276,25 @@ instance Symbolize SimpleStmt where
 instance Symbolize Stmt where
   recurse st (BlockStmt sl) = wrap st $ am (recurse st) sl
   recurse st (SimpleStmt s) = recurse st s
-  recurse st (If (ss, e) s1 s2) = wrap st $ am (recurse st) [H ss, H e, H s1, H s2]
-  recurse st (Switch ss me scs) = wrap st $ do
-    r1 <-
-      case me of
-        Just e  -> am (recurse st) [H ss, H e]
-        Nothing -> recurse st ss
-    r2 <- am (recurse st) scs
-    return $ maybeJ [r1, r2]
-  recurse st (For (ForClause ss1 me ss2) s) = wrap st $ do
-    r1 <-
-      am (recurse st) $
-      case me of
-        Just e  -> [H ss1, H e, H ss2]
-        Nothing -> [H ss1, H ss2]
-    r2 <- recurse st s
-    return $ maybeJ [r1, r2]
+  recurse st (If (ss, e) s1 s2) =
+    wrap st $ am (recurse st) [H ss, H e, H s1, H s2]
+  recurse st (Switch ss me scs) =
+    wrap st $ do
+      r1 <-
+        case me of
+          Just e  -> am (recurse st) [H ss, H e]
+          Nothing -> recurse st ss
+      r2 <- am (recurse st) scs
+      return $ maybeJ [r1, r2]
+  recurse st (For (ForClause ss1 me ss2) s) =
+    wrap st $ do
+      r1 <-
+        am (recurse st) $
+        case me of
+          Just e  -> [H ss1, H e, H ss2]
+          Nothing -> [H ss1, H ss2]
+      r2 <- recurse st s
+      return $ maybeJ [r1, r2]
   recurse _ (Break _) = return Nothing
   recurse _ (Continue _) = return Nothing
   recurse st (Declare d) = recurse st d
@@ -332,11 +335,11 @@ instance Symbolize Expr where
   recurse st (CapExpr _ e) = recurse st e
   recurse st (Selector _ e _) = recurse st e
   recurse st (Index _ e1 e2) = am (recurse st) [e1, e2]
-  recurse st (Arguments _ e el) = am (recurse st) (e:el) 
+  recurse st (Arguments _ e el) = am (recurse st) (e : el)
 
 instance Symbolize SwitchCase where
   recurse st (Case _ nEl s) = am (recurse st) $ map H (toList nEl) ++ [H s]
-  recurse st (Default _ s) = recurse st s
+  recurse st (Default _ s)  = recurse st s
 
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
@@ -456,17 +459,19 @@ resolve ident@(Identifier _ vname) st =
 
 -- | Resolve symbol to type
 resolve' :: Symbol -> String -> Maybe SType
-resolve' Base ident'     = Just $ case ident' of
-                                    "int" -> PInt
-                                    "float64" -> PFloat64
-                                    "bool" -> PBool
-                                    "rune" -> PRune
-                                    "string" -> PString
-                                    _ -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
-resolve' Constant _      = Just PBool -- Constants reserved for bools only
+resolve' Base ident' =
+  Just $
+  case ident' of
+    "int"     -> PInt
+    "float64" -> PFloat64
+    "bool"    -> PBool
+    "rune"    -> PRune
+    "string"  -> PString
+    _         -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
+resolve' Constant _ = Just PBool -- Constants reserved for bools only
 resolve' (Variable t') _ = Just t'
-resolve' (SType t') _    = Just t'
-resolve' (Func _ mt) _   = mt
+resolve' (SType t') _ = Just t'
+resolve' (Func _ mt) _ = mt
 
 -- instance TypeInfer String where
 --   resolve :: String -> SymbolTable s -> ST s (Either ErrorMessage' SType)
@@ -521,7 +526,8 @@ topScope' :: SymbolTable s -> ST s (S.SymbolScope s Symbol)
 topScope' = S.topScope
 
 -- | Wrap a result of recurse inside a new scope
-wrap :: SymbolTable s -> ST s (Maybe ErrorMessage') -> ST s (Maybe ErrorMessage')
+wrap ::
+     SymbolTable s -> ST s (Maybe ErrorMessage') -> ST s (Maybe ErrorMessage')
 wrap st stres = do
   S.enterScope st
   res <- stres
@@ -535,7 +541,7 @@ getFirstDuplicate (x:xs) =
   if x `elem` xs
     then Just x
     else getFirstDuplicate xs
-         
+
 -- | Take Symbol table scope and AST identifier to make ScopedIdent
 mkSId :: S.Scope -> Identifier -> SIdent
 mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
@@ -543,11 +549,9 @@ mkSId (S.Scope s) = T.ScopedIdent (T.Scope s)
 -- pTable' :: Program -> (Maybe ErrorMessage', String)
 -- pTable' p = do
 --   st <- new
-  
-
+--   res <- recurse st p
 class TypeInfer a where
-  infer :: a -> SymbolTable s -> ST s (Either ErrorMessage' SType)
--- testing stuff
+  infer :: a -> SymbolTable s -> ST s (Either ErrorMessage' SType)-- testing stuff
 -- z =  "test"
 -- zk = SType (TypeMap ( "test") (Primitive ( "int")))
 -- st' =
