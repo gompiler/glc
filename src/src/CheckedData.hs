@@ -3,7 +3,6 @@
 
 module CheckedData where
 
-import           Data               (Identifier (..))
 import           Data.List.NonEmpty (NonEmpty (..))
 
 data ScopedIdent =
@@ -61,7 +60,7 @@ data VarDecl' =
 
 -- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =
-  TypeDef' Identifier
+  TypeDef' Ident
            Type
   deriving (Show, Eq)
 
@@ -201,7 +200,7 @@ data Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var Identifier
+  | Var Ident
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
@@ -218,7 +217,7 @@ data Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
   | Selector Expr
-             Identifier
+             Ident
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
   | Index Expr
@@ -319,6 +318,6 @@ data Type
 -- Golite does not support embedded fields
 -- Note that these fields aren't scope related
 data FieldDecl =
-  FieldDecl Identifier
+  FieldDecl Ident
             Type
   deriving (Show, Eq)
