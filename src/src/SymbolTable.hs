@@ -616,6 +616,7 @@ infer st e@(Binary _ op i1 i2) =
       inferConstraint st isNumeric NE.head (BadBinaryOp "numeric")
     arithIntConstraint =
       inferConstraint st isInteger NE.head (BadBinaryOp "integer")
+-- | "Infer" the types of base literals
 infer _ (Lit l) =
   return $
   Right $
@@ -624,6 +625,7 @@ infer _ (Lit l) =
     FloatLit {}  -> PFloat64
     RuneLit {}   -> PRune
     StringLit {} -> PString
+-- | Resolve variables to the type their identifier points to in the scope
 infer st (Var ident) = resolve ident st -- TODO: SWITCH OFF OF RESOLVE??
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
@@ -739,7 +741,6 @@ infer st ae@(Arguments _ expr args) = do
         then Right ft
         else Left $ createError ae $ IncompatibleCast ft ct
 
--- TODO: TYPECAST
 inferConstraint ::
      SymbolTable s -- st
   -> (SType -> Bool) -- isCorrect
