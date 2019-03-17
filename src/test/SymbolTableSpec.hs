@@ -247,6 +247,19 @@ spec = do
         a = 2
       }
       |]
+    , [text|
+      // Init is not a keyword
+      func a(init int) {
+      }
+
+      func b() {
+        type init int
+      }
+
+      func c() {
+        init := 2
+      }
+      |]
     ]
   expectTypecheckFailNoMain
     -- Init must have no inputs, no return, and be correctly typed
@@ -309,6 +322,14 @@ spec = do
         a(a)
       }
       |]
+--    , [text| -- TODO FAILING
+--      // Init must be a function at the top level
+--      type init int
+--      |]
+--    , [text| -- TODO FAILING
+--      // Main must be a function at the top level
+--      type main int
+--      |]
 --    , [text|
 --      |]
 --    , [text|
