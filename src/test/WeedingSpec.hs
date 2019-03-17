@@ -156,6 +156,12 @@ spec = do
           break
       }
       |]
+    , [text|
+      // Blank keys allowed
+      type p struct {
+        _ int; _ float64
+      }
+      |]
     ]
   expectWeedPassNoMain
     [ [text|

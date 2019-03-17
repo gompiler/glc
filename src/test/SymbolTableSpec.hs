@@ -213,13 +213,102 @@ spec = do
 --    , [text|
 --      |]
     ]
-  expectTypecheckPassNoMain ["func init(){}"]
-  expectTypecheckFailNoMain
+  expectTypecheckPassNoMain
     [ [text|
-      func init(a int){
+      func init() {
+      }
+      |]
+    , [text|
+      func a() int {
+        return 0
+      }
+
+      // Multiple inits allowed
+      func init() {
+        a()
+      }
+
+      func init() {
+        a()
+        a()
+      }
+
+      func init() {
+      }
+      |]
+    , [text|
+      // Recursion
+      func a() int {
+        return a()
+      }
+      |]
+    , [text|
+      func a(a int) {
+        a = 2
       }
       |]
     ]
+  expectTypecheckFailNoMain
+    -- Init must have no inputs, no return, and be correctly typed
+    [ [text|
+      func init(a int) {
+      }
+      |]
+    , [text|
+      func init() int {
+        return 0
+      }
+      |]
+    , [text|
+      func init() {
+        return 'a'
+      }
+      |]
+    -- Init is not callable
+    , [text|
+      func init() {
+        init()
+      }
+      |]
+    , [text|
+      func init() {
+      }
+
+      func a() {
+        init()
+      }
+      |]
+    , [text|
+      func a(_ int) {
+        // Cannot use blank ident as param
+        a(_)
+      }
+      |]
+    , [text|
+      // Functions must be in order
+      func a() {
+        b()
+      }
+      func b() {
+      }
+      |]
+    , [text|
+      // Function and var cannot be same name
+      var a = 2
+      func a() {
+      }
+      |]
+    , [text|
+      // Var and type cannot be same name
+      var a = 2
+      type a int
+      |]
+    , [text|
+      func a(a int) {
+        // Can no longer call func a as it is shadowed by int a
+        a(a)
+      }
+      |]
 --    , [text|
 --      |]
 --    , [text|
@@ -234,3 +323,20 @@ spec = do
 --      |]
 --    , [text|
 --      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+    ]
