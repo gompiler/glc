@@ -1,39 +1,53 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications  #-}
 
 module Prettify
   ( Prettify(..)
   , checkPrettifyInvariance
+  , tabS
+  , tabSize
   ) where
 
 import           Data
 import           Data.List          (intercalate, null)
 import           Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Maybe         as Maybe
-import           Parser             (parse)
+import           ErrorBundle
+import           Parser
 
-checkPrettifyInvariance :: String -> Either String String
+checkPrettifyInvariance :: String -> Either ErrorMessage String
 checkPrettifyInvariance input = do
-  ast1 <- parse input
+  ast1 <- parse @Program input
   let pretty1 = prettify ast1
-  ast2 <- parse input
+  ast2 <- parse @Program input
   let pretty2 = prettify ast2
   case (ast1 == ast2, pretty1 == pretty2) of
-    (False, _) -> Left $ "AST mismatch:\n\n" ++ show ast1 ++ "\n\n" ++ show ast2
-    (_, False) -> Left $ "Prettify mismatch" ++ pretty1 ++ "\n\n" ++ pretty2
+    (False, _) -> Left $ createError' $ "AST mismatch:\n\n" ++ show ast1 ++ "\n\n" ++ show ast2
+    (_, False) -> Left $ createError' $ "Prettify mismatch" ++ pretty1 ++ "\n\n" ++ pretty2
     _ -> Right pretty2
 
+tabSize :: Int
+tabSize = 4
+
+tabS :: String
+tabS = replicate tabSize ' '
+
 tab :: [String] -> [String]
-tab = map ("    " ++)
+tab = map (tabS ++)
 
 commaJoin :: Prettify a => [a] -> String
 commaJoin p = intercalate ", " $ map prettify p
 
 -- | Joins last line of first list with first line of last list with a space
 skipNewLine :: [String] -> [String] -> [String]
-[] `skipNewLine` a = a
-a `skipNewLine` [] = a
-[a] `skipNewLine` (b:b') = (a ++ " " ++ b) : b'
-(a:a') `skipNewLine` b = a : a' `skipNewLine` b
+skipNewLine = skipNewLineBase " "
+
+-- | Joins last line of first list with first line of last list with the provided string in between
+skipNewLineBase :: String -> [String] -> [String] -> [String]
+skipNewLineBase _ [] a       = a
+skipNewLineBase _ a []       = a
+skipNewLineBase s [a] (b:b') = (a ++ s ++ b) : b'
+skipNewLineBase s (a:a') b   = a : skipNewLineBase s a' b
 
 -- | Some prettified components span a single line
 -- In that case, we can implement prettify by default
@@ -63,8 +77,10 @@ instance Prettify TopDecl where
   prettify' (TopFuncDecl decl) = prettify' decl
 
 instance Prettify Decl where
+  prettify' (VarDecl [])     = ["var ()"]
   prettify' (VarDecl [decl]) = ["var"] `skipNewLine` prettify' decl
   prettify' (VarDecl decls)  = "var (" : tab (decls >>= prettify') ++ [")"]
+  prettify' (TypeDef [])     = ["type ()"]
   prettify' (TypeDef [def])  = ["type"] `skipNewLine` prettify' def
   prettify' (TypeDef defs)   = "type (" : tab (defs >>= prettify') ++ [")"]
 
@@ -85,8 +101,10 @@ instance Prettify TypeDef' where
 
 instance Prettify FuncDecl where
   prettify' (FuncDecl ident sig body) =
-    ["func " ++ prettify ident] `skipNewLine`
-    (prettify' sig `skipNewLine` ["{"]) ++
+    skipNewLineBase
+      ""
+      ["func " ++ prettify ident]
+      (prettify' sig `skipNewLine` ["{"]) ++
     tab (prettify' body) ++ ["}"]
 
 instance Prettify ParameterDecl where
@@ -159,11 +177,14 @@ instance Prettify [Expr] where
   prettify = commaJoin
   prettify' = prettify''
 
+-- Note that generated string s fits within "for s{";
+-- there is already a space beforehand but none after
 instance Prettify ForClause where
-  prettify ForInfinite = ""
-  prettify (ForCond e) = prettify e ++ " "
-  prettify (ForClause cs ce s) =
-    prettify cs ++ "; " ++ prettify ce ++ "; " ++ prettify s ++ " "
+  prettify (ForClause EmptyStmt Nothing EmptyStmt) = ""
+  prettify (ForClause EmptyStmt (Just ce) EmptyStmt) = prettify ce ++ " "
+  prettify (ForClause cs ce' s) =
+    prettify cs ++
+    "; " ++ Maybe.maybe "" prettify ce' ++ "; " ++ prettify s ++ " "
   prettify' = prettify''
 
 instance Prettify (NonEmpty Expr) where
@@ -246,7 +267,6 @@ instance Prettify Type where
   prettify' (ArrayType e t)   = ["[" ++ prettify e ++ "]" ++ prettify t]
   prettify' (StructType fdls) = "struct {" : tab (fdls >>= prettify') ++ ["}"]
   prettify' (SliceType t)     = ["[]" ++ prettify t]
-  prettify' (FuncType s)      = ["func" ++ prettify s]
   prettify' (Type ident)      = [prettify ident]
 
 --  prettify s@StructType {} = intercalate "; " $ prettify' s
