@@ -41,6 +41,7 @@ data ExpressionTypeError
   | ExprNotDecl String
                 Identifier
   | ExprVoidFunc Identifier
+  | NotVar Identifier
   deriving (Show, Eq)
 
 instance ErrorEntry ExpressionTypeError where
@@ -75,6 +76,8 @@ instance ErrorEntry ExpressionTypeError where
       ExprNotDecl s (Identifier _ vname) -> s ++ vname ++ " not declared"
       ExprVoidFunc (Identifier _ vname) ->
         "Void function " ++ vname ++ " cannot be used in expression"
+      NotVar (Identifier _ vname) ->
+        "Non-variable identifier " ++ vname ++ " cannot be used in this context"
 
 -- | Main type inference function
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
@@ -175,12 +178,21 @@ infer _ (Lit l) =
     RuneLit {}   -> PRune
     StringLit {} -> PString
 -- | Resolve variables to the type their identifier points to in the scope
-infer st (Var ident) =
-  resolve
-    ident
-    st
-    (createError ident (ExprNotDecl "Identifier " ident))
-    (createError ident (ExprVoidFunc ident))
+infer st (Var ident@(Identifier _ vname)) =
+  resolveVar st
+  where
+    resolveVar :: SymbolTable s -> ST s (Either ErrorMessage' SType)
+    resolveVar st' = do
+      res <- S.lookup st' vname
+      return $ case res of
+        Nothing ->
+          Left $ createError ident (ExprNotDecl "Identifier " ident)
+        Just (_, sym) ->
+          case sym of
+            Variable t' -> Right t'
+            Constant    -> Right PBool -- Constants can only be booleans
+            _           -> Left $ createError ident (NotVar ident)
+
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
@@ -268,19 +280,19 @@ infer st ie@(Index _ e1 e2) = do
 infer st ae@(Arguments _ expr args) = do
   as <- mapM (infer st) args -- Moves ST out
   case (expr, sequence as) of
-    (Var i@(Identifier _ ident), Right ts) -> do
-      fl <- S.lookup st ident
+    (Var ident@(Identifier _ vname), Right ts) -> do
+      fl <- S.lookup st vname
       fn <-
         resolve
-          i
+          ident
           st
-          (createError i (ExprNotDecl "Type " i))
-          (createError i (ExprVoidFunc i))
+          (createError ident (ExprNotDecl "Type " ident))
+          (createError ident (ExprVoidFunc ident))
       return $
         case fl of
           Just (_, Func pl rtm) ->
             if map snd pl == ts
-              then maybe (Left $ createError ae $ ExprVoidFunc i) Right rtm
+              then maybe (Left $ createError ae $ ExprVoidFunc ident) Right rtm
               else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
           Just (_, Base) -> do
             ft <- fn
@@ -291,8 +303,8 @@ infer st ae@(Arguments _ expr args) = do
             case ts of
               [ct] -> tryCast ft ct
               _    -> Left $ createError ae $ CastArguments (length ts)
-          Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
-          Nothing -> Left $ createError ae $ ExprNotDecl "Function " i -- not declared
+          Just _ -> Left $ createError ae $ NonFunctionId vname -- non-function identifier
+          Nothing -> Left $ createError ae $ ExprNotDecl "Function " ident -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
   where
