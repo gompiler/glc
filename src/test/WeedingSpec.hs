@@ -125,6 +125,7 @@ spec = do
     , "var a, _, _, b int"
     , "func _(){}"
     , "func _(_ int) {}"
+    , "func _(_, _ int) {}"
     , "type _ struct {}"
     , "type _ struct {_ int;}"
     ]
@@ -272,6 +273,7 @@ spec = do
     , "var a = 1, 3"
     , "var a float = 1, 3"
     , "func _(ab _) {}"
+    , "func _(_, _ _) {}"
     ]
   expectWeedError
     [ ( [text|
