@@ -17,7 +17,7 @@ import           Data.Foldable       (asum)
 -- import qualified Data.HashTable.Class    as H
 -- import qualified Data.HashTable.ST.Basic as HT
 import           Data.List.Extra     (concatUnzip)
-import           Data.List.NonEmpty  (toList)
+import           Data.List.NonEmpty  (toList, NonEmpty(..), fromList)
 import           Data.Maybe          (catMaybes)
 
 -- import           Data.STRef
@@ -26,6 +26,7 @@ import           Numeric             (readOct)
 -- import           Scanner             (putExit, putSucc)
 -- import           Weeding             (weed)
 import qualified CheckedData as C
+import TypeInference
 
 import           Symbol
 
@@ -112,14 +113,14 @@ class Typify a
 -- instance Symbolize HAST where
 --   recurse st (H a) = recurse st a
 
-seqRec st a = (recurse st) a >>= sequence
+seqRec st a = recurse st a >>= sequence
 
 instance Symbolize Program C.Program where
-  recurse st (Program pkg tdl) = wrap st $ ((recurse st) tdl >>= sequence) >>= return . Right . C.Program pkg
+  recurse st (Program pkg tdl) = wrap st $ (seqRec st tdl) >>= return . fmap (C.Program pkg)
 
 instance Symbolize TopDecl C.TopDecl where
-  recurse st (TopDecl d)      = seqRec st d >>= return . Right . C.TopDecl
-  recurse st (TopFuncDecl fd) = seqRec st fd >>= return . Right . C.TopFuncDecl
+  recurse st (TopDecl d)      = seqRec st d >>= return . fmap C.TopDecl
+  recurse st (TopFuncDecl fd) = seqRec st fd >>= return . fmap C.TopFuncDecl
 
 instance Symbolize FuncDecl C.FuncDecl
   -- Check if function (ident) is declared in current scope (top scope)
@@ -147,14 +148,15 @@ instance Symbolize FuncDecl C.FuncDecl
         either
           (return . Left)
           (\(f, sil) -> do
-             _ <- S.exitScope st
-             scope <- add st vname f
-             wrap
-               st
-               (do mapM_ (\(k, sym, _) -> add st k sym) sil
-                   am (recurse st) sl))
+              _ <- S.exitScope st
+              scope <- S.insert' st vname f
+              _ <- S.addMessage st (Just (vname, f, scope))
+              wrap
+                st
+                (do mapM_ (\(k, sym, _) -> add st k sym) sil
+                    (\sl' -> (C.FuncDecl (mkSIdStr scope vname) (func2sig f) . C.BlockStmt) <$> sequence sl') <$> (mapM (recurse st) sl)))
           ef
-      else return $ Just $ createError ident (AlreadyDecl "Function " ident)
+      else return $ Left $ createError ident (AlreadyDecl "Function " ident)
     where
       checkParams ::
            SymbolTable s
@@ -202,6 +204,11 @@ instance Symbolize FuncDecl C.FuncDecl
                    return $ Right ((vname', t'), (vname', Variable t', scope))
                  else return $
                       Left $ createError ident (AlreadyDecl "Param " ident')
+      p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
+      p2pd (s, t) = C.ParameterDecl (mkSIdStr (S.Scope 2) s) (toBase t)
+      func2sig :: Symbol -> C.Signature
+      func2sig (Func pl mt) = C.Signature (C.Parameters (map p2pd pl)) (toBase <$> mt)
+      func2sig _ = error "Trying to convert a symbol that isn't a function to a signature" -- Should never happen
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
@@ -231,25 +238,55 @@ checkId st s pfix ident@(Identifier _ vname) =
              else Just $ createError ident (AlreadyDecl pfix ident)
 
 instance Symbolize SimpleStmt C.SimpleStmt where
-  recurse st (ShortDeclare idl el) = undefined
-  -- checkDecl (toList idl) (toList el) st
-  --   where
-  --     checkDecl ::
-  --          [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
-  --     checkDecl idl' _ st' = do
-  --       bl <- mapM (isNewDec st') idl'
-  --       -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-  --       return $
-  --         if True `elem` bl
-  --           then Nothing
-  --           else Just $ createError (head idl') ShortDec
-  --     isNewDec :: SymbolTable s -> Identifier -> ST s Bool
-  --     isNewDec st2 (Identifier _ vname) =
-  --       let idv = vname
-  --        in do val <- S.lookupCurrent st2 idv
-  --              case val of
-  --                Just _  -> return False
-  --                Nothing -> add st2 idv (Variable Infer)
+  recurse st (ShortDeclare idl el) =
+    (checkDecl (toList idl) (toList el) st) >>= return . fmap C.ShortDeclare
+    where
+      checkDecl :: [Identifier] -> [Expr] -> SymbolTable s -> ST s (Either ErrorMessage' (NonEmpty(SIdent, C.Expr)))
+      checkDecl idl el st = do
+        eb <- mapM (\(ident, e) -> checkDec ident e st) (zip idl el)
+        -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
+        return $ either Left (\l -> let (bl, decl) = unzip l in
+                                        if True `elem` bl then Right (fromList decl) else Left $ createError (head idl) ShortDec) (sequence eb) 
+      checkDec :: Identifier -> Expr -> SymbolTable s -> ST s (Either ErrorMessage' (Bool, (SIdent, C.Expr)))
+      checkDec ident e st = do
+        et <- infer st e-- Either ErrorMessage' SType
+        (either (return . Left) (\t -> do
+                                    et' <- recurse st e
+                                    eb <- checkId ident t st
+                                    either (return . Left)
+                                      (\e' -> return $ either Left (\(b, sid) -> Right (b, (sid, e'))) eb) et'
+                                ) et)
+          where
+            checkId :: Identifier -> SType -> SymbolTable s -> ST s (Either ErrorMessage' (Bool, SIdent)) -- Bool is to indicate whether the variable was already declared or not and also create scoped ident
+      -- Note that short declarations require at least *one* new declaration
+            checkId ident@(Identifier _ vname) t st =
+                do val <- S.lookupCurrent st vname
+                   case val of
+                     Just (scope, (Variable t2)) -> return $
+                       if t == t2
+                       then Right $ (False, mkSIdStr scope vname)
+                       -- if locally defined, check if type matches
+                       else Left $ createError e (TypeMismatch ident t t2)
+                     Just (_, s) -> return $ Left $ createError ident (NotLVal ident s)
+                     Nothing -> do
+                       msi <- add st vname (Variable t)
+                       scope <- S.scopeLevel st
+                       return $ Right $ (True, mkSIdStr scope vname)
+      -- checkDecl ::
+      --      [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
+      -- checkDecl idl' _ st' = do
+      --   bl <- mapM (isNewDec st') idl'
+      --   -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
+      --   return $
+      --     if True `elem` bl
+      --       then Nothing
+      --       else Just $ createError (head idl') ShortDec
+      -- isNewDec :: SymbolTable s -> Identifier -> ST s Bool
+      -- isNewDec st2 (Identifier _ vname) =
+      --    in do val <- S.lookupCurrent st2 vname
+      --          case val of
+      --            Just _  -> return False
+      --            Nothing -> add st2 vname (Variable Infer)
   recurse _ EmptyStmt = undefined -- return Nothing
   recurse st (ExprStmt e) = undefined -- recurse st e -- Verify that expr only uses things that are defined
   recurse st (Increment _ e) = undefined -- recurse st e
@@ -478,6 +515,8 @@ toBase t = case t of
              PRune -> C.Type "rune"
              PString -> C.Type "string"
              _ -> error "Infer has no base type" -- Should not happen
+
+
 
 -- | Convert SymbolInfo list to String (pass through show) to get string representation of symbol table
 -- ignore error if not a symbol table error (i.e. typecheck error)
