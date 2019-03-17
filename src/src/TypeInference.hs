@@ -1,13 +1,13 @@
 module TypeInference
   ( ExpressionTypeError
   , infer
-  , inferR
-  , resolveSType
   , isNumeric
   , isComparable
   , isBase
   ) where
 
+import qualified CheckedData        as T (Ident (..), Scope (..),
+                                          ScopedIdent (..))
 import           Control.Monad.ST
 import           Data
 import           Data.List          (intercalate)
@@ -47,6 +47,7 @@ data ExpressionTypeError
                 Identifier
   | ExprVoidFunc Identifier
   | NotVar Identifier
+  | ExpectBaseType SType
   deriving (Show, Eq)
 
 instance ErrorEntry ExpressionTypeError where
@@ -83,6 +84,8 @@ instance ErrorEntry ExpressionTypeError where
         "Void function " ++ vname ++ " cannot be used in expression"
       NotVar (Identifier _ vname) ->
         "Non-variable identifier " ++ vname ++ " cannot be used in this context"
+      ExpectBaseType styp ->
+        "Cast expects base type; non-base type " ++ show styp ++ " provided"
 
 -- | Main type inference function
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
@@ -286,6 +289,7 @@ infer st ae@(Arguments _ expr args) = do
   case (expr, sequence as) of
     (Var ident@(Identifier _ vname), Right ts) -> do
       fl <- S.lookup st vname
+      -- Only used for base types, since it goes all the way
       fn <-
         resolve
           ident
@@ -302,9 +306,12 @@ infer st ae@(Arguments _ expr args) = do
             case ts of
               [ct] -> tryCast ft ct
               _    -> Left $ createError ae $ CastArguments (length ts)
-          Just (_, SType ft) ->
+          Just (S.Scope scp, SType ft) ->
             case ts of
-              [ct] -> tryCast ft ct
+              [ct] ->
+                tryCast
+                  (TypeMap (T.ScopedIdent (T.Scope scp) (T.Ident vname)) ft)
+                  ct -- Left $ createError ae $ ExprNotDecl (show ft) ident
               _    -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId vname -- non-function identifier
           Nothing -> Left $ createError ae $ ExprNotDecl "Function " ident -- not declared
@@ -313,11 +320,20 @@ infer st ae@(Arguments _ expr args) = do
   where
     tryCast :: SType -> SType -> Either ErrorMessage' SType
     tryCast ft ct =
-      if resolveSType ct == resolveSType ft ||
-         (isNumeric (resolveSType ct) && isNumeric (resolveSType ft)) ||
-         (resolveSType ft == PString && isIntegerLike (resolveSType ct))
-        then Right ft
-        else Left $ createError ae $ IncompatibleCast ft ct
+      case (isBase rct, isBase rft) of
+        (True, True) ->
+          if rct == rft ||
+            (isNumeric rct && isNumeric rft) ||
+            (rft == PString && isIntegerLike rct)
+            then Right ft
+            else Left $ createError ae $ IncompatibleCast ft ct
+        (False, _)    -> Left $ createError ae $ ExpectBaseType rct
+        (True, False) -> Left $ createError ae $ ExpectBaseType rft
+      where
+        rct :: SType
+        rct = rpartSType ct
+        rft :: SType
+        rft = rpartSType ft
 
 inferConstraint ::
      SymbolTable s -- st
@@ -360,7 +376,7 @@ isAddable = isOrdered
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
 isOrdered = flip elem [PInt, PFloat64, PRune, PString]
-  
+
 isBase :: SType -> Bool
 isBase = flip elem [PInt, PFloat64, PBool, PRune, PString]
 
@@ -378,22 +394,7 @@ isComparable styp =
     TypeMap _ styp' -> isComparable styp'
     _               -> True
 
--- | Resolves a defined type to a base type, WITHOUT nested types
+-- | Resolves a defined type to a base type, WITHOUT nested types (arrays, etc)
 rpartSType :: SType -> SType
 rpartSType (TypeMap _ st) = rpartSType st
 rpartSType t              = t -- Other types
-
--- | Resolves a defined type to a base type, including array types
-resolveSType :: SType -> SType
-resolveSType (Array i st) = Array i (resolveSType st)
-resolveSType (Slice st) = Slice (resolveSType st)
-resolveSType (Struct fl) =
-  Struct $ map (\(ident, st) -> (ident, resolveSType st)) fl
-resolveSType (TypeMap _ st) = resolveSType st
-resolveSType t = t -- Other types
-
--- | Infer but resolve to base type
-inferR :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
-inferR st e = do
-  et' <- infer st e
-  return $ resolveSType <$> et'
