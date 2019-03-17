@@ -8,6 +8,19 @@ whilst implementing the components for milestone 2.
 * Design Decisions
 ** Symbol Table
 TODO
+In Haskell, data structures are typically immutable, and much of the language
+is designed around this. One of the main design decisions made around the symbol
+table was deciding whether to go with an immutable or mutable symbol table. In
+an immutable symbol table, a "new" symbol table would have to be made every time
+a scope is added or modified. Right away, despite this being a conceptually
+better fit for the language, the potential performance degradation of constantly
+re-building the symbol table becomes evident.
+
+As a result of this performance impact, we decided on using a mutable symbol
+table, with mutability supported via Haskell's 'ST' monad. The trade-off of
+this decision was a large increase in the difficulty implementing the symbol
+table, which made up a huge portion of the work for this milestone.
+TODO
 *** Scoping Rules
 TODO
 ** Type Checker
