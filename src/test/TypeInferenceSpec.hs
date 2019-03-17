@@ -118,8 +118,18 @@ spec
  = do
   expectPass
     "binary operations"
-    [ ("false || false", PBool)
-    , ("false && false", PBool)
+    -- Bool ops
+    [ ("false || true", PBool)
+    , ("false && true", PBool)
+    -- Comparable ops
+    -- See https://golang.org/ref/spec#Comparison_operators
+    -- bool, rune, int, float64, string, struct if all fields comparable
+    -- , ("2 == 54", PBool) -- TODO FAIL; add all others
+    , ("st_var == st_var", PBool)
+    -- TODO compare structs
+    -- Ordered ops
+    -- See See https://golang.org/ref/spec#Comparison_operators
+    -- rune, int, float64, string
     , ("5 + 6", PInt)
     , ("5.5 + 6.6", PFloat64)
     , ("'a' + 'b'", PRune)
@@ -131,8 +141,12 @@ spec
     ]
   expectFail
     "binary operations"
-    [ "5-\"9\""
+    -- Bad numeric operations
+    [ "5 - \"9\""
     , "5 + \"5\""
+    , "5 - '5'"
+    , "5.0 * 5"
+    , "5 / '2'"
     -- Bad boolean operations
     , "1 || 2"
     , "1 && 2"
