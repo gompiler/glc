@@ -108,55 +108,58 @@ spec = do
   expectSymFail ["var a = b"]
   expectSymFail
     [ [text|
-          var a = 5
-          var a = 6
-          |]
+      var a = 5
+      var a = 6
+      |]
     ]
   expectTypecheckPass ["var a = 5;"]
-  expectTypecheckPass [[text|
-                            type int2 int
-                            type int3 int
-                            type int4 int2
-                            var a int2 = int2(5)
-                            {
-                                type int2 int3
-                            }
-                            var b int3 = int3(7)
-                            var c int4 = int4(int2(9))
-                            type int5 int4
-                            var d int5 = int5(int4(int2(24)))
-                        |],
-                         [text|
-                            type int2 int
-                            type int3 int2
-                            var a = int2(5)
-                            var b = int3(int2(5))
-                            b = int3(int2(7))
-                            var c int3 = int3(a)
-                            c = int3(int2(9))
-                            c = b
-                        |],
-                           [text|
-                            type int2 int
-                            type int3 int2
-                            var a = int2(5)
-                            var b = int3(int2(5))
-                            a, b, c := a, int3(a), int3(int2(99))
-                        |]
-                         ]
+  expectTypecheckPass
+    [ [text|
+      type int2 int
+      type int3 int
+      type int4 int2
+      var a int2 = int2(5)
+      {
+          type int2 int3
+      }
+      var b int3 = int3(7)
+      var c int4 = int4(int2(9))
+      type int5 int4
+      var d int5 = int5(int4(int2(24)))
+      |]
+    , [text|
+      type int2 int
+      type int3 int2
+      var a = int2(5)
+      var b = int3(int2(5))
+      b = int3(int2(7))
+      var c int3 = int3(a)
+      c = int3(int2(9))
+      c = b
+      |]
+    , [text|
+      type int2 int
+      type int3 int2
+      var a = int2(5)
+      var b = int3(int2(5))
+      a, b, c := a, int3(a), int3(int2(99))
+      |]
+    ]
   expectTypecheckFail ["var b = a;"]
-  expectTypecheckFail [[text|
-                       type int2 int
-                       type int3 int
-                       type int4 int2
-                       var a int2 = int2(5)
-                       {
-                           type int2 int3
-                       }
-                       var b int3 = 7
-                       var c int4 = int2(9)
-                       type int5 int4
-                       var d int5 = int4(int2(24))
-                       |]]
+  expectTypecheckFail
+    [ [text|
+      type int2 int
+      type int3 int
+      type int4 int2
+      var a int2 = int2(5)
+      {
+          type int2 int3
+      }
+      var b int3 = 7
+      var c int4 = int2(9)
+      type int5 int4
+      var d int5 = int4(int2(24))
+      |]
+    ]
   expectTypecheckPassNoMain ["func init(){}"]
   expectTypecheckFailNoMain ["func init(a int){}"]
