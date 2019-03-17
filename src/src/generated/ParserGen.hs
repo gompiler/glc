@@ -974,17 +974,19 @@ happyReduce_84 = happySpecReduce_3  17# happyReduction_84
 happyReduction_84 happy_x_3
 	happy_x_2
 	happy_x_1
-	 =  case happyOut56 happy_x_2 of { happy_var_2 -> 
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	case happyOut56 happy_x_2 of { happy_var_2 -> 
 	happyIn46
-		 (Return $ Just happy_var_2
-	)}
+		 (Return (getOffset happy_var_1) $ Just happy_var_2
+	)}}
 
 happyReduce_85 = happySpecReduce_2  17# happyReduction_85
 happyReduction_85 happy_x_2
 	happy_x_1
-	 =  happyIn46
-		 (Return Nothing
-	)
+	 =  case happyOutTok happy_x_1 of { happy_var_1 -> 
+	happyIn46
+		 (Return (getOffset happy_var_1) Nothing
+	)}
 
 happyReduce_86 = happySpecReduce_2  18# happyReduction_86
 happyReduction_86 happy_x_2

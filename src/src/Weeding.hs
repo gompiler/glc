@@ -231,7 +231,7 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
       case reverse stmts of
         st:_ -> lastIsReturn st
         []   -> False
-    lastIsReturn (Return _) = True
+    lastIsReturn (Return _ _) = True
     lastIsReturn _ = False
 
 -- Helpers
@@ -286,7 +286,7 @@ instance BlankWeed Stmt where
   toIdent (Declare d) = toIdent d
   toIdent (Print el) = el >>= toIdent
   toIdent (Println el) = el >>= toIdent
-  toIdent (Return (Just e)) = toIdent e
+  toIdent (Return _ (Just e)) = toIdent e
   toIdent _ = []
 
 instance BlankWeed SimpleStmt where

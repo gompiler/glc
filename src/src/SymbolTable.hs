@@ -499,7 +499,7 @@ instance Symbolize Stmt C.Stmt where
   recurse st (Print el) = (fmap C.Print . sequence) <$> mapM (recBaseE st) el
   recurse st (Println el) =
     (fmap C.Println . sequence) <$> mapM (recBaseE st) el
-  recurse st (Return (Just e)) = do
+  recurse st (Return _ (Just e)) = do
     mt <- getRet st
     maybe
       (return $ Left $ createError e VoidRet)
@@ -513,7 +513,10 @@ instance Symbolize Stmt C.Stmt where
                 else return $ Left $ createError e (RetMismatch t' t))
            et')
       mt
-  recurse _ (Return Nothing) = return $ Right $ C.Return Nothing
+  recurse st (Return o Nothing) = do
+    mt <- getRet st
+    return $ maybe (Right $ C.Return Nothing) (\t -> Left $ createError o (RetMismatch Void t)) mt
+    
 
 -- | recurse wrapper but guarantee that expression is a base type for printing
 recBaseE :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' C.Expr)

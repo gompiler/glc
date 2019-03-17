@@ -239,8 +239,8 @@ Stmt        : BlockStmt ';'                                 { $1 }
             | println '(' Expr ')' ';'                      { Println [$3] }
             | println '(' ')' ';'                           { Println [] }
 
-            | return Expr ';'                               { Return $ Just $2 }
-            | return ';'                                    { Return Nothing }
+            | return Expr ';'                               { Return (getOffset $1) $ Just $2 }
+            | return ';'                                    { Return (getOffset $1) Nothing }
 
 {- Stmts is in reverse order -}
 Stmts       : Stmts Stmt                                    { $2 : $1 }

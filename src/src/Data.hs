@@ -190,7 +190,7 @@ data Stmt
   | Println [Expr]
   -- | See https://golang.org/ref/spec#Return_statements
   -- In golite, at most one expr can be returned
-  | Return (Maybe Expr)
+  | Return Offset (Maybe Expr)
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
