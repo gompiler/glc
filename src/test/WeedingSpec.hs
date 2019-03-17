@@ -117,6 +117,9 @@ spec = do
     , "var a, _, _ string"
     , "var a, _, _, b int"
     , "func _(){}"
+    , "_, a := 0, 0"
+    , "_ = 0"
+    , "func _(_ int) {}"
     , "type _ struct {}"
     , "type _ struct {_ int;}"
     ]
