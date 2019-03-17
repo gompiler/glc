@@ -149,7 +149,7 @@ infer st e@(Binary _ op i1 i2) =
         t1 <- ei1
         t2 <- ei2
         if t1 == t2
-          then Right t1
+          then Right PBool
           else Left $ createError e $ CompareMismatch t1 t2
     orderConstraint =
       inferConstraint st isOrdered (const PBool) (BadBinaryOp "ordered")
