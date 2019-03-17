@@ -2,15 +2,11 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeApplications #-}
 
-module SymbolTable where
-
-import           Control.Applicative (Alternative)
-
+module SymbolTable (typecheckP, symbol) where
 import           Control.Monad           (join)
 import           Control.Monad.ST
 import           Data
 import           Data.Either         (partitionEithers)
-import           Data.Foldable       (asum)
 
 import           Data.List.Extra     (concatUnzip)
 import           Data.List.NonEmpty  (toList, NonEmpty(..), fromList)
@@ -71,22 +67,14 @@ isNDefL st k = do
       return False
 
 -- | S.isDef  wrapper but insert message if not declared
-isDef :: SymbolTable s -> String -> ST s Bool
-isDef st k = do
-  res <- S.lookup st k
-  case res of
-    Just _ -> return True
-    Nothing -> do
-      _ <- S.addMessage st Nothing -- Signal error, key should be defined
-      return False
-
--- | Alias for asum <$> mapM f l
-am ::
-     (Alternative f1, Traversable t, Monad f2)
-  => (a1 -> f2 (f1 a2))
-  -> t a1
-  -> f2 (f1 a2)
-am f l = fmap asum (mapM f l)
+-- isDef :: SymbolTable s -> String -> ST s Bool
+-- isDef st k = do
+--   res <- S.lookup st k
+--   case res of
+--     Just _ -> return True
+--     Nothing -> do
+--       _ <- S.addMessage st Nothing -- Signal error, key should be defined
+--       return False
 
 -- Class to generalize traverse function for each AST structure
 -- also return the typechecked AST
@@ -797,13 +785,6 @@ instance ErrorEntry TypeCheckError where
         "Cannot return expression from void function"
       RetMismatch t1 t2 ->
         "Return expression resolves to type " ++ show t1 ++ " but function return type is " ++ show t2
-
--- | Extract top most scope from symbol table
-topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
-topScope st = st >>= topScope'
-
-topScope' :: SymbolTable s -> ST s (S.SymbolScope s Symbol)
-topScope' = S.topScope
 
 -- | Wrap a result of recurse inside a new scope
 wrap ::
