@@ -353,7 +353,7 @@ sameType st (e1,e2) = do
   et2 <- infer st e2
   return $ either Just (\t1 -> either Just (\t2 -> if t1 == t2 then Nothing else
                                                Just $ createError e1 (TypeMismatch2 e1 e2)) et2) et1
-                                                     
+
 instance Symbolize Stmt C.Stmt where
   recurse st (BlockStmt sl) = wrap st $ (\sl' -> C.BlockStmt <$> sequence sl') <$> (mapM (recurse st) sl)
   recurse st (SimpleStmt s) = seqRec st s >>= return . fmap C.SimpleStmt
@@ -379,23 +379,51 @@ instance Symbolize Stmt C.Stmt where
                ess'
            else return $ Left $ createError e (CondBool e t))
       et
-  recurse st (Switch ss me scs) = undefined -- wrap st $ do
-    -- wrap st $ do
-    --   r1 <-
-    --     case me of
-    --       Just e  -> am (recurse st) [H ss, H e]
-    --       Nothing -> recurse st ss
-    --   r2 <- am (recurse st) scs
-    --   return $ maybeJ [r1, r2]
+  recurse st (Switch ss me scs) = wrap st $ do
+    ess' <- recurse st ss
+    maybe
+      (do
+          escs' <- sequence <$> mapM (recurse' st PBool) scs
+          return $
+            join $ (\ss' -> (\scs' -> C.Switch ss' Nothing scs') <$> escs') <$> ess')
+      (\e -> do
+         t <- infer st e
+         ee' <- recurse st e
+         either
+           (return . Left)
+           (\t' ->
+              if isComparable t'
+                then do
+                escs' <- sequence <$> mapM (recurse' st t') scs
+                return $
+                     join $
+                     (\ss' ->
+                        join $
+                        (\scs' -> (\e' -> C.Switch ss' (Just e') scs') <$> ee') <$>
+                        escs') <$>
+                     ess'
+                else return $ Left $ createError e (NotCompSw t'))
+           t)
+      me
+      where
+        recurse' :: SymbolTable s -> SType -> SwitchCase -> ST s (Either ErrorMessage' C.SwitchCase)
+        recurse' st t (Case _ nEl s) = do
+          eel <- sequence <$> mapM (isType st t) (toList nEl)
+          es' <- recurse st s
+          return $ join $ (\el -> (\s' -> C.Case (fromList el) s') <$> es') <$> eel
+        recurse' st t (Default _ s) =
+          seqRec st s >>= return . fmap C.Default
+          -- Also return new expr after check
+        isType :: SymbolTable s -> SType -> Expr -> ST s (Either ErrorMessage' C.Expr)
+        isType st t e = do
+          et <- infer st e
+          either (return . Left) (\t2 -> if t2 == t then
+                    recurse st e
+                  else
+                    return $ Left $ createError e (NotComp t2 t)
+                       ) et
+        
   recurse st (For (ForClause ss1 me ss2) s) = undefined
-    -- wrap st $ do
-    --   r1 <-
-    --     am (recurse st) $
-    --     case me of
-    --       Just e  -> [H ss1, H e, H ss2]
-    --       Nothing -> [H ss1, H ss2]
-    --   r2 <- recurse st s
-    --   return $ maybeJ [r1, r2]
   recurse _ (Break _) = return $ Right C.Break
   recurse _ (Continue _) = return $ Right C.Continue
   recurse st (Declare d) = seqRec st d >>= return . fmap C.Declare
@@ -442,10 +470,6 @@ instance Symbolize Expr C.Expr where
   recurse st (Selector _ e _) = undefined -- recurse st e
   recurse st (Index _ e1 e2) = undefined -- am (recurse st) [e1, e2]
   recurse st (Arguments _ e el) = undefined -- am (recurse st) (e : el)
-
-instance Symbolize SwitchCase C.SwitchCase where
-  recurse st (Case _ nEl s) = undefined -- am (recurse st) $ map H (toList nEl) ++ [H s]
-  recurse st (Default _ s)  = undefined -- recurse st s
 
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =
@@ -541,6 +565,8 @@ data TypeCheckError
                   SType
   | CondBool Expr SType
   | NonNumeric Expr String
+  | NotCompSw SType
+  | NotComp SType SType
 
 instance ErrorEntry SymbolError where
   errorMessage c =
@@ -565,6 +591,10 @@ instance ErrorEntry TypeCheckError where
         "Condition " ++ show e ++ " resolves to " ++ show t ++ ", expecting a bool"
       NonNumeric e s ->
         show e ++ " is a non numeric type and cannot be " ++ s
+      NotCompSw t ->
+        "Switch statement expression resolves to type " ++ show t ++ " and is not comparable"
+      NotComp t1 t2 ->
+        "Cannot compare expression of type " ++ show t1 ++ " with type " ++ " (type of switch expression)"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
