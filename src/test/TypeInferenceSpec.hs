@@ -42,6 +42,62 @@ parseAndInferNoST expStr =
           "fi_func"
           (Func [("a", PFloat64), ("b", PInt)] (Just PInt))
 
+        -- type int_t int
+        -- var it_var int_t
+        _ <- SymTab.add st "int_t" (SType PInt)
+
+        _ <- SymTab.add
+          st
+          "it_var"
+          (Variable $ TypeMap (mkSIdStr' 1 "int_t") PInt)
+
+        -- type struct_type struct {a int; b int;}
+        -- var st_var struct_type
+
+        -- _ <- SymTab.app
+
+        _ <- SymTab.add
+          st
+          "struct_type"
+          (SType $ Struct [("a", PInt), ("b", PString)])
+
+        _ <- SymTab.add
+          st
+          "st_var"
+          (Variable $ TypeMap
+            (mkSIdStr' 1 "struct_type")
+            (Struct [("a", PInt), ("b", PString)]))
+
+        -- type as_type [5]string
+        -- var as_var as_type
+
+        _ <- SymTab.add
+          st
+          "as_type"
+          (SType $ Array 5 PString)
+
+        _ <- SymTab.add
+          st
+          "as_var"
+          (Variable $ TypeMap
+            (mkSIdStr' 1 "as_type")
+            (Array 5 PString))
+
+        -- type sr_type []rune
+        -- var sr_var sr_type
+
+        _ <- SymTab.add
+          st
+          "sr_type"
+          (SType $ Slice PRune)
+
+        _ <- SymTab.add
+          st
+          "sr_var"
+          (Variable $ TypeMap
+            (mkSIdStr' 1 "sr_type")
+            (Slice PRune))
+
         infer st e >>= (\et -> return $ either (Left . errgen) Right et)
 
 expectPass :: Stringable s => [(s, SType)]  -> SpecWith ()
@@ -83,9 +139,11 @@ spec = do
     , ("'a' + 'b'", PRune)
     , ("\"a\" + \"b\"", PString)
 
-    -- Int arrays
-    -- TODO: SHOULD TYPE INFERENCE HANDLE OUT OF BOUNDS ARRAY STUFF? PROBABLY
+    -- Arrays
     , ("int_5_arr[0]", PInt)
+
+    -- Slices
+    , ("int_slice[0]", PInt)
 
     -- Identity casts
     , ("int(5)", PInt)
@@ -124,7 +182,18 @@ spec = do
     , ("append(int_slice, 5)", Slice PInt)
 
     -- Functions
-    , ("fi_func(5.0, 6)", PInt)]
+    , ("fi_func(5.0, 6)", PInt)
+
+    -- Custom Type Definitions
+    , ("st_var.a", PInt)
+    , ("st_var.b", PString)
+
+    , ("as_var[0]", PString)
+    , ("as_var[it_var]", PString)
+
+    , ("append(sr_var, '5')", TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+    , ( "append(sr_var, rune(it_var))"
+      , TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))]
   expectFail
     [ "5-\"9\""
     , "5 + \"5\""
@@ -177,5 +246,10 @@ spec = do
     , "int_var[0]"
 
     -- Functions
-    , ("fi_func()")
-    , ("fi_func(5.0)")]
+    , "fi_func()"
+    , "fi_func(5.0)"
+
+    -- Custom Type Definitions
+    , "st_var.c"
+    , "append(sr_var, 5)"
+    , "as_var[float(it_var)]"]

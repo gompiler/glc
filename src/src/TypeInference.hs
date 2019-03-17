@@ -190,12 +190,15 @@ infer st ae@(AppendExpr _ e1 e2) = do
   exe <- infer st e2 -- Infer type of value to append (e2)
   return $
     case (sle, exe) of
-      (Right slt@(Slice t1), Right t2) ->
-        if t1 == t2
-          then Right slt
-          else Left $ createError ae $ AppendMismatch t1 t2
     -- TODO: MORE CASES FOR NICER ERRORS?
-      (Right t1, Right t2) -> Left $ createError ae $ BadAppend t1 t2
+      (Right st1, Right t2) ->
+        case (rpartSType st1) of
+          Slice t1 ->
+            if t1 == t2
+              then Right st1
+              else Left $ createError ae $ AppendMismatch t1 t2
+          _ -> Left $ createError ae $ BadAppend st1 t2
+        -- Left $ createError ae $ BadAppend t1 t2
       (Left em, _) -> Left em
       (_, Left em) -> Left em
 -- | Infer types of len expressions
@@ -226,13 +229,14 @@ infer st ce@(CapExpr _ expr) =
 -- * S resolves to a struct type that has a field named id.
 infer st se@(Selector _ expr (Identifier _ ident)) = do
   eitherSele <- infer st expr
-  return $ eitherSele >>= infer'
+  return $ eitherSele >>= (infer' . rpartSType)
+  -- TODO: Look into resolveSType / alternates for this
   where
     infer' :: SType -> Either ErrorMessage' SType
     infer' (Struct fdl) =
       case filter (\(fid, _) -> fid == ident) fdl of
-        _:(_, sft):_ -> Right sft
-        _            -> Left $ createError se $ NoField ident
+        [(_, sft)] -> Right sft
+        _          -> Left $ createError se $ NoField ident
     infer' t = Left $ createError se $ NonStruct t
 -- | Infer types of index expressions
 -- Indexing into a slice or an array (expr[index]) is well-typed if:
@@ -245,15 +249,17 @@ infer st ie@(Index _ e1 e2) = do
   return $ do
     t1 <- e1e
     t2 <- e2e
-    case (t1, t2) of
+    case (rpartSType t1, t2) of -- TODO: PROBABLY NEED TO SOMEHOW RESOLVE T2 TO SEE IF ITS AN INDEXy THING
       (Slice t, t')   -> indexable t t' "slice"
       (Array _ t, t') -> indexable t t' "array"
       (t, _)          -> Left $ createError ie $ NonIndexable t
      -- | Checks that second type is an int before returning type or error
   where
     indexable :: SType -> SType -> String -> Either ErrorMessage' SType
-    indexable t PInt _   = Right t
-    indexable t _ errTag = Left $ createError ie $ BadIndex errTag t
+    indexable t t' errTag =
+      case rpartSType t' of
+        PInt -> Right t
+        _    -> Left $ createError ie $ BadIndex errTag t'
 -- | Infer types of arguments (function call / typecast) expressions
 -- A function call expr(arg1, arg2, ..., argk) is well-typed if:
 -- * arg1, arg2, . . . , argk are well-typed and have types T1, T2, . . . , Tk respectively;
@@ -349,7 +355,12 @@ isInteger = (==) PInt
 isIntegerLike :: SType -> Bool
 isIntegerLike = flip elem [PInt, PRune]
 
--- | Resolves a defined type to a base type
+-- | Resolves a defined type to a base type, WITHOUT nested types
+rpartSType :: SType -> SType
+rpartSType (TypeMap _ st) = rpartSType st
+rpartSType t = t -- Other types
+
+-- | Resolves a defined type to a base type, including array types
 resolveSType :: SType -> SType
 resolveSType (Array i st) = Array i (resolveSType st)
 resolveSType (Slice st) = Slice (resolveSType st)
