@@ -191,7 +191,7 @@ spec = do
       // No new var
       a := 2
       |]
---    , [text| -- TODO currently failing
+--    , [text| -- TODO FAILING
 --      a := 1
 --      // No new var
 --      _, a := 2, 3
@@ -201,7 +201,13 @@ spec = do
       // Bad type
       a, b = 'a', 'b'
       |]
---    , [text|
+    , [text|
+      // Check against explicit type
+      var a, b, c int = 1, true, 3
+      |]
+--    , [text| -- TODO FAILING
+--      // Cannot use var if not defined
+--      var a, b, c int = 1, a, 3
 --      |]
 --    , [text|
 --      |]
@@ -259,7 +265,61 @@ spec = do
       func c() {
         init := 2
       }
+
+      // Main is not a keyword
+
+      func ma(main int) {
+      }
+
+      func mb() {
+        type main int
+      }
+
+      func mc() {
+        main := 2
+      }
       |]
+    , [text|
+      // Complex return
+
+      type int2 int
+
+      func a() int2 {
+        return int2(0)
+      }
+
+      func b() int2 {
+        // Doesn't affect anything
+        type int2 int
+        return a()
+      }
+
+      func c() float64 {
+        return float64(b()) * 2.0
+      }
+      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
     ]
   expectTypecheckFailNoMain
     -- Init must have no inputs, no return, and be correctly typed
@@ -330,14 +390,50 @@ spec = do
 --      // Main must be a function at the top level
 --      type main int
 --      |]
---    , [text|
---      |]
---    , [text|
---      |]
---    , [text|
---      |]
---    , [text|
---      |]
+    , [text|
+      // Main can only be declared once
+      func main() {
+      }
+
+      func main() {
+      }
+      |]
+    -- Returns
+    , [text|
+      func a() int {
+        // Bad return type
+        return a
+      }
+      |]
+    , [text|
+      // No returns allowed at all if void; even if type is fine
+      func a() {
+        return a()
+      }
+      |]
+    , [text|
+      // Complex return
+
+      type int2 int
+
+      func a() int2 {
+        return int2(0)
+      }
+
+      func b() int2 {
+        type int2 int
+        // Incompatible return type
+        return int2(3)
+      }
+      |]
+    , [text|
+      func a() int {
+        return 0
+        // Continue typecheck even if this will never happen
+        var a int = true
+        return 2
+      }
+      |]
 --    , [text|
 --      |]
 --    , [text|
