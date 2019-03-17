@@ -35,6 +35,7 @@ verify program =
   , progVerifyDecl
   , progVerifyBlank
   , returnVerify
+  , initReturnVerify
   ] <*>
   [program]
 
@@ -234,6 +235,28 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
     lastIsReturn (Return _ _) = True
     lastIsReturn _ = False
 
+initReturnVerify :: PureConstraint Program
+initReturnVerify program = asum errors
+  where
+    errors :: [Maybe ErrorMessage']
+    errors = map initReturnConstraint (topLevels program)
+
+initReturnConstraint :: TopDecl -> Maybe ErrorMessage'
+initReturnConstraint (TopDecl _) = Nothing
+initReturnConstraint (TopFuncDecl (FuncDecl (Identifier  _ fname) _ fb)) =
+  if fname == "init"
+    then checkInitReturn fb
+    else Nothing
+  where
+    checkInitReturn :: Stmt -> Maybe ErrorMessage'
+    checkInitReturn (If _ ifb elseb) =
+      checkInitReturn ifb <|>
+      checkInitReturn elseb
+    checkInitReturn (For _ forb) = checkInitReturn forb
+    checkInitReturn (BlockStmt stmts) = asum $ map checkInitReturn stmts
+    checkInitReturn (Return o (Just _)) = Just $ createError o InitReturn
+    checkInitReturn _ = Nothing
+
 -- Helpers
 -- | Extracts block statements from top-level function declarations
 topToStmt :: TopDecl -> Maybe Stmt
@@ -348,6 +371,7 @@ data WeedingError
   | ContinueScope
   | BreakScope
   | LastReturn
+  | InitReturn
   deriving (Show, Eq)
 
 instance ErrorEntry WeedingError where
@@ -361,3 +385,4 @@ instance ErrorEntry WeedingError where
       ContinueScope -> "Continue statement must occur in for loop"
       BreakScope -> "Break statement must occur in for loop or switch statement"
       LastReturn -> "Function declaration with non-void return type must have return as last statement"
+      InitReturn -> "init function cannot have non-void return"

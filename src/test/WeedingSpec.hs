@@ -167,6 +167,29 @@ spec = do
           return
         } else {}
       }
+      |]
+    , [text|
+      func init() {
+        return
+      }
+      |]
+    , [text|
+      func init() {
+        {
+          return
+        }
+      }
+      |]
+    , [text|
+      func init() {
+        if true {
+          return
+        } else {}
+      }
+      |]
+    , [text|
+      func init() {
+      }
       |]]
   expectWeedError $
     map
@@ -318,4 +341,48 @@ spec = do
       func test() int {
       }
       |]
-    ]
+      , [text|
+      func init() {
+        return 5
+      }
+      |]
+    , [text|
+      func init() {
+        {
+          return 6
+          println("aaaaaa")
+        }
+      }
+      |]
+    , [text|
+      func init() {
+        if true {
+          return 3
+          for {}
+        } else {
+          return
+        }
+      }
+      |]
+    , [text|
+      func init() {
+        for i := 0; i < 10; i++ {
+          return 5555
+        }
+        return
+      }
+      |]
+    , [text|
+      func init() {
+        {
+          return
+          return
+          return 10
+          return 10
+          return
+          return
+        }
+        return
+        return
+      }
+      |]]
