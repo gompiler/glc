@@ -124,7 +124,7 @@ spec = do
                             var b int3 = 7
                             var c int4 = int2(9)
                             type int5 int4
-                            var d int5 = int4(int2(24))     
+                            var d int5 = int4(int2(24))
                         |],
                          [text|
                             type int2 int

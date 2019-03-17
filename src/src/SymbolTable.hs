@@ -558,7 +558,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
           (return . Left)
           (\t' -> do
              me <- checkIds st (Variable t') "Variable " neIdl
-             maybe (checkDecl st (resolveSType t') (toList neIdl) el) (return . Left) me)
+             maybe (checkDecl st t' (toList neIdl) el) (return . Left) me)
           et
       Right nel -> do
         me <- checkIds st (Variable Infer) "Variable " neIdl
