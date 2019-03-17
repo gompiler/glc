@@ -1,45 +1,40 @@
 
 # Table of Contents
 
-1.  [Design Decisions](#org6812b6f)
-    1.  [Weeding](#org52cd87d)
-    2.  [Symbol Table](#org500a10e)
-        1.  [Scoping Rules](#org088f142)
-    3.  [Type Checker](#orgef6e7e9)
-    4.  [Invalid Programs](#org613a59d)
-2.  [Team](#org423c131)
-    1.  [Team Organization](#orgaa545ac)
-    2.  [Contributions](#org0ed05e0)
+1.  [Weeding](#org677efff)
+2.  [Symbol Table](#org89e66a8)
+    1.  [Scoping Rules](#orgb05e36c)
+3.  [Type Checker](#org503f165)
+4.  [New AST](#org09cbb1f)
+5.  [Invalid Programs](#orgf2543dc)
+6.  [Team](#orgd8c0132)
+    1.  [Team Organization](#orgc5d502f)
+    2.  [Contributions](#org67ba362)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 2.  \newpage
 
 
-<a id="org6812b6f"></a>
+<a id="org677efff"></a>
 
-# Design Decisions
-
-
-<a id="org52cd87d"></a>
-
-## Weeding
+# Weeding
 
 We implemented additional weeding passes for certain constraints
 that could be verified either at the weeding level or the typecheck
-level because it was easier to check via weeding. The constraints
-we checked in weeding for this milestone are:
+level because it was easier to check via weeding. The constraints we
+checked in weeding for this milestone are:
 
 -   Correct use of the blank identifier. It was much easier to recurse
     through the AST and gather all identifiers that cannot be blank
-    and then just check this whole list. Additionally, because we
-    have offsets in our AST, we could easily point to the offending
-    blank identifier without having to make error messages for each
-    specific incorrect usage, as it is obvious what the incorrect
-    usage when we print out where the blank identifier is.
+    and then just check this whole list. Additionally, because we have
+    offsets in our AST, we could easily point to the offending blank
+    identifier without having to make error messages for each specific
+    incorrect usage, as it is obvious what the incorrect usage when we
+    print out where the blank identifier is.
 -   Function bodies ending in return statements. It was easier to do
     a single weeding pass because otherwise we'd have to recurse
     differently on functions that have a return type versus functions
-    that don't have a return type during typechecking, essentially
+    that don't have a return type during typechecking. Essentially,
     we'd need two versions of typechecking statements, which was not
     deemed worth it compared to a single weeding pass.
 -   `init` function declaration not having any non void return
@@ -47,48 +42,44 @@ we checked in weeding for this milestone are:
     weeding pass then require context/a different traversal function
     given the context of our current function.
 -   \`main\` function cannot return non void. Straightforward weeding
-    check. Could also have been done via typecheck, but it is
-    slightly easier to implement weeding passes (no symbol table
-    required).
+    check. Could also have been done via typecheck, but it is slightly
+    easier to implement weeding passes (no symbol table required).
 
 
-<a id="org500a10e"></a>
+<a id="org89e66a8"></a>
 
-## Symbol Table
+# Symbol Table
 
-In Haskell, data structures are typically immutable, and much of
-the language is designed around this. One of the main design
-decisions made around the symbol table was deciding whether to go
-with an immutable or mutable symbol table. In an immutable symbol
-table, a new symbol table would have to be made every time a scope
-is added or modified. Right away, despite this being a conceptually
-better fit for the language, the potential performance degradation
-of constantly re-building the symbol table becomes evident.
+In Haskell, data structures are typically immutable, and much of the
+language is designed around this. One of the main design decisions
+made around the symbol table was deciding whether to go with an
+immutable or mutable symbol table. In an immutable symbol table, a
+new symbol table would have to be made every time a scope is added
+or modified. Right away, despite this being a conceptually better
+fit for the language, the potential performance degradation of
+constantly re-building the symbol table becomes evident.
 
 As a result of this performance impact, we decided on using a
-mutable symbol table, with mutability supported via Haskell's
-[ST](https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html)
-monad. The constraint provided for
-[runST](https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html#v:runST)
-(which removes the `ST` (or mutability) from something) is proven
-to keep functions pure (see
-[A
-Logical Relation for Monadic Encapsulation of State by Amin Timany
-et al.](https://iris-project.org/pdfs/2018-popl-runST-final.pdf)). This made the `ST` monad a better choice than other
-monads providing mutability (the main example being `IO`, but if we
-used `IO` then all our functions after the symbol table generation
-would be bound by `IO`, i.e. impure and also harder to deal with as
-they are wrapped by an unnecessary monad). The trade-off of this
-decision was a large increase in the difficulty implementing the
-symbol table, which made up a huge portion of the work for this
-milestone, however, once we finish using the symbol table, our
-final result (a typechecked/simplified proven correct AST) is pure
-and very easy to manipulate for `codegen` in the next milestone.
+mutable symbol table, with mutability supported via Haskell's [ST](https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html)
+monad. The constraint provided for [runST](https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html#v:runST) (which removes the `ST` (or
+mutability) from something) is proven to keep functions pure (see
+[A Logical
+Relation for Monadic Encapsulation of State by Amin Timany et
+al.](https://iris-project.org/pdfs/2018-popl-runST-final.pdf)). This made the `ST` monad a better choice than other monads
+providing mutability (the main example being `IO`, but if we used
+`IO` then all our functions after the symbol table generation would
+be bound by `IO`, i.e. impure and also harder to deal with as they
+are wrapped by an unnecessary monad). The trade-off of this decision
+was a large increase in the difficulty implementing the symbol
+table, which made up a huge portion of the work for this milestone,
+however, once we finish using the symbol table, our final result (a
+typechecked/simplified proven correct AST) is pure and very easy to
+manipulate for `codegen` in the next milestone.
 
 
-<a id="org088f142"></a>
+<a id="orgb05e36c"></a>
 
-### Scoping Rules
+## Scoping Rules
 
 The scoping rules we used/considered are as follows:
 
@@ -112,34 +103,34 @@ The scoping rules we used/considered are as follows:
     put in a nested scope
 
 
-<a id="orgef6e7e9"></a>
+<a id="org503f165"></a>
 
-## Type Checker
+# Type Checker
 
 For type-checking, we decided on a single-pass approach which
 combined symbol table generation and statement type-checking. This
 improves performance, and is possible as a product of GoLite's
 declaration rules, which specify that identifiers must be declared
-before they can be used. The other approach we considered was
-having a type annotated AST (types of expressions would be
-contained in the AST) so that we could get rid of mutability (the
-symbol table) as soon as possible (also some of us did a similar
-thing for the assignment, but this was mainly relevant for the fact
-that print statements in codegen need to know the type of the
-expression they're printing in C), however we decided on doing all
-the typechecking at the same time as symbol table generation
-because type inference has to be done to generate this new AST and
-type inference requires typechecking (`"a" + 5` has no inferred
-type, but we only know that because we typecheck it). Therefore
-we'd generate an annotated AST only to typecheck things that aren't
+before they can be used. The other approach we considered was having
+a type annotated AST (types of expressions would be contained in the
+AST) so that we could get rid of mutability (the symbol table) as
+soon as possible (also some of us did a similar thing for the
+assignment, but this was mainly relevant for the fact that print
+statements in codegen need to know the type of the expression
+they're printing in C), however we decided on doing all the
+typechecking at the same time as symbol table generation because
+type inference has to be done to generate this new AST and type
+inference requires typechecking (`"a" + 5` has no inferred type, but
+we only know that because we typecheck it). Therefore we'd generate
+an annotated AST only to typecheck things that aren't
 expressions. But at that point, since we are already doing one
 in-depth pass of the original AST when generating the symbol table,
-we might as well do the other half of typechecking at the same
-phase (it seemed weird to split half of typechecking with a symbol
-table and half without it and might have been more feasible if type
+we might as well do the other half of typechecking at the same phase
+(it seemed weird to split half of typechecking with a symbol table
+and half without it and might have been more feasible if type
 inference did not require typechecking, but that makes no
-sense). Therefore, after the one pass of our original AST, the
-final result is a typechecked AST with no type annotation.
+sense). Therefore, after the one pass of our original AST, the final
+result is a typechecked AST with no type annotation.
 
 Additionally, we decided to resolve all type mappings (except for
 structs) to their base types when generating this new AST (all the
@@ -149,9 +140,31 @@ mappings). Therefore our new AST was also able to get rid of type
 declarations (except for structs).
 
 
-<a id="org613a59d"></a>
+<a id="org09cbb1f"></a>
 
-## Invalid Programs
+# New AST
+
+As mentioned above, dependency on the SymbolTable results in a
+dependency on the ST monad, which adds complexity to each operation.
+As a result, our goal after typechecking is to create a new AST,
+which reflects the new constraints we enforce.  Namely:
+
+-   Typecheck errors are caught beforehand, so we no longer need offsets,
+    or error breakpoints.
+-   All variables are properly typechecked, and can therefore reference an 
+    explicit type. Each type is composed of parent types up until
+    the primitives.  This includes cases like function signatures,
+    where we can associate each parameter with a type instead of
+    allowing lists of identifiers to map to a single type.  In
+    preparation for codegen, we can then use our new AST
+    exclusively, without any other mutable data structures. Any
+    additinoal information we need can be added back into the AST,
+    with minimal changes to models used at previous stages.
+
+
+<a id="orgf2543dc"></a>
+
+# Invalid Programs
 
 Summary of the check in each invalid program:
 
@@ -207,25 +220,32 @@ Summary of the check in each invalid program:
     already declared.
 
 
-<a id="org423c131"></a>
+<a id="orgd8c0132"></a>
 
 # Team
 
 
-<a id="orgaa545ac"></a>
+<a id="orgc5d502f"></a>
 
-## TODO Team Organization
+## Team Organization
+
+The three main components for this milestone are the symbol table,
+type checking rules, and new AST + tests.  Each component was lead
+by Julian, David, and Allan respectively. As there is high coupling
+between each component, we continually sought feedback from one
+another. Leads are in charge of understanding the overall component
+and in resolving concerns or requests from other members.
 
 
-<a id="org0ed05e0"></a>
+<a id="org67ba362"></a>
 
 ## Contributions
 
 -   **Julian Lore:** Implemented weeding of blank identifiers, symbol
     table generation, typecheck (aside from type inference and
-    expression typechecking)
+    expression typechecking) and submitted invalid pro
 -   **David Lougheed:** Worked on expression type-checking and type inference,
     including tests. Also worked on the weeding pass for return
     statements.
--   **Allan Wang:** TODO
+-   **Allan Wang:** Added data structures for error messages, and supported explicit error checking in tests. Created the data model for symbol table core. Added hspec tests.
 
