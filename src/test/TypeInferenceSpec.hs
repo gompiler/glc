@@ -75,8 +75,8 @@ parseAndInferNoST expStr = either Left runExpr parseResult
             (Variable $ TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
         either (Left . errgen) Right <$> infer st e
 
-expectPass :: Stringable s => [(s, SType)] -> SpecWith ()
-expectPass =
+expectPass :: Stringable s => String -> [(s, SType)] -> SpecWith ()
+expectPass tag =
   expectBase
     "success"
     (\(s, etyp) ->
@@ -94,10 +94,10 @@ expectPass =
                   "\n\nbut failed with\n\nexpected " ++
                   show etyp ++ ", got " ++ show rtyp)
     (\(s, _) -> toString s)
-    "typeinf"
+    ("typeinf: " ++ tag)
 
-expectFail :: Stringable s => [s] -> SpecWith ()
-expectFail =
+expectFail :: Stringable s => String -> [s] -> SpecWith ()
+expectFail tag =
   expectBase
     "fail"
     (\s ->
@@ -108,11 +108,16 @@ expectFail =
            toString s ++ "\n\nbut succeeded with\n\n" ++ show styp
          _ -> return ())
     toString
-    "typeinf"
+    ("typeinf: " ++ tag)
 
 spec :: Spec
-spec = do
+spec
+  -- | Binary operations
+  -- * Subexpressions must be well typed
+  -- * Both expressions must have same type
+ = do
   expectPass
+    "binary operations"
     [ ("false || false", PBool)
     , ("false && false", PBool)
     , ("5 + 6", PInt)
@@ -123,64 +128,9 @@ spec = do
     , ("int_5_arr[0]", PInt)
     -- Slices
     , ("int_slice[0]", PInt)
-    -----------------------------------------------------
-    -- Type casts
-    -- type(expr) is valid if:
-    -- type is base type (int, float64, bool, rune, string)
-    -- expr is well type and
-    -- * type == typeof expr
-    -- * typeof type and typeof expr are both numeric
-    -- * typeof type is string and typeof expr is rune or int
-    -----------------------------------------------------
-    -- Identity casts
-    , ("int(5)", PInt)
-    , ("float64(5.0)", PFloat64)
-    , ("rune('a')", PRune)
-    , ("string(\"a\")", PString)
-    , ("string(`a`)", PString)
-    , ("bool(true)", PBool)
-    -- Numeric casts
-    , ("float64(5)", PFloat64)
-    , ("float64('a')", PFloat64)
-    , ("int(5.0)", PInt)
-    , ("int('a')", PInt)
-    , ("rune(5.0)", PRune)
-    , ("rune(5)", PRune)
-    -- Numeric var casts
-    , ("int(int_var)", PInt)
-    -- Numeric expr casts
-    , ("int(5.0 - 1. * float_var)", PInt)
-    , ("float64('a' + 'b' - rune_var)", PFloat64)
-    , ("rune(2 % 9 * int_var)", PRune)
-    -- String casts
-    , ("string(-2)", PString)
-    , ("string(5)", PString)
-    , ("string('a')", PString)
-    -- Primitive variables
-    , ("bool_var", PBool)
-    , ("int_var", PInt)
-    , ("float_var", PFloat64)
-    , ("rune_var", PRune)
-    , ("string_var", PString)
-    -- Built-ins
-    , ("len(int_5_arr)", PInt)
-    , ("len(int_slice)", PInt)
-    , ("len(string_var)", PInt)
-    , ("cap(int_5_arr)", PInt)
-    , ("cap(int_slice)", PInt)
-    , ("append(int_slice, 5)", Slice PInt)
-    -- Functions
-    , ("fi_func(5.0, 6)", PInt)
-    -- Custom Type Definitions
-    , ("st_var.a", PInt)
-    , ("st_var.b", PString)
-    , ("as_var[0]", PString)
-    , ("as_var[it_var]", PString)
-    , ("append(sr_var, '5')", TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
-    , ( "append(sr_var, rune(it_var))"
-      , TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
     ]
   expectFail
+    "binary operations"
     [ "5-\"9\""
     , "5 + \"5\""
     -- Bad boolean operations
@@ -191,15 +141,68 @@ spec = do
     , "'a' || 'b'"
     , "'a' && 'b'"
     , "\"a\" || \"b\""
-    -----------------------------------------------------
-    -- Bad Type casts
-    -----------------------------------------------------
+    ]
+  -- | Type casts
+  -- type(expr) is valid if:
+  -- type is base type (int, float64, bool, rune, string)
+  -- expr is well type and
+  -- * type == typeof expr
+  -- * typeof type and typeof expr are both numeric
+  -- * typeof type is string and typeof expr is rune or int
+  expectPass
+    "casting"
+     -- Identity casts
+    [ ("int(5)", PInt)
+    , ("float64(5.0)", PFloat64)
+    , ("rune('a')", PRune)
+    , ("string(\"a\")", PString)
+    , ("string(`a`)", PString)
+    , ("bool(true)", PBool)
+    -- Identity var casts
+    , ("int(int_var)", PInt)
+    , ("float64(float_var)", PFloat64)
+    , ("rune(rune_var)", PRune)
+    , ("string(string_var)", PString)
+    , ("bool(bool_var)", PBool)
+    -- Numeric casts
+    , ("float64(5)", PFloat64)
+    , ("float64('a')", PFloat64)
+    , ("int(5.0)", PInt)
+    , ("int('a')", PInt)
+    , ("rune(5.0)", PRune)
+    , ("rune(5)", PRune)
+    -- Numeric expr casts
+    , ("int(5.0 - 1. * float_var)", PInt)
+    , ("float64('a' + 'b' - rune_var)", PFloat64)
+    , ("rune(2 % 9 * int_var)", PRune)
+    -- String casts
+    , ("string(-2)", PString)
+    , ("string(5)", PString)
+    , ("string('a')", PString)
+    , ("string('a' + 'b')", PString)
+    -- String var casts
+    , ("string(int_var)", PString)
+    , ("string(rune_var)", PString)
+    -- Nested casts
+    , ("string(rune(5 + int(5.0)) + 'c' + rune(float64('a') + 2.0))", PString)
+    ]
+  expectFail
+    "binary operations"
     -- Bad string casts
-    , "string(5.0)"
-    , "string(true)"
-    --, "string(int)" -- TODO Failing
-    -- Bad built-ins - TODO
-    , "len()"
+    ["string(5.0)", "string(true)"]
+  -- | Variables + build ins
+  expectPass
+    "build in"
+    [ ("len(int_5_arr)", PInt)
+    , ("len(int_slice)", PInt)
+    , ("len(string_var)", PInt)
+    , ("cap(int_5_arr)", PInt)
+    , ("cap(int_slice)", PInt)
+    , ("append(int_slice, 5)", Slice PInt)
+    ]
+  expectFail
+    "built in"
+    [ "len()"
     , "len(bool_var)"
     , "len(int_var)"
     , "len(float_var)"
@@ -220,8 +223,30 @@ spec = do
     , "append(int_slice, 5.0)"
     , "append(int_slice, 'a')"
     , "append(int_slice, true)"
+    ]
+  expectPass
+    "custom"
+    -- Primitive variables
+    [ ("bool_var", PBool)
+    , ("int_var", PInt)
+    , ("float_var", PFloat64)
+    , ("rune_var", PRune)
+    , ("string_var", PString)
+    -- Functions
+    , ("fi_func(5.0, 6)", PInt)
+    -- Custom Type Definitions
+    , ("st_var.a", PInt)
+    , ("st_var.b", PString)
+    , ("as_var[0]", PString)
+    , ("as_var[it_var]", PString)
+    , ("append(sr_var, '5')", TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+    , ( "append(sr_var, rune(it_var))"
+      , TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+    ]
+  expectFail
+    "custom"
     -- Bad identifier
-    , "does_not_exist"
+    [ "does_not_exist"
     , "does_not_exist()"
     , "does_not_exist.field"
     -- Arrays
