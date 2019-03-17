@@ -42,7 +42,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
         -- var it_var int_t
         _ <- SymTab.add st "int_t" (SType PInt)
         _ <-
-          SymTab.add st "it_var" (Variable $ TypeMap (mkSIdStr' 1 "int_t") PInt)
+          SymTab.add st "it_var" (Variable $ TypeMap (mkSIdStr' 0 "int_t") PInt)
         -- type struct_type struct {a int; b int;}
         -- var st_var struct_type
         -- _ <- SymTab.app
@@ -61,12 +61,13 @@ parseAndInferNoST expStr = either Left runExpr parseResult
                (Struct [("a", PInt), ("b", PString)]))
         -- type as_type [5]string
         -- var as_var as_type
+        _ <- SymTab.add st "a5s" (Variable $ Array 5 PString)
         _ <- SymTab.add st "as_type" (SType $ Array 5 PString)
         _ <-
           SymTab.add
             st
             "as_var"
-            (Variable $ TypeMap (mkSIdStr' 1 "as_type") (Array 5 PString))
+            (Variable $ TypeMap (mkSIdStr' 0 "as_type") (Array 5 PString))
         -- type sr_type []rune
         -- var sr_var sr_type
         _ <- SymTab.add st "sr_type" (SType $ Slice PRune)
@@ -74,7 +75,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
           SymTab.add
             st
             "sr_var"
-            (Variable $ TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+            (Variable $ TypeMap (mkSIdStr' 0 "sr_type") (Slice PRune))
         either (Left . errgen) Right <$> infer st e
 
 expectPass :: Stringable s => String -> [(s, SType)] -> SpecWith ()
@@ -204,6 +205,8 @@ spec
     , ("string(rune_var)", PString)
     -- Nested casts
     , ("string(rune(5 + int(5.0)) + 'c' + rune(float64('a') + 2.0))", PString)
+    -- Custom type casts
+    , ("int_t(7)", TypeMap (mkSIdStr' 0 "int_t") (PInt))
     ]
   expectFail
     "casting"
@@ -258,9 +261,9 @@ spec
     , ("st_var.b", PString)
     , ("as_var[0]", PString)
     , ("as_var[it_var]", PString)
-    , ("append(sr_var, '5')", TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+    , ("append(sr_var, '5')", TypeMap (mkSIdStr' 0 "sr_type") (Slice PRune))
     , ( "append(sr_var, rune(it_var))"
-      , TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+      , TypeMap (mkSIdStr' 0 "sr_type") (Slice PRune))
     ]
   expectFail
     "custom"
@@ -277,4 +280,5 @@ spec
     , "st_var.c"
     , "append(sr_var, 5)"
     , "as_var[float(it_var)]"
+    , "as_type(a5s)" -- cast needs base types
     ]

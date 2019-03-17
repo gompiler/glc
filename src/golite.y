@@ -163,7 +163,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 
 %%
 
-Program     : package ident ';' TopDecls                    { Program {package=getInnerString($2), topLevels=(reverse $4)} }
+Program     : package ident ';' TopDecls                    { Program {package=(getIdent $2), topLevels=(reverse $4)} }
 
 TopDecls    : TopDecls TopDecl                              { $2 : $1 }
             | {- empty -}                                   { [] }
@@ -239,8 +239,8 @@ Stmt        : BlockStmt ';'                                 { $1 }
             | println '(' Expr ')' ';'                      { Println [$3] }
             | println '(' ')' ';'                           { Println [] }
 
-            | return Expr ';'                               { Return $ Just $2 }
-            | return ';'                                    { Return Nothing }
+            | return Expr ';'                               { Return (getOffset $1) $ Just $2 }
+            | return ';'                                    { Return (getOffset $1) Nothing }
 
 {- Stmts is in reverse order -}
 Stmts       : Stmts Stmt                                    { $2 : $1 }
@@ -290,7 +290,7 @@ Elses       : else IfStmt                                   { $2 }
 ForStmt     : for BlockStmt                                 { For (ForClause EmptyStmt Nothing EmptyStmt) $2 }
             | for Expr BlockStmt                            { For (ForClause EmptyStmt (Just $2) EmptyStmt) $3 }
             | for SimpleStmt Expr ';' SimpleStNE BlockStmt  { For (ForClause $2 (Just $3) $5) $6 }
-            | for SimpleStmt ';' SimpleStNE BlockStmt       { For (ForClause EmptyStmt Nothing ($4)) $5 }
+            | for SimpleStmt ';' SimpleStNE BlockStmt       { For (ForClause $2 Nothing ($4)) $5 }
 
 {- Spec: https://golang.org/ref/spec#Switch_statements -}
 SwitchStmt  : switch SimpleStmt Expr '{' SwitchBody '}'     { Switch $2 (Just $3) (reverse $5) }

@@ -1,11 +1,12 @@
 module Symbol where
 
+import qualified CheckedData      as T (Ident (..), Scope (..),
+                                        ScopedIdent (..))
 import           Control.Monad.ST
 import           Data             (Identifier (..))
 import           Data.List        (intercalate)
 import           ErrorBundle
 import qualified SymbolTableCore  as S
-import qualified TypedData        as T (Scope (..), ScopedIdent (..))
 
 -- We define new types for symbols and types here
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
@@ -44,6 +45,7 @@ data SType
   | PRune
   | PString
   | Infer -- Infer the type at typechecking, not at symbol table generation
+  | Void -- For the type of Arguments when calling a void function (which is permissible for ExprStmts)
   deriving (Eq)
 
 instance Show Symbol where
@@ -61,7 +63,7 @@ instance Show Symbol where
       showDef :: SType -> String
       showDef t =
         case t of
-          TypeMap (T.ScopedIdent _ (Identifier _ name)) t' ->
+          TypeMap (T.ScopedIdent _ (T.Ident name)) t' ->
             name ++ " -> " ++ showDef t'
           _ -> show t
 
@@ -73,23 +75,22 @@ instance Show SType where
       Struct fds ->
         "struct { " ++
         concatMap (\(s, t') -> s ++ " " ++ show t' ++ "; ") fds ++ "}"
-      TypeMap (T.ScopedIdent _ (Identifier _ name)) _ ->
-        name -- ++ " -> " ++ show t'
+      TypeMap (T.ScopedIdent _ (T.Ident name)) _ -> name -- ++ " -> " ++ show t'
       PInt -> "int"
       PFloat64 -> "float64"
       PBool -> "bool"
       PRune -> "rune"
       PString -> "string"
       Infer -> "<infer>"
+      Void -> "void"
 
 -- | Resolve type of an Identifier
 resolve ::
      Identifier
   -> SymbolTable s
   -> ErrorMessage'
-  -> ErrorMessage'
   -> ST s (Either ErrorMessage' SType)
-resolve (Identifier _ vname) st notDeclError voidFuncError =
+resolve (Identifier _ vname) st notDeclError =
   let idv = vname
    in do res <- S.lookup st idv
          case res of
@@ -97,7 +98,7 @@ resolve (Identifier _ vname) st notDeclError voidFuncError =
            Just (scope, t) ->
              return $
              case resolve' t scope idv of
-               Nothing -> Left voidFuncError -- createError ident (VoidFunc ident)
+               Nothing -> Right Void -- createError ident (VoidFunc ident)
                Just t' -> Right t'
     -- | Resolve symbol to type
   where
@@ -118,7 +119,7 @@ resolve (Identifier _ vname) st notDeclError voidFuncError =
 
 -- | Take Symbol table scope and string to make ScopedIdent, add dummy offset
 mkSIdStr :: S.Scope -> String -> SIdent
-mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
+mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (T.Ident str)
 
 mkSIdStr' :: Int -> String -> SIdent
-mkSIdStr' s str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
+mkSIdStr' s str = T.ScopedIdent (T.Scope s) (T.Ident str)

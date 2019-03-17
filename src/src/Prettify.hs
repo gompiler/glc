@@ -69,7 +69,7 @@ instance Prettify Identifiers where
   prettify' = prettify''
 
 instance Prettify Program where
-  prettify' (Program package' topLevels') =
+  prettify' (Program (Identifier _ package') topLevels') =
     ("package " ++ package') : (topLevels' >>= (("" :) . prettify'))
 
 instance Prettify TopDecl where
@@ -162,7 +162,7 @@ instance Prettify Stmt where
     ["print(" ++ intercalate ", " (es >>= prettify') ++ ")"]
   prettify' (Println es) =
     ["println(" ++ intercalate ", " (es >>= prettify') ++ ")"]
-  prettify' (Return m) = ["return"] `skipNewLine` maybe [] prettify' m
+  prettify' (Return _ m) = ["return"] `skipNewLine` maybe [] prettify' m
 
 instance Prettify SwitchCase where
   prettify' (Case _ e s)  = ("case " ++ prettify e ++ ":") : tab (prettify' s)

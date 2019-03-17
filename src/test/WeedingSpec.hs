@@ -85,10 +85,32 @@ expectWeedFailNoMain =
     toString
     "wrapped stmt"
 
+expectWeedFailBlankPackage :: Stringable s => [s] -> SpecWith ()
+expectWeedFailBlankPackage =
+  expectBase
+    "weed fail"
+    (const $
+     let program = "package _\n"
+      in case weed program of
+           Right p ->
+             expectationFailure $
+             "Expected failure on:\n\n" ++
+             program ++ "\n\nbut got program\n\n" ++ show p
+           _ -> return ())
+    toString
+    "package identifier"
+
 spec :: Spec
 spec = do
   expectWeedPass
-    ["if true { }", "a.b()", "a++", "switch a {case a: _ = 5;}", "_ := 5"]
+    [ "if true { }"
+    , "a.b()"
+    , "a++"
+    , "switch a {case a: _ = 5;}"
+    , "_ := 5"
+    , "_, a := 0, 0"
+    , "_ = 0"
+    ]
   expectWeedPassNoMain
     [ ""
     , "var a = 5"
@@ -102,6 +124,8 @@ spec = do
     , "var a, _, _ string"
     , "var a, _, _, b int"
     , "func _(){}"
+    , "func _(_ int) {}"
+    , "func _(_, _ int) {}"
     , "type _ struct {}"
     , "type _ struct {_ int;}"
     ]
@@ -167,7 +191,31 @@ spec = do
           return
         } else {}
       }
-      |]]
+      |]
+    , [text|
+      func init() {
+        return
+      }
+      |]
+    , [text|
+      func init() {
+        {
+          return
+        }
+      }
+      |]
+    , [text|
+      func init() {
+        if true {
+          return
+        } else {}
+      }
+      |]
+    , [text|
+      func init() {
+      }
+      |]
+    ]
   expectWeedError $
     map
       (\(s, e) ->
@@ -224,6 +272,8 @@ spec = do
     , "type g struct { a _; }"
     , "var a = 1, 3"
     , "var a float = 1, 3"
+    , "func _(ab _) {}"
+    , "func _(_, _ _) {}"
     ]
   expectWeedError
     [ ( [text|
@@ -318,4 +368,50 @@ spec = do
       func test() int {
       }
       |]
+    , [text|
+      func init() {
+        return 5
+      }
+      |]
+    , [text|
+      func init() {
+        {
+          return 6
+          println("aaaaaa")
+        }
+      }
+      |]
+    , [text|
+      func init() {
+        if true {
+          return 3
+          for {}
+        } else {
+          return
+        }
+      }
+      |]
+    , [text|
+      func init() {
+        for i := 0; i < 10; i++ {
+          return 5555
+        }
+        return
+      }
+      |]
+    , [text|
+      func init() {
+        {
+          return
+          return
+          return 10
+          return 10
+          return
+          return
+        }
+        return
+        return
+      }
+      |]
     ]
+  expectWeedFailBlankPackage [""]

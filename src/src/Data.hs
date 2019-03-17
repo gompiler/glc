@@ -24,7 +24,7 @@ instance ErrorBreakpoint Identifiers where
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
 data Program = Program
-  { package   :: String
+  { package   :: Identifier
   , topLevels :: [TopDecl]
   } deriving (Show, Eq)
 
@@ -190,7 +190,7 @@ data Stmt
   | Println [Expr]
   -- | See https://golang.org/ref/spec#Return_statements
   -- In golite, at most one expr can be returned
-  | Return (Maybe Expr)
+  | Return Offset (Maybe Expr)
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
