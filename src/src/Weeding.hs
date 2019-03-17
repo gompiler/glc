@@ -142,7 +142,7 @@ progVerifyBlank :: PureConstraint Program
 progVerifyBlank program = asum errors
   where
     errors :: [Maybe ErrorMessage']
-    errors = map blankVerify (topLevels program >>= toIdent)
+    errors = map blankVerify (toIdent program)
 
 blankVerify :: Identifier -> Maybe ErrorMessage'
 blankVerify (Identifier o str) =
@@ -278,6 +278,10 @@ class BlankWeed a where
   toIdent :: a -> [Identifier]
 
 -- | Extract identifiers that cannot be blank
+instance BlankWeed Program where
+  toIdent prg =
+    package prg : (topLevels prg >>= toIdent)
+
 instance BlankWeed TopDecl where
   toIdent (TopFuncDecl (FuncDecl _ (Signature (Parameters pdl) Nothing) stmt)) =
     pdIdentl ++ stmtIdentl

@@ -85,6 +85,21 @@ expectWeedFailNoMain =
     toString
     "wrapped stmt"
 
+expectWeedFailBlankPackage :: Stringable s => [s] -> SpecWith ()
+expectWeedFailBlankPackage =
+  expectBase
+  "weed fail"
+  (const $
+    let program = "package _\n"
+     in case weed program of
+          Right p ->
+            expectationFailure $
+            "Expected failure on:\n\n" ++
+            program ++ "\n\nbut got program\n\n" ++ show p
+          _ -> return ())
+  toString
+  "package identifier"
+
 spec :: Spec
 spec = do
   expectWeedPass
@@ -386,3 +401,4 @@ spec = do
         return
       }
       |]]
+  expectWeedFailBlankPackage [""]

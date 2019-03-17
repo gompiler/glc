@@ -94,8 +94,8 @@ class Typify a
   toType :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
 
 instance Symbolize Program C.Program where
-  recurse st (Program pkg tdl) =
-    wrap st $ fmap (C.Program pkg) <$> recurse st tdl
+  recurse st (Program (Identifier _ pkg) tdl) =
+    wrap st $ fmap (C.Program (C.Ident pkg)) <$> recurse st tdl
 
 instance Symbolize TopDecl C.TopDecl where
   recurse st (TopDecl d)      = fmap C.TopDecl <$> recurse st d

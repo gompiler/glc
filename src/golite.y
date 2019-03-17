@@ -163,7 +163,7 @@ import qualified Data.List.NonEmpty as NonEmpty
 
 %%
 
-Program     : package ident ';' TopDecls                    { Program {package=getInnerString($2), topLevels=(reverse $4)} }
+Program     : package ident ';' TopDecls                    { Program {package=(getIdent $2), topLevels=(reverse $4)} }
 
 TopDecls    : TopDecls TopDecl                              { $2 : $1 }
             | {- empty -}                                   { [] }
