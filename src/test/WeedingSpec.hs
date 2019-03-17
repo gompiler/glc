@@ -274,7 +274,7 @@ spec = do
           println("555")
         }
       }
-      |
+      |]
     , [text|
       func test() int {
       }
