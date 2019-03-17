@@ -1,8 +1,6 @@
 module TypeInference
   ( ExpressionTypeError
   , infer
-  , inferR
-  , resolveSType
   , isNumeric
   , isComparable
   , isBase
@@ -49,6 +47,7 @@ data ExpressionTypeError
                 Identifier
   | ExprVoidFunc Identifier
   | NotVar Identifier
+  | ExpectBaseType SType
   deriving (Show, Eq)
 
 instance ErrorEntry ExpressionTypeError where
@@ -85,6 +84,8 @@ instance ErrorEntry ExpressionTypeError where
         "Void function " ++ vname ++ " cannot be used in expression"
       NotVar (Identifier _ vname) ->
         "Non-variable identifier " ++ vname ++ " cannot be used in this context"
+      ExpectBaseType styp ->
+        "Cast expects base type; non-base type " ++ show styp ++ " provided"
 
 -- | Main type inference function
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
@@ -319,11 +320,20 @@ infer st ae@(Arguments _ expr args) = do
   where
     tryCast :: SType -> SType -> Either ErrorMessage' SType
     tryCast ft ct =
-      if resolveSType ct == resolveSType ft ||
-         (isNumeric (resolveSType ct) && isNumeric (resolveSType ft)) ||
-         (resolveSType ft == PString && isIntegerLike (resolveSType ct))
-        then Right ft
-        else Left $ createError ae $ IncompatibleCast ft ct
+      case (isBase rct, isBase rft) of
+        (True, True) ->
+          if rct == rft ||
+            (isNumeric rct && isNumeric rft) ||
+            (rft == PString && isIntegerLike rct)
+            then Right ft
+            else Left $ createError ae $ IncompatibleCast ft ct
+        (False, _)    -> Left $ createError ae $ ExpectBaseType rct
+        (True, False) -> Left $ createError ae $ ExpectBaseType rft
+      where
+        rct :: SType
+        rct = rpartSType ct
+        rft :: SType
+        rft = rpartSType ft
 
 inferConstraint ::
      SymbolTable s -- st
@@ -384,22 +394,7 @@ isComparable styp =
     TypeMap _ styp' -> isComparable styp'
     _               -> True
 
--- | Resolves a defined type to a base type, WITHOUT nested types
+-- | Resolves a defined type to a base type, WITHOUT nested types (arrays, etc)
 rpartSType :: SType -> SType
 rpartSType (TypeMap _ st) = rpartSType st
 rpartSType t              = t -- Other types
-
--- | Resolves a defined type to a base type, including array types
-resolveSType :: SType -> SType
-resolveSType (Array i st) = Array i (resolveSType st)
-resolveSType (Slice st) = Slice (resolveSType st)
-resolveSType (Struct fl) =
-  Struct $ map (\(ident, st) -> (ident, resolveSType st)) fl
-resolveSType (TypeMap _ st) = resolveSType st
-resolveSType t = t -- Other types
-
--- | Infer but resolve to base type
-inferR :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
-inferR st e = do
-  et' <- infer st e
-  return $ resolveSType <$> et'

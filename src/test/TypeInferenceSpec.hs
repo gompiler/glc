@@ -61,6 +61,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
                (Struct [("a", PInt), ("b", PString)]))
         -- type as_type [5]string
         -- var as_var as_type
+        _ <- SymTab.add st "a5s" (Variable $ Array 5 PString)
         _ <- SymTab.add st "as_type" (SType $ Array 5 PString)
         _ <-
           SymTab.add
@@ -279,4 +280,5 @@ spec
     , "st_var.c"
     , "append(sr_var, 5)"
     , "as_var[float(it_var)]"
+    , "as_type(a5s)" -- cast needs base types
     ]
