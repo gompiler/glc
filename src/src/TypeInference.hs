@@ -104,7 +104,7 @@ infer st e@(Unary _ Not inner) =
   inferConstraint
     st
     isBoolean
-    NE.head
+    (const PBool)
     (BadUnaryOp "boolean")
     e
     (fromList [inner])
@@ -113,7 +113,7 @@ infer st e@(Unary _ BitComplement inner) =
   inferConstraint
     st
     isInteger
-    NE.head
+    (const PInt)
     (BadUnaryOp "integer")
     e
     (fromList [inner])
@@ -140,7 +140,7 @@ infer st e@(Binary _ op i1 i2) =
     innerList :: NonEmpty Expr
     innerList = fromList [i1, i2]
     andOrConstraint =
-      inferConstraint st isBoolean NE.head (BadBinaryOp "boolean")
+      inferConstraint st isBoolean (const PBool) (BadBinaryOp "boolean")
     comparableConstraint _ _ -- Special ugly case
      = do
       ei1 <- infer st i1
@@ -167,7 +167,7 @@ infer st e@(Binary _ op i1 i2) =
     arithConstraint =
       inferConstraint st isNumeric NE.head (BadBinaryOp "numeric")
     arithIntConstraint =
-      inferConstraint st isInteger NE.head (BadBinaryOp "integer")
+      inferConstraint st isInteger (const PInt) (BadBinaryOp "integer")
 -- | "Infer" the types of base literals
 infer _ (Lit l) =
   return $
