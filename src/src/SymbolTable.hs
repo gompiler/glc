@@ -348,7 +348,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       -- convert op and 2 expressions to binary op, infer type of this to make sure it makes sense
     where
       aop2e :: BinaryOp -> (Expr, Expr) -> Expr
-      aop2e op (e1, e2) = Binary (Offset 0) op e1 e2
+      aop2e op (e1, e2) = Binary (offset e1) op e1 e2
       aop2aop' :: AssignOp -> C.AssignOp
       aop2aop' (AssignOp (Just aop')) = C.AssignOp $ Just $ aopConv aop'
       aop2aop' (AssignOp Nothing)     = C.AssignOp Nothing
