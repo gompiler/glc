@@ -45,6 +45,7 @@ data SType
   | PRune
   | PString
   | Infer -- Infer the type at typechecking, not at symbol table generation
+  | Void -- For the type of Arguments when calling a void function (which is permissible for ExprStmts)
   deriving (Eq)
 
 instance Show Symbol where
@@ -81,15 +82,15 @@ instance Show SType where
       PRune -> "rune"
       PString -> "string"
       Infer -> "<infer>"
+      Void -> "void"
 
 -- | Resolve type of an Identifier
 resolve ::
      Identifier
   -> SymbolTable s
   -> ErrorMessage'
-  -> ErrorMessage'
   -> ST s (Either ErrorMessage' SType)
-resolve (Identifier _ vname) st notDeclError voidFuncError =
+resolve (Identifier _ vname) st notDeclError =
   let idv = vname
    in do res <- S.lookup st idv
          case res of
@@ -97,7 +98,7 @@ resolve (Identifier _ vname) st notDeclError voidFuncError =
            Just (scope, t) ->
              return $
              case resolve' t scope idv of
-               Nothing -> Left voidFuncError -- createError ident (VoidFunc ident)
+               Nothing -> Right Void -- createError ident (VoidFunc ident)
                Just t' -> Right t'
     -- | Resolve symbol to type
   where

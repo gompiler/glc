@@ -284,8 +284,8 @@ instance Symbolize SimpleStmt C.SimpleStmt where
               Just (_, s) ->
                 return $ Left $ createError ident' (NotLVal ident' s)
               Nothing -> do
-                _ <- add st2 vname (Variable t)
-                scope <- S.scopeLevel st2
+                _ <- add st2 vname (Variable Infer) -- Add infer so that we don't print out the actual type
+                scope <- S.insert' st2 vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
                 return $ Right (True, mkSIdStr scope vname)
   recurse _ EmptyStmt = return $ Right C.EmptyStmt
   recurse st (ExprStmt e) = fmap C.ExprStmt <$> recurse st e -- Verify that expr only uses things that are defined
@@ -833,7 +833,6 @@ instance Typify Type where
       ident
       st
       (createError ident (NotDecl "Type " ident))
-      (createError ident (VoidFunc ident))
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
