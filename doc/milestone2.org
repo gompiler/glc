@@ -24,6 +24,10 @@ TODO
 *** Scoping Rules
 TODO
 ** Type Checker
+For type-checking, we decided on a single-pass approach which combined symbol
+table generation and statement type-checking. This improves performance, and is
+possible as a product of GoLite's declaration rules, which specify that
+identifiers must be declared before they can be used.
 TODO
 ** Invalid Programs
 Summary of the check in each invalid program:
