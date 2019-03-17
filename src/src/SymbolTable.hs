@@ -277,10 +277,10 @@ instance Symbolize SimpleStmt C.SimpleStmt where
             case val of
               Just (scope, Variable t2) ->
                 return $
-                if t == t2
-                  then Right (False, mkSIdStr scope vname)
-                       -- if locally defined, check if type matches
-                  else Left $ createError e (TypeMismatch2 ident' t t2)
+                  if t2 == t
+                    then Right (False, mkSIdStr scope vname)
+                            -- if locally defined, check if type matches
+                    else Left $ createError e (TypeMismatch2 ident' t t2)
               Just (_, s) ->
                 return $ Left $ createError ident' (NotLVal ident' s)
               Nothing -> do
@@ -461,7 +461,7 @@ instance Symbolize Stmt C.Stmt where
                then recurse st' e
                else return $ Left $ createError e (NotComp t2 t))
           et
-  recurse st (For (ForClause ss1 me ss2) s) = do
+  recurse st (For (ForClause ss1 me ss2) s) = wrap st $ do
     ess1' <- recurse st ss1
     ess2' <- recurse st ss2
     es' <- recurse st s
@@ -606,11 +606,11 @@ instance Symbolize VarDecl' [C.VarDecl'] where
         -> Identifier
         -> ST s (Either ErrorMessage' C.VarDecl')
       checkDecI st' e (Identifier _ vname) = do
-        scope <- S.scopeLevel st'
         et' <- infer st' e
         either
           (return . Left)
           (\t' -> do
+             scope <- S.insert' st' vname (Variable t') -- Update type of variable 
              ee' <- recurse st' e
              return $
                either
