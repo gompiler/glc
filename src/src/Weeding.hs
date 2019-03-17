@@ -243,15 +243,14 @@ initReturnVerify program = asum errors
 
 initReturnConstraint :: TopDecl -> Maybe ErrorMessage'
 initReturnConstraint (TopDecl _) = Nothing
-initReturnConstraint (TopFuncDecl (FuncDecl (Identifier  _ fname) _ fb)) =
+initReturnConstraint (TopFuncDecl (FuncDecl (Identifier _ fname) _ fb)) =
   if fname == "init"
     then checkInitReturn fb
     else Nothing
   where
     checkInitReturn :: Stmt -> Maybe ErrorMessage'
     checkInitReturn (If _ ifb elseb) =
-      checkInitReturn ifb <|>
-      checkInitReturn elseb
+      checkInitReturn ifb <|> checkInitReturn elseb
     checkInitReturn (For _ forb) = checkInitReturn forb
     checkInitReturn (BlockStmt stmts) = asum $ map checkInitReturn stmts
     checkInitReturn (Return o (Just _)) = Just $ createError o InitReturn
@@ -279,8 +278,7 @@ class BlankWeed a where
 
 -- | Extract identifiers that cannot be blank
 instance BlankWeed Program where
-  toIdent prg =
-    package prg : (topLevels prg >>= toIdent)
+  toIdent prg = package prg : (topLevels prg >>= toIdent)
 
 instance BlankWeed TopDecl where
   toIdent (TopFuncDecl (FuncDecl _ (Signature (Parameters pdl) Nothing) stmt)) =
@@ -388,5 +386,6 @@ instance ErrorEntry WeedingError where
       ForPostDecl -> "For post-statement cannot be declaration"
       ContinueScope -> "Continue statement must occur in for loop"
       BreakScope -> "Break statement must occur in for loop or switch statement"
-      LastReturn -> "Function declaration with non-void return type must have return as last statement"
+      LastReturn ->
+        "Function declaration with non-void return type must have return as last statement"
       InitReturn -> "init function cannot have non-void return"
