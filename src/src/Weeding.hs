@@ -294,7 +294,7 @@ instance BlankWeed TopDecl where
   toIdent (TopDecl d) = toIdent d
 
 instance BlankWeed ParameterDecl where
-  toIdent (ParameterDecl il _) = toList il
+  toIdent (ParameterDecl _ pt) = toIdent pt
 
 instance BlankWeed Stmt where
   toIdent (BlockStmt stmts) = stmts >>= toIdent
