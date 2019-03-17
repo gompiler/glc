@@ -422,15 +422,67 @@ instance Symbolize Stmt C.Stmt where
                   else
                     return $ Left $ createError e (NotComp t2 t)
                        ) et
-        
-  recurse st (For (ForClause ss1 me ss2) s) = undefined
+  recurse st (For (ForClause ss1 me ss2) s) = do
+    ess1' <- recurse st ss1
+    ess2' <- recurse st ss2
+    es' <- recurse st s
+    maybe
+      (return $
+       join $
+       (\ss1' ->
+          join $
+          (\ss2' ->
+             join $
+             (\s' -> Right $ C.For (C.ForClause ss1' Nothing ss2') s') <$> es') <$>
+          ess2') <$>
+       ess1')
+      (\e -> do
+         et' <- infer st e
+         either
+           (return . Left)
+           (\t' ->
+              if t' == PBool
+                then return $
+                     join $
+                     (\ss1' ->
+                        join $
+                        (\ss2' ->
+                           join $
+                           (\s' ->
+                              Right $ C.For (C.ForClause ss1' Nothing ss2') s') <$>
+                           es') <$>
+                        ess2') <$>
+                     ess1'
+                else return $ Left $ createError e (CondBool e t'))
+           et')
+      me
   recurse _ (Break _) = return $ Right C.Break
   recurse _ (Continue _) = return $ Right C.Continue
   recurse st (Declare d) = seqRec st d >>= return . fmap C.Declare
-  recurse st (Print el) = (\el' -> C.Print <$> sequence el') <$> (mapM (recurse st) el)
-  recurse st (Println el) = (\el' -> C.Println <$> sequence el') <$> (mapM (recurse st) el)
-  recurse st (Return (Just e)) = undefined -- recurse st e
-  recurse _ (Return Nothing) = undefined -- return Nothing
+  recurse st (Print el) = (\el' -> C.Print <$> sequence el') <$> (mapM (recBaseE st) el)
+  recurse st (Println el) = (\el' -> C.Println <$> sequence el') <$> (mapM (recBaseE st) el)
+  recurse st (Return (Just e)) = do
+    mt <- getRet st
+    maybe
+      (return $ Left $ createError e VoidRet)
+      (\t -> do
+         et' <- infer st e
+         either
+           (return . Left)
+           (\t' ->
+              if t == t'
+                then seqRec st e >>= return . fmap (C.Return . Just)
+                else return $ Left $ createError e (RetMismatch t' t))
+           et')
+      mt
+  recurse _ (Return Nothing) = return $ Right $ C.Return Nothing
+
+-- | recurse wrapper but guarantee that expression is a base type for printing
+recBaseE :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' C.Expr)
+recBaseE st e = do
+  et <- infer st e
+  either (return . Left) (\t -> if isBase t then recurse st e
+                                else return $ Left $ createError e (NonBaseP t)) et
 
 instance Symbolize Decl C.Decl where
   recurse st (VarDecl vdl) = undefined -- am (recurse st) vdl
@@ -567,6 +619,9 @@ data TypeCheckError
   | NonNumeric Expr String
   | NotCompSw SType
   | NotComp SType SType
+  | NonBaseP SType
+  | VoidRet
+  | RetMismatch SType SType
 
 instance ErrorEntry SymbolError where
   errorMessage c =
@@ -595,6 +650,12 @@ instance ErrorEntry TypeCheckError where
         "Switch statement expression resolves to type " ++ show t ++ " and is not comparable"
       NotComp t1 t2 ->
         "Cannot compare expression of type " ++ show t1 ++ " with type " ++ " (type of switch expression)"
+      NonBaseP t ->
+        "Expression resolves to non base type " ++ show t ++ " and cannot be printed"
+      VoidRet ->
+        "Cannot return expression from void function"
+      RetMismatch t1 t2 ->
+        "Return expression resolves to type " ++ show t1 ++ " but function return type is " ++ show t2
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
@@ -637,6 +698,16 @@ toBase t = case t of
              PString -> C.Type "string"
              _ -> error "Infer has no base type" -- Should not happen
 
+-- | Get the return value of function we are currently declaring, aka latest declared function
+getRet :: SymbolTable s -> ST s (Maybe SType)
+getRet st = do
+  l <- S.getMessages st
+  return $ getRet' (reverse l) -- Reverse to get latest declared rather than first
+  where
+    getRet' :: [Maybe SymbolInfo] -> Maybe SType
+    getRet' [] = Nothing
+    getRet' (Just (_, (Func _ mt), _):t) = mt
+    getRet' (_:t) = getRet' t
 
 
 -- | Convert SymbolInfo list to String (pass through show) to get string representation of symbol table

@@ -3,6 +3,7 @@ module TypeInference
   , infer
   , isNumeric
   , isComparable
+  , isBase
   ) where
 
 import           Control.Monad.ST
@@ -357,6 +358,9 @@ isAddable = isOrdered
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
 isOrdered = flip elem [PInt, PFloat64, PRune, PString]
+  
+isBase :: SType -> Bool
+isBase = flip elem [PInt, PFloat64, PBool, PRune, PString]
 
 isBoolean :: SType -> Bool
 isBoolean = (==) PBool
