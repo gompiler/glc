@@ -60,7 +60,7 @@ data VarDecl' =
 
 -- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =
-  TypeDef' Ident
+  TypeDef' ScopedIdent
            Type
   -- For mappings that aren't structs, we resolve them to their base types so we don't need to define them anymore
   | NoDef

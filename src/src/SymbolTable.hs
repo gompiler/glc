@@ -558,10 +558,22 @@ instance Symbolize VarDecl' [C.VarDecl'] where
           et'
 
 instance Symbolize TypeDef' C.TypeDef' where
-  recurse st (TypeDef' ident (_, t)) = undefined
-    -- do
-    -- et <- toType st t
-    -- either (return . Just) (\t' -> checkId st (SType t') "Type " ident) et
+  recurse st (TypeDef' ident@(Identifier _ vname) (_, t)) = do
+    et <- toType st t
+    either
+      (return . Left)
+      (\t' -> do
+         me <- (checkId st (SType t') "Type " ident)
+         maybe
+           (case t' -- Ignore all types except for structs, as structs will be the only types we will have to define
+                  of
+              Struct _ -> do
+                scope <- S.scopeLevel st
+                return $ Right $ C.TypeDef' (mkSIdStr scope vname) (toBase t')
+              _ -> return $ Right $ C.NoDef)
+           (return . Left)
+           me)
+      et
 
 instance Symbolize Expr C.Expr where
   recurse st (Unary _ _ e) = undefined -- recurse st e
