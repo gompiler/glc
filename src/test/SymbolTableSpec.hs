@@ -113,7 +113,24 @@ spec = do
       |]
     ]
   expectTypecheckPass
-    ["var a = 5;", "type _ int", "type int int", "type float64 int"]
+    [ "var a = 5;"
+    , "type _ int"
+    , "type int int"
+    , "type float64 int"
+    -- Assignment ops
+    , "var a int; a += 2;"
+    , "var a rune; a -= 'a'"
+    , "var a float64; a *= 2.0"
+    ]
+  expectTypecheckFail
+    -- Assignment ops
+    -- Constants not allowed
+    [ "var a bool; a += 2"
+    , "var s string; s *= `s`"
+--    , "2 += 3" -- TODO FAILING
+--    , "'b' -= 'c'"
+--    , "'a' = 'b'"
+    ]
   expectTypecheckPass
     [ [text|
       type int2 int
