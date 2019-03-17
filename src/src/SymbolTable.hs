@@ -294,7 +294,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
     either
       (return . Left)
       (\t ->
-         if isNumeric t
+         if isNumeric t && isAddr e
            then fmap C.Increment <$> recurse st e
            else return $ Left $ createError e (NonNumeric e "incremented"))
       et
@@ -303,7 +303,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
     either
       (return . Left)
       (\t ->
-         if isNumeric t
+         if isNumeric t && isAddr e
            then fmap C.Decrement <$> recurse st e
            else return $ Left $ createError e (NonNumeric e "decremented"))
       et
@@ -937,6 +937,14 @@ toBase (Struct fls) = C.StructType (map f2fd fls)
     f2fd (s, t) = C.FieldDecl (C.Ident s) (toBase t)
 toBase (TypeMap _ t) = toBase t
 toBase t = C.Type $ C.Ident $ show t -- The last ones are primitive types
+
+-- | Is the expression addressable, aka an lvalue that we can assign to?
+isAddr :: Expr -> Bool
+isAddr e = case e of
+             Var _ -> True
+             Selector _ _ _ -> True
+             Index _ _ _ -> True
+             _ -> False
 
 -- | Get the return value of function we are currently declaring, aka latest declared function
 getRet :: SymbolTable s -> ST s (Maybe SType)
