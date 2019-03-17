@@ -270,7 +270,7 @@ class (Parsable a) =>
 
 instance ParseTest Program where
   tag = "program"
-  placeholder = Program {package = "temp", topLevels = []}
+  placeholder = Program {package = Identifier o "temp", topLevels = []}
 
 instance ParseTest Stmt where
   tag = "stmt"
