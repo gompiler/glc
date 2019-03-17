@@ -267,7 +267,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                        if t == t2
                        then Right $ (False, mkSIdStr scope vname)
                        -- if locally defined, check if type matches
-                       else Left $ createError e (TypeMismatch1 ident t t2)
+                       else Left $ createError e (TypeMismatch2 ident t t2)
                      Just (_, s) -> return $ Left $ createError ident (NotLVal ident s)
                      Nothing -> do
                        msi <- add st vname (Variable t)
@@ -334,18 +334,23 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       aop2e :: BinaryOp -> (Expr, Expr) -> Expr
       aop2e op (e1,e2) = Binary (Offset 0) op e1 e2
       aop2aop' :: AssignOp -> C.AssignOp
-      aop2aop' (AssignOp (Just aop)) = C.AssignOp $ Just $ case aop of
-                                                           Add -> C.Add
-                                                           Subtract -> C.Subtract
-                                                           BitOr -> C.BitOr
-                                                           BitXor -> C.BitXor
-                                                           Multiply -> C.Multiply
-                                                           Divide -> C.Divide
-                                                           Remainder -> C.Remainder
-                                                           ShiftL -> C.ShiftL
-                                                           ShiftR -> C.ShiftR
-                                                           BitAnd -> C.BitAnd
-                                                           BitClear -> C.BitClear
+      aop2aop' (AssignOp (Just aop)) = C.AssignOp $ Just $ aopConv aop
+
+-- | Convert ArithmOp from original AST to new AST
+aopConv :: ArithmOp -> C.ArithmOp
+aopConv op =
+  case op of
+    Add -> C.Add
+    Subtract -> C.Subtract
+    BitOr -> C.BitOr
+    BitXor -> C.BitXor
+    Multiply -> C.Multiply
+    Divide -> C.Divide
+    Remainder -> C.Remainder
+    ShiftL -> C.ShiftL
+    ShiftR -> C.ShiftR
+    BitAnd -> C.BitAnd
+    BitClear -> C.BitClear
 
 -- | Check if two expressions have the same type
 sameType :: SymbolTable s -> (Expr, Expr) -> ST s (Maybe ErrorMessage')
@@ -576,22 +581,90 @@ instance Symbolize TypeDef' C.TypeDef' where
       et
 
 instance Symbolize Expr C.Expr where
-  recurse st (Unary _ _ e) = undefined -- recurse st e
-  recurse st (Binary _ _ e1 e2) = undefined -- am (recurse st) [e1, e2]
-  recurse _ (Lit _) = undefined -- return Nothing -- No identifiers to check here
+  recurse st eu@(Unary _ op e) = do
+    et' <- infer st eu -- Use typecheck from type inference
+    either
+      (return . Left)
+      (const $ seqRec st e >>= return . fmap (\ec -> C.Unary (convOp op) ec))
+      et'
+    where
+      convOp :: UnaryOp -> C.UnaryOp
+      convOp op = case op of
+                    Pos -> C.Pos
+                    Neg -> C.Neg
+                    Not -> C.Not
+                    BitComplement -> C.BitComplement
+  recurse st e@(Binary _ op e1 e2) = do
+    et' <- infer st e
+    ee1' <- recurse st e1
+    ee2' <- recurse st e2
+    either (return . Left) (const $ return $ join $ (\e1' -> (\e2' -> C.Binary (convOp op) e1' e2') <$> ee2') <$> ee1') et'
+      where
+        convOp :: BinaryOp -> C.BinaryOp
+        convOp op = case op of
+                      Or -> C.Or
+                      And -> C.And
+                      Arithm aop -> C.Arithm $ aopConv aop
+                      Data.EQ -> C.EQ
+                      NEQ -> C.EQ
+                      Data.LT -> C.LT
+                      LEQ -> C.LEQ
+                      Data.GT -> C.GT
+                      GEQ -> C.GEQ
+  recurse _ (Lit lit) = return $ Right $ case lit of
+    IntLit _ _ _ -> C.Lit $ C.IntLit $ intTypeToInt lit
+    FloatLit _ fs -> C.Lit $ C.FloatLit $ read $ case (break (== '.') fs) of -- Separate by String by . and check if any side is empty
+                                                   (n, '.':[]) -> fs ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
+                                                   ([], '.':n) -> '0' : fs -- Prepend 0 because .1 is not a valid Float
+                                                   (_, _)      -> fs
+    RuneLit _ cs -> C.Lit $ C.RuneLit $ case cs!!1 of
+                                            '\\' -> (case cs!!2 of
+                                                          'a'  -> '\a'
+                                                          'b'  -> '\b'
+                                                          'f'  -> '\f'
+                                                          'n'  -> '\n'
+                                                          'r'  -> '\r'
+                                                          't'  -> '\t'
+                                                          'v'  -> '\v'
+                                                          '\'' -> '\''
+                                                          '\\' -> '\\')
+                                            c -> c
+    StringLit _ _ s -> C.Lit $ C.StringLit s -- TODO: Resolve separate types of strings
   recurse st (Var ident@(Identifier _ vname)) -- Should be defined, otherwise we're trying to use undefined variable
-   = undefined
-    -- do
-    -- isdef <- isDef st vname
-    -- if isdef
-    --   then return Nothing
-    --   else return $ Just $ createError ident (NotDecl "Variable " ident)
-  recurse st (AppendExpr _ e1 e2) = undefined -- am (recurse st) [e1, e2]
-  recurse st (LenExpr _ e) = undefined -- recurse st e
-  recurse st (CapExpr _ e) = undefined -- recurse st e
-  recurse st (Selector _ e _) = undefined -- recurse st e
-  recurse st (Index _ e1 e2) = undefined -- am (recurse st) [e1, e2]
-  recurse st (Arguments _ e el) = undefined -- am (recurse st) (e : el)
+   = do
+    msi <- S.lookup st vname
+    return $
+      maybe
+        (Left $ createError ident (NotDecl "Variable " ident))
+        (\(scope, _) -> Right $ C.Var (mkSIdStr scope vname))
+        msi
+  recurse st e@(AppendExpr _ e1 e2) = do
+    et' <- infer st e
+    ee1' <- recurse st e1
+    ee2' <- recurse st e2
+    either (return . Left) (const $ return $ join $ (\e1' -> (\e2' -> C.AppendExpr e1' e2') <$> ee2') <$> ee1') et'
+  recurse st ec@(LenExpr _ e) = do
+    ect' <- infer st ec
+    ee' <- recurse st e
+    either (return . Left) (const $ return $ (\e' -> C.LenExpr e') <$> ee') ect'
+  recurse st ec@(CapExpr _ e) = do
+    ect' <- infer st ec
+    ee' <- recurse st e
+    either (return . Left) (const $ return $ (\e' -> C.CapExpr e') <$> ee') ect'
+  recurse st ec@(Selector _ e (Identifier _ vname)) = do
+    ect' <- infer st ec
+    ee' <- recurse st e
+    either (return . Left) (const $ return $ (\e' -> C.Selector e' (C.Ident vname)) <$> ee') ect'
+  recurse st e@(Index _ e1 e2) = do
+    et' <- infer st e
+    ee1' <- recurse st e1
+    ee2' <- recurse st e2
+    either (return . Left) (const $ return $ join $ (\e1' -> (\e2' -> C.Index e1' e2') <$> ee2') <$> ee1') et'
+  recurse st ec@(Arguments _ e el) = do
+    ect' <- infer st ec
+    ee' <- recurse st e
+    eel' <- mapM (recurse st) el
+    either (return . Left) (const $ return $ join $ (\e' -> (\el' -> C.Arguments e' el') <$> (sequence eel')) <$> ee') ect'
 
 intTypeToInt :: Literal -> Int
 intTypeToInt (IntLit _ t s) =

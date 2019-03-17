@@ -202,7 +202,7 @@ data Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var Ident
+  | Var ScopedIdent
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
@@ -228,14 +228,6 @@ data Expr
   -- Eg expr(expr1, expr2, ...)
   | Arguments Expr
               [Expr]
-              Signature
-  -- | Variant of arguments that is known to be a type cast
-  -- Eg int(expr)
-  -- Constraint is that there must only be one expression within parentheses,
-  -- and that the cast expression is a known type
-  | TypeConvert Type
-                Expr
-                Type
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Literal
