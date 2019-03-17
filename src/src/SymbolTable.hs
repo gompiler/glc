@@ -110,10 +110,22 @@ instance Symbolize FuncDecl C.FuncDecl
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
-  recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) = do
-    notdef <- isNDefL st vname -- Check if defined in symbol table
-    if notdef
-      then do
+  recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
+    if vname == "init" then maybe (if null pdl then (do
+                                                        scope <- S.scopeLevel st -- Should be 1
+                                                        fmap (C.FuncDecl (mkSIdStr scope vname) (C.Signature (C.Parameters []) Nothing)) <$> (recurse st body))
+                                   else do
+                                      _ <- S.addMessage st Nothing
+                                      return $ Left $ createError ident InitParams
+                                     ) (\(_,t') -> do
+                                         et2 <- toType st t'
+                                         _ <- S.addMessage st Nothing
+                                         return $ join $ (\t2 -> Left $ createError ident (InitNVoid t2)) <$> et2
+                                     ) t
+    else do
+      notdef <- isNDefL st vname -- Check if defined in symbol table
+      if notdef
+        then do
         _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
         epl <- checkParams st pdl -- Either ErrorMessage' [Param]
       -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
@@ -854,6 +866,8 @@ data SymbolError
   | VoidFunc Identifier
   | NotVar Identifier
   | ShortDec
+  | InitNVoid SType
+  | InitParams
   deriving (Show, Eq)
 
 data TypeCheckError
@@ -885,7 +899,10 @@ instance ErrorEntry SymbolError where
       NotVar (Identifier _ vname) ->
         vname ++ " is not a var and cannot be short declared"
       ShortDec -> "Short declaration list contains no new variables"
-
+      InitNVoid t ->
+        "init has non void return type " ++ show t
+      InitParams ->
+        "init must not have any parameters"
 instance ErrorEntry TypeCheckError where
   errorMessage c =
     case c of
