@@ -2097,18 +2097,11 @@ parsefNL f s = either (Left . errODef s) Right (runAlex s f)
 ptokl t = case t of
           Token pos _ -> pos
 
-data ParseError
-  = ParseError InnerToken
-  | ParseUnknown String
+newtype ParseError = ParseError InnerToken
   deriving (Show, Eq)
 
 instance ErrorEntry ParseError where
-  errorMessage err =
-    let m =
-          case err of
-            ParseError t        -> humanize t
-            ParseUnknown s      -> s
-     in "Parsing error: unexpected " ++ m ++ "."
+  errorMessage (ParseError t) = "Parsing error: unexpected " ++ humanize t ++ "."
 
 parseError :: Token -> Alex a
 parseError (Token (AlexPn o l c) t) =
