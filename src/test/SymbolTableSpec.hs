@@ -121,10 +121,10 @@ spec = do
                             {
                                 type int2 int3
                             }
-                            var b int3 = 7
-                            var c int4 = int2(9)
+                            var b int3 = int3(7)
+                            var c int4 = int4(int2(9))
                             type int5 int4
-                            var d int5 = int4(int2(24))
+                            var d int5 = int5(int4(int2(24)))
                         |],
                          [text|
                             type int2 int
@@ -145,5 +145,18 @@ spec = do
                         |]
                          ]
   expectTypecheckFail ["var b = a;"]
+  expectTypecheckFail [[text|
+                       type int2 int
+                       type int3 int
+                       type int4 int2
+                       var a int2 = int2(5)
+                       {
+                           type int2 int3
+                       }
+                       var b int3 = 7
+                       var c int4 = int2(9)
+                       type int5 int4
+                       var d int5 = int4(int2(24))
+                       |]]
   expectTypecheckPassNoMain ["func init(){}"]
   expectTypecheckFailNoMain ["func init(a int){}"]
