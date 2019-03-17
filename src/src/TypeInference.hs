@@ -114,7 +114,7 @@ infer st e@(Unary _ BitComplement inner) =
     st
     isIntegerLike
     NE.head
-    (BadUnaryOp "integer")
+    (BadUnaryOp "integer-like")
     e
     (fromList [inner])
 -- | Infer types of binary expressions
