@@ -371,8 +371,8 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       -- | Check if two expressions have the same type and if LHS is addressable, helper for assignments
       sameType :: SymbolTable s -> (Expr, Expr) -> ST s (Maybe ErrorMessage')
       sameType st' (e1, e2) = do
-        et1 <- infer st' e1
-        et2 <- infer st' e2
+        et1 <- inferR st' e1
+        et2 <- inferR st' e2
         return $
           either
             Just
@@ -381,7 +381,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                  Just
                  (\t2 ->
                     if t1 /= t2
-                      then Just (createError e1 (TypeMismatch1 e1 e2))
+                      then Just (createError e1 (TypeMismatch1 t1 t2 e2))
                       else if isAddr e1
                              then Nothing
                              else Just $ createError e1 (NonLVal e1))
@@ -558,7 +558,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
           (return . Left)
           (\t' -> do
              me <- checkIds st (Variable t') "Variable " neIdl
-             maybe (checkDecl st t' (toList neIdl) el) (return . Left) me)
+             maybe (checkDecl st (resolveSType t') (toList neIdl) el) (return . Left) me)
           et
       Right nel -> do
         me <- checkIds st (Variable Infer) "Variable " neIdl
@@ -588,7 +588,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
           (return $
            Right $ C.VarDecl' (mkSIdStr scope vname) (toBase t2) Nothing)
           (\e -> do
-             et' <- infer st' e
+             et' <- inferR st' e
              either
                (return . Left)
                (\t' ->
@@ -851,7 +851,8 @@ data SymbolError
   deriving (Show, Eq)
 
 data TypeCheckError
-  = TypeMismatch1 Expr
+  = TypeMismatch1 SType
+                  SType
                   Expr
   | TypeMismatch2 Identifier
                   SType
@@ -885,10 +886,8 @@ instance ErrorEntry SymbolError where
 instance ErrorEntry TypeCheckError where
   errorMessage c =
     case c of
-      TypeMismatch1 e1 e2 ->
-        "Expression " ++
-        prettify e1 ++
-        " resolves to different type than " ++ prettify e2 ++ " in assignment"
+      TypeMismatch1 t1 t2 e ->
+        "Expression resolves to different type " ++ show t1 ++ " than type " ++ show t2 ++ " of " ++ prettify e ++ " in assignment"
       TypeMismatch2 (Identifier _ vname) t1 t2 ->
         "Expression resolves to type " ++
         show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
