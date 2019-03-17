@@ -25,7 +25,6 @@ dependencies:
 - megaparsec
 - parser-combinators
 - primitive
-- hashable
 - hashtables
 - containers
 - hspec
