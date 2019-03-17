@@ -2,6 +2,7 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module SymbolTable where
 
@@ -485,19 +486,76 @@ recBaseE st e = do
                                 else return $ Left $ createError e (NonBaseP t)) et
 
 instance Symbolize Decl C.Decl where
-  recurse st (VarDecl vdl) = undefined -- am (recurse st) vdl
-  recurse st (TypeDef tdl) = undefined -- am (recurse st) tdl
+  recurse st (VarDecl vdl) = seqRec st vdl >>= return . fmap C.VarDecl
+  recurse st (TypeDef tdl) = seqRec st tdl >>= return . fmap C.TypeDef
 
-instance Symbolize VarDecl' C.VarDecl' where
-  recurse st (VarDecl' neIdl edef) = undefined
-    -- case edef of
-    --   Left ((_, t), _) -> do
-    --     et <- toType st t
-    --     either
-    --       (return . Just)
-    --       (\t' -> checkIds st (Variable t') "Variable " neIdl)
-    --       et
-    --   Right _ -> checkIds st (Variable Infer) "Variable " neIdl
+instance Symbolize VarDecl' [C.VarDecl'] where
+  recurse st (VarDecl' neIdl edef) =
+    case edef of
+      Left ((_, t), el) -> do
+        et <- toType st t
+        either
+          (return . Left)
+          (\t' -> do
+              me <- checkIds st (Variable t') "Variable " neIdl
+              maybe (checkDecl st t' (toList neIdl) el) (return . Left) me)
+          et
+      Right nel -> do
+        me <- checkIds st (Variable Infer) "Variable " neIdl
+        maybe (checkDeclI st (toList neIdl) (toList nel)) (return . Left) me
+    where
+      checkDecl :: SymbolTable s -> SType -> [Identifier] -> [Expr] -> ST s (Either ErrorMessage' [C.VarDecl'])
+      checkDecl st' t2 idl [] = do
+        edl <- mapM (checkDec st' t2 Nothing) idl
+        return $ sequence edl
+      checkDecl st' t2 idl el' = do
+        edl <- mapM (\(i, ex) -> checkDec st' t2 (Just ex) i) (zip idl el')
+        return $ sequence edl
+      checkDec :: SymbolTable s -> SType -> Maybe Expr -> Identifier -> ST s (Either ErrorMessage' C.VarDecl')
+      checkDec st' t2 me ident@(Identifier _ vname) = do
+        scope <- S.scopeLevel st'
+        maybe
+          (return $ Right $ C.VarDecl' (mkSIdStr scope vname) (toBase t2) Nothing)
+          (\e -> do
+             et' <- infer st' e
+             either
+               (return . Left)
+               (\t' ->
+                  if t2 == t'
+                    then (do ee' <- recurse st' e
+                             return $
+                               either
+                                 (Left)
+                                 (\ce ->
+                                    Right $
+                                    C.VarDecl'
+                                      (mkSIdStr scope vname)
+                                      (toBase t2)
+                                      (Just ce))
+                                 ee')
+                    else return $ Left $ createError ident (TypeMismatch2 ident t2 t'))
+               et')
+          me
+      checkDeclI :: SymbolTable s -> [Identifier] -> [Expr] -> ST s (Either ErrorMessage' [C.VarDecl'])
+      checkDeclI st' idl el' = do
+        edl <- mapM (\(i, ex) -> checkDecI st' ex i) (zip idl el')
+        return $ sequence edl
+      checkDecI :: SymbolTable s -> Expr -> Identifier -> ST s (Either ErrorMessage' C.VarDecl')
+      checkDecI st' e ident@(Identifier _ vname) = do
+        scope <- S.scopeLevel st'
+        et' <- infer st' e
+        either
+          (return . Left)
+          (\t' ->
+             (do ee' <- recurse st' e
+                 return $
+                   either
+                     (Left)
+                     (\ce ->
+                        Right $
+                        C.VarDecl' (mkSIdStr scope vname) (toBase t') (Just ce))
+                     ee'))
+          et'
 
 instance Symbolize TypeDef' C.TypeDef' where
   recurse st (TypeDef' ident (_, t)) = undefined
@@ -611,8 +669,8 @@ data SymbolError
   deriving (Show, Eq)
 
 data TypeCheckError
-  = TypeMismatch2 Expr Expr
-  | TypeMismatch1 Identifier
+  = TypeMismatch1 Expr Expr
+  | TypeMismatch2 Identifier
                   SType
                   SType
   | CondBool Expr SType
@@ -636,10 +694,10 @@ instance ErrorEntry SymbolError where
 instance ErrorEntry TypeCheckError where
   errorMessage c =
     case c of
-      TypeMismatch2 e1 e2 ->
+      TypeMismatch1 e1 e2 ->
         "Expression " ++
         show e1 ++ " resolves to different type than " ++ show e2 ++ " in assignment"
-      TypeMismatch1 (Identifier _ vname) t1 t2 ->
+      TypeMismatch2 (Identifier _ vname) t1 t2 ->
         "Expression resolves to type " ++
         show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
       CondBool e t ->

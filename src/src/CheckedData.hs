@@ -54,14 +54,16 @@ data Decl
 -- where the expression type is not necessarily the same as the declared one
 data VarDecl' =
   VarDecl' ScopedIdent
-           Expr
            Type
+           (Maybe Expr) -- Can declare a variable without an expression
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
 data TypeDef' =
   TypeDef' Ident
            Type
+  -- For mappings that aren't structs, we resolve them to their base types so we don't need to define them anymore
+  | NoDef
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
