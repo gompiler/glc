@@ -280,19 +280,19 @@ infer st ie@(Index _ e1 e2) = do
 infer st ae@(Arguments _ expr args) = do
   as <- mapM (infer st) args -- Moves ST out
   case (expr, sequence as) of
-    (Var i@(Identifier _ ident), Right ts) -> do
-      fl <- S.lookup st ident
+    (Var ident@(Identifier _ vname), Right ts) -> do
+      fl <- S.lookup st vname
       fn <-
         resolve
-          i
+          ident
           st
-          (createError i (ExprNotDecl "Type " i))
-          (createError i (ExprVoidFunc i))
+          (createError ident (ExprNotDecl "Type " ident))
+          (createError ident (ExprVoidFunc ident))
       return $
         case fl of
           Just (_, Func pl rtm) ->
             if map snd pl == ts
-              then maybe (Left $ createError ae $ ExprVoidFunc i) Right rtm
+              then maybe (Left $ createError ae $ ExprVoidFunc ident) Right rtm
               else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
           Just (_, Base) -> do
             ft <- fn
@@ -303,8 +303,8 @@ infer st ae@(Arguments _ expr args) = do
             case ts of
               [ct] -> tryCast ft ct
               _    -> Left $ createError ae $ CastArguments (length ts)
-          Just _ -> Left $ createError ae $ NonFunctionId ident -- non-function identifier
-          Nothing -> Left $ createError ae $ ExprNotDecl "Function " i -- not declared
+          Just _ -> Left $ createError ae $ NonFunctionId vname -- non-function identifier
+          Nothing -> Left $ createError ae $ ExprNotDecl "Function " ident -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
   where
