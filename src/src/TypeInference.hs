@@ -178,21 +178,19 @@ infer _ (Lit l) =
     RuneLit {}   -> PRune
     StringLit {} -> PString
 -- | Resolve variables to the type their identifier points to in the scope
-infer st (Var ident@(Identifier _ vname)) =
-  resolveVar st
+infer st (Var ident@(Identifier _ vname)) = resolveVar st
   where
     resolveVar :: SymbolTable s -> ST s (Either ErrorMessage' SType)
     resolveVar st' = do
       res <- S.lookup st' vname
-      return $ case res of
-        Nothing ->
-          Left $ createError ident (ExprNotDecl "Identifier " ident)
-        Just (_, sym) ->
-          case sym of
-            Variable t' -> Right t'
-            Constant    -> Right PBool -- Constants can only be booleans
-            _           -> Left $ createError ident (NotVar ident)
-
+      return $
+        case res of
+          Nothing -> Left $ createError ident (ExprNotDecl "Identifier " ident)
+          Just (_, sym) ->
+            case sym of
+              Variable t' -> Right t'
+              Constant    -> Right PBool -- Constants can only be booleans
+              _           -> Left $ createError ident (NotVar ident)
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
@@ -204,7 +202,7 @@ infer st ae@(AppendExpr _ e1 e2) = do
     case (sle, exe) of
     -- TODO: MORE CASES FOR NICER ERRORS?
       (Right st1, Right t2) ->
-        case (rpartSType st1) of
+        case rpartSType st1 of
           Slice t1 ->
             if t1 == t2
               then Right st1
@@ -367,7 +365,7 @@ isIntegerLike = flip elem [PInt, PRune]
 -- | Resolves a defined type to a base type, WITHOUT nested types
 rpartSType :: SType -> SType
 rpartSType (TypeMap _ st) = rpartSType st
-rpartSType t = t -- Other types
+rpartSType t              = t -- Other types
 
 -- | Resolves a defined type to a base type, including array types
 resolveSType :: SType -> SType
