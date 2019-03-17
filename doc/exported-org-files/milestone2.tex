@@ -1,4 +1,4 @@
-% Created 2019-03-11 Mon 15:45
+% Created 2019-03-17 Sun 13:57
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -34,8 +34,36 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 2.
 \newpage
-\section{Invalid Programs}
-\label{sec:org66751cf}
+\section{Design Decisions}
+\label{sec:org3150b70}
+\subsection{Symbol Table}
+\label{sec:org1b803b0}
+TODO
+In Haskell, data structures are typically immutable, and much of the language
+is designed around this. One of the main design decisions made around the symbol
+table was deciding whether to go with an immutable or mutable symbol table. In
+an immutable symbol table, a "new" symbol table would have to be made every time
+a scope is added or modified. Right away, despite this being a conceptually
+better fit for the language, the potential performance degradation of constantly
+re-building the symbol table becomes evident.
+
+As a result of this performance impact, we decided on using a mutable symbol
+table, with mutability supported via Haskell's 'ST' monad. The trade-off of
+this decision was a large increase in the difficulty implementing the symbol
+table, which made up a huge portion of the work for this milestone.
+TODO
+\subsubsection{Scoping Rules}
+\label{sec:orgaa742cb}
+TODO
+\subsection{Type Checker}
+\label{sec:org0373b21}
+For type-checking, we decided on a single-pass approach which combined symbol
+table generation and statement type-checking. This improves performance, and is
+possible as a product of GoLite's declaration rules, which specify that
+identifiers must be declared before they can be used.
+TODO
+\subsection{Invalid Programs}
+\label{sec:org88f27fe}
 Summary of the check in each invalid program:
 \begin{itemize}
 \item \texttt{append-diff-type.go}: Append an expression of a different type than
@@ -88,5 +116,18 @@ switch expression type.
 type that already exists.
 \item \texttt{var-already-declared.go}: Trying to declare a variable that is
 already declared.
+\end{itemize}
+\section{Team}
+\label{sec:org0d5d24d}
+\subsection{Team Organization}
+\label{sec:org3ef4146}
+TODO
+\subsection{Contributions}
+\label{sec:orge2f4965}
+\begin{itemize}
+\item \textbf{Julian Lore:} TODO
+\item \textbf{David Lougheed:} Worked on expression type-checking and type inference,
+including tests. Also worked on the weeding pass for return statements.
+\item \textbf{Allan Wang:} TODO
 \end{itemize}
 \end{document}

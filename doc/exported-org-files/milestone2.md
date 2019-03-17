@@ -1,16 +1,66 @@
 
 # Table of Contents
 
-1.  [Invalid Programs](#orgfbf23ed)
+1.  [Design Decisions](#org9da56ac)
+    1.  [Symbol Table](#org562bd4b)
+        1.  [Scoping Rules](#org4ace1be)
+    2.  [Type Checker](#org31dfa27)
+    3.  [Invalid Programs](#org3169bf3)
+2.  [Team](#org1d8fc24)
+    1.  [Team Organization](#org0d85a36)
+    2.  [Contributions](#orgc567dc4)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 2.
 \newpage
 
 
-<a id="orgfbf23ed"></a>
+<a id="org9da56ac"></a>
 
-# Invalid Programs
+# Design Decisions
+
+
+<a id="org562bd4b"></a>
+
+## Symbol Table
+
+TODO
+In Haskell, data structures are typically immutable, and much of the language
+is designed around this. One of the main design decisions made around the symbol
+table was deciding whether to go with an immutable or mutable symbol table. In
+an immutable symbol table, a "new" symbol table would have to be made every time
+a scope is added or modified. Right away, despite this being a conceptually
+better fit for the language, the potential performance degradation of constantly
+re-building the symbol table becomes evident.
+
+As a result of this performance impact, we decided on using a mutable symbol
+table, with mutability supported via Haskell's 'ST' monad. The trade-off of
+this decision was a large increase in the difficulty implementing the symbol
+table, which made up a huge portion of the work for this milestone.
+TODO
+
+
+<a id="org4ace1be"></a>
+
+### Scoping Rules
+
+TODO
+
+
+<a id="org31dfa27"></a>
+
+## Type Checker
+
+For type-checking, we decided on a single-pass approach which combined symbol
+table generation and statement type-checking. This improves performance, and is
+possible as a product of GoLite's declaration rules, which specify that
+identifiers must be declared before they can be used.
+TODO
+
+
+<a id="org3169bf3"></a>
+
+## Invalid Programs
 
 Summary of the check in each invalid program:
 
@@ -64,4 +114,26 @@ Summary of the check in each invalid program:
     type that already exists.
 -   `var-already-declared.go`: Trying to declare a variable that is
     already declared.
+
+
+<a id="org1d8fc24"></a>
+
+# Team
+
+
+<a id="org0d85a36"></a>
+
+## Team Organization
+
+TODO
+
+
+<a id="orgc567dc4"></a>
+
+## Contributions
+
+-   **Julian Lore:** TODO
+-   **David Lougheed:** Worked on expression type-checking and type inference,
+    including tests. Also worked on the weeding pass for return statements.
+-   **Allan Wang:** TODO
 
