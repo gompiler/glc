@@ -371,8 +371,8 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       -- | Check if two expressions have the same type and if LHS is addressable, helper for assignments
       sameType :: SymbolTable s -> (Expr, Expr) -> ST s (Maybe ErrorMessage')
       sameType st' (e1, e2) = do
-        et1 <- inferR st' e1
-        et2 <- inferR st' e2
+        et1 <- infer st' e1
+        et2 <- infer st' e2
         return $
           either
             Just
@@ -588,7 +588,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
           (return $
            Right $ C.VarDecl' (mkSIdStr scope vname) (toBase t2) Nothing)
           (\e -> do
-             et' <- inferR st' e
+             et' <- infer st' e
              either
                (return . Left)
                (\t' ->
