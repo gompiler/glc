@@ -6,6 +6,8 @@ module TypeInference
   , isBase
   ) where
 
+import qualified CheckedData        as T (Ident (..), Scope (..),
+                                          ScopedIdent (..))
 import           Control.Monad.ST
 import           Data
 import           Data.List          (intercalate)
@@ -284,6 +286,7 @@ infer st ae@(Arguments _ expr args) = do
   case (expr, sequence as) of
     (Var ident@(Identifier _ vname), Right ts) -> do
       fl <- S.lookup st vname
+      -- Only used for base types, since it goes all the way
       fn <-
         resolve
           ident
@@ -300,9 +303,12 @@ infer st ae@(Arguments _ expr args) = do
             case ts of
               [ct] -> tryCast ft ct
               _    -> Left $ createError ae $ CastArguments (length ts)
-          Just (_, SType ft) ->
+          Just (S.Scope scp, SType ft) ->
             case ts of
-              [ct] -> tryCast ft ct
+              [ct] ->
+                tryCast
+                  (TypeMap (T.ScopedIdent (T.Scope scp) (T.Ident vname)) ft)
+                  ct -- Left $ createError ae $ ExprNotDecl (show ft) ident
               _    -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId vname -- non-function identifier
           Nothing -> Left $ createError ae $ ExprNotDecl "Function " ident -- not declared
@@ -358,7 +364,7 @@ isAddable = isOrdered
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
 isOrdered = flip elem [PInt, PFloat64, PRune, PString]
-  
+
 isBase :: SType -> Bool
 isBase = flip elem [PInt, PFloat64, PBool, PRune, PString]
 
