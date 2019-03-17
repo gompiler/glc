@@ -53,16 +53,19 @@ new = do
   return st
 
 add :: SymbolTable s -> String -> Symbol -> ST s Bool -- Did we add successfully?
-add st ident sym = do
-  result <- S.lookupCurrent st ident -- We only need to check current scope for declarations
-  case result of
-    Just _ -> do
-      _ <- S.addMessage st Nothing -- Found something, aka a conflict, so stop printing symbol table after this
-      return False
-    Nothing -> do
-      scope <- S.insert' st ident sym
-      _ <- S.addMessage st $ Just (ident, sym, scope) -- Add the symbol info of what we added
-      return True
+add st ident sym =
+  if ident == "_"
+    then return True -- Blank identifier can always be declared, but don't add
+    else do
+      result <- S.lookupCurrent st ident -- We only need to check current scope for declarations
+      case result of
+        Just _ -> do
+          _ <- S.addMessage st Nothing -- Found something, aka a conflict, so stop printing symbol table after this
+          return False
+        Nothing -> do
+          scope <- S.insert' st ident sym
+          _ <- S.addMessage st $ Just (ident, sym, scope) -- Add the symbol info of what we added
+          return True
 
 -- | lookupCurrent wrapper but insert message on if declared, because we want to declare something ourself
 isNDefL :: SymbolTable s -> String -> ST s Bool
