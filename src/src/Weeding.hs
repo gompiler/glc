@@ -35,6 +35,7 @@ verify program =
   , progVerifyDecl
   , progVerifyBlank
   , returnVerify
+  , initReturnVerify
   ] <*>
   [program]
 
@@ -141,7 +142,7 @@ progVerifyBlank :: PureConstraint Program
 progVerifyBlank program = asum errors
   where
     errors :: [Maybe ErrorMessage']
-    errors = map blankVerify (topLevels program >>= toIdent)
+    errors = map blankVerify (toIdent program)
 
 blankVerify :: Identifier -> Maybe ErrorMessage'
 blankVerify (Identifier o str) =
@@ -234,6 +235,27 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
     lastIsReturn (Return _ _) = True
     lastIsReturn _ = False
 
+initReturnVerify :: PureConstraint Program
+initReturnVerify program = asum errors
+  where
+    errors :: [Maybe ErrorMessage']
+    errors = map initReturnConstraint (topLevels program)
+
+initReturnConstraint :: TopDecl -> Maybe ErrorMessage'
+initReturnConstraint (TopFuncDecl (FuncDecl (Identifier _ fname) _ fb)) =
+  if fname == "init"
+    then checkInitReturn fb
+    else Nothing
+  where
+    checkInitReturn :: Stmt -> Maybe ErrorMessage'
+    checkInitReturn (If _ ifb elseb) =
+      checkInitReturn ifb <|> checkInitReturn elseb
+    checkInitReturn (For _ forb) = checkInitReturn forb
+    checkInitReturn (BlockStmt stmts) = asum $ map checkInitReturn stmts
+    checkInitReturn (Return o (Just _)) = Just $ createError o InitReturn
+    checkInitReturn _ = Nothing
+initReturnConstraint _ = Nothing -- Non-function declarations don't matter here
+
 -- Helpers
 -- | Extracts block statements from top-level function declarations
 topToStmt :: TopDecl -> Maybe Stmt
@@ -255,6 +277,9 @@ class BlankWeed a where
   toIdent :: a -> [Identifier]
 
 -- | Extract identifiers that cannot be blank
+instance BlankWeed Program where
+  toIdent prg = package prg : (topLevels prg >>= toIdent)
+
 instance BlankWeed TopDecl where
   toIdent (TopFuncDecl (FuncDecl _ (Signature (Parameters pdl) Nothing) stmt)) =
     pdIdentl ++ stmtIdentl
@@ -348,6 +373,7 @@ data WeedingError
   | ContinueScope
   | BreakScope
   | LastReturn
+  | InitReturn
   deriving (Show, Eq)
 
 instance ErrorEntry WeedingError where
@@ -360,4 +386,6 @@ instance ErrorEntry WeedingError where
       ForPostDecl -> "For post-statement cannot be declaration"
       ContinueScope -> "Continue statement must occur in for loop"
       BreakScope -> "Break statement must occur in for loop or switch statement"
-      LastReturn -> "Function declaration with non-void return type must have return as last statement"
+      LastReturn ->
+        "Function declaration with non-void return type must have return as last statement"
+      InitReturn -> "init function cannot have non-void return"

@@ -85,6 +85,21 @@ expectWeedFailNoMain =
     toString
     "wrapped stmt"
 
+expectWeedFailBlankPackage :: Stringable s => [s] -> SpecWith ()
+expectWeedFailBlankPackage =
+  expectBase
+    "weed fail"
+    (const $
+     let program = "package _\n"
+      in case weed program of
+           Right p ->
+             expectationFailure $
+             "Expected failure on:\n\n" ++
+             program ++ "\n\nbut got program\n\n" ++ show p
+           _ -> return ())
+    toString
+    "package identifier"
+
 spec :: Spec
 spec = do
   expectWeedPass
@@ -167,7 +182,31 @@ spec = do
           return
         } else {}
       }
-      |]]
+      |]
+    , [text|
+      func init() {
+        return
+      }
+      |]
+    , [text|
+      func init() {
+        {
+          return
+        }
+      }
+      |]
+    , [text|
+      func init() {
+        if true {
+          return
+        } else {}
+      }
+      |]
+    , [text|
+      func init() {
+      }
+      |]
+    ]
   expectWeedError $
     map
       (\(s, e) ->
@@ -318,4 +357,50 @@ spec = do
       func test() int {
       }
       |]
+    , [text|
+      func init() {
+        return 5
+      }
+      |]
+    , [text|
+      func init() {
+        {
+          return 6
+          println("aaaaaa")
+        }
+      }
+      |]
+    , [text|
+      func init() {
+        if true {
+          return 3
+          for {}
+        } else {
+          return
+        }
+      }
+      |]
+    , [text|
+      func init() {
+        for i := 0; i < 10; i++ {
+          return 5555
+        }
+        return
+      }
+      |]
+    , [text|
+      func init() {
+        {
+          return
+          return
+          return 10
+          return 10
+          return
+          return
+        }
+        return
+        return
+      }
+      |]
     ]
+  expectWeedFailBlankPackage [""]
