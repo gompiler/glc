@@ -41,6 +41,7 @@ data ExpressionTypeError
   | ExprNotDecl String
                 Identifier
   | ExprVoidFunc Identifier
+  | NotVar Identifier
   deriving (Show, Eq)
 
 instance ErrorEntry ExpressionTypeError where
@@ -75,6 +76,8 @@ instance ErrorEntry ExpressionTypeError where
       ExprNotDecl s (Identifier _ vname) -> s ++ vname ++ " not declared"
       ExprVoidFunc (Identifier _ vname) ->
         "Void function " ++ vname ++ " cannot be used in expression"
+      NotVar (Identifier _ vname) ->
+        "Non-variable identifier " ++ vname ++ " cannot be used in this context"
 
 -- | Main type inference function
 infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
@@ -175,12 +178,21 @@ infer _ (Lit l) =
     RuneLit {}   -> PRune
     StringLit {} -> PString
 -- | Resolve variables to the type their identifier points to in the scope
-infer st (Var ident) =
-  resolve
-    ident
-    st
-    (createError ident (ExprNotDecl "Identifier " ident))
-    (createError ident (ExprVoidFunc ident))
+infer st (Var ident@(Identifier _ vname)) =
+  resolveVar st
+  where
+    resolveVar :: SymbolTable s -> ST s (Either ErrorMessage' SType)
+    resolveVar st' = do
+      res <- S.lookup st' vname
+      return $ case res of
+        Nothing ->
+          Left $ createError ident (ExprNotDecl "Identifier " ident)
+        Just (_, sym) ->
+          case sym of
+            Variable t' -> Right t'
+            Constant    -> Right PBool -- Constants can only be booleans
+            _           -> Left $ createError ident (NotVar ident)
+
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
