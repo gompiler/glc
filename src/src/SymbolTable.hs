@@ -274,8 +274,24 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                        return $ Right $ (True, mkSIdStr scope vname)
   recurse _ EmptyStmt = return $ Right C.EmptyStmt
   recurse st (ExprStmt e) = seqRec st e >>= return . fmap C.ExprStmt -- Verify that expr only uses things that are defined
-  recurse st (Increment _ e) = seqRec st e >>= return . fmap C.Increment
-  recurse st (Decrement _ e) = seqRec st e >>= return . fmap C.Decrement
+  recurse st (Increment _ e) = do
+    et <- infer st e
+    either
+      (return . Left)
+      (\t ->
+         if isNumeric t
+           then seqRec st e >>= return . fmap C.Increment
+           else return $ Left $ createError e (NonNumeric e "incremented"))
+      et
+  recurse st (Decrement _ e) = do
+    et <- infer st e
+    either
+      (return . Left)
+      (\t ->
+         if isNumeric t
+           then seqRec st e >>= return . fmap C.Decrement
+           else return $ Left $ createError e (NonNumeric e "decremented"))
+      et
   recurse st (Assign _ aop@(AssignOp mop) el1 el2) = do
     l1 <- mapM (seqRec st) (toList el1)
     l2 <- mapM (seqRec st) (toList el2)
@@ -380,11 +396,11 @@ instance Symbolize Stmt C.Stmt where
     --       Nothing -> [H ss1, H ss2]
     --   r2 <- recurse st s
     --   return $ maybeJ [r1, r2]
-  recurse _ (Break _) = undefined -- return Nothing
-  recurse _ (Continue _) = undefined -- return Nothing
-  recurse st (Declare d) = undefined -- recurse st d
-  recurse st (Print el) = undefined -- am (recurse st) el
-  recurse st (Println el) = undefined -- am (recurse st) el
+  recurse _ (Break _) = return $ Right C.Break
+  recurse _ (Continue _) = return $ Right C.Continue
+  recurse st (Declare d) = seqRec st d >>= return . fmap C.Declare
+  recurse st (Print el) = (\el' -> C.Print <$> sequence el') <$> (mapM (recurse st) el)
+  recurse st (Println el) = (\el' -> C.Println <$> sequence el') <$> (mapM (recurse st) el)
   recurse st (Return (Just e)) = undefined -- recurse st e
   recurse _ (Return Nothing) = undefined -- return Nothing
 
@@ -524,6 +540,7 @@ data TypeCheckError
                   SType
                   SType
   | CondBool Expr SType
+  | NonNumeric Expr String
 
 instance ErrorEntry SymbolError where
   errorMessage c =
@@ -546,6 +563,8 @@ instance ErrorEntry TypeCheckError where
         show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
       CondBool e t ->
         "Condition " ++ show e ++ " resolves to " ++ show t ++ ", expecting a bool"
+      NonNumeric e s ->
+        show e ++ " is a non numeric type and cannot be " ++ s
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
