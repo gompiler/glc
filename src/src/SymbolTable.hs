@@ -266,33 +266,81 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                        if t == t2
                        then Right $ (False, mkSIdStr scope vname)
                        -- if locally defined, check if type matches
-                       else Left $ createError e (TypeMismatch ident t t2)
+                       else Left $ createError e (TypeMismatch1 ident t t2)
                      Just (_, s) -> return $ Left $ createError ident (NotLVal ident s)
                      Nothing -> do
                        msi <- add st vname (Variable t)
                        scope <- S.scopeLevel st
                        return $ Right $ (True, mkSIdStr scope vname)
-      -- checkDecl ::
-      --      [Identifier] -> [Expr] -> SymbolTable s -> ST s (Maybe ErrorMessage')
-      -- checkDecl idl' _ st' = do
-      --   bl <- mapM (isNewDec st') idl'
-      --   -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-      --   return $
-      --     if True `elem` bl
-      --       then Nothing
-      --       else Just $ createError (head idl') ShortDec
-      -- isNewDec :: SymbolTable s -> Identifier -> ST s Bool
-      -- isNewDec st2 (Identifier _ vname) =
-      --    in do val <- S.lookupCurrent st2 vname
-      --          case val of
-      --            Just _  -> return False
-      --            Nothing -> add st2 vname (Variable Infer)
-  recurse _ EmptyStmt = undefined -- return Nothing
-  recurse st (ExprStmt e) = undefined -- recurse st e -- Verify that expr only uses things that are defined
-  recurse st (Increment _ e) = undefined -- recurse st e
-  recurse st (Decrement _ e) = undefined -- recurse st e
-  recurse st (Assign _ _ el _) = undefined -- am (recurse st) (toList el)
+  recurse _ EmptyStmt = return $ Right C.EmptyStmt
+  recurse st (ExprStmt e) = seqRec st e >>= return . fmap C.ExprStmt -- Verify that expr only uses things that are defined
+  recurse st (Increment _ e) = seqRec st e >>= return . fmap C.Increment
+  recurse st (Decrement _ e) = seqRec st e >>= return . fmap C.Decrement
+  recurse st (Assign _ aop@(AssignOp mop) el1 el2) = do
+    l1 <- mapM (seqRec st) (toList el1)
+    l2 <- mapM (seqRec st) (toList el2)
+    case mop of
+      Nothing -> do
+        me <- mapM (sameType st) (zip (toList el1) (toList el2))
+        maybe
+          (either
+             (return . Left)
+             (\l1' ->
+                either
+                  (return . Left)
+                  (\l2' ->
+                     return $
+                     Right $ C.Assign (C.AssignOp Nothing) $ fromList $ zip l1' l2')
+                  (sequence l2))
+             (sequence l1))
+          (return . Left)
+          (maybeJ me)
+      Just op -> do
+        el <-
+          mapM (infer st) (map (aop2e $ Arithm op) (zip (toList el1) (toList el2)))
+        either
+          (return . Left)
+          (const $
+           (either
+              (return . Left)
+              (\l1' ->
+                 either
+                   (return . Left)
+                   (\l2' ->
+                      return $
+                      Right $ C.Assign (aop2aop' aop) (fromList $ zip l1' l2'))
+                   (sequence l2))
+              (sequence l1)))
+          (sequence el)
+    where
+      -- convert op and 2 expressions to binary op, infer type of this to make sure it makes sense
+      aop2e :: BinaryOp -> (Expr, Expr) -> Expr
+      aop2e op (e1,e2) = Binary (Offset 0) op e1 e2
+      aop2aop' :: AssignOp -> C.AssignOp
+      aop2aop' (AssignOp (Just aop)) = C.AssignOp $ Just $ case aop of
+                                                           Add -> C.Add
+                                                           Subtract -> C.Subtract
+                                                           BitOr -> C.BitOr
+                                                           BitXor -> C.BitXor
+                                                           Multiply -> C.Multiply
+                                                           Divide -> C.Divide
+                                                           Remainder -> C.Remainder
+                                                           ShiftL -> C.ShiftL
+                                                           ShiftR -> C.ShiftR
+                                                           BitAnd -> C.BitAnd
+                                                           BitClear -> C.BitClear
+                                                     
+                                                    -- (\bl -> if False `elem` bl then ) <$> sequence el
+    -- am (recurse st) (toList el)
 
+-- | Check if two expressions have the same type
+sameType :: SymbolTable s -> (Expr, Expr) -> ST s (Maybe ErrorMessage')
+sameType st (e1,e2) = do
+  et1 <- infer st e1
+  et2 <- infer st e2
+  return $ either Just (\t1 -> either Just (\t2 -> if t1 == t2 then Nothing else
+                                               Just $ createError e1 (TypeMismatch2 e1 e2)) et2) et1
+                                                     
 instance Symbolize Stmt C.Stmt where
   recurse st (BlockStmt sl) = undefined -- wrap st $ am (recurse st) sl
   recurse st (SimpleStmt s) = undefined -- recurse st s
@@ -393,12 +441,6 @@ pEithers eil =
         then (Nothing, l)
         else (Just $ head err, l)
 
--- | maybe for a list, if any Nothing, take first Nothing, otherwise Just list
--- maybeN :: ([b] -> c) -> [Maybe b] -> Maybe c
--- maybeN f ml =
---   if length (catMaybes ml) == length ml -- All values are Just values
---     then Just $ f $ catMaybes ml
---     else Nothing
 -- | List of maybes, return first Just or nothing if all nothing
 maybeJ :: [Maybe b] -> Maybe b
 maybeJ l =
@@ -454,13 +496,16 @@ data SymbolError
   | NotDecl String
             Identifier
   | VoidFunc Identifier
-  | TypeMismatch Identifier
-                 SType
-                 SType
   | NotLVal Identifier
             Symbol
   | ShortDec
   deriving (Show, Eq)
+
+data TypeCheckError
+  = TypeMismatch2 Expr Expr
+  | TypeMismatch1 Identifier
+                  SType
+                  SType
 
 instance ErrorEntry SymbolError where
   errorMessage c =
@@ -468,12 +513,19 @@ instance ErrorEntry SymbolError where
       AlreadyDecl s (Identifier _ vname) -> s ++ vname ++ " already declared"
       NotDecl s (Identifier _ vname) -> s ++ vname ++ " not declared"
       VoidFunc (Identifier _ vname) -> vname ++ " resolves to a void function"
-      TypeMismatch (Identifier _ vname) t1 t2 ->
-        "Expression resolves to type " ++
-        show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
       NotLVal (Identifier _ vname) s ->
         vname ++ " resolves to " ++ show s ++ " and is not an lvalue"
       ShortDec -> "Short declaration list contains no new variables"
+  
+instance ErrorEntry TypeCheckError where
+  errorMessage c =
+    case c of
+      TypeMismatch2 e1 e2 ->
+        "Expression " ++
+        show e1 ++ " resolves to different type than " ++ show e2 ++ " in assignment"
+      TypeMismatch1 (Identifier _ vname) t1 t2 ->
+        "Expression resolves to type " ++
+        show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
