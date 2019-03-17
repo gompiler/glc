@@ -281,8 +281,8 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                     then Right (False, mkSIdStr scope vname)
                             -- if locally defined, check if type matches
                     else Left $ createError e (TypeMismatch2 ident' t t2)
-              Just (_, s) ->
-                return $ Left $ createError ident' (NotLVal ident' s)
+              Just _ ->
+                return $ Left $ createError ident' (NotVar ident')
               Nothing -> do
                 _ <- add st2 vname (Variable Infer) -- Add infer so that we don't print out the actual type
                 scope <- S.insert' st2 vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
@@ -351,6 +351,25 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       aop2aop' :: AssignOp -> C.AssignOp
       aop2aop' (AssignOp (Just aop')) = C.AssignOp $ Just $ aopConv aop'
       aop2aop' (AssignOp Nothing)     = C.AssignOp Nothing
+      -- | Check if two expressions have the same type and if LHS is addressable, helper for assignments
+      sameType :: SymbolTable s -> (Expr, Expr) -> ST s (Maybe ErrorMessage')
+      sameType st' (e1, e2) = do
+        et1 <- infer st' e1
+        et2 <- infer st' e2
+        return $
+          either
+            Just
+            (\t1 ->
+               either
+                 Just
+                 (\t2 ->
+                    if not (t1 == t2)
+                      then Just (createError e1 (TypeMismatch1 e1 e2))
+                      else if isAddr e1
+                             then Nothing
+                             else Just $ createError e1 (NonLVal e1))
+                 et2)
+          et1
 
 -- | Convert ArithmOp from original AST to new AST
 aopConv :: ArithmOp -> C.ArithmOp
@@ -368,23 +387,6 @@ aopConv op =
     BitAnd    -> C.BitAnd
     BitClear  -> C.BitClear
 
--- | Check if two expressions have the same type
-sameType :: SymbolTable s -> (Expr, Expr) -> ST s (Maybe ErrorMessage')
-sameType st (e1, e2) = do
-  et1 <- infer st e1
-  et2 <- infer st e2
-  return $
-    either
-      Just
-      (\t1 ->
-         either
-           Just
-           (\t2 ->
-              if t1 == t2
-                then Nothing
-                else Just $ createError e1 (TypeMismatch1 e1 e2))
-           et2)
-      et1
 
 instance Symbolize Stmt C.Stmt where
   recurse st (BlockStmt sl) =
@@ -849,8 +851,7 @@ data SymbolError
   | NotDecl String
             Identifier
   | VoidFunc Identifier
-  | NotLVal Identifier
-            Symbol
+  | NotVar Identifier
   | ShortDec
   deriving (Show, Eq)
 
@@ -871,6 +872,7 @@ data TypeCheckError
   | VoidRet
   | RetMismatch SType
                 SType
+  | NonLVal Expr
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -879,8 +881,8 @@ instance ErrorEntry SymbolError where
       AlreadyDecl s (Identifier _ vname) -> s ++ vname ++ " already declared"
       NotDecl s (Identifier _ vname) -> s ++ vname ++ " not declared"
       VoidFunc (Identifier _ vname) -> vname ++ " resolves to a void function"
-      NotLVal (Identifier _ vname) s ->
-        vname ++ " resolves to " ++ show s ++ " and is not an lvalue"
+      NotVar (Identifier _ vname) ->
+        vname ++ " is not a var and cannot be short declared"
       ShortDec -> "Short declaration list contains no new variables"
 
 instance ErrorEntry TypeCheckError where
@@ -910,6 +912,8 @@ instance ErrorEntry TypeCheckError where
       RetMismatch t1 t2 ->
         "Return expression resolves to type " ++
         show t1 ++ " but function return type is " ++ show t2
+      NonLVal e ->
+        show e ++ " is not an lvalue and cannot be assigned to"
 
 -- | Wrap a result of recurse inside a new scope
 wrap ::
