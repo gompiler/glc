@@ -20,7 +20,7 @@ whilst implementing the components for milestone 2.  \newpage
    - Function bodies ending in return statements. It was easier to do
      a single weeding pass because otherwise we'd have to recurse
      differently on functions that have a return type versus functions
-     that don't have a return type during typechecking, essentially
+     that don't have a return type during typechecking. Essentially,
      we'd need two versions of typechecking statements, which was not
      deemed worth it compared to a single weeding pass.
    - ~init~ function declaration not having any non void return
@@ -112,6 +112,24 @@ whilst implementing the components for milestone 2.  \newpage
    typechecking, so we don't need them anymore, nor do we need the
    mappings). Therefore our new AST was also able to get rid of type
    declarations (except for structs).
+** New AST 
+   As mentioned above, dependency on the SymbolTable results in a 
+   dependency on the ST monad, which adds complexity to each operation.
+   As a result, our goal after typechecking is to create a new AST,
+   which reflects the new constraints we made.
+   Namely:
+   - Typecheck errors are caught beforehand, so we no longer need offsets,
+     or error breakpoints.
+   - All variables are properly typechecked, and can therefore reference an 
+     explicit type. Each type is composed of parent types up until the primitives.
+     This includes cases like function signatures, where we can associate
+     each parameter with a type instead of allowing lists of identifiers
+     to map to a single type.
+   In preparation for codegen, we can then use our new AST exclusively, without 
+   any other mutable data structures. Any additinoal information we need 
+   can be added back into the AST, with minimal changes to models used 
+   at previous stages.
+
 ** Invalid Programs
    Summary of the check in each invalid program:
    - ~append-diff-type.go~: Append an expression of a different type than
