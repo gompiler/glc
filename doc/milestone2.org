@@ -5,7 +5,14 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 2.
 \newpage
-* Invalid Programs
+* Design Decisions
+** Symbol Table
+TODO
+*** Scoping Rules
+TODO
+** Type Checker
+TODO
+** Invalid Programs
 Summary of the check in each invalid program:
 - ~append-diff-type.go~: Append an expression of a different type than
   the type of the expressions of the ~slice~.
@@ -57,3 +64,11 @@ Summary of the check in each invalid program:
   type that already exists.
 - ~var-already-declared.go~: Trying to declare a variable that is
   already declared.
+* Team
+** Team Organization
+TODO
+** Contributions
+- *Julian Lore:* TODO
+- *David Lougheed:* TODO
+- *Allan Wang:* TODO
+
