@@ -154,6 +154,15 @@ spec = do
         _, e := 2, 3
       }
       |]
+    , [text|
+      // Assignment for addressable items
+      var p struct {x int;}
+      p.x = 2
+      var i []int
+      i[1] = p.x
+      var j [2][]int
+      j[0] = i
+      |]
     ]
   expectTypecheckFail ["var b = a;"]
   expectTypecheckFail
