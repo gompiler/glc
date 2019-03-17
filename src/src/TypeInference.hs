@@ -1,6 +1,8 @@
 module TypeInference
   ( ExpressionTypeError
   , infer
+  , inferR
+  , resolveSType
   , isNumeric
   , isComparable
   , isBase
@@ -389,3 +391,9 @@ resolveSType (Struct fl) =
   Struct $ map (\(ident, st) -> (ident, resolveSType st)) fl
 resolveSType (TypeMap _ st) = resolveSType st
 resolveSType t = t -- Other types
+
+-- | Infer but resolve to base type
+inferR :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
+inferR st e = do
+  et' <- infer st e
+  return $ resolveSType <$> et'

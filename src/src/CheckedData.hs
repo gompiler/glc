@@ -24,7 +24,7 @@ newtype Scope =
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
 data Program = Program
-  { package   :: String
+  { package   :: Ident
   , topLevels :: [TopDecl]
   } deriving (Show, Eq)
 

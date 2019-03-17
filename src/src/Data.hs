@@ -24,7 +24,7 @@ instance ErrorBreakpoint Identifiers where
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
 data Program = Program
-  { package   :: String
+  { package   :: Identifier
   , topLevels :: [TopDecl]
   } deriving (Show, Eq)
 
