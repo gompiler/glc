@@ -112,10 +112,13 @@ instance Symbolize FuncDecl C.FuncDecl
                                                                                         where
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
-      then wrap st $ maybe
+      then wrap st $
+           maybe
              (if null pdl
                 then (do scope <- S.scopeLevel st -- Should be 1
-                         _ <- S.addMessage st $ Just (vname, Func [] Nothing, scope)
+                         _ <-
+                           S.addMessage st $
+                           Just (vname, Func [] Nothing, scope)
                          fmap
                            (C.FuncDecl
                               (mkSIdStr scope vname)
@@ -262,7 +265,11 @@ instance Symbolize SimpleStmt C.SimpleStmt where
           either
             Left
             (\l ->
-               let (bl, decl) = unzip l
+               let (bl, decl) =
+                     unzip
+                       (filter
+                          (\(_, (sident, _)) -> not (isBlankIdent sident))
+                          l)
                 in if True `elem` bl
                      then Right (fromList decl)
                      else Left $ createError (head idl') ShortDec)
@@ -422,7 +429,7 @@ instance Symbolize Stmt C.Stmt where
                es2' <- recurse st s2
                return $
                  (\ss' ->
-                    (\e' -> (\s1' -> (C.If (ss', e') s1') <$> es2') =<< es1') =<<
+                    (\e' -> (\s1' -> C.If (ss', e') s1' <$> es2') =<< es1') =<<
                     ee') =<<
                  ess'
              else return $ Left $ createError e (CondBool e t))
@@ -887,7 +894,9 @@ instance ErrorEntry TypeCheckError where
   errorMessage c =
     case c of
       TypeMismatch1 t1 t2 e ->
-        "Expression resolves to different type " ++ show t1 ++ " than type " ++ show t2 ++ " of " ++ prettify e ++ " in assignment"
+        "Expression resolves to different type " ++
+        show t1 ++
+        " than type " ++ show t2 ++ " of " ++ prettify e ++ " in assignment"
       TypeMismatch2 (Identifier _ vname) t1 t2 ->
         "Expression resolves to type " ++
         show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
@@ -992,11 +1001,13 @@ sl2str' (mh:mt) (S.Scope pScope) acc =
        tabs scope ++
        key ++
        (case sym of
-          Base     -> " [type] = " ++ key
+          Base -> " [type] = " ++ key
           Constant -> " [constant] = bool"
-          Func {} -> if key == "init" then " [function] = <unmapped>"
-                     else show sym
-          _        -> show sym) ++
+          Func {} ->
+            if key == "init"
+              then " [function] = <unmapped>"
+              else show sym
+          _ -> show sym) ++
        "\n")
     mh
 
@@ -1056,3 +1067,6 @@ pTable' p =
     res <- recurse @Program @C.Program st p
     syml <- S.getMessages st
     return $ either (\err -> (Just err, syml)) (const (Nothing, syml)) res
+
+isBlankIdent :: C.ScopedIdent -> Bool
+isBlankIdent (C.ScopedIdent _ (C.Ident vname)) = vname == "_"
