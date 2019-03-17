@@ -3,8 +3,7 @@
 #+LATEX_HEADER: \usepackage[margin=0.9in]{geometry}
 #+LATEX_HEADER: \usepackage[fontsize=10.5pt]{scrextend}
 This document is for explaining the design decisions we had to make
-whilst implementing the components for milestone 2.
-\newpage
+whilst implementing the components for milestone 2.  \newpage
 * Design Decisions
 ** Weeding
    We implemented additional weeding passes for certain constraints
@@ -30,15 +29,17 @@ whilst implementing the components for milestone 2.
      given the context of our current function.
    - `main` function cannot return non void. Straightforward weeding
      check. Could also have been done via typecheck, but it is
-     slightly easier to implement weeding passes (no symbol table required).
+     slightly easier to implement weeding passes (no symbol table
+     required).
 ** Symbol Table
-   In Haskell, data structures are typically immutable, and much of the language
-   is designed around this. One of the main design decisions made around the symbol
-   table was deciding whether to go with an immutable or mutable symbol table. In
-   an immutable symbol table, a new symbol table would have to be made every time
-   a scope is added or modified. Right away, despite this being a conceptually
-   better fit for the language, the potential performance degradation of constantly
-   re-building the symbol table becomes evident.
+   In Haskell, data structures are typically immutable, and much of
+   the language is designed around this. One of the main design
+   decisions made around the symbol table was deciding whether to go
+   with an immutable or mutable symbol table. In an immutable symbol
+   table, a new symbol table would have to be made every time a scope
+   is added or modified. Right away, despite this being a conceptually
+   better fit for the language, the potential performance degradation
+   of constantly re-building the symbol table becomes evident.
 
    As a result of this performance impact, we decided on using a
    mutable symbol table, with mutability supported via Haskell's
@@ -80,29 +81,30 @@ whilst implementing the components for milestone 2.
       level (simple statement 1 and 2 and condition) and the body is
       put in a nested scope
 ** Type Checker
-   For type-checking, we decided on a single-pass approach which combined symbol
-   table generation and statement type-checking. This improves performance, and is
-   possible as a product of GoLite's declaration rules, which specify that
-   identifiers must be declared before they can be used. The other
-   approach we considered was having a type annotated AST (types of
-   expressions would be contained in the AST) so that we could
-   get rid of mutability (the symbol table) as soon as possible (also some of us did a
-   similar thing for the assignment, but this was mainly relevant for the
-   fact that print statements in codegen need to know the type of the
-   expression they're printing in C), however we decided on doing all the
-   typechecking at the same time as symbol table generation because type
-   inference has to be done to generate this new AST and type inference
-   requires typechecking (~"a" + 5~ has no inferred type, but we only
-   know that because we typecheck it). Therefore we'd generate an
-   annotated AST only to typecheck things that aren't expressions. But at
-   that point, since we are already doing one in-depth pass of the
-   original AST when generating the symbol table, we might as well do the
-   other half of typechecking at the same phase (it seemed weird to split
-   half of typechecking with a symbol table and half without it and might
-   have been more feasible if type inference did not require
-   typechecking, but that makes no sense). Therefore, after the one
-   pass of our original AST, the final result is a typechecked AST with no
-   type annotation.
+   For type-checking, we decided on a single-pass approach which
+   combined symbol table generation and statement type-checking. This
+   improves performance, and is possible as a product of GoLite's
+   declaration rules, which specify that identifiers must be declared
+   before they can be used. The other approach we considered was
+   having a type annotated AST (types of expressions would be
+   contained in the AST) so that we could get rid of mutability (the
+   symbol table) as soon as possible (also some of us did a similar
+   thing for the assignment, but this was mainly relevant for the fact
+   that print statements in codegen need to know the type of the
+   expression they're printing in C), however we decided on doing all
+   the typechecking at the same time as symbol table generation
+   because type inference has to be done to generate this new AST and
+   type inference requires typechecking (~"a" + 5~ has no inferred
+   type, but we only know that because we typecheck it). Therefore
+   we'd generate an annotated AST only to typecheck things that aren't
+   expressions. But at that point, since we are already doing one
+   in-depth pass of the original AST when generating the symbol table,
+   we might as well do the other half of typechecking at the same
+   phase (it seemed weird to split half of typechecking with a symbol
+   table and half without it and might have been more feasible if type
+   inference did not require typechecking, but that makes no
+   sense). Therefore, after the one pass of our original AST, the
+   final result is a typechecked AST with no type annotation.
 
    Additionally, we decided to resolve all type mappings (except for
    structs) to their base types when generating this new AST (all the
@@ -111,63 +113,64 @@ whilst implementing the components for milestone 2.
    mappings). Therefore our new AST was also able to get rid of type
    declarations (except for structs).
 ** Invalid Programs
-Summary of the check in each invalid program:
-- ~append-diff-type.go~: Append an expression of a different type than
-  the type of the expressions of the ~slice~.
-- ~append-no-slice.go~: Append to something that isn't a slice.
-- ~assign-no-decl.go~: Assign to a variable that hasn't been declared.
-- ~assign-non-addressable.go~: Assign to a LHS that is a
-  non-addressable field.
-- ~cast-not-base.go~: Cast to a type that isn't a base type.
-- ~dec-non-lval.go~: Decrement something that isn't an ~lvalue~.
-- ~decl-type-mismatch.go~: Declare and assign variable of explicit type
-  to an expression of a different type.
-- ~float-to-string.go~: Try to cast a ~float~ to a ~string~.
-- ~for-no-bool.go~: While variant of for loop with a condition that isn't
-  a bool.
-- ~func-call.go~: Function call with arguments of different type than
-  function declaration arguments.
-- ~func-no-decl.go~: Calling a function that hasn't been declared.
-- ~function-already-declared.go~: Trying to declare a function that
-  has already been declared.
-- ~function-duplicate-param.go~: Trying to declare function with two
-  params with same name.
-- ~if-bad-init.go~: If with an init statement that does not typecheck
-  (assignment of different type).
-- ~inc-non-numeric.go~: Increment an expression that doesn't resolve
-  to a numeric base type.
-- ~index-not-list.go~: Index into something that isn't a slice.
-- ~index.go~: Index that does not resolve to an int.
-- ~invalid-type-decl.go~: Declare a type mapping to a type that
-  doesn't exist.
-- ~no-field.go~: Using selector operator on struct that doesn't have
-  the field requested.
-- ~non-existent-assign.go~: Assigning a variable to a non existent
-  variable.
-- ~non-existent-decl.go~: Trying to declare a variable of a type that
-  doesn't exist.
-- ~op-assign.go~: Op-assignment where variable and expression are not
-  compatible with operator (i.e. ~int + string~)
-- ~print-non-base.go~: Trying to print a non base type.
-- ~return-expr.go~: Returning an expression of different type than the
-  return type of the function.
-- ~return.go~: Return nothing from non-void function.
-- ~short-decl-all-decl.go~: Short declaration where all variables on
-  LHS are already declared.
-- ~short-decl-diff-type.go~: Short declaration where already defined
-  variables on LHS are not the same type as assigned expression.
-- ~switch-diff-type.go~: Type of expression of case is different from
-  switch expression type.
-- ~type-already-declared.go~: Trying to define a type mapping to a
-  type that already exists.
-- ~var-already-declared.go~: Trying to declare a variable that is
-  already declared.
+   Summary of the check in each invalid program:
+   - ~append-diff-type.go~: Append an expression of a different type than
+     the type of the expressions of the ~slice~.
+   - ~append-no-slice.go~: Append to something that isn't a slice.
+   - ~assign-no-decl.go~: Assign to a variable that hasn't been declared.
+   - ~assign-non-addressable.go~: Assign to a LHS that is a
+     non-addressable field.
+   - ~cast-not-base.go~: Cast to a type that isn't a base type.
+   - ~dec-non-lval.go~: Decrement something that isn't an ~lvalue~.
+   - ~decl-type-mismatch.go~: Declare and assign variable of explicit type
+     to an expression of a different type.
+   - ~float-to-string.go~: Try to cast a ~float~ to a ~string~.
+   - ~for-no-bool.go~: While variant of for loop with a condition that isn't
+     a bool.
+   - ~func-call.go~: Function call with arguments of different type than
+     function declaration arguments.
+   - ~func-no-decl.go~: Calling a function that hasn't been declared.
+   - ~function-already-declared.go~: Trying to declare a function that
+     has already been declared.
+   - ~function-duplicate-param.go~: Trying to declare function with two
+     params with same name.
+   - ~if-bad-init.go~: If with an init statement that does not typecheck
+     (assignment of different type).
+   - ~inc-non-numeric.go~: Increment an expression that doesn't resolve
+     to a numeric base type.
+   - ~index-not-list.go~: Index into something that isn't a slice.
+   - ~index.go~: Index that does not resolve to an int.
+   - ~invalid-type-decl.go~: Declare a type mapping to a type that
+     doesn't exist.
+   - ~no-field.go~: Using selector operator on struct that doesn't have
+     the field requested.
+   - ~non-existent-assign.go~: Assigning a variable to a non existent
+     variable.
+   - ~non-existent-decl.go~: Trying to declare a variable of a type that
+     doesn't exist.
+   - ~op-assign.go~: Op-assignment where variable and expression are not
+     compatible with operator (i.e. ~int + string~)
+   - ~print-non-base.go~: Trying to print a non base type.
+   - ~return-expr.go~: Returning an expression of different type than the
+     return type of the function.
+   - ~return.go~: Return nothing from non-void function.
+   - ~short-decl-all-decl.go~: Short declaration where all variables on
+     LHS are already declared.
+   - ~short-decl-diff-type.go~: Short declaration where already defined
+     variables on LHS are not the same type as assigned expression.
+   - ~switch-diff-type.go~: Type of expression of case is different from
+     switch expression type.
+   - ~type-already-declared.go~: Trying to define a type mapping to a
+     type that already exists.
+   - ~var-already-declared.go~: Trying to declare a variable that is
+     already declared.
 * Team
 ** TODO Team Organization
 ** Contributions
-- *Julian Lore:* Implemented weeding of blank identifiers, symbol
-  table generation, typecheck (aside from type inference and
-  expression typechecking)
-- *David Lougheed:* Worked on expression type-checking and type inference,
-  including tests. Also worked on the weeding pass for return statements.
-- *Allan Wang:* TODO
+   - *Julian Lore:* Implemented weeding of blank identifiers, symbol
+     table generation, typecheck (aside from type inference and
+     expression typechecking)
+   - *David Lougheed:* Worked on expression type-checking and type inference,
+     including tests. Also worked on the weeding pass for return
+     statements.
+   - *Allan Wang:* TODO
