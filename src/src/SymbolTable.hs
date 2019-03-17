@@ -281,7 +281,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                   if t2 == t
                     then Right (False, mkSIdStr scope vname)
                             -- if locally defined, check if type matches
-                    else Left $ createError e (TypeMismatch2 ident' t t2)
+                    else Left $ createError e (TypeMismatch2 ident t t2)
               Just _ ->
                 return $ Left $ createError ident' (NotVar ident')
               Nothing -> do
@@ -595,7 +595,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
                                   Just)
                                  ee')
                     else return $
-                         Left $ createError ident (TypeMismatch2 ident t2 t'))
+                         Left $ createError e (TypeMismatch2 ident t' t2))
                et')
           me
       checkDeclI ::
@@ -907,7 +907,7 @@ instance ErrorEntry TypeCheckError where
         "Cannot compare expression of type " ++
         show t1 ++ " with type " ++ show t2 ++ " (type of switch expression)"
       NonBaseP t ->
-        "Expression resolves to non base type " ++
+        "Expression resolves to non base typeprettify" ++
         show t ++ " and cannot be printed"
       VoidRet -> "Cannot return expression from void function"
       RetMismatch t1 t2 ->
