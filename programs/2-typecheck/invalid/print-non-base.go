@@ -1,5 +1,5 @@
 // Trying to print an expression that doesn't resolve to a base type
-// print(e) does not typecheck because e isn't of a base type
+// print(e) does not typecheck if e isn't of a base type
 
 package main
 

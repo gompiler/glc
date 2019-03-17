@@ -2,6 +2,6 @@
 // return expr does not typecheck because the type of expr is not the same return type of the enclosing function
 package main;
 
-func retInt() int{
+func retInt() int {
 	return "5"
 }

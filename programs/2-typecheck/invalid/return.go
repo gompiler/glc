@@ -2,7 +2,7 @@
 // return does not typecheck because the enclosing function is not void
 package main
 
-func retInt() int{
+func retInt() int {
 	return
 }
 
