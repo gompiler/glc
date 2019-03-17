@@ -3,10 +3,10 @@
 
 package main
 
-func plus(a, b int) int{
+func plus(a, b int) int {
 	return a + b
 }
 
-func main(){
+func main() {
 	a := plus(3, "4")
 }
