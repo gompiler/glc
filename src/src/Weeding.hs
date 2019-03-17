@@ -242,7 +242,6 @@ initReturnVerify program = asum errors
     errors = map initReturnConstraint (topLevels program)
 
 initReturnConstraint :: TopDecl -> Maybe ErrorMessage'
-initReturnConstraint (TopDecl _) = Nothing
 initReturnConstraint (TopFuncDecl (FuncDecl (Identifier _ fname) _ fb)) =
   if fname == "init"
     then checkInitReturn fb
@@ -255,6 +254,7 @@ initReturnConstraint (TopFuncDecl (FuncDecl (Identifier _ fname) _ fb)) =
     checkInitReturn (BlockStmt stmts) = asum $ map checkInitReturn stmts
     checkInitReturn (Return o (Just _)) = Just $ createError o InitReturn
     checkInitReturn _ = Nothing
+initReturnConstraint _ = Nothing -- Non-function declarations don't matter here
 
 -- Helpers
 -- | Extracts block statements from top-level function declarations
