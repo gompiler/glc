@@ -722,11 +722,11 @@ instance Symbolize Expr C.Expr where
   recurse st (Var ident@(Identifier _ vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname
-    return $
-      maybe
-        (Left $ createError ident (NotDecl "Variable " ident))
-        (\(scope, _) -> Right $ C.Var (mkSIdStr scope vname))
-        msi
+    maybe
+      (do
+          _ <- S.addMessage st Nothing
+          return $ Left $ createError ident (NotDecl "Variable " ident))
+      (\(scope, _) -> return $ Right $ C.Var (mkSIdStr scope vname)) msi
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1

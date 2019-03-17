@@ -7,8 +7,8 @@ import           SymbolTable (pTable)
 import Base (expectBase, toString, Stringable(..), text)
 import           Test.Hspec
 
-expectPass :: Stringable s => [s] -> SpecWith ()
-expectPass = expectBase
+expectSymPass :: Stringable s => [s] -> SpecWith ()
+expectSymPass = expectBase
              "success"
              (\s ->
                 let c =
@@ -24,8 +24,8 @@ expectPass = expectBase
              toString
              "symbol"
              
-expectFail :: Stringable s => [s] -> SpecWith ()
-expectFail = expectBase
+expectSymFail :: Stringable s => [s] -> SpecWith ()
+expectSymFail = expectBase
              "fail"
              (\s ->
                 let c =
@@ -40,11 +40,11 @@ expectFail = expectBase
 
 spec :: Spec
 spec = do
-  expectPass
+  expectSymPass
     [""]
-  -- expectFail
-  --   ["var a = b"]
-  expectFail
+  expectSymFail
+    ["var a = b"]
+  expectSymFail
     [[text|
           var a = 5
           var a = 6

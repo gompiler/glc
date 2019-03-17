@@ -186,14 +186,15 @@ infer st (Var ident@(Identifier _ vname)) = resolveVar st
     resolveVar :: SymbolTable s -> ST s (Either ErrorMessage' SType)
     resolveVar st' = do
       res <- S.lookup st' vname
-      return $
-        case res of
-          Nothing -> Left $ createError ident (ExprNotDecl "Identifier " ident)
-          Just (_, sym) ->
-            case sym of
-              Variable t' -> Right t'
-              Constant    -> Right PBool -- Constants can only be booleans
-              _           -> Left $ createError ident (NotVar ident)
+      case res of
+        Nothing -> do
+          _ <- S.addMessage st' Nothing -- Signal error to symbol table checker
+          return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
+        Just (_, sym) -> return $
+          case sym of
+            Variable t' -> Right t'
+            Constant    -> Right PBool -- Constants can only be booleans
+            _           -> Left $ createError ident (NotVar ident)
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
