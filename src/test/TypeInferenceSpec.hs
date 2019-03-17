@@ -123,20 +123,37 @@ spec = do
     , ("int_5_arr[0]", PInt)
     -- Slices
     , ("int_slice[0]", PInt)
+    -----------------------------------------------------
+    -- Type casts
+    -- type(expr) is valid if:
+    -- type is base type (int, float64, bool, rune, string)
+    -- expr is well type and
+    -- * type == typeof expr
+    -- * typeof type and typeof expr are both numeric
+    -- * typeof type is string and typeof expr is rune or int
+    -----------------------------------------------------
     -- Identity casts
     , ("int(5)", PInt)
     , ("float64(5.0)", PFloat64)
     , ("rune('a')", PRune)
     , ("string(\"a\")", PString)
+    , ("string(`a`)", PString)
     , ("bool(true)", PBool)
     -- Numeric casts
     , ("float64(5)", PFloat64)
-    , ("rune(5)", PRune)
-    , ("int(5.0)", PInt)
-    , ("rune(5.0)", PRune)
-    , ("int('a')", PInt)
     , ("float64('a')", PFloat64)
+    , ("int(5.0)", PInt)
+    , ("int('a')", PInt)
+    , ("rune(5.0)", PRune)
+    , ("rune(5)", PRune)
+    -- Numeric var casts
+    , ("int(int_var)", PInt)
+    -- Numeric expr casts
+    , ("int(5.0 - 1. * float_var)", PInt)
+    , ("float64('a' + 'b' - rune_var)", PFloat64)
+    , ("rune(2 % 9 * int_var)", PRune)
     -- String casts
+    , ("string(-2)", PString)
     , ("string(5)", PString)
     , ("string('a')", PString)
     -- Primitive variables
@@ -174,9 +191,13 @@ spec = do
     , "'a' || 'b'"
     , "'a' && 'b'"
     , "\"a\" || \"b\""
+    -----------------------------------------------------
+    -- Bad Type casts
+    -----------------------------------------------------
     -- Bad string casts
     , "string(5.0)"
     , "string(true)"
+    --, "string(int)" -- TODO Failing
     -- Bad built-ins - TODO
     , "len()"
     , "len(bool_var)"
