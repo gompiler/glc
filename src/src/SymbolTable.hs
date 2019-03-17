@@ -25,6 +25,7 @@ import           Numeric            (readOct)
 import           Scanner            (putExit, putSucc)
 import           TypeInference
 import           Weeding            (weed)
+import           Prettify (prettify)
 
 import           Symbol
 
@@ -890,15 +891,15 @@ instance ErrorEntry TypeCheckError where
     case c of
       TypeMismatch1 e1 e2 ->
         "Expression " ++
-        show e1 ++
-        " resolves to different type than " ++ show e2 ++ " in assignment"
+        prettify e1 ++
+        " resolves to different type than " ++ prettify e2 ++ " in assignment"
       TypeMismatch2 (Identifier _ vname) t1 t2 ->
         "Expression resolves to type " ++
         show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
       CondBool e t ->
         "Condition " ++
-        show e ++ " resolves to " ++ show t ++ ", expecting a bool"
-      NonNumeric e s -> show e ++ " is a non numeric type and cannot be " ++ s
+        prettify e ++ " resolves to " ++ show t ++ ", expecting a bool"
+      NonNumeric e s -> prettify e ++ " is a non numeric type and cannot be " ++ s
       NotCompSw t ->
         "Switch statement expression resolves to type " ++
         show t ++ " and is not comparable"
@@ -913,7 +914,7 @@ instance ErrorEntry TypeCheckError where
         "Return expression resolves to type " ++
         show t1 ++ " but function return type is " ++ show t2
       NonLVal e ->
-        show e ++ " is not an lvalue and cannot be assigned to"
+        prettify e ++ " is not an lvalue and cannot be assigned to"
 
 -- | Wrap a result of recurse inside a new scope
 wrap ::
