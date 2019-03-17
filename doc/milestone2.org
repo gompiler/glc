@@ -1,4 +1,4 @@
-#+TITLE: Design Document for Milestone 1
+#+TITLE: Design Document for Milestone 2
 #+AUTHOR: Lore, J., Lougheed D., Wang A.
 #+LATEX_HEADER: \usepackage[margin=0.9in]{geometry}
 #+LATEX_HEADER: \usepackage[fontsize=10.5pt]{scrextend}
@@ -173,4 +173,4 @@ whilst implementing the components for milestone 2.  \newpage
    - *David Lougheed:* Worked on expression type-checking and type inference,
      including tests. Also worked on the weeding pass for return
      statements.
-   - *Allan Wang:* TODO
+   - *Allan Wang:* Added data structures for error messages, and supported explicit error checking in tests. Created the data model for symbol table core. Added hspec tests.
