@@ -271,6 +271,7 @@ spec = do
     , "type g struct { a _; }"
     , "var a = 1, 3"
     , "var a float = 1, 3"
+    , "func _(ab _) {}"
     ]
   expectWeedError
     [ ( [text|
