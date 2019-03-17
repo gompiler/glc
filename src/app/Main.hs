@@ -5,7 +5,7 @@ import qualified Options.Applicative as Op
 import           ParseCLI
 import           Prettify            (checkPrettifyInvariance, prettify)
 import           Scanner             (putExit, putSucc, scanC, scanP)
-import           SymbolTable         (symbol)
+import           SymbolTable         (symbol, typecheckP)
 import           Weeding             (weed)
 
 main :: IO ()
@@ -25,6 +25,6 @@ main = do
         PrettyInvar ->
           either putExit (const $ putSucc "OK") . checkPrettifyInvariance
         Symbol -> symbol
-        Typecheck -> const $ putStrLn "typecheck not yet implemented"
+        Typecheck -> typecheckP
         Codegen ->
           const $ putExit $ createError' "codegen called without filename" -- This should never happen because of case above

@@ -889,6 +889,23 @@ br prev cur
   | cur > prev = tabs prev ++ "{\n" ++ br (prev + 1) cur
   | otherwise = ""
 
+
+-- | Top level function for cli to verify if program passes typecheck
+typecheckP :: String -> IO ()
+typecheckP s =
+  either putExit (const $ putSucc "OK") (typecheckGen s)
+
+typecheckGen :: String -> Either ErrorMessage C.Program
+typecheckGen code =
+  either Left (\p -> either (\e -> Left $ e code `withPrefix` "Typecheck error at ") Right (typecheckGen' p)) (weed code)
+
+-- | Generate new AST from Program
+typecheckGen' :: Program -> Either ErrorMessage' C.Program
+typecheckGen' p =
+  runST $ do
+  st <- new
+  recurse @Program @C.Program st p
+
 -- | Top level function for cli
 symbol :: String -> IO ()
 symbol s =
