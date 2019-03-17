@@ -360,4 +360,4 @@ instance ErrorEntry WeedingError where
       ForPostDecl -> "For post-statement cannot be declaration"
       ContinueScope -> "Continue statement must occur in for loop"
       BreakScope -> "Break statement must occur in for loop or switch statement"
-      LastReturn -> "Function declaration must have return as last statement"
+      LastReturn -> "Function declaration with non-void return type must have return as last statement"
