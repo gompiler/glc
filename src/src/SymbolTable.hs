@@ -7,7 +7,7 @@ module SymbolTable where
 
 import           Control.Applicative (Alternative)
 
--- import           Control.Monad           (join)
+import           Control.Monad           (join)
 import           Control.Monad.ST
 import           Data
 import           Data.Either         (partitionEithers)
@@ -329,9 +329,6 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                                                            ShiftR -> C.ShiftR
                                                            BitAnd -> C.BitAnd
                                                            BitClear -> C.BitClear
-                                                     
-                                                    -- (\bl -> if False `elem` bl then ) <$> sequence el
-    -- am (recurse st) (toList el)
 
 -- | Check if two expressions have the same type
 sameType :: SymbolTable s -> (Expr, Expr) -> ST s (Maybe ErrorMessage')
@@ -342,11 +339,31 @@ sameType st (e1,e2) = do
                                                Just $ createError e1 (TypeMismatch2 e1 e2)) et2) et1
                                                      
 instance Symbolize Stmt C.Stmt where
-  recurse st (BlockStmt sl) = undefined -- wrap st $ am (recurse st) sl
-  recurse st (SimpleStmt s) = undefined -- recurse st s
-  recurse st (If (ss, e) s1 s2) = undefined
---    wrap st $ am (recurse st) [H ss, H e, H s1, H s2]
-  recurse st (Switch ss me scs) = undefined
+  recurse st (BlockStmt sl) = wrap st $ (\sl' -> C.BlockStmt <$> sequence sl') <$> (mapM (recurse st) sl)
+  recurse st (SimpleStmt s) = seqRec st s >>= return . fmap C.SimpleStmt
+  recurse st (If (ss, e) s1 s2) = wrap st $ do
+    et <- infer st e
+    either
+      (return . Left)
+      (\t ->
+         if t == PBool
+           then do
+             ess' <- recurse st ss
+             ee' <- recurse st e
+             es1' <- recurse st s1
+             es2' <- recurse st s2
+             return $
+               join $
+               (\ss' ->
+                  join $
+                  (\e' ->
+                     join $
+                     (\s1' -> (\s2' -> C.If (ss', e') s1' s2') <$> es2') <$> es1') <$>
+                  ee') <$>
+               ess'
+           else return $ Left $ createError e (CondBool e t))
+      et
+  recurse st (Switch ss me scs) = undefined -- wrap st $ do
     -- wrap st $ do
     --   r1 <-
     --     case me of
@@ -506,6 +523,7 @@ data TypeCheckError
   | TypeMismatch1 Identifier
                   SType
                   SType
+  | CondBool Expr SType
 
 instance ErrorEntry SymbolError where
   errorMessage c =
@@ -526,6 +544,8 @@ instance ErrorEntry TypeCheckError where
       TypeMismatch1 (Identifier _ vname) t1 t2 ->
         "Expression resolves to type " ++
         show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
+      CondBool e t ->
+        "Condition " ++ show e ++ " resolves to " ++ show t ++ ", expecting a bool"
 
 -- | Extract top most scope from symbol table
 topScope :: ST s (SymbolTable s) -> ST s (S.SymbolScope s Symbol)
