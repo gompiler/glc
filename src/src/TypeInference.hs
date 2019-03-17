@@ -1,6 +1,8 @@
 module TypeInference
   ( ExpressionTypeError
   , infer
+  , isNumeric
+  , isComparable
   ) where
 
 import           Control.Monad.ST
