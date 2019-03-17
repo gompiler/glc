@@ -112,7 +112,7 @@ spec = do
       var a = 6
       |]
     ]
-  expectTypecheckPass ["var a = 5;"]
+  expectTypecheckPass ["var a = 5;", "type _ int", "type int int", "type float64 int"]
   expectTypecheckPass
     [ [text|
       type int2 int
@@ -160,6 +160,36 @@ spec = do
       type int5 int4
       var d int5 = int4(int2(24))
       |]
+    , [text|
+      type int i
+      |]
+    , [text|
+      struct point {x int; y int}
+      struct point2 {x int; y int}
+      var a point
+      var b point
+      if a == b {
+      }
+      |]
     ]
   expectTypecheckPassNoMain ["func init(){}"]
-  expectTypecheckFailNoMain ["func init(a int){}"]
+  expectTypecheckFailNoMain
+    [ [text|
+      func init(a int){
+      }
+      |]
+    ]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
