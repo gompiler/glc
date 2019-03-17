@@ -184,28 +184,45 @@ spec = do
     , "return _"
     ]
   expectWeedFailNoMain
-    ["var a, b = 3", "var a, b int = 3", "type g struct { a _; }", "var a = 1, 3", "var a float = 1, 3"]
-  expectWeedFailNoMain
-    [ [text|
-         var (
-            a, b = 0
-         )
-         |]
-    , [text|
-         var (
-            a, b int = 0
-         )
-         |]
-    , [text|
-         var (
-            a int = 1, 2
-         )
-         |]
-    , [text|
-         var (
-            a = 1, 2
-         )
-         |]
+    [ "var a, b = 3"
+    , "var a, b int = 3"
+    , "type g struct { a _; }"
+    , "var a = 1, 3"
+    , "var a float = 1, 3"
+    ]
+  expectWeedError
+    [ ( [text|
+        package main
+
+        var (
+          a, b = 0
+        )
+        |]
+      , ListSizeMismatch)
+    , ( [text|
+        package main
+
+        var (
+          a, b int = 0
+        )
+        |]
+      , ListSizeMismatch)
+    , ( [text|
+        package main
+
+        var (
+           a int = 1, 2
+        )
+        |]
+      , ListSizeMismatch)
+    , ( [text|
+        package main
+
+        var (
+          a = 1, 2
+        )
+        |]
+      , ListSizeMismatch)
     ]
   expectWeedFail
     [ [text|
