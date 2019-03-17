@@ -4,6 +4,7 @@
 
 module SymbolTable
   ( typecheckP
+  , typecheckGen
   , symbol
   , pTable
   , new

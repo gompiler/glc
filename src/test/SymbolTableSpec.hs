@@ -3,7 +3,7 @@ module SymbolTableSpec
   ( spec
   ) where
 
-import           SymbolTable (pTable)
+import           SymbolTable (pTable, typecheckGen)
 import Base (expectBase, toString, Stringable(..), text)
 import           Test.Hspec
 
@@ -37,6 +37,62 @@ expectSymFail = expectBase
                    _ -> return ())
              toString
              "symbol"
+  
+expectTypecheckPass :: Stringable s => [s] -> SpecWith ()
+expectTypecheckPass = expectBase
+             "success"
+             (\s ->
+                let c =
+                      "package main\n\nfunc main() {\n\n" ++ toString s ++ "\n\n}" in
+                 case typecheckGen c of
+                   Left err ->            expectationFailure $
+                     "Expected typecheck success on:\n\n" ++
+                     toString s ++ "\n\nbut failed with\n\n" ++ show err
+                   _ -> return ())
+             toString
+             "typecheck"
+  
+expectTypecheckFail :: Stringable s => [s] -> SpecWith ()
+expectTypecheckFail = expectBase
+             "fail"
+             (\s ->
+                let c =
+                      "package main\n\nfunc main() {\n\n" ++ toString s ++ "\n\n}" in
+                 case typecheckGen c of
+                   Right p ->            expectationFailure $
+                     "Expected typecheck fail on:\n\n" ++
+                     toString s ++ "\n\nbut succeeded with\n\n" ++ show p
+                   _ -> return ())
+             toString
+             "typecheck"
+  
+expectTypecheckPassNoMain :: Stringable s => [s] -> SpecWith ()
+expectTypecheckPassNoMain = expectBase
+             "success"
+             (\s ->
+                let c =
+                      "package main\n\n" ++ toString s in
+                 case typecheckGen c of
+                   Left err ->            expectationFailure $
+                     "Expected typecheck success on:\n\n" ++
+                     toString s ++ "\n\nbut failed with\n\n" ++ show err
+                   _ -> return ())
+             toString
+             "typecheck"
+  
+expectTypecheckFailNoMain :: Stringable s => [s] -> SpecWith ()
+expectTypecheckFailNoMain = expectBase
+             "fail"
+             (\s ->
+                let c =
+                      "package main\n\n" ++ toString s in
+                 case typecheckGen c of
+                   Right p ->            expectationFailure $
+                     "Expected typecheck fail on:\n\n" ++
+                     toString s ++ "\n\nbut succeeded with\n\n" ++ show p
+                   _ -> return ())
+             toString
+             "typecheck"
 
 spec :: Spec
 spec = do
@@ -49,3 +105,11 @@ spec = do
           var a = 5
           var a = 6
           |]]
+  expectTypecheckPass
+    ["var a = 5;"]
+  expectTypecheckFail
+    ["var b = a;"]
+  expectTypecheckPassNoMain
+    ["func init(){}"]
+  expectTypecheckFailNoMain
+    ["func init(a int){}"]
