@@ -259,10 +259,10 @@ infer st ie@(Index _ e1 e2) = do
   return $ do
     t1 <- e1e
     t2 <- e2e
-    case (rpartSType t1, t2) of -- TODO: PROBABLY NEED TO SOMEHOW RESOLVE T2 TO SEE IF ITS AN INDEXy THING
-      (Slice t, t')   -> indexable t t' "slice"
-      (Array _ t, t') -> indexable t t' "array"
-      (t, _)          -> Left $ createError ie $ NonIndexable t
+    case rpartSType t1 of
+      Slice t   -> indexable t t2 "slice"
+      Array _ t -> indexable t t2 "array"
+      t         -> Left $ createError ie $ NonIndexable t
      -- | Checks that second type is an int before returning type or error
   where
     indexable :: SType -> SType -> String -> Either ErrorMessage' SType
