@@ -116,7 +116,7 @@ whilst implementing the components for milestone 2.  \newpage
    As mentioned above, dependency on the SymbolTable results in a 
    dependency on the ST monad, which adds complexity to each operation.
    As a result, our goal after typechecking is to create a new AST,
-   which reflects the new constraints we made.
+   which reflects the new constraints we enforce.
    Namely:
    - Typecheck errors are caught beforehand, so we no longer need offsets,
      or error breakpoints.
@@ -183,7 +183,11 @@ whilst implementing the components for milestone 2.  \newpage
    - ~var-already-declared.go~: Trying to declare a variable that is
      already declared.
 * Team
-** TODO Team Organization
+** Team Organization
+   The three main components for this milestone are the symbol table, type checking rules, and new AST + tests.
+   Each component was lead by Julian, David, and Allan respectively. As there is high coupling between each 
+   component, we continually seeked feedback from one another. Leads are in charge of understanding the overall 
+   component and in resolving concerns or requests from other members.
 ** Contributions
    - *Julian Lore:* Implemented weeding of blank identifiers, symbol
      table generation, typecheck (aside from type inference and
