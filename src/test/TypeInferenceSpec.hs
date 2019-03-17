@@ -30,6 +30,8 @@ parseAndInferNoST expStr = either Left runExpr parseResult
         _ <- SymTab.add st "rune_var" (Variable PRune)
         _ <- SymTab.add st "string_var" (Variable PString)
         _ <- SymTab.add st "int_5_arr" (Variable (Array 5 PInt))
+        _ <- SymTab.add st "int_5_arr_2" (Variable (Array 5 PInt))
+        _ <- SymTab.add st "int_3_arr" (Variable (Array 3 PInt))
         _ <- SymTab.add st "int_slice" (Variable (Slice PInt))
         _ <-
           SymTab.add
@@ -126,6 +128,7 @@ spec
     -- bool, rune, int, float64, string, struct if all fields comparable
     -- , ("2 == 54", PBool) -- TODO FAIL; add all others
     , ("st_var == st_var", PBool)
+    , ("int_5_arr == int_5_arr_2", PBool)
     -- TODO compare structs
     -- Ordered ops
     -- See See https://golang.org/ref/spec#Comparison_operators
@@ -155,6 +158,8 @@ spec
     , "'a' || 'b'"
     , "'a' && 'b'"
     , "\"a\" || \"b\""
+    , "int_5_arr == int_3_arr" -- not comparable
+    , "int_slice == int_slice" -- not comparable
     ]
   -- | Type casts
   -- type(expr) is valid if:
@@ -201,7 +206,7 @@ spec
     , ("string(rune(5 + int(5.0)) + 'c' + rune(float64('a') + 2.0))", PString)
     ]
   expectFail
-    "binary operations"
+    "casting"
     -- Bad string casts
     ["string(5.0)", "string(true)"]
   -- | Variables + build ins

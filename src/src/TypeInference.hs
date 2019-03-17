@@ -148,7 +148,7 @@ infer st e@(Binary _ op i1 i2) =
       return $ do
         t1 <- ei1
         t2 <- ei2
-        if t1 == t2
+        if t1 == t2 && isComparable t1
           then Right PBool
           else Left $ createError e $ CompareMismatch t1 t2
     orderConstraint =
@@ -361,6 +361,14 @@ isBoolean = (==) PBool
 
 isIntegerLike :: SType -> Bool
 isIntegerLike = flip elem [PInt, PRune]
+
+-- | Checks if a type is comparable at all (arrays still need length checks).
+isComparable :: SType -> Bool
+isComparable styp =
+  case styp of
+    Slice _         -> False
+    TypeMap _ styp' -> isComparable styp'
+    _               -> True
 
 -- | Resolves a defined type to a base type, WITHOUT nested types
 rpartSType :: SType -> SType
