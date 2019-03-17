@@ -49,7 +49,10 @@ spec = do
     , "int int"
     -- Only int literals allowed
     , "[1 + 2]string"
+    , "[2.0]float"
     , "[a]string"
+    , "[\"a\"]string"
+    , "['a']string"
     ]
   expectPass
     @TopDecl
@@ -164,6 +167,11 @@ spec = do
     , "if a { c++ \n}"
     , "if a := 2; b { } else if 0 < 1 { c-- \n}"
     , "for ;; { }"
+    , "for ; a; { }"
+    , "for ;; a++{ }"
+    , "for a:= 0;;{ }"
+    , "for a:= 0; a < 3;{ }"
+    , "for a:= 0;; a++{ }"
     , "for a < 5 { }"
     , "for a := 2; a < 5; a++ { }"
     , "for { }"
@@ -171,6 +179,10 @@ spec = do
     intExamples ++ floatExamples ++ map (\s -> "'" ++ s ++ "'") runeExamples
   expectPass @Stmt stmtExamples
   expectFail @Stmt $ map (\s -> "{" ++ s ++ "}") ["/*", "/**", "/* /* */ */"]
+  expectFail @Stmt
+    [ "a, b := 1"
+    , "a := 1, 2"
+    ]
   expectPass
     @Signature
     [ "(a int)"
