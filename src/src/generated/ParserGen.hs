@@ -1300,11 +1300,12 @@ happyReduction_117 (happy_x_5 `HappyStk`
 	happy_x_2 `HappyStk`
 	happy_x_1 `HappyStk`
 	happyRest)
-	 = case happyOut49 happy_x_4 of { happy_var_4 -> 
+	 = case happyOut50 happy_x_2 of { happy_var_2 -> 
+	case happyOut49 happy_x_4 of { happy_var_4 -> 
 	case happyOut48 happy_x_5 of { happy_var_5 -> 
 	happyIn53
-		 (For (ForClause EmptyStmt Nothing (happy_var_4)) happy_var_5
-	) `HappyStk` happyRest}}
+		 (For (ForClause happy_var_2 Nothing (happy_var_4)) happy_var_5
+	) `HappyStk` happyRest}}}
 
 happyReduce_118 = happyReduce 6# 25# happyReduction_118
 happyReduction_118 (happy_x_6 `HappyStk`
@@ -2109,13 +2110,19 @@ parseError (Token (AlexPn o l c) t) =
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
-{-# LINE 18 "<built-in>" #-}
-{-# LINE 1 "/usr/local/Cellar/ghc/8.6.3/lib/ghc-8.6.3/include/ghcversion.h" #-}
+{-# LINE 1 "<command-line>" #-}
+{-# LINE 10 "<command-line>" #-}
+# 1 "/usr/include/stdc-predef.h" 1 3 4
 
-{-# LINE 19 "<built-in>" #-}
-{-# LINE 1 "/var/folders/hd/dnzz34rj7891bl2b3r_rmgsc0000gn/T/ghc99700_0/ghc_2.h" #-}
+# 17 "/usr/include/stdc-predef.h" 3 4
 
-{-# LINE 20 "<built-in>" #-}
+{-# LINE 10 "<command-line>" #-}
+{-# LINE 1 "/usr/lib/ghc-8.6.3/include/ghcversion.h" #-}
+
+{-# LINE 10 "<command-line>" #-}
+{-# LINE 1 "/tmp/ghc29346_0/ghc_2.h" #-}
+
+{-# LINE 10 "<command-line>" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 -- Id: GenericTemplate.hs,v 1.26 2005/01/14 14:47:22 simonmar Exp 
 
@@ -2131,7 +2138,6 @@ parseError (Token (AlexPn o l c) t) =
 #define GTE(n,m) (n Happy_GHC_Exts.>=# m)
 #define EQ(n,m) (n Happy_GHC_Exts.==# m)
 #endif
-
 {-# LINE 46 "templates/GenericTemplate.hs" #-}
 
 data Happy_IntList = HappyCons Happy_GHC_Exts.Int# Happy_IntList
@@ -2139,6 +2145,8 @@ data Happy_IntList = HappyCons Happy_GHC_Exts.Int# Happy_IntList
 {-# LINE 67 "templates/GenericTemplate.hs" #-}
 
 {-# LINE 77 "templates/GenericTemplate.hs" #-}
+
+{-# LINE 86 "templates/GenericTemplate.hs" #-}
 
 infixr 9 `HappyStk`
 data HappyStk a = HappyStk a (HappyStk a)
@@ -2164,7 +2172,6 @@ happyAccept j tk st sts (HappyStk ans _) =
 
 happyDoAction i tk st
         = {- nothing -}
-          
 
           case action of
                 0#           -> {- nothing -}
@@ -2172,11 +2179,10 @@ happyDoAction i tk st
                 -1#          -> {- nothing -}
                                      happyAccept i tk st
                 n | LT(n,(0# :: Happy_GHC_Exts.Int#)) -> {- nothing -}
-                                                   
+
                                                    (happyReduceArr Happy_Data_Array.! rule) i tk st
                                                    where rule = (Happy_GHC_Exts.I# ((Happy_GHC_Exts.negateInt# ((n Happy_GHC_Exts.+# (1# :: Happy_GHC_Exts.Int#))))))
                 n                 -> {- nothing -}
-                                     
 
                                      happyShift new_state i tk st
                                      where new_state = (n Happy_GHC_Exts.-# (1# :: Happy_GHC_Exts.Int#))
@@ -2357,4 +2363,3 @@ happyDontSeq a b = b
 {-# NOINLINE happyFail #-}
 
 -- end of Happy Template.
-
