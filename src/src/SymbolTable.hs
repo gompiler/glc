@@ -907,7 +907,7 @@ instance ErrorEntry TypeCheckError where
         "Cannot compare expression of type " ++
         show t1 ++ " with type " ++ show t2 ++ " (type of switch expression)"
       NonBaseP t ->
-        "Expression resolves to non base typeprettify" ++
+        "Expression resolves to non base type" ++
         show t ++ " and cannot be printed"
       VoidRet -> "Cannot return expression from void function"
       RetMismatch t1 t2 ->
