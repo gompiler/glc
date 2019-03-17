@@ -119,3 +119,6 @@ resolve (Identifier _ vname) st notDeclError voidFuncError =
 -- | Take Symbol table scope and string to make ScopedIdent, add dummy offset
 mkSIdStr :: S.Scope -> String -> SIdent
 mkSIdStr (S.Scope s) str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
+
+mkSIdStr' :: Int -> String -> SIdent
+mkSIdStr' s str = T.ScopedIdent (T.Scope s) (Identifier (Offset 0) str)
