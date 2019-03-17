@@ -1,4 +1,4 @@
-% Created 2019-03-17 Sun 17:12
+% Created 2019-03-17 Sun 17:19
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -34,7 +34,7 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 2.  \newpage
 \section{Weeding}
-\label{sec:org1bf1bbc}
+\label{sec:org44c5fe7}
 We implemented additional weeding passes for certain constraints
 that could be verified either at the weeding level or the typecheck
 level because it was easier to check via weeding. The constraints we
@@ -62,7 +62,7 @@ check. Could also have been done via typecheck, but it is slightly
 easier to implement weeding passes (no symbol table required).
 \end{itemize}
 \section{Symbol Table}
-\label{sec:orge36abfc}
+\label{sec:org155f242}
 In Haskell, data structures are typically immutable, and much of the
 language is designed around this. One of the main design decisions
 made around the symbol table was deciding whether to go with an
@@ -88,8 +88,18 @@ table, which made up a huge portion of the work for this milestone,
 however, once we finish using the symbol table, our final result (a
 typechecked/simplified proven correct AST) is pure and very easy to
 manipulate for \texttt{codegen} in the next milestone.
+
+As for what we store in the symbol table, we created a new type
+\texttt{Symbol} to represent each symbol, analogous to the different types
+of symbols (types, constants, functions, variables) and new type
+\texttt{SType} that keeps the vital information concerning the types we
+define in the original \texttt{AST}. All types that are left to be inferred
+during symbol table generation are updated when typechecking (we
+infer the type of variables and then update their value in the
+symbol table to make sure things like assignments don't conflict
+with the original inferred type).
 \subsection{Scoping Rules}
-\label{sec:org6fa44bd}
+\label{sec:org5e3c3a1}
 The scoping rules we used/considered are as follows:
 \begin{itemize}
 \item Function declarations: the parameters and function body are put
@@ -112,7 +122,7 @@ level (simple statement 1 and 2 and condition) and the body is
 put in a nested scope
 \end{itemize}
 \section{Type Checker}
-\label{sec:org140d8de}
+\label{sec:org923c04d}
 For type-checking, we decided on a single-pass approach which
 combined symbol table generation and statement type-checking. This
 improves performance, and is possible as a product of GoLite's
@@ -145,7 +155,7 @@ typechecking, so we don't need them anymore, nor do we need the
 mappings). Therefore our new AST was also able to get rid of type
 declarations (except for structs).
 \section{New AST}
-\label{sec:org65e7260}
+\label{sec:org1687bb2}
 As mentioned above, dependency on the SymbolTable results in a
 dependency on the ST monad, which adds complexity to each operation.
 As a result, our goal after typechecking is to create a new AST,
@@ -165,7 +175,7 @@ with minimal changes to models used at previous stages.
 \end{itemize}
 
 \section{Invalid Programs}
-\label{sec:org636369a}
+\label{sec:org5f90fc0}
 Summary of the check in each invalid program:
 \begin{itemize}
 \item \texttt{append-diff-type.go}: Append an expression of a different type than
@@ -220,9 +230,9 @@ type that already exists.
 already declared.
 \end{itemize}
 \section{Team}
-\label{sec:org567a413}
+\label{sec:orgb484db0}
 \subsection{Team Organization}
-\label{sec:orga773ebb}
+\label{sec:orge17ae2f}
 The three main components for this milestone are the symbol table,
 type checking rules, and new AST + tests.  Each component was lead
 by Julian, David, and Allan respectively. As there is high coupling
@@ -230,7 +240,7 @@ between each component, we continually sought feedback from one
 another. Leads are in charge of understanding the overall component
 and in resolving concerns or requests from other members.
 \subsection{Contributions}
-\label{sec:org5d49dd8}
+\label{sec:org9975fc6}
 \begin{itemize}
 \item \textbf{Julian Lore:} Implemented weeding of blank identifiers, symbol
 table generation, typecheck (aside from type inference and

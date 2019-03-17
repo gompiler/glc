@@ -1,21 +1,21 @@
 
 # Table of Contents
 
-1.  [Weeding](#org677efff)
-2.  [Symbol Table](#org89e66a8)
-    1.  [Scoping Rules](#orgb05e36c)
-3.  [Type Checker](#org503f165)
-4.  [New AST](#org09cbb1f)
-5.  [Invalid Programs](#orgf2543dc)
-6.  [Team](#orgd8c0132)
-    1.  [Team Organization](#orgc5d502f)
-    2.  [Contributions](#org67ba362)
+1.  [Weeding](#org5a68e64)
+2.  [Symbol Table](#org682b019)
+    1.  [Scoping Rules](#org9fcde4e)
+3.  [Type Checker](#org89b6568)
+4.  [New AST](#orgfdde0d8)
+5.  [Invalid Programs](#org00008f7)
+6.  [Team](#org0a2ccf7)
+    1.  [Team Organization](#orgc6dc495)
+    2.  [Contributions](#orgdffef6a)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 2.  \newpage
 
 
-<a id="org677efff"></a>
+<a id="org5a68e64"></a>
 
 # Weeding
 
@@ -46,7 +46,7 @@ checked in weeding for this milestone are:
     easier to implement weeding passes (no symbol table required).
 
 
-<a id="org89e66a8"></a>
+<a id="org682b019"></a>
 
 # Symbol Table
 
@@ -76,8 +76,18 @@ however, once we finish using the symbol table, our final result (a
 typechecked/simplified proven correct AST) is pure and very easy to
 manipulate for `codegen` in the next milestone.
 
+As for what we store in the symbol table, we created a new type
+`Symbol` to represent each symbol, analogous to the different types
+of symbols (types, constants, functions, variables) and new type
+`SType` that keeps the vital information concerning the types we
+define in the original `AST`. All types that are left to be inferred
+during symbol table generation are updated when typechecking (we
+infer the type of variables and then update their value in the
+symbol table to make sure things like assignments don't conflict
+with the original inferred type).
 
-<a id="orgb05e36c"></a>
+
+<a id="org9fcde4e"></a>
 
 ## Scoping Rules
 
@@ -103,7 +113,7 @@ The scoping rules we used/considered are as follows:
     put in a nested scope
 
 
-<a id="org503f165"></a>
+<a id="org89b6568"></a>
 
 # Type Checker
 
@@ -140,7 +150,7 @@ mappings). Therefore our new AST was also able to get rid of type
 declarations (except for structs).
 
 
-<a id="org09cbb1f"></a>
+<a id="orgfdde0d8"></a>
 
 # New AST
 
@@ -162,7 +172,7 @@ which reflects the new constraints we enforce.  Namely:
     with minimal changes to models used at previous stages.
 
 
-<a id="orgf2543dc"></a>
+<a id="org00008f7"></a>
 
 # Invalid Programs
 
@@ -220,12 +230,12 @@ Summary of the check in each invalid program:
     already declared.
 
 
-<a id="orgd8c0132"></a>
+<a id="org0a2ccf7"></a>
 
 # Team
 
 
-<a id="orgc5d502f"></a>
+<a id="orgc6dc495"></a>
 
 ## Team Organization
 
@@ -237,7 +247,7 @@ another. Leads are in charge of understanding the overall component
 and in resolving concerns or requests from other members.
 
 
-<a id="org67ba362"></a>
+<a id="orgdffef6a"></a>
 
 ## Contributions
 
