@@ -103,8 +103,12 @@ expectWeedFailBlankPackage =
 spec :: Spec
 spec = do
   expectWeedPass
-    [ "if true { }", "a.b()", "a++", "switch a {case a: _ = 5;}", "_ := 5"
-    , "b, a := 0, 0"
+    [ "if true { }"
+    , "a.b()"
+    , "a++"
+    , "switch a {case a: _ = 5;}"
+    , "_ := 5"
+    , "_, a := 0, 0"
     , "_ = 0"
     ]
   expectWeedPassNoMain
