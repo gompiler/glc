@@ -112,7 +112,8 @@ spec = do
       var a = 6
       |]
     ]
-  expectTypecheckPass ["var a = 5;", "type _ int", "type int int", "type float64 int"]
+  expectTypecheckPass
+    ["var a = 5;", "type _ int", "type int int", "type float64 int"]
   expectTypecheckPass
     [ [text|
       type int2 int
@@ -144,6 +145,15 @@ spec = do
       var b = int3(int2(5))
       a, b, c := a, int3(a), int3(int2(99))
       |]
+    , [text|
+      var a, b, c = 1, 2, 3
+      {
+        var d = 4
+        // At least one var not in current scope
+        a, b, c, d := 4, 5, 6, 7
+        _, e := 2, 3
+      }
+      |]
     ]
   expectTypecheckFail ["var b = a;"]
   expectTypecheckFail
@@ -171,6 +181,37 @@ spec = do
       if a == b {
       }
       |]
+    , [text|
+      var a, b, c = 1, 2, 3
+      // No new var
+      a, b, c := 4, 5, 6
+      |]
+    , [text|
+      a := 1
+      // No new var
+      a := 2
+      |]
+--    , [text| -- TODO currently failing
+--      a := 1
+--      // No new var
+--      _, a := 2, 3
+--      |]
+    , [text|
+      a := 1
+      // Bad type
+      a, b = 'a', 'b'
+      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
+--    , [text|
+--      |]
     ]
   expectTypecheckPassNoMain ["func init(){}"]
   expectTypecheckFailNoMain
