@@ -89,4 +89,3 @@ TODO
 - *David Lougheed:* Worked on expression type-checking and type inference,
   including tests. Also worked on the weeding pass for return statements.
 - *Allan Wang:* TODO
-
