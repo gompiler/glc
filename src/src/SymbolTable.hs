@@ -112,9 +112,10 @@ instance Symbolize FuncDecl C.FuncDecl
                                                                                         where
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
-      then maybe
+      then wrap st $ maybe
              (if null pdl
                 then (do scope <- S.scopeLevel st -- Should be 1
+                         _ <- S.addMessage st $ Just (vname, Func [] Nothing, scope)
                          fmap
                            (C.FuncDecl
                               (mkSIdStr scope vname)
@@ -994,6 +995,8 @@ sl2str' (mh:mt) (S.Scope pScope) acc =
        (case sym of
           Base     -> " [type] = " ++ key
           Constant -> " [constant] = bool"
+          Func {} -> if key == "init" then " [function] = <unmapped>"
+                     else show sym
           _        -> show sym) ++
        "\n")
     mh
