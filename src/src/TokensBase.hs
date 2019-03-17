@@ -153,10 +153,8 @@ alexSetInput (pos, c, bs, inp__) =
     case s {alex_pos = pos, alex_chr = c, alex_bytes = bs, alex_inp = inp__} of
       state__@AlexState {} -> Right (state__, ())
 
-alexError ::  ErrorMessage' -> Alex a
+alexError :: ErrorMessage' -> Alex a
 alexError = Alex . const . Left
-
-
 
 alexGetStartCode :: Alex Int
 alexGetStartCode = Alex $ \s@AlexState {alex_scd = sc} -> Right (s, sc)

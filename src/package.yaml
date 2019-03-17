@@ -24,6 +24,7 @@ dependencies:
 - array
 - megaparsec
 - parser-combinators
+- primitive
 - hashtables
 - containers
 - hspec
@@ -31,6 +32,7 @@ dependencies:
 - neat-interpolation
 - QuickCheck
 - split
+- extra
 
 library:
   source-dirs: [src, src/generated]
