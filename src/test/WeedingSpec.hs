@@ -133,6 +133,41 @@ spec = do
       }
       |]
     ]
+  expectWeedPassNoMain
+    [ [text|
+      func test() int {
+        for {
+        }
+      }
+      |]
+    , [text|
+      func test() int {
+        for i := 0; i < 10; i++ {
+          return 10;
+          println("bbb");
+        }
+        return 5;
+      }
+      |]
+    , [text|
+      func test() int {
+        {
+          return 10;
+          return 9;
+          return 8;
+        }
+      }
+      |]
+    , [text|
+      func test() {}
+      |]
+    , [text|
+      func test() {
+        if true {
+          return
+        } else {}
+      }
+      |]]
   expectWeedError $
     map
       (\(s, e) ->
@@ -242,6 +277,45 @@ spec = do
       -- No short decl in post
     , [text|
       for i := 0; i < 20; i := 0 {
+      }
+      |]
+    ]
+  expectWeedFailNoMain
+    [ [text|
+      func test() int {
+        if true {
+          return 5
+        } else {
+          println("hello world")
+        }
+      }
+      |]
+    , [text|
+      func test() int {
+        if true {
+          return 5
+        } else {
+          return 10
+          println("hello world")
+        }
+      }
+      |]
+    , [text|
+      func test() int {
+        for i := 0; i < 10; i++ {
+        }
+      }
+      |]
+    , [text|
+      func test() int {
+        for i := 0; i < 10; i++ {
+          return 5
+          println("555")
+        }
+      }
+      |]
+    , [text|
+      func test() int {
       }
       |]
     ]

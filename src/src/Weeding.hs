@@ -29,7 +29,13 @@ weed code = do
 verify :: Program -> Maybe ErrorMessage'
 verify program =
   asum $
-  [programVerify, continueVerify, breakVerify, progVerifyDecl, progVerifyBlank] <*>
+  [ programVerify
+  , continueVerify
+  , breakVerify
+  , progVerifyDecl
+  , progVerifyBlank
+  , returnVerify
+  ] <*>
   [program]
 
 verifyAll :: PureConstraint a -> [a] -> Maybe ErrorMessage'
@@ -199,6 +205,35 @@ breakVerify program = asum errors
         (breakRecursiveVerify breakConstraint)
         (mapMaybe topToStmt $ topLevels program)
 
+returnVerify :: PureConstraint Program
+returnVerify program = asum errors
+  where
+    errors :: [Maybe ErrorMessage']
+    errors = map returnConstraint (topLevels program)
+
+-- | Checks to make sure the last statement is a return, traversing branches
+returnConstraint :: TopDecl -> Maybe ErrorMessage'
+returnConstraint (TopDecl _) = Nothing
+returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
+  maybe
+    Nothing
+    (const $
+     if lastIsReturn fb
+       then Nothing
+       else Just $ createError fd LastReturn)
+    mrt
+  where
+    lastIsReturn :: Stmt -> Bool
+    lastIsReturn (If _ ifb elseb) = lastIsReturn ifb && lastIsReturn elseb
+    lastIsReturn (For (ForClause EmptyStmt Nothing EmptyStmt) _) = True -- infinite for loops don't 'need' return
+    lastIsReturn (For _ forb) = lastIsReturn forb
+    lastIsReturn (BlockStmt stmts) =
+      case reverse stmts of
+        st:_ -> lastIsReturn st
+        []   -> False
+    lastIsReturn (Return _) = True
+    lastIsReturn _ = False
+
 -- Helpers
 -- | Extracts block statements from top-level function declarations
 topToStmt :: TopDecl -> Maybe Stmt
@@ -292,10 +327,10 @@ instance BlankWeed (Offset, Type) where
   toIdent (_, t) = toIdent t
 
 instance BlankWeed Type where
-  toIdent (ArrayType e t) = toIdent e ++ toIdent t
-  toIdent (SliceType t) = toIdent t
+  toIdent (ArrayType e t)  = toIdent e ++ toIdent t
+  toIdent (SliceType t)    = toIdent t
   toIdent (StructType fdl) = fdl >>= toIdent
-  toIdent (Type ident) = [ident]
+  toIdent (Type ident)     = [ident]
 
 instance BlankWeed FieldDecl where
   toIdent (FieldDecl _ t) = toIdent t
@@ -312,6 +347,7 @@ data WeedingError
   | InvalidBlankId
   | ContinueScope
   | BreakScope
+  | LastReturn
   deriving (Show, Eq)
 
 instance ErrorEntry WeedingError where
@@ -324,3 +360,4 @@ instance ErrorEntry WeedingError where
       ForPostDecl -> "For post-statement cannot be declaration"
       ContinueScope -> "Continue statement must occur in for loop"
       BreakScope -> "Break statement must occur in for loop or switch statement"
+      LastReturn -> "Function declaration with non-void return type must have return as last statement"
