@@ -112,8 +112,8 @@ infer st e@(Unary _ Not inner) =
 infer st e@(Unary _ BitComplement inner) =
   inferConstraint
     st
-    isInteger
-    (const PInt)
+    isIntegerLike
+    NE.head
     (BadUnaryOp "integer")
     e
     (fromList [inner])
@@ -167,7 +167,7 @@ infer st e@(Binary _ op i1 i2) =
     arithConstraint =
       inferConstraint st isNumeric NE.head (BadBinaryOp "numeric")
     arithIntConstraint =
-      inferConstraint st isInteger (const PInt) (BadBinaryOp "integer")
+      inferConstraint st isIntegerLike NE.head (BadBinaryOp "integer-like")
 -- | "Infer" the types of base literals
 infer _ (Lit l) =
   return $
@@ -360,9 +360,6 @@ isOrdered = flip elem [PInt, PFloat64, PRune, PString]
 
 isBoolean :: SType -> Bool
 isBoolean = (==) PBool
-
-isInteger :: SType -> Bool
-isInteger = (==) PInt
 
 isIntegerLike :: SType -> Bool
 isIntegerLike = flip elem [PInt, PRune]
