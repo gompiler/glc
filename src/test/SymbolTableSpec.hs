@@ -194,6 +194,15 @@ spec = do
       var j [2][]int
       j[0] = i
       |]
+    , [text|
+      // Multi type check
+      var a []int
+      var b [2]int
+      a[0] = b[0]
+      type c []int
+      var e c
+      var d []c
+      |]
     ]
   expectTypecheckFail ["var b = a;"]
   expectTypecheckFail
