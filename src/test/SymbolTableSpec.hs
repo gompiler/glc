@@ -205,6 +205,16 @@ spec = do
       var e c
       var d []c
       |]
+    , [text|
+      type point struct {x int; y int;}
+      var a point
+      {
+      type point struct {x int;}
+      var b point
+      a.y = b.x
+      }
+      a.y = a.x
+      |]
     ]
   expectTypecheckFail ["var b = a;"]
   expectTypecheckFail
@@ -267,9 +277,6 @@ spec = do
       // Append not valid lvar
       append(a, b) := c
       |]
---      |]
---    , [text|
---      |]
 --    , [text|
 --      |]
 --    , [text|
