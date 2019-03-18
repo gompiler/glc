@@ -121,6 +121,15 @@ spec = do
     , "var a int; a += 2;"
     , "var a rune; a -= 'a'"
     , "var a float64; a *= 2.0"
+    , "var g [0xf]int"
+    , "type inta [3]int; var a inta; a[2] = 5"
+    , "switch i:=0; i {case 1: var a = 5; case 2: var a = 3; default: var a = 9;}"
+    , "type g struct {a int;}"
+    , "type g struct {_ int;}; var b g"
+    , "type g struct {b int;}; var b g; b.b = 5"
+    , "type a struct {g struct { z struct { l int;};};}; var g a; g.g.z.l = 5"
+    , "for i:=0;;{var i = 3;}"
+    , "if i:=0;true{var i = 3;}"
     ]
   expectTypecheckFail
     -- Assignment ops
@@ -130,6 +139,11 @@ spec = do
     , "2 += 3"
     , "'b' -= 'c'"
     , "'a' = 'b'"
+    , "type inta [3]int; var a inta; var b [3]int; a = b"
+    , "type inta [3]int; var a inta; var b [3]int; a = inta(b);"
+    , "switch i:=0; true {case 5: var a = 6;};"
+    , "switch i:=0; i {case 1: var a = 5; case 2: var b = a;}"
+    , "if true {var a = 21;} else {var b = a;}"
     ]
   expectTypecheckPass
     [ [text|
@@ -244,6 +258,15 @@ spec = do
 --      |]
 --    , [text|
 --      |]
+    ]
+  expectTypecheckPassNoMain
+    [ "type b struct { x, y int; }"
+    , "type a int"
+    , "var g [5]int"
+    , "var g [0]int"
+    , "func init(){}; func init(){};"
+    , "func zz (a, b int) int{ return 5; }"
+    , "func zz (a,b int) {}"
     ]
   expectTypecheckPassNoMain
     [ [text|
@@ -437,6 +460,13 @@ spec = do
 --      |]
 --    , [text|
 --      |]
+    ]
+  expectTypecheckFailNoMain
+    [ "var g [-5]int, var g [(-5)]int"
+    , "var g[(1)] int"
+    , "func main(){}; func main(){};"
+    , "type a int2"
+    , "func zz (a, b int) int {}"
     ]
   expectTypecheckFailNoMain
     -- Init must have no inputs, no return, and be correctly typed
