@@ -13,7 +13,7 @@ then
     STACK_ROOT=/mnt/local
     export STACK_ROOT
 
-    make -C src "$2"
+    make -C src "$1"
 else
     echo "Did not find /usr/local/pkgs/haskell/stack-1.9.3-linux-x86_64 and /mnt/local, please run on a cs-x.cs.mcgill.ca computer. Exiting."
     exit 1
