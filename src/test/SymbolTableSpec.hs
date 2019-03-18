@@ -144,6 +144,8 @@ spec = do
     , "switch i:=0; true {case 5: var a = 6;};"
     , "switch i:=0; i {case 1: var a = 5; case 2: var b = a;}"
     , "if true {var a = 21;} else {var b = a;}"
+    -- Append alone is an expression
+    , "var a []int; var b int; append(a, b)"
     ]
   expectTypecheckPass
     [ [text|
@@ -255,11 +257,16 @@ spec = do
       var a, b, c int = 1, true, 3
       |]
     , [text|
-     // Cannot use var if not defined
-     var a, b, c int = 1, a, 3
-     |]
---    , [text|
---      |]
+      // Cannot use var if not defined
+      var a, b, c int = 1, a, 3
+      |]
+    , [text|
+      var a []int
+      var b int
+      var c []int
+      // Append not valid lvar
+      append(a, b) := c
+      |]
 --      |]
 --    , [text|
 --      |]
