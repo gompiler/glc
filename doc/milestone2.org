@@ -45,21 +45,22 @@ whilst implementing the components for milestone 2.  \newpage
   constantly re-building the symbol table becomes evident.
 
   As a result of this performance impact, we decided on using a
-  mutable symbol table, with mutability supported via Haskell's [[https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html][ST]]
-  monad. The constraint provided for [[https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html#v:runST][runST]] (which removes the ~ST~ (or
-  mutability) from something) is proven to keep functions pure (see
-  [[https://iris-project.org/pdfs/2018-popl-runST-final.pdf][A Logical
+  mutable symbol table, with mutability supported via Haskell's
+  [[https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html][ST]]
+  monad. The constraint provides [[https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html#v:runST][runST]] (which removes the ~ST~, i.e.
+  mutability, from an interior data structure). This is proven to keep functions
+  pure (see [[https://iris-project.org/pdfs/2018-popl-runST-final.pdf][A Logical
   Relation for Monadic Encapsulation of State by Amin Timany et
   al.]]). This made the ~ST~ monad a better choice than other monads
-  providing mutability (the main example being ~IO~, but if we used
-  ~IO~ then all our functions after the symbol table generation would
-  be bound by ~IO~, i.e. impure and also harder to deal with as they
+  providing mutability (the main example being ~IO~, which if used would have
+  resulted in all our functions after symbol table generation being
+  bound by ~IO~, i.e. impure and also harder to work with, as they
   are wrapped by an unnecessary monad). The trade-off of this decision
-  was a large increase in the difficulty implementing the symbol
-  table, which made up a huge portion of the work for this milestone,
-  however, once we finish using the symbol table, our final result (a
-  typechecked/simplified proven correct AST) is pure and very easy to
-  manipulate for ~codegen~ in the next milestone.
+  was a large increase in the difficulty of implementing the symbol
+  table, which made up a huge portion of the work for this milestone.
+  However, once we finish using the symbol table, our final result (a
+  typechecked/simplified, proven-correct AST) is pure and very easy to
+  manipulate for the ~codegen~ phase in the next milestone.
 
   As for what we store in the symbol table, we created a new type
   ~Symbol~ to represent each symbol, analogous to the different types
