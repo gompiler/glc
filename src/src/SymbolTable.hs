@@ -336,41 +336,41 @@ instance Symbolize SimpleStmt C.SimpleStmt where
            then fmap C.Decrement <$> recurse st e
            else return $ Left $ createError e (NonNumeric e "decremented"))
       et
-  recurse st (Assign _ aop@(AssignOp mop) el1 el2) = do
-    l1 <- mapM (recurse st) (toList el1)
-    l2 <- mapM (recurse st) (toList el2)
-    case mop of
-      Nothing -> do
-        me <- mapM (sameType st) (zip (toList el1) (toList el2))
-        maybe
-          (either
-             (return . Left)
-             (\l1' ->
-                either
+  recurse st (Assign _ aop@(AssignOp mop) el1 el2) =
+    let errL = concat $ map isAddrE (toList el1) -- Make sure everything is an lvalue
+     in if null errL then do
+      l1 <- mapM (recurse st) (toList el1)
+      l2 <- mapM (recurse st) (toList el2)
+      case mop of
+        Nothing -> do
+          me <- mapM (sameType st) (zip (toList el1) (toList el2))
+          maybe (either
                   (return . Left)
-                  (return .
-                   Right . C.Assign (C.AssignOp Nothing) . fromList . zip l1')
-                  (sequence l2))
-             (sequence l1))
-          (return . Left)
-          (maybeJ me)
-      Just op -> do
-        el <-
-          mapM (infer st . aop2e (Arithm op)) (zip (toList el1) (toList el2))
-        either
-          (return . Left)
-          (const
-             (either
+                  (\l1' ->
+                     either (return . Left) (return .
+                                              Right . C.Assign (C.AssignOp Nothing) . fromList . zip l1')
+                    (sequence l2))
+                  (sequence l1))
+            (return . Left)
+            (maybeJ me)
+        Just op -> do
+          el <-
+            mapM (infer st . aop2e (Arithm op)) (zip (toList el1) (toList el2))
+          either
+            (return . Left)
+            (const
+              (either
                 (return . Left)
                 (\l1' ->
                    either
-                     (return . Left)
-                     (\l2' ->
-                        return $
-                        Right $ C.Assign (aop2aop' aop) (fromList $ zip l1' l2'))
-                     (sequence l2))
+                   (return . Left)
+                   (\l2' ->
+                       return $
+                       Right $ C.Assign (aop2aop' aop) (fromList $ zip l1' l2'))
+                  (sequence l2))
                 (sequence l1)))
-          (sequence el)
+            (sequence el)
+        else return $ Left $ head errL
       -- convert op and 2 expressions to binary op, infer type of this to make sure it makes sense
     where
       aop2e :: BinaryOp -> (Expr, Expr) -> Expr
@@ -961,6 +961,13 @@ isAddr e =
     Selector {} -> True
     Index {}    -> True
     _           -> False
+
+-- | Check if given expression is addressable, if not, return error message
+isAddrE :: Expr -> [ErrorMessage']
+isAddrE e =
+  if isAddr e then []
+  else [createError e (NonLVal e)]
+
 
 -- | Get the return value of function we are currently declaring, aka latest declared function
 getRet :: SymbolTable s -> ST s (Maybe SType)
