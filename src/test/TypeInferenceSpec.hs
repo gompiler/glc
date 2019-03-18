@@ -153,7 +153,7 @@ spec
     -- Comparable ops
     -- See https://golang.org/ref/spec#Comparison_operators
     -- bool, rune, int, float64, string, struct if all fields comparable
-    -- , ("2 == 54", PBool) -- TODO FAIL; add all others
+    , ("2 == 54", PBool)
     , ("st_var == st_var", PBool)
     , ("int_5_arr == int_5_arr_2", PBool)
     -- TODO compare structs
