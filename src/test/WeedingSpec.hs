@@ -156,6 +156,12 @@ spec = do
           break
       }
       |]
+    , [text|
+      // Blank keys allowed
+      type p struct {
+        _ int; _ float64
+      }
+      |]
     ]
   expectWeedPassNoMain
     [ [text|
@@ -247,11 +253,15 @@ spec = do
     , "var b = len(_)"
     , "var b = cap(_)"
     , "var b = [_]b"
+    , "var b = _[5]"
+    , "var b = _[_]"
     , "var b = [5]_"
     , "var b = _.a"
     , "var b = a._"
-    , "var b = _++"
-    , "var b = _--"
+    , "var a [5]_"
+    , "var a []_"
+    , "_++"
+    , "_--"
     , "b := _"
     , "switch _ {}"
     , "switch a {case _: c = 4;}"
@@ -412,6 +422,15 @@ spec = do
         return
         return
       }
+      |]
+    , [text|
+      func main(a int) {}
+      |]
+    , [text|
+      func main() int {}
+      |]
+    , [text|
+      func main(a float) string {}
       |]
     ]
   expectWeedFailBlankPackage [""]

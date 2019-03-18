@@ -70,7 +70,7 @@ readRef (SyT ref) = readSTRef ref
 new :: ST s (SymbolTable s v l)
 new = do
   ht <- HT.new
-  newRef $ SymbolTable (fromList [(Scope 0, ht)]) []
+  newRef $ SymbolTable (fromList [(Scope 1, ht)]) []
 
 -- | Inserts a key value pair at the upper most scope
 insert :: SymbolTable s v l -> String -> v -> ST s ()
@@ -83,7 +83,7 @@ insert' :: SymbolTable s v l -> String -> v -> ST s Scope
 insert' st k v = do
   SymbolTable ((Scope s, ht) :| _) _ <- readRef st
   HT.insert ht k v
-  return (Scope $ s + 1)
+  return (Scope s)
 
 -- | Look up provided key across all scopes, starting with the top
 lookup :: SymbolTable s v l -> String -> ST s (Maybe (Scope, v))

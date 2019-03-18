@@ -42,7 +42,12 @@ parseAndInferNoST expStr = either Left runExpr parseResult
         -- var it_var int_t
         _ <- SymTab.add st "int_t" (SType PInt)
         _ <-
-          SymTab.add st "it_var" (Variable $ TypeMap (mkSIdStr' 0 "int_t") PInt)
+          SymTab.add st "it_var" (Variable $ TypeMap (mkSIdStr' 1 "int_t") PInt)
+        _ <-
+          SymTab.add
+            st
+            "int_t_slice"
+            (Variable (Slice $ TypeMap (mkSIdStr' 1 "int_t") PInt))
         -- type struct_type struct {a int; b int;}
         -- var st_var struct_type
         -- _ <- SymTab.app
@@ -57,7 +62,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
             "st_var"
             (Variable $
              TypeMap
-               (mkSIdStr' 1 "struct_type")
+               (mkSIdStr' 2 "struct_type")
                (Struct [("a", PInt), ("b", PString)]))
         -- type as_type [5]string
         -- var as_var as_type
@@ -67,7 +72,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
           SymTab.add
             st
             "as_var"
-            (Variable $ TypeMap (mkSIdStr' 0 "as_type") (Array 5 PString))
+            (Variable $ TypeMap (mkSIdStr' 1 "as_type") (Array 5 PString))
         -- type sr_type []rune
         -- var sr_var sr_type
         _ <- SymTab.add st "sr_type" (SType $ Slice PRune)
@@ -75,7 +80,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
           SymTab.add
             st
             "sr_var"
-            (Variable $ TypeMap (mkSIdStr' 0 "sr_type") (Slice PRune))
+            (Variable $ TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
         either (Left . errgen) Right <$> infer st e
 
 expectPass :: Stringable s => String -> [(s, SType)] -> SpecWith ()
@@ -120,6 +125,26 @@ spec
   -- * Both expressions must have same type
  = do
   expectPass
+    "unary operations"
+    [ ("+5", PInt)
+    , ("-5", PInt)
+    , ("+5.0", PFloat64)
+    , ("-5.0", PFloat64)
+    , ("+'a'", PRune)
+    , ("-'a'", PRune)
+    , ("!true", PBool)
+    , ("!false", PBool)
+    , ("!(1 < 2)", PBool)
+    , ("!!(1 <= 2)", PBool)
+    , ("!!(1 > 2)", PBool)
+    , ("!!!(1 >= 2)", PBool)
+    , ("!!!!(1 == 2)", PBool)
+    , ("!!!(1 != 2)", PBool)
+    , ("^100", PInt)
+    , ("^'b'", PRune)
+    ]
+  expectFail "unary operations" ["+\"string\"", "-\"string\""]
+  expectPass
     "binary operations"
     -- Bool ops
     [ ("false || true", PBool)
@@ -127,7 +152,7 @@ spec
     -- Comparable ops
     -- See https://golang.org/ref/spec#Comparison_operators
     -- bool, rune, int, float64, string, struct if all fields comparable
-    -- , ("2 == 54", PBool) -- TODO FAIL; add all others
+    , ("2 == 54", PBool)
     , ("st_var == st_var", PBool)
     , ("int_5_arr == int_5_arr_2", PBool)
     -- TODO compare structs
@@ -158,6 +183,9 @@ spec
     , "1.0 && 2.0"
     , "'a' || 'b'"
     , "'a' && 'b'"
+    , "5.0 % 3.0"
+    , "int_t_slice < int_t_slice"
+    , "true <= false"
     , "\"a\" || \"b\""
     , "int_5_arr == int_3_arr" -- not comparable
     , "int_slice == int_slice" -- not comparable
@@ -206,7 +234,7 @@ spec
     -- Nested casts
     , ("string(rune(5 + int(5.0)) + 'c' + rune(float64('a') + 2.0))", PString)
     -- Custom type casts
-    , ("int_t(7)", TypeMap (mkSIdStr' 0 "int_t") (PInt))
+    , ("int_t(7)", TypeMap (mkSIdStr' 1 "int_t") (PInt))
     ]
   expectFail
     "casting"
@@ -261,9 +289,17 @@ spec
     , ("st_var.b", PString)
     , ("as_var[0]", PString)
     , ("as_var[it_var]", PString)
-    , ("append(sr_var, '5')", TypeMap (mkSIdStr' 0 "sr_type") (Slice PRune))
+    , ("append(sr_var, '5')", TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
     , ( "append(sr_var, rune(it_var))"
-      , TypeMap (mkSIdStr' 0 "sr_type") (Slice PRune))
+      , TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+    -- Unary ops
+    , ("+int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
+    , ("-int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
+    , ("^int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
+    -- Binary ops
+    , ("int_t(5) + int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
+    , ("int_t(5) == int_t(5)", PBool)
+    , ("int_t(5) >= int_t(5)", PBool)
     ]
   expectFail
     "custom"
@@ -281,4 +317,6 @@ spec
     , "append(sr_var, 5)"
     , "as_var[float(it_var)]"
     , "as_type(a5s)" -- cast needs base types
+    , "int_t(5) == 5"
+    , "int_t_slice == int_t_slice"
     ]

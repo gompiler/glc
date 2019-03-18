@@ -34,8 +34,10 @@ verify program =
   , breakVerify
   , progVerifyDecl
   , progVerifyBlank
+  , initMainSignatureVerify
   , returnVerify
   , initReturnVerify
+  , initMainFunctionVerify
   ] <*>
   [program]
 
@@ -256,6 +258,51 @@ initReturnConstraint (TopFuncDecl (FuncDecl (Identifier _ fname) _ fb)) =
     checkInitReturn _ = Nothing
 initReturnConstraint _ = Nothing -- Non-function declarations don't matter here
 
+initMainFunctionVerify :: PureConstraint Program
+initMainFunctionVerify program = asum errors
+  where
+    errors :: [Maybe ErrorMessage']
+    errors = map initFunctionConstraint (topLevels program)
+    initFunctionConstraint :: TopDecl -> Maybe ErrorMessage'
+    initFunctionConstraint (TopDecl (VarDecl vdl))  =
+      asum (map vdConstraint vdl)
+    initFunctionConstraint (TopDecl (TypeDef tdl)) =
+      asum (map tdConstraint tdl)
+    initFunctionConstraint _ = Nothing -- Function declarations are fine
+    vdConstraint :: VarDecl' -> Maybe ErrorMessage'
+    vdConstraint (VarDecl' idents _) = asum (map iToE (toList idents))
+    tdConstraint :: TypeDef' -> Maybe ErrorMessage'
+    tdConstraint (TypeDef' ident _) = iToE ident
+    iToE :: Identifier -> Maybe ErrorMessage'
+    iToE (Identifier o s) =
+      if s == "init" || s == "main"
+        then Just $ createError o $ NonFunctionSpecial s
+        else Nothing
+
+initMainSignatureVerify :: PureConstraint Program
+initMainSignatureVerify program = asum errors
+  where
+    errors :: [Maybe ErrorMessage']
+    errors = map miFunctionConstraint (topLevels program)
+    miFunctionConstraint :: TopDecl -> Maybe ErrorMessage'
+    miFunctionConstraint (TopFuncDecl (FuncDecl (Identifier o fname) sig _)) =
+      if fname == "main" || fname == "init"
+        then checkMainInitSignature sig
+        else Nothing
+      where
+        checkMainInitSignature :: Signature -> Maybe ErrorMessage'
+        checkMainInitSignature (Signature (Parameters pdl) rtyp) =
+          (verifyParams pdl) <|> (verifyType rtyp)
+        verifyParams :: [ParameterDecl] -> Maybe ErrorMessage'
+        verifyParams pdl =
+          if length pdl == 0
+            then Nothing
+            else Just $ createError o $ SpecialFunctionType fname
+        verifyType :: Maybe Type' -> Maybe ErrorMessage'
+        verifyType Nothing = Nothing
+        verifyType _       = Just $ createError o $ SpecialFunctionType fname
+    miFunctionConstraint _ = Nothing -- Non-function declarations don't matter here
+
 -- Helpers
 -- | Extracts block statements from top-level function declarations
 topToStmt :: TopDecl -> Maybe Stmt
@@ -374,6 +421,8 @@ data WeedingError
   | BreakScope
   | LastReturn
   | InitReturn
+  | NonFunctionSpecial String
+  | SpecialFunctionType String
   deriving (Show, Eq)
 
 instance ErrorEntry WeedingError where
@@ -389,3 +438,7 @@ instance ErrorEntry WeedingError where
       LastReturn ->
         "Function declaration with non-void return type must have return as last statement"
       InitReturn -> "init function cannot have non-void return"
+      NonFunctionSpecial s ->
+        s ++ " can only be declared as a function in this scope"
+      SpecialFunctionType s ->
+        s ++ " must have no parameters and void return type"
