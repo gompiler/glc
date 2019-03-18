@@ -36,7 +36,7 @@ verify program =
   , progVerifyBlank
   , returnVerify
   , initReturnVerify
-  , initFunctionVerify
+  , initMainFunctionVerify
   , mainFunctionVerify
   ] <*>
   [program]
@@ -258,8 +258,8 @@ initReturnConstraint (TopFuncDecl (FuncDecl (Identifier _ fname) _ fb)) =
     checkInitReturn _ = Nothing
 initReturnConstraint _ = Nothing -- Non-function declarations don't matter here
 
-initFunctionVerify :: PureConstraint Program
-initFunctionVerify program = asum errors
+initMainFunctionVerify :: PureConstraint Program
+initMainFunctionVerify program = asum errors
   where
     errors :: [Maybe ErrorMessage']
     errors = map initFunctionConstraint (topLevels program)
@@ -275,8 +275,8 @@ initFunctionVerify program = asum errors
     tdConstraint (TypeDef' ident _) = iToE ident
     iToE :: Identifier -> Maybe ErrorMessage'
     iToE (Identifier o s) =
-      if s == "init"
-        then Just $ createError o NonFunctionInit
+      if s == "init" || s == "main"
+        then Just $ createError o $ NonFunctionSpecial s
         else Nothing
 
 mainFunctionVerify :: PureConstraint Program
@@ -421,7 +421,7 @@ data WeedingError
   | BreakScope
   | LastReturn
   | InitReturn
-  | NonFunctionInit
+  | NonFunctionSpecial String
   | MainFunctionType
   deriving (Show, Eq)
 
@@ -438,5 +438,6 @@ instance ErrorEntry WeedingError where
       LastReturn ->
         "Function declaration with non-void return type must have return as last statement"
       InitReturn -> "init function cannot have non-void return"
-      NonFunctionInit -> "init can only be declared as a function in this scope"
+      NonFunctionSpecial s ->
+        s ++ " can only be declared as a function in this scope"
       MainFunctionType -> "main must have no parameters and void return type"
