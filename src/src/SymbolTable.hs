@@ -116,7 +116,7 @@ instance Symbolize FuncDecl C.FuncDecl
                                                                                         where
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
-      then wrap st $
+      then 
            maybe
              (if null pdl
                 then (do scope <- S.scopeLevel st -- Should be 1
@@ -125,8 +125,8 @@ instance Symbolize FuncDecl C.FuncDecl
                            Just (vname, Func [] Nothing, scope)
                          fmap
                            (C.FuncDecl
-                              (mkSIdStr scope vname)
-                              (C.Signature (C.Parameters []) Nothing)) <$>
+                             (mkSIdStr scope vname)
+                             (C.Signature (C.Parameters []) Nothing)) <$>
                            recurse st body)
                 else do
                   _ <- S.addMessage st Nothing

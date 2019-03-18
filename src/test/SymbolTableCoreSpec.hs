@@ -48,7 +48,7 @@ testError title actions =
 
 spec :: Spec
 spec = do
-  testPass "insert get" [Insert 0 0, Lookup 0 $ Just (0, 0)]
+  testPass "insert get" [Insert 0 0, Lookup 0 $ Just (1, 0)]
   testError "insert get" [Insert 0 0, Lookup 0 Nothing]
   testPass
     "message order"
