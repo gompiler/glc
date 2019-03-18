@@ -34,10 +34,10 @@ verify program =
   , breakVerify
   , progVerifyDecl
   , progVerifyBlank
+  , initMainSignatureVerify
   , returnVerify
   , initReturnVerify
   , initMainFunctionVerify
-  , mainFunctionVerify
   ] <*>
   [program]
 
@@ -279,29 +279,29 @@ initMainFunctionVerify program = asum errors
         then Just $ createError o $ NonFunctionSpecial s
         else Nothing
 
-mainFunctionVerify :: PureConstraint Program
-mainFunctionVerify program = asum errors
+initMainSignatureVerify :: PureConstraint Program
+initMainSignatureVerify program = asum errors
   where
     errors :: [Maybe ErrorMessage']
-    errors = map mainFunctionConstraint (topLevels program)
-    mainFunctionConstraint :: TopDecl -> Maybe ErrorMessage'
-    mainFunctionConstraint (TopFuncDecl (FuncDecl (Identifier o fname) sig _)) =
-      if fname == "main"
-        then checkMainSignature sig
+    errors = map miFunctionConstraint (topLevels program)
+    miFunctionConstraint :: TopDecl -> Maybe ErrorMessage'
+    miFunctionConstraint (TopFuncDecl (FuncDecl (Identifier o fname) sig _)) =
+      if fname == "main" || fname == "init"
+        then checkMainInitSignature sig
         else Nothing
       where
-        checkMainSignature :: Signature -> Maybe ErrorMessage'
-        checkMainSignature (Signature (Parameters pdl) rtyp) =
+        checkMainInitSignature :: Signature -> Maybe ErrorMessage'
+        checkMainInitSignature (Signature (Parameters pdl) rtyp) =
           (verifyParams pdl) <|> (verifyType rtyp)
         verifyParams :: [ParameterDecl] -> Maybe ErrorMessage'
         verifyParams pdl =
           if length pdl == 0
             then Nothing
-            else Just $ createError o MainFunctionType
+            else Just $ createError o $ SpecialFunctionType fname
         verifyType :: Maybe Type' -> Maybe ErrorMessage'
         verifyType Nothing = Nothing
-        verifyType _       = Just $ createError o MainFunctionType
-    mainFunctionConstraint _ = Nothing -- Non-function declarations don't matter here
+        verifyType _       = Just $ createError o $ SpecialFunctionType fname
+    miFunctionConstraint _ = Nothing -- Non-function declarations don't matter here
 
 -- Helpers
 -- | Extracts block statements from top-level function declarations
@@ -422,7 +422,7 @@ data WeedingError
   | LastReturn
   | InitReturn
   | NonFunctionSpecial String
-  | MainFunctionType
+  | SpecialFunctionType String
   deriving (Show, Eq)
 
 instance ErrorEntry WeedingError where
@@ -440,4 +440,5 @@ instance ErrorEntry WeedingError where
       InitReturn -> "init function cannot have non-void return"
       NonFunctionSpecial s ->
         s ++ " can only be declared as a function in this scope"
-      MainFunctionType -> "main must have no parameters and void return type"
+      SpecialFunctionType s ->
+        s ++ " must have no parameters and void return type"
