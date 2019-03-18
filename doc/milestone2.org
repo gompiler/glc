@@ -7,28 +7,33 @@ whilst implementing the components for milestone 2.  \newpage
 * Weeding
   We implemented additional weeding passes for certain constraints
   that could be verified either at the weeding level or the typecheck
-  level because it was easier to check via weeding. The constraints we
-  checked in weeding for this milestone are:
-  - Correct use of the blank identifier. It was much easier to recurse
-    through the AST and gather all identifiers that cannot be blank
-    and then just check this whole list. Additionally, because we have
-    offsets in our AST, we could easily point to the offending blank
-    identifier without having to make error messages for each specific
-    incorrect usage, as it is obvious what the incorrect usage when we
-    print out where the blank identifier is.
-  - Function bodies ending in return statements. It was easier to do
-    a single weeding pass because otherwise we'd have to recurse
+  level, since in most cases it was easier to check via weeding. The constraints
+  we use weeding to check for this milestone are:
+  - Checking correct use of the blank identifier. It was much easier to recurse
+    through the AST and gather all identifiers that cannot be blank,
+    and then check this whole list, versus checking usage in the type-checking
+    pass. Additionally, because we have offsets in our AST, we could easily
+    point to the offending blank identifier without having to make error
+    messages for each specific incorrect usage, as it is obvious what the
+    incorrect usage is when we print out the location of the blank identifier.
+  - Ensuring non-void function bodies end in return statements. It was easier to
+    do a single weeding pass; otherwise, we'd have to recurse
     differently on functions that have a return type versus functions
     that don't have a return type during typechecking. Essentially,
-    we'd need two versions of typechecking statements, which was not
-    deemed worth it compared to a single weeding pass.
-  - ~init~ function declaration not having any non void return
-    statements. Similar argument to the above, it is easier to do a
-    weeding pass then require context/a different traversal function
-    given the context of our current function.
-  - `main` function cannot return non void. Straightforward weeding
-    check. Could also have been done via typecheck, but it is slightly
-    easier to implement weeding passes (no symbol table required).
+    we'd need context-sensitive statement typechecking, with two different
+    versions depending on return type. This was not deemed worth it compared to
+    a single weeding pass.
+  - Ensuring ~init~ function declarations do not have any non-void return
+    statements. Similar to the above, it is easier to do a
+    weeding pass then require context-sensitive (i.e multiple different)
+    traversal functions given the context of the current function declaration.
+  - Ensuring any `main` function declaration does not have any parameters or a
+    return type. This is again a straightforward weeding check. It could also
+    have been done via typecheck, but it is slightly
+    easier to implement with weeding passes (no symbol table required).
+  - Checking that any top-level declarations with the identifier ~init~ or
+    ~main~ are functions, since they are special identifiers in Go (and GoLite)
+    in the global scope.
 * Symbol Table
   In Haskell, data structures are typically immutable, and much of the
   language is designed around this. One of the main design decisions
@@ -117,14 +122,14 @@ whilst implementing the components for milestone 2.  \newpage
   typechecking, so we don't need them anymore, nor do we need the
   mappings). Therefore our new AST was also able to get rid of type
   declarations (except for structs).
-* New AST 
+* New AST
   As mentioned above, dependency on the SymbolTable results in a
   dependency on the ST monad, which adds complexity to each operation.
   As a result, our goal after typechecking is to create a new AST,
   which reflects the new constraints we enforce.  Namely:
   - Typecheck errors are caught beforehand, so we no longer need offsets,
     or error breakpoints.
-  - All variables are properly typechecked, and can therefore reference an 
+  - All variables are properly typechecked, and can therefore reference an
     explicit type. Each type is composed of parent types up until
     the primitives.  This includes cases like function signatures,
     where we can associate each parameter with a type instead of
@@ -189,11 +194,12 @@ whilst implementing the components for milestone 2.  \newpage
 * Team
 ** Team Organization
    The three main components for this milestone are the symbol table,
-   type checking rules, and new AST + tests.  Each component was lead
-   by Julian, David, and Allan respectively. As there is high coupling
-   between each component, we continually sought feedback from one
-   another. Leads are in charge of understanding the overall component
-   and in resolving concerns or requests from other members.
+   type checking rules, and new AST; as well as tests for all three. Development
+   of these components was lead by Julian, David, and Allan respectively. As
+   there is a high degree of coupling between each component, we continually
+   sought feedback from one another. The component leads are in charge of
+   understanding the overall component and in resolving concerns or requests
+   from other members.
 ** Contributions
    - *Julian Lore:* Implemented weeding of blank identifiers, symbol
      table generation, typecheck (aside from type inference and
@@ -201,4 +207,6 @@ whilst implementing the components for milestone 2.  \newpage
    - *David Lougheed:* Worked on expression type-checking and type inference,
      including tests. Also worked on the weeding pass for return
      statements.
-   - *Allan Wang:* Added data structures for error messages, and supported explicit error checking in tests. Created the data model for symbol table core. Added hspec tests.
+   - *Allan Wang:* Added data structures for error messages, and supported
+     explicit error checking in tests. Created the data model for symbol table
+     core. Added hspec tests.
