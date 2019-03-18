@@ -253,8 +253,12 @@ checkId st s pfix ident@(Identifier _ vname) =
              else Just $ createError ident (AlreadyDecl pfix ident)
 
 instance Symbolize SimpleStmt C.SimpleStmt where
-  recurse st (ShortDeclare idl el) =
-    fmap C.ShortDeclare <$> checkDecl (toList idl) (toList el) st
+  recurse st (ShortDeclare idl el) = do
+    ets <- mapM (infer st) (toList el) -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
+    either
+      (return . Left)
+      (const $ fmap C.ShortDeclare <$> checkDecl (toList idl) (toList el) st)
+      (sequence ets)
     where
       checkDecl ::
            [Identifier]
@@ -336,49 +340,56 @@ instance Symbolize SimpleStmt C.SimpleStmt where
            then fmap C.Decrement <$> recurse st e
            else return $ Left $ createError e (NonNumeric e "decremented"))
       et
-  recurse st (Assign _ aop@(AssignOp mop) el1 el2) =
-    let errL = concatMap isAddrE (toList el1) -- Make sure everything is an lvalue
-     in if null errL
-          then do
-            l1 <- mapM (recurse st) (toList el1)
-            l2 <- mapM (recurse st) (toList el2)
-            case mop of
-              Nothing -> do
-                me <- mapM (sameType st) (zip (toList el1) (toList el2))
-                maybe
-                  (either
-                     (return . Left)
-                     (\l1' ->
-                        either
-                          (return . Left)
-                          (return .
-                           Right .
-                           C.Assign (C.AssignOp Nothing) . fromList . zip l1')
-                          (sequence l2))
-                     (sequence l1))
-                  (return . Left)
-                  (maybeJ me)
-              Just op -> do
-                el <-
-                  mapM
-                    (infer st . aop2e (Arithm op))
-                    (zip (toList el1) (toList el2))
-                either
-                  (return . Left)
-                  (const
+  recurse st (Assign _ aop@(AssignOp mop) el1 el2) = do
+    ets <- mapM (infer st) (toList el2) -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
+    either
+      (return . Left)
+      (const $
+       let errL = concatMap isAddrE (toList el1) -- Make sure everything is an lvalue
+        in if null errL
+             then do
+               l1 <- mapM (recurse st) (toList el1)
+               l2 <- mapM (recurse st) (toList el2)
+               case mop of
+                 Nothing -> do
+                   me <- mapM (sameType st) (zip (toList el1) (toList el2))
+                   maybe
                      (either
                         (return . Left)
                         (\l1' ->
                            either
                              (return . Left)
-                             (\l2' ->
-                                return $
-                                Right $
-                                C.Assign (aop2aop' aop) (fromList $ zip l1' l2'))
+                             (return .
+                              Right .
+                              C.Assign (C.AssignOp Nothing) . fromList . zip l1')
                              (sequence l2))
-                        (sequence l1)))
-                  (sequence el)
-          else return $ Left $ head errL
+                        (sequence l1))
+                     (return . Left)
+                     (maybeJ me)
+                 Just op -> do
+                   el <-
+                     mapM
+                       (infer st . aop2e (Arithm op))
+                       (zip (toList el1) (toList el2))
+                   either
+                     (return . Left)
+                     (const
+                        (either
+                           (return . Left)
+                           (\l1' ->
+                              either
+                                (return . Left)
+                                (\l2' ->
+                                   return $
+                                   Right $
+                                   C.Assign
+                                     (aop2aop' aop)
+                                     (fromList $ zip l1' l2'))
+                                (sequence l2))
+                           (sequence l1)))
+                     (sequence el)
+             else return $ Left $ head errL)
+      (sequence ets)
       -- convert op and 2 expressions to binary op, infer type of this to make sure it makes sense
     where
       aop2e :: BinaryOp -> (Expr, Expr) -> Expr
@@ -571,16 +582,26 @@ instance Symbolize VarDecl' [C.VarDecl'] where
   recurse st (VarDecl' neIdl edef) =
     case edef of
       Left ((_, t), el) -> do
+        ets <- mapM (infer st) el -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
         et <- toType st t
         either
           (return . Left)
-          (\t' -> do
-             me <- checkIds st (Variable t') "Variable " neIdl
-             maybe (checkDecl st t' (toList neIdl) el) (return . Left) me)
-          et
+          (const $
+           either
+             (return . Left)
+             (\t' -> do
+                me <- checkIds st (Variable t') "Variable " neIdl
+                maybe (checkDecl st t' (toList neIdl) el) (return . Left) me)
+             et)
+          (sequence ets)
       Right nel -> do
+        ets <- mapM (infer st) (toList nel) -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
         me <- checkIds st (Variable Infer) "Variable " neIdl
-        maybe (checkDeclI st (toList neIdl) (toList nel)) (return . Left) me
+        either
+          (return . Left)
+          (const $
+           maybe (checkDeclI st (toList neIdl) (toList nel)) (return . Left) me)
+          (sequence ets)
     where
       checkDecl ::
            SymbolTable s
