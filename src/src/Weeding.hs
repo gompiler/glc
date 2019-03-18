@@ -37,6 +37,7 @@ verify program =
   , returnVerify
   , initReturnVerify
   , initFunctionVerify
+  , mainFunctionVerify
   ] <*>
   [program]
 
@@ -278,6 +279,30 @@ initFunctionVerify program = asum errors
         then Just $ createError o NonFunctionInit
         else Nothing
 
+mainFunctionVerify :: PureConstraint Program
+mainFunctionVerify program = asum errors
+  where
+    errors :: [Maybe ErrorMessage']
+    errors = map mainFunctionConstraint (topLevels program)
+    mainFunctionConstraint :: TopDecl -> Maybe ErrorMessage'
+    mainFunctionConstraint (TopFuncDecl (FuncDecl (Identifier o fname) sig _)) =
+      if fname == "main"
+        then checkMainSignature sig
+        else Nothing
+      where
+        checkMainSignature :: Signature -> Maybe ErrorMessage'
+        checkMainSignature (Signature (Parameters pdl) rtyp) =
+          (verifyParams pdl) <|> (verifyType rtyp)
+        verifyParams :: [ParameterDecl] -> Maybe ErrorMessage'
+        verifyParams pdl =
+          if length pdl == 0
+            then Nothing
+            else Just $ createError o MainFunctionType
+        verifyType :: Maybe Type' -> Maybe ErrorMessage'
+        verifyType Nothing = Nothing
+        verifyType _       = Just $ createError o MainFunctionType
+    mainFunctionConstraint _ = Nothing -- Non-function declarations don't matter here
+
 -- Helpers
 -- | Extracts block statements from top-level function declarations
 topToStmt :: TopDecl -> Maybe Stmt
@@ -397,6 +422,7 @@ data WeedingError
   | LastReturn
   | InitReturn
   | NonFunctionInit
+  | MainFunctionType
   deriving (Show, Eq)
 
 instance ErrorEntry WeedingError where
@@ -413,3 +439,4 @@ instance ErrorEntry WeedingError where
         "Function declaration with non-void return type must have return as last statement"
       InitReturn -> "init function cannot have non-void return"
       NonFunctionInit -> "init can only be declared as a function in this scope"
+      MainFunctionType -> "main must have no parameters and void return type"

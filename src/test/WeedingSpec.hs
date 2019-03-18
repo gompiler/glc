@@ -413,5 +413,14 @@ spec = do
         return
       }
       |]
+    , [text|
+      func main(a int) {}
+      |]
+    , [text|
+      func main() int {}
+      |]
+    , [text|
+      func main(a float) string {}
+      |]
     ]
   expectWeedFailBlankPackage [""]
