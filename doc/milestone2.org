@@ -62,14 +62,37 @@ whilst implementing the components for milestone 2.  \newpage
   typechecked/simplified, proven-correct AST) is pure and very easy to
   manipulate for the ~codegen~ phase in the next milestone.
 
-  As for what we store in the symbol table, we created a new type
-  ~Symbol~ to represent each symbol, analogous to the different types
-  of symbols (types, constants, functions, variables) and new type
-  ~SType~ that keeps the vital information concerning the types we
-  define in the original ~AST~. All types that are left to be inferred
+  For symbol table storage, we created a new data type ~Symbol~ to represent
+  each symbol, analogous to the different type of symbols
+  (types, constants, functions, and variables). A ~Symbol~ can be one of:
+  - ~Base~: Base types (~int~, ~float64~, etc.)
+  - ~Constant~: Constant values (only used for booleans in GoLite)
+  - ~Func [Param] (Maybe SType)~: Function types, with parameters and an
+    optional return type.
+  - ~Variable SType~: Declared variables, of type SType.
+  - ~SType SType~: Declared types (note: in Haskell, the first ~SType~ here is
+    a constructor, and the second ~SType~ is a data type attached to the
+    constructor.)
+  In this way, all possible symbol types are encompassed by a single Haskell
+  data type.
+
+  We also created a new data type ~SType~, which is used to store vital
+  information concerning the types we define in the original ~AST~.
+  An ~SType~ can be one of:
+  - ~Array Int SType~: An array with a length and a type.
+  - ~Slice SType~: A slice with a type.
+  - ~Struct [Field]~: A struct with a list of fields.
+  - ~TypeMap SIdent SType~: A user-defined type, with an identifier and an
+    underlying type, which may be recursively mapped, eventually to a base type.
+  - ~PInt, PFloat64, PBool, PRune, PString~: Base types.
+  - ~Infer, Void~: Special ~SType~s for inferred types and void return values.
+  In this way, all possible GoLite types, including user-defined types, are
+  accounted for.
+
+  All types that are left to be inferred
   during symbol table generation are updated when typechecking (we
   infer the type of variables and then update their value in the
-  symbol table to make sure things like assignments don't conflict
+  symbol table, to make sure things like assignments don't conflict
   with the original inferred type).
 ** Scoping Rules
    The scoping rules we used/considered are as follows:
@@ -78,11 +101,11 @@ whilst implementing the components for milestone 2.  \newpage
      current scope. Note that here we had to treat the function body
      as a list of statements and not a block statement, because if we
      recursed on the block statement our block statement rule would
-     put the function body in a new scope, but it has to be in the
+     put the function body in a new scope. Instead, the body must be in the
      same scope as the parameters.
-   - Block statements are put into a new scope
-   - If statements: we open a new scope (containing the simple
-     statement and expression condition at the top level) and then
+   - Block statements are put into a new scope.
+   - If statements: we open a new scope, containing the simple
+     statement and expression condition at the top level, and then
      another scope inside for the body/bodies (one for if, one for
      else if there's one, in that case the if and else scope are
      siblings).
