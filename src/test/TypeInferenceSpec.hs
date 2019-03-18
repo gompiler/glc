@@ -43,7 +43,11 @@ parseAndInferNoST expStr = either Left runExpr parseResult
         _ <- SymTab.add st "int_t" (SType PInt)
         _ <-
           SymTab.add st "it_var" (Variable $ TypeMap (mkSIdStr' 1 "int_t") PInt)
-        _ <- SymTab.add st "int_t_slice" (Variable (Slice $ TypeMap (mkSIdStr' 1 "int_t") PInt))
+        _ <-
+          SymTab.add
+            st
+            "int_t_slice"
+            (Variable (Slice $ TypeMap (mkSIdStr' 1 "int_t") PInt))
         -- type struct_type struct {a int; b int;}
         -- var st_var struct_type
         -- _ <- SymTab.app
@@ -139,12 +143,7 @@ spec
     , ("^100", PInt)
     , ("^'b'", PRune)
     ]
-  expectFail
-    "unary operations"
-    [ "+\"string\""
-    , "-\"string\""
-
-    ]
+  expectFail "unary operations" ["+\"string\"", "-\"string\""]
   expectPass
     "binary operations"
     -- Bool ops
@@ -294,11 +293,11 @@ spec
     , ( "append(sr_var, rune(it_var))"
       , TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
     -- Unary ops
-    , ("+int_t(5)", TypeMap (mkSIdStr' 1 "int_t") (PInt))
-    , ("-int_t(5)", TypeMap (mkSIdStr' 1 "int_t") (PInt))
-    , ("^int_t(5)", TypeMap (mkSIdStr' 1 "int_t") (PInt))
+    , ("+int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
+    , ("-int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
+    , ("^int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
     -- Binary ops
-    , ("int_t(5) + int_t(5)", TypeMap (mkSIdStr' 1 "int_t") (PInt))
+    , ("int_t(5) + int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
     , ("int_t(5) == int_t(5)", PBool)
     , ("int_t(5) >= int_t(5)", PBool)
     ]
