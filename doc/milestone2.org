@@ -115,40 +115,45 @@ whilst implementing the components for milestone 2.  \newpage
      level (simple statements 1 and 2, and condition). The body is
      put in a nested scope.
 * Type Checker
-  For type-checking, we decided on a single-pass approach which
+  For type-checking, we decided on a single-pass approach, combining
   combined symbol table generation and statement type-checking. This
-  improves performance, and is possible as a product of GoLite's
+  improves performance, and is feasible as a product of GoLite's
   declaration rules, which specify that identifiers must be declared
-  before they can be used. The other approach we considered was having
-  a type annotated AST (types of expressions would be contained in the
-  AST) so that we could get rid of mutability (the symbol table) as
-  soon as possible (also some of us did a similar thing for the
-  assignment, but this was mainly relevant for the fact that print
-  statements in codegen need to know the type of the expression
-  they're printing in C), however we decided on doing all the
-  typechecking at the same time as symbol table generation because
-  type inference has to be done to generate this new AST and type
-  inference requires typechecking (~"a" + 5~ has no inferred type, but
-  we only know that because we typecheck it). Therefore we'd generate
-  an annotated AST only to typecheck things that aren't
-  expressions. But at that point, since we are already doing one
-  in-depth pass of the original AST when generating the symbol table,
-  we might as well do the other half of typechecking at the same phase
-  (it seemed weird to split half of typechecking with a symbol table
-  and half without it and might have been more feasible if type
-  inference did not require typechecking, but that makes no
-  sense). Therefore, after the one pass of our original AST, the final
-  result is a typechecked AST with no type annotation.
+  before they can be used.
+
+  The other approach we considered involved generation of
+  a type-annotated AST, with types of expressions contained in the
+  AST, so that we could get rid of ~ST~ mutability from the symbol table as
+  soon as possible (some of us did a similar thing for the
+  assignment, but this was mainly relevant for print
+  statements in C codegen needing to know the type of the expression
+  they're printing).
+
+  We decided on doing all typechecking at the same
+  time as symbol table generation because
+  type inference has to be done to generate this new AST, and type
+  inference requires typechecking (e.g. ~"a" + 5~ has no inferred type, since
+  the expression is undefined; we only know this because of typechecking).
+
+  At first, we were going to generate an annotated AST only to typecheck things
+  that aren't expressions. However, at that point, since we were already doing
+  one in-depth pass of the original AST for symbol table generation,
+  we decided that we might as well do the other half of typechecking in the
+  same phase, since it seemed odd to split typechecking between the symbol table
+  and a separate pass. The alternate approach may have been more feasible if
+  type inference did not require typechecking, but in GoLite it did not seem to
+  make sense. Therefore, after the one pass of our original AST, the final
+  result is a typechecked AST, with extremely limited type annotation.
 
   Additionally, we decided to resolve all type mappings (except for
-  structs) to their base types when generating this new AST (all the
+  structs) to their base types when generating this new AST: all the
   casts/equality checks/new type usages are already validated in
   typechecking, so we don't need them anymore, nor do we need the
-  mappings). Therefore our new AST was also able to get rid of type
+  mappings. Thus, our new AST was also able to get rid of type
   declarations (except for structs).
 * New AST
   As mentioned above, dependency on the SymbolTable results in a
-  dependency on the ST monad, which adds complexity to each operation.
+  dependency on the ~ST~ monad, which adds complexity to each operation.
   As a result, our goal after typechecking is to create a new AST,
   which reflects the new constraints we enforce.  Namely:
   - Typecheck errors are caught beforehand, so we no longer need offsets,
