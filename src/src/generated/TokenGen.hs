@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP,MagicHash #-}
 {-# LINE 1 "golite.x" #-}
 
-module Tokens
+module TokenGen
 ( Alex(..)
 , AlexPosn(..)
 , alex_pos
@@ -14,6 +14,7 @@ module Tokens
 , runAlex'
 ) where
 import TokensBase
+import ErrorBundle (Offset(..), createError)
 
 #if __GLASGOW_HASKELL__ >= 603
 #include "ghcconfig.h"
@@ -478,7 +479,7 @@ alex_actions = array (0 :: Int, 187)
   , (0,alex_action_88)
   ]
 
-{-# LINE 139 "golite.x" #-}
+{-# LINE 140 "golite.x" #-}
 
 data Token = Token AlexPosn InnerToken
            deriving (Eq, Show)
@@ -588,7 +589,7 @@ alexMonadScan = do
       action (ignorePendingBytes inp__) len
 
 errGenL :: Int -> Alex a
-errGenL o = alexError ("Error: lexical error at ", o)
+errGenL o = alexError (createError (Offset o) "Lexical error")
 
 alexEOF :: Alex Token
 alexEOF = do
@@ -605,13 +606,13 @@ blockComment _ _ = do
 --         -> Bool -> Alex a
 checkBlk inp beg@(pos@(AlexPn o _ _), _, _, _) semi =
   maybe
-    (alexError ("Error: unclosed block comment at ", o)) matchEnd (alexGetByte inp)
+    (alexError (createError (Offset o) "Unclosed block comment")) matchEnd (alexGetByte inp)
   where
   bToC b = (toEnum (fromIntegral b) :: Char)
   matchEnd (b, inp') = case bToC b of
                         '*'  ->
                             maybe
-                                (alexError ("Error: unclosed block comment at ", o))
+                                (alexError (createError (Offset o) "Unclosed block comment"))
                                 matchEnd2 (alexGetByte inp')
                         '\n' -> checkBlk inp' beg True
                         _    -> checkBlk inp' beg semi
@@ -648,7 +649,6 @@ tokS x = andBegin (tokM $ const x) (getTokenState x)
 -- | Same thing, but for tokM
 tokSM :: (String -> InnerToken) -> AlexAction Token
 tokSM x = andBegin (tokM x) nl -- All literal values can take optional semicolons
-
 
 nl :: Int
 nl = 1
@@ -749,22 +749,6 @@ alex_action_88 =  tokSM TRStringVal
 -- -----------------------------------------------------------------------------
 -- INTERNALS and main scanner engine
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 -- Do not remove this comment. Required to fix CPP parsing when using GCC and a clang-compiled alex.
 #if __GLASGOW_HASKELL__ > 706
 #define GTE(n,m) (tagToEnum# (n >=# m))
@@ -773,24 +757,6 @@ alex_action_88 =  tokSM TRStringVal
 #define GTE(n,m) (n >=# m)
 #define EQ(n,m) (n ==# m)
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 data AlexAddr = AlexA# Addr#
 -- Do not remove this comment. Required to fix CPP parsing when using GCC and a clang-compiled alex.
@@ -811,10 +777,6 @@ alexIndexInt16OffAddr (AlexA# arr) off =
   indexInt16OffAddr# arr off
 #endif
 
-
-
-
-
 {-# INLINE alexIndexInt32OffAddr #-}
 alexIndexInt32OffAddr (AlexA# arr) off =
 #ifdef WORDS_BIGENDIAN
@@ -832,20 +794,12 @@ alexIndexInt32OffAddr (AlexA# arr) off =
   indexInt32OffAddr# arr off
 #endif
 
-
-
-
-
-
 #if __GLASGOW_HASKELL__ < 503
 quickIndex arr i = arr ! i
 #else
 -- GHC >= 503, unsafeAt is available from Data.Array.Base.
 quickIndex = unsafeAt
 #endif
-
-
-
 
 -- -----------------------------------------------------------------------------
 -- Main lexing routines
@@ -866,27 +820,18 @@ alexScanUser user__ input__ (I# (sc))
     case alexGetByte input__ of
       Nothing ->
 
-
-
                                    AlexEOF
       Just _ ->
-
-
 
                                    AlexError input__'
 
   (AlexLastSkip input__'' len, _) ->
 
-
-
     AlexSkip input__'' len
 
   (AlexLastAcc k input__''' len, _) ->
 
-
-
     AlexToken input__''' len (alex_actions ! k)
-
 
 -- Push the input through the DFA, remembering the most recent accepting
 -- state it encountered.
@@ -900,8 +845,6 @@ alex_scan_tkn user__ orig_input len input__ s last_acc =
   case alexGetByte input__ of
      Nothing -> (new_acc, input__)
      Just (c, new_input) ->
-
-
 
       case fromIntegral c of { (I# (ord_c)) ->
         let
@@ -926,18 +869,6 @@ alex_scan_tkn user__ orig_input len input__ s last_acc =
         check_accs (AlexAcc a  ) = AlexLastAcc a input__ (I# (len))
         check_accs (AlexAccSkip) = AlexLastSkip  input__ (I# (len))
 
-
-
-
-
-
-
-
-
-
-
-
-
 data AlexLastAcc
   = AlexNone
   | AlexLastAcc !Int !AlexInput !Int
@@ -947,32 +878,4 @@ data AlexAcc user
   = AlexAccNone
   | AlexAcc Int
   | AlexAccSkip
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

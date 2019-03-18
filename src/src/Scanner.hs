@@ -14,7 +14,6 @@ module Scanner
   , T.runAlex
   , T.runAlex'
   , T.Alex
-  , errO
   , errODef
   ) where
 
@@ -24,7 +23,7 @@ import           System.IO
 import           ErrorBundle
 
 -- Helper functions for scanning using tokens and also pass relevant things to parser
-import qualified Tokens      as T
+import qualified TokenGen    as T
 
 -- |prettify, takes a token and turn it into a string representing said token
 -- Also makes the tokens look like the expected tTYPE format
@@ -214,7 +213,7 @@ prettyPrint :: [T.InnerToken] -> IO ()
 prettyPrint = mapM_ (putStrLn . prettify)
 
 -- | scan', the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
-scan' :: String -> Either (String, Int) [T.InnerToken]
+scan' :: String -> Either ErrorMessage' [T.InnerToken]
 scan' s =
   T.runAlex s $ do
     let loop tokl = do
@@ -225,24 +224,19 @@ scan' s =
     loop []
 
 -- | Helper to process offsets
-scan :: String -> Either String [T.InnerToken]
+scan :: String -> Either ErrorMessage [T.InnerToken]
 scan s = either (Left . errODef s) Right (scan' s)
 
--- | Convert (String, Int) to String, i.e. err msg + offset to string
-errO :: String -> String -> (String, Int) -> String
-errO s err2 (err, o) =
-  err ++ errorString (createError o err2 (createInitialState s))
+-- | Passes input to error bundle
+errODef :: String -> ErrorMessage' -> ErrorMessage
+errODef input err = err input
 
--- | errO but no message after Megaparsec error, i.e. just feed it the empty string as we have no additional error to repot
-errODef :: String -> (String, Int) -> String
-errODef s = errO s ""
-
-scanT :: String -> Either String [T.InnerToken]
+scanT :: String -> Either ErrorMessage [T.InnerToken]
 scanT s = fmap reverse (scan s)
 
 -- | putExit: function to output to stderr and exit with return code 1
-putExit :: String -> IO ()
-putExit err = hPutStrLn stderr err >> exitFailure
+putExit :: ErrorMessage -> IO ()
+putExit err = hPrint stderr err >> exitFailure
 
 -- | putSucc: output to stdin and exit with success
 putSucc :: String -> IO ()

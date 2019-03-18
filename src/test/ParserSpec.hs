@@ -7,13 +7,17 @@ module ParserSpec
   ) where
 
 import           Base
-import           Data            as D
+import           Data               as D
+import           Data.List.NonEmpty (fromList)
+import           Data.List.Split    (splitOn)
 import           Parser
-import qualified TokensSpec      as T
-
-import           Data.List.Split (splitOn)
+import           Token              (InnerToken (..))
+import qualified TokensSpec         as T
 
 {-# ANN module "HLint: ignore Redundant do" #-}
+
+qcGenMatch :: Parsable p => (String, p) -> Bool
+qcGenMatch (s, out) = parse s == Right out
 
 -- | Spec template listing some expected tests; not yet implemented
 spec :: Spec
@@ -23,32 +27,33 @@ spec = do
       "ident list"
       False
       (genCommaList T.genId)
-      (\x ->
-         parsef pId x == (Right $ reverse $ map (Identifier o) (splitOn "," x)))
+      (\x -> parse x == (Right $ fromList $ map (Identifier o) (splitOn "," x)))
   describe "Expressions" $ do
-    qcGen
-      "basic expressions"
-      False
-      genEBase
-      (\(s, out) -> parsef pE s == Right out)
-    qcGen
-      "binary expressions"
-      False
-      genEBin
-      (\(s, out) -> parsef pE s == Right out)
-    qcGen
-      "unary expressions"
-      False
-      genEUn
-      (\(s, out) -> parsef pE s == Right out)
+    qcGen "basic expressions" False genEBase qcGenMatch
+    qcGen "binary expressions" False genEBin qcGenMatch
+    qcGen "unary expressions" False genEUn qcGenMatch
   -- Though a single identifier is valid, we parse it without going through the identifiers type
   expectPass
     @Identifiers
     -- Basic
     ["a, b", "a, b, c, d, e"]
   expectFail @Identifiers ["", ",", "a,", ",b", "a,,c", "0"]
-  expectPass @Type' ["asdf", "int", "a0", "_0a"]
-  expectFail @Type' ["0", "-", "*", "int int"]
+  expectPass
+    @Type'
+    ["asdf", "int", "a0", "_0a", "[3]string", "[0x12]string", "[0123]string"]
+  expectFail
+    @Type'
+    [ "0"
+    , "-"
+    , "*"
+    , "int int"
+    -- Only int literals allowed
+    , "[1 + 2]string"
+    , "[2.0]float"
+    , "[a]string"
+    , "[\"a\"]string"
+    , "['a']string"
+    ]
   expectPass
     @TopDecl
     -- Basic
@@ -59,20 +64,24 @@ spec = do
     , "type a b"
     , "type (a int\n)"
     , "type ( a b; c d\n)"
+    , "type ()"
     , "func f(a, b, c string) { }"
     ]
-  expectFail
+  expectError
     @TopDecl
-    [ "var a"
-    , "type a = b"
-    -- Must have type
-    , "func (a, b, c) { }"
-    -- Must have body
-    , "func (a, b)"
-    -- No variadic types
-    , "func (a, b, c ...int)"
-    -- No need for semicolon rule 2
-    , "type (a b)"
+      -- Missing semicolon
+    [ ("var a", ParseError TSemicolon)
+      -- Format should be 'type a b'
+    , ("type a = b", ParseError TAssn)
+      -- Func must have name
+    , ("func () { }", ParseError TLParen)
+    , ("func a(b, c) { }", ParseError TRParen)
+      -- Must have body
+    , ("func f(a b)", ParseError TSemicolon)
+      -- No variadic types
+    , ("func f(a, b, c ...int)", ParseError TLdots)
+      -- No need for semicolon rule 2
+    , ("type (a b)", ParseError TRParen)
     ]
   expectPass @Stmt ["if true { }"]
   expectPass
@@ -157,10 +166,23 @@ spec = do
     -- , "c := 2; (a + b)++"
     , "if a { c++ \n}"
     , "if a := 2; b { } else if 0 < 1 { c-- \n}"
+    , "for ;; { }"
+    , "for ; a; { }"
+    , "for ;; a++{ }"
+    , "for a:= 0;;{ }"
+    , "for a:= 0; a < 3;{ }"
+    , "for a:= 0;; a++{ }"
+    , "for a < 5 { }"
+    , "for a := 2; a < 5; a++ { }"
+    , "for { }"
     ] ++
     intExamples ++ floatExamples ++ map (\s -> "'" ++ s ++ "'") runeExamples
   expectPass @Stmt stmtExamples
   expectFail @Stmt $ map (\s -> "{" ++ s ++ "}") ["/*", "/**", "/* /* */ */"]
+  expectFail @Stmt
+    [ "a, b := 1"
+    , "a := 1, 2"
+    ]
   expectPass
     @Signature
     [ "(a int)"

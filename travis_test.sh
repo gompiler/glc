@@ -2,9 +2,7 @@
 
 (cd src && make test)
 
-if [[ $? != 0 ]]
-then
-	echo -e "Tests failed"
+if [[ $? -ne 0 ]]; then
 	exit 1
 fi
 

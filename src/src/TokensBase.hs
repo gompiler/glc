@@ -9,6 +9,7 @@ import           Control.Monad       ((>=>))
 import qualified Data.Bits
 import           Data.Char           (ord)
 import           Data.Word           (Word8)
+import           ErrorBundle
 
 alex_tab_size :: Int
 alex_tab_size = 8
@@ -106,7 +107,7 @@ inpNLR s r =
     []   -> '\n' : r
     h:t  -> inpNLR t (h : r)
 
-runAlex' :: String -> Alex a -> Either (String, Int) a
+runAlex' :: String -> Alex a -> Either ErrorMessage' a
 runAlex' s (Alex f) =
   snd <$>
   f (AlexState
@@ -118,11 +119,11 @@ runAlex' s (Alex f) =
        })
 
 -- | Wrapper for runAlex' to process output through inpNL and also initialize AlexUserState
-runAlex :: String -> Alex a -> Either (String, Int) a
+runAlex :: String -> Alex a -> Either ErrorMessage' a
 runAlex s = runAlex' (inpNL s)
 
 newtype Alex a = Alex
-  { unAlex :: AlexState -> Either (String, Int) (AlexState, a)
+  { unAlex :: AlexState -> Either ErrorMessage' (AlexState, a)
   }
 
 instance Functor Alex where
@@ -152,7 +153,7 @@ alexSetInput (pos, c, bs, inp__) =
     case s {alex_pos = pos, alex_chr = c, alex_bytes = bs, alex_inp = inp__} of
       state__@AlexState {} -> Right (state__, ())
 
-alexError :: (String, Int) -> Alex a
+alexError :: ErrorMessage' -> Alex a
 alexError = Alex . const . Left
 
 alexGetStartCode :: Alex Int
