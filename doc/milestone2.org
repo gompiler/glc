@@ -27,9 +27,9 @@ whilst implementing the components for milestone 2.  \newpage
     statements. Similar to the above, it is easier to do a
     weeding pass then require context-sensitive (i.e multiple different)
     traversal functions given the context of the current function declaration.
-  - Ensuring any `main` function declaration does not have any parameters or a
-    return type. This is again a straightforward weeding check. It could also
-    have been done via typecheck, but it is slightly
+  - Ensuring any `main` or `init` function declarations do not have any
+    parameters or a return type. This is again a straightforward weeding check.
+    It could also have been done via typecheck, but it is slightly
     easier to implement with weeding passes (no symbol table required).
   - Checking that any top-level declarations with the identifier ~init~ or
     ~main~ are functions, since they are special identifiers in Go (and GoLite)
