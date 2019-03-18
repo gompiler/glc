@@ -184,6 +184,9 @@ spec
     , "1.0 && 2.0"
     , "'a' || 'b'"
     , "'a' && 'b'"
+    , "5.0 % 3.0"
+    , "int_t_slice < int_t_slice"
+    , "true <= false"
     , "\"a\" || \"b\""
     , "int_5_arr == int_3_arr" -- not comparable
     , "int_slice == int_slice" -- not comparable
@@ -297,6 +300,7 @@ spec
     -- Binary ops
     , ("int_t(5) + int_t(5)", TypeMap (mkSIdStr' 0 "int_t") (PInt))
     , ("int_t(5) == int_t(5)", PBool)
+    , ("int_t(5) >= int_t(5)", PBool)
     ]
   expectFail
     "custom"
