@@ -106,14 +106,14 @@ whilst implementing the components for milestone 2.  \newpage
    - Block statements are put into a new scope.
    - If statements: we open a new scope, containing the simple
      statement and expression condition at the top level, and then
-     another scope inside for the body/bodies (one for if, one for
-     else if there's one, in that case the if and else scope are
-     siblings).
-   - Switch statements: open a new scope and another scope for each
-     switch case (all switch cases have sibling scopes to each other)
-   - For loop: open a new scope, optional clauses are put at the top
-     level (simple statement 1 and 2 and condition) and the body is
-     put in a nested scope
+     other scope(s) inside for the body/bodies: one for ~if~, and one for
+     ~else~ (if there is one). If an ~else~ is present, the if and else scope
+     are siblings.
+   - Switch statements: open a new scope for the ~switch~, and another scope
+     for each switch ~case~. All switch case scopes are siblings.
+   - For loop: open a new scope, with optional clauses put at the top
+     level (simple statements 1 and 2, and condition). The body is
+     put in a nested scope.
 * Type Checker
   For type-checking, we decided on a single-pass approach which
   combined symbol table generation and statement type-checking. This
