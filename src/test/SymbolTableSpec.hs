@@ -217,7 +217,7 @@ spec = do
       // No new var
       a := 2
       |]
-        , [text|
+    , [text|
           a := 1
      // No new var
      _, a := 2, 3
@@ -231,7 +231,7 @@ spec = do
       // Check against explicit type
       var a, b, c int = 1, true, 3
       |]
-   , [text|
+    , [text|
      // Cannot use var if not defined
      var a, b, c int = 1, a, 3
      |]
@@ -324,6 +324,97 @@ spec = do
         return float64(b()) * 2.0
       }
       |]
+    , [text|
+              type s1 struct{
+	      a bool
+	      a2 int
+              }
+
+              type s2 struct{
+	      a int
+	      a2 s1
+              }
+
+              type (
+	      g int
+	      s3 struct{
+              a g
+	      }
+	      _ int
+	      _a int
+	      _a_ _a
+	      __ _a_
+              )
+
+              func __j() int{
+	      a, _ := 6, 3
+	      // _ = 3
+	      return 9
+              }
+
+              func retInt() int{
+	      return 5
+              }
+
+              func retBool(a int) bool{
+	      return true
+              }
+
+              func main() {
+	      type false bool
+	      var b int = 5
+
+	      for {
+              type int float64
+              var ssss int = int(63.0)
+	      }
+
+	      type int2 int
+	      type int bool
+
+	      type int3 int2
+
+	      var c int = int(retBool(7))
+	      var shouldBeBool int = int(true)
+	      var intVar int2 = int2(5)
+	      var intVar2 int3 = int3(5)
+	      if true {
+              // intVar2 = int3(5)
+	      }
+
+              }
+
+              func weird() int{
+	      if (true){
+              // type int float64
+              var g int = int(6)
+              return g
+	      }else{
+              // type int float64
+              var g int = int(5)
+              return g
+	      }
+              }
+              type int3 int
+              type int bool
+
+              func bbool() int{
+	      return int(true)
+              }
+              func sl(g []int3) []int3{
+	      // _ = 7
+	      var _ = 7
+	      g = append(g, int3(5))
+	      return g
+              }
+
+              func wut(){
+	      var z []int3
+	      _ = sl(z)
+              }
+
+              var _ = 5
+              |]
 --    , [text|
 --      |]
 --    , [text|
@@ -408,11 +499,11 @@ spec = do
         a(a)
       }
       |]
-   , [text|
+    , [text|
      // Init must be a function at the top level
      type init int
      |]
-   , [text|
+    , [text|
      // Main must be a function at the top level
      type main int
      |]

@@ -50,6 +50,7 @@ new = do
     , ("true", Constant)
     , ("false", Constant)
     ]
+  S.insert st "_" (Variable Infer) -- Dummy symbol so that we can lookup the blank identifier and just ignore the type
   return st
 
 add :: SymbolTable s -> String -> Symbol -> ST s Bool -- Did we add successfully?
@@ -399,6 +400,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       aop2aop' (AssignOp Nothing)     = C.AssignOp Nothing
       -- | Check if two expressions have the same type and if LHS is addressable, helper for assignments
       sameType :: SymbolTable s -> (Expr, Expr) -> ST s (Maybe ErrorMessage')
+      sameType _ (Var (Identifier _ "_"), _) = return Nothing -- Do not compare if LHS is "_"
       sameType st' (e1, e2) = do
         et1 <- infer st' e1
         et2 <- infer st' e2
