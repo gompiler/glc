@@ -36,6 +36,7 @@ verify program =
   , progVerifyBlank
   , returnVerify
   , initReturnVerify
+  , initFunctionVerify
   ] <*>
   [program]
 
@@ -256,6 +257,27 @@ initReturnConstraint (TopFuncDecl (FuncDecl (Identifier _ fname) _ fb)) =
     checkInitReturn _ = Nothing
 initReturnConstraint _ = Nothing -- Non-function declarations don't matter here
 
+initFunctionVerify :: PureConstraint Program
+initFunctionVerify program = asum errors
+  where
+    errors :: [Maybe ErrorMessage']
+    errors = map initFunctionConstraint (topLevels program)
+    initFunctionConstraint :: TopDecl -> Maybe ErrorMessage'
+    initFunctionConstraint (TopDecl (VarDecl vdl))  =
+      asum (map vdConstraint vdl)
+    initFunctionConstraint (TopDecl (TypeDef tdl)) =
+      asum (map tdConstraint tdl)
+    initFunctionConstraint _ = Nothing -- Function declarations are fine
+    vdConstraint :: VarDecl' -> Maybe ErrorMessage'
+    vdConstraint (VarDecl' idents _) = asum (map iToE (toList idents))
+    tdConstraint :: TypeDef' -> Maybe ErrorMessage'
+    tdConstraint (TypeDef' ident _) = iToE ident
+    iToE :: Identifier -> Maybe ErrorMessage'
+    iToE (Identifier o s) =
+      if s == "init"
+        then Just $ createError o NonFunctionInit
+        else Nothing
+
 -- Helpers
 -- | Extracts block statements from top-level function declarations
 topToStmt :: TopDecl -> Maybe Stmt
@@ -374,6 +396,7 @@ data WeedingError
   | BreakScope
   | LastReturn
   | InitReturn
+  | NonFunctionInit
   deriving (Show, Eq)
 
 instance ErrorEntry WeedingError where
@@ -389,3 +412,4 @@ instance ErrorEntry WeedingError where
       LastReturn ->
         "Function declaration with non-void return type must have return as last statement"
       InitReturn -> "init function cannot have non-void return"
+      NonFunctionInit -> "init can only be declared as a function in this scope"
