@@ -127,9 +127,9 @@ spec = do
     -- Constants not allowed
     [ "var a bool; a += 2"
     , "var s string; s *= `s`"
---    , "2 += 3" -- TODO FAILING
---    , "'b' -= 'c'"
---    , "'a' = 'b'"
+    , "2 += 3"
+    , "'b' -= 'c'"
+    , "'a' = 'b'"
     ]
   expectTypecheckPass
     [ [text|
@@ -217,11 +217,11 @@ spec = do
       // No new var
       a := 2
       |]
---    , [text| -- TODO FAILING
---      a := 1
---      // No new var
---      _, a := 2, 3
---      |]
+        , [text|
+          a := 1
+     // No new var
+     _, a := 2, 3
+     |]
     , [text|
       a := 1
       // Bad type
@@ -231,10 +231,10 @@ spec = do
       // Check against explicit type
       var a, b, c int = 1, true, 3
       |]
---    , [text| -- TODO FAILING
---      // Cannot use var if not defined
---      var a, b, c int = 1, a, 3
---      |]
+   , [text|
+     // Cannot use var if not defined
+     var a, b, c int = 1, a, 3
+     |]
 --    , [text|
 --      |]
 --      |]
@@ -408,14 +408,14 @@ spec = do
         a(a)
       }
       |]
---    , [text| -- TODO FAILING
---      // Init must be a function at the top level
---      type init int
---      |]
---    , [text| -- TODO FAILING
---      // Main must be a function at the top level
---      type main int
---      |]
+   , [text|
+     // Init must be a function at the top level
+     type init int
+     |]
+   , [text|
+     // Main must be a function at the top level
+     type main int
+     |]
     , [text|
       // Main can only be declared once
       func main() {
