@@ -43,6 +43,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
         _ <- SymTab.add st "int_t" (SType PInt)
         _ <-
           SymTab.add st "it_var" (Variable $ TypeMap (mkSIdStr' 0 "int_t") PInt)
+        _ <- SymTab.add st "int_t_slice" (Variable (Slice $ TypeMap (mkSIdStr' 0 "int_t") PInt))
         -- type struct_type struct {a int; b int;}
         -- var st_var struct_type
         -- _ <- SymTab.app
@@ -120,6 +121,31 @@ spec
   -- * Both expressions must have same type
  = do
   expectPass
+    "unary operations"
+    [ ("+5", PInt)
+    , ("-5", PInt)
+    , ("+5.0", PFloat64)
+    , ("-5.0", PFloat64)
+    , ("+'a'", PRune)
+    , ("-'a'", PRune)
+    , ("!true", PBool)
+    , ("!false", PBool)
+    , ("!(1 < 2)", PBool)
+    , ("!!(1 <= 2)", PBool)
+    , ("!!(1 > 2)", PBool)
+    , ("!!!(1 >= 2)", PBool)
+    , ("!!!!(1 == 2)", PBool)
+    , ("!!!(1 != 2)", PBool)
+    , ("^100", PInt)
+    , ("^'b'", PRune)
+    ]
+  expectFail
+    "unary operations"
+    [ "+\"string\""
+    , "-\"string\""
+
+    ]
+  expectPass
     "binary operations"
     -- Bool ops
     [ ("false || true", PBool)
@@ -127,7 +153,7 @@ spec
     -- Comparable ops
     -- See https://golang.org/ref/spec#Comparison_operators
     -- bool, rune, int, float64, string, struct if all fields comparable
-    -- , ("2 == 54", PBool) -- TODO FAIL; add all others
+    , ("2 == 54", PBool)
     , ("st_var == st_var", PBool)
     , ("int_5_arr == int_5_arr_2", PBool)
     -- TODO compare structs
@@ -158,6 +184,9 @@ spec
     , "1.0 && 2.0"
     , "'a' || 'b'"
     , "'a' && 'b'"
+    , "5.0 % 3.0"
+    , "int_t_slice < int_t_slice"
+    , "true <= false"
     , "\"a\" || \"b\""
     , "int_5_arr == int_3_arr" -- not comparable
     , "int_slice == int_slice" -- not comparable
@@ -264,6 +293,14 @@ spec
     , ("append(sr_var, '5')", TypeMap (mkSIdStr' 0 "sr_type") (Slice PRune))
     , ( "append(sr_var, rune(it_var))"
       , TypeMap (mkSIdStr' 0 "sr_type") (Slice PRune))
+    -- Unary ops
+    , ("+int_t(5)", TypeMap (mkSIdStr' 0 "int_t") (PInt))
+    , ("-int_t(5)", TypeMap (mkSIdStr' 0 "int_t") (PInt))
+    , ("^int_t(5)", TypeMap (mkSIdStr' 0 "int_t") (PInt))
+    -- Binary ops
+    , ("int_t(5) + int_t(5)", TypeMap (mkSIdStr' 0 "int_t") (PInt))
+    , ("int_t(5) == int_t(5)", PBool)
+    , ("int_t(5) >= int_t(5)", PBool)
     ]
   expectFail
     "custom"
@@ -281,4 +318,6 @@ spec
     , "append(sr_var, 5)"
     , "as_var[float(it_var)]"
     , "as_type(a5s)" -- cast needs base types
+    , "int_t(5) == 5"
+    , "int_t_slice == int_t_slice"
     ]
