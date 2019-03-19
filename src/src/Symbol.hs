@@ -91,16 +91,15 @@ resolve ::
   -> SymbolTable s
   -> ErrorMessage'
   -> ST s (Either ErrorMessage' SType)
-resolve (Identifier _ vname) st notDeclError =
-  let idv = vname
-   in do res <- S.lookup st idv
-         case res of
-           Nothing -> return $ Left notDeclError -- createError ident (NotDecl "Type " ident)
-           Just (scope, t) ->
-             return $
-             case resolve' t scope idv of
-               Nothing -> Right Void -- createError ident (VoidFunc ident)
-               Just t' -> Right t'
+resolve (Identifier _ idv) st notDeclError = do
+  res <- S.lookup st idv
+  case res of
+    Nothing -> return $ Left notDeclError -- createError ident (NotDecl "Type " ident)
+    Just (scope, t) ->
+      return $
+      case resolve' t scope idv of
+        Nothing -> Right Void -- createError ident (VoidFunc ident)
+        Just t' -> Right t'
     -- | Resolve symbol to type
   where
     resolve' :: Symbol -> S.Scope -> String -> Maybe SType
