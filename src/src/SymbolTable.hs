@@ -116,8 +116,7 @@ instance Symbolize FuncDecl C.FuncDecl
                                                                                         where
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
-      then 
-           maybe
+      then maybe
              (if null pdl
                 then (do scope <- S.scopeLevel st -- Should be 1
                          _ <-
@@ -125,8 +124,8 @@ instance Symbolize FuncDecl C.FuncDecl
                            Just (vname, Func [] Nothing, scope)
                          fmap
                            (C.FuncDecl
-                             (mkSIdStr scope vname)
-                             (C.Signature (C.Parameters []) Nothing)) <$>
+                              (mkSIdStr scope vname)
+                              (C.Signature (C.Parameters []) Nothing)) <$>
                            recurse st body)
                 else do
                   _ <- S.addMessage st Nothing
@@ -1020,37 +1019,37 @@ sl2str (em, sl) =
    in if b
         then (Nothing, pt) -- Ignore error as we fully printed the symbol table
         else (em, pt)
-
--- | Recursive helper for sl2str with accumulator
-sl2str' ::
-     [Maybe SymbolInfo]
-  -> S.Scope -- Previous scope
-  -> String -- Accumulated string
-  -> (String, Bool) -- Result, bool is to determine whether we finished printing the whole list or not to differentiate between symbol table errors and typecheck errors
--- Base case, no more scopes to close and nothing to convert, just return accumulator
-sl2str' [] (S.Scope 0) acc = (acc, True)
--- Close each scope's brace at end
-sl2str' [] (S.Scope scope) acc =
-  sl2str' [] (S.Scope (scope - 1)) (acc ++ tabs (scope - 1) ++ "}\n")
-sl2str' (mh:mt) (S.Scope pScope) acc =
-  maybe
-    (acc, False)
-    (\(key, sym, S.Scope scope) ->
-       sl2str' mt (S.Scope scope) $
-       acc ++
-       br pScope scope ++
-       tabs scope ++
-       key ++
-       (case sym of
-          Base -> " [type] = " ++ key
-          Constant -> " [constant] = bool"
-          Func {} ->
-            if key == "init"
-              then " [function] = <unmapped>"
-              else show sym
-          _ -> show sym) ++
-       "\n")
-    mh
+    -- | Recursive helper for sl2str with accumulator
+  where
+    sl2str' ::
+         [Maybe SymbolInfo]
+      -> S.Scope -- Previous scope
+      -> String -- Accumulated string
+      -> (String, Bool) -- Result, bool is to determine whether we finished printing the whole list or not to differentiate between symbol table errors and typecheck errors
+    -- Base case, no more scopes to close and nothing to convert, just return accumulator
+    sl2str' [] (S.Scope 0) acc = (acc, True)
+    -- Close each scope's brace at end
+    sl2str' [] (S.Scope scope) acc =
+      sl2str' [] (S.Scope (scope - 1)) (acc ++ tabs (scope - 1) ++ "}\n")
+    sl2str' (mh:mt) (S.Scope pScope) acc =
+      maybe
+        (acc, False)
+        (\(key, sym, S.Scope scope) ->
+           sl2str' mt (S.Scope scope) $
+           acc ++
+           br pScope scope ++
+           tabs scope ++
+           key ++
+           (case sym of
+              Base -> " [type] = " ++ key
+              Constant -> " [constant] = bool"
+              Func {} ->
+                if key == "init"
+                  then " [function] = <unmapped>"
+                  else show sym
+              _ -> show sym) ++
+           "\n")
+        mh
 
 -- | Account for braces given previous scope and current scope
 br :: Int -> Int -> String
