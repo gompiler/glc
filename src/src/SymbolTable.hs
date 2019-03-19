@@ -14,6 +14,7 @@ module SymbolTable
 import           Control.Monad.ST
 import           Data
 import           Data.Either        (partitionEithers)
+import           Data.Functor       (($>))
 
 import           Data.List.Extra    (concatUnzip)
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
@@ -163,10 +164,10 @@ instance Symbolize FuncDecl C.FuncDecl
                  wrap
                    st
                    (do mapM_ (\(k, sym, _) -> add st k sym) sil
-                       (fmap
-                          (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
-                           C.BlockStmt) .
-                        sequence) <$>
+                       fmap
+                         (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
+                          C.BlockStmt) .
+                         sequence <$>
                          mapM (recurse st) sl))
               ef
           else return $ Left $ createError ident (AlreadyDecl "Function " ident)
@@ -190,9 +191,7 @@ instance Symbolize FuncDecl C.FuncDecl
              (err, pil) <- checkIds' st2 t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
              case err of
-               Just e -> do
-                 _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
-                 return $ Left e
+               Just e  -> S.addMessage st2 Nothing $> Left e -- Signal error so we don't print symbols beyond this
                Nothing -> return $ Right pil)
           et
       checkIds' ::
@@ -208,15 +207,13 @@ instance Symbolize FuncDecl C.FuncDecl
         -> SType
         -> Identifier
         -> ST s (Either ErrorMessage' (Param, SymbolInfo))
-      checkId' st2 t' ident'@(Identifier _ vname') =
-        let idv = vname'
-         in do notdef <- isNDefL st2 idv -- Should not be declared
-               if notdef
-                 then do
-                   scope <- S.insert' st2 vname' (Variable t')
-                   return $ Right ((vname', t'), (vname', Variable t', scope))
-                 else return $
-                      Left $ createError ident (AlreadyDecl "Param " ident')
+      checkId' st2 t' ident'@(Identifier _ idv) = do
+        notdef <- isNDefL st2 idv -- Should not be declared
+        if notdef
+          then do
+            scope <- S.insert' st2 idv (Variable t')
+            return $ Right ((idv, t'), (idv, Variable t', scope))
+          else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
       p2pd (s, t') = C.ParameterDecl (mkSIdStr (S.Scope 2) s) (toBase t')
       func2sig :: Symbol -> C.Signature
@@ -227,6 +224,9 @@ instance Symbolize FuncDecl C.FuncDecl
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
+--               do
+--                 _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
+--                 return $ Left e
 -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
 -- | checkId over a list of identifiers, keep first error or return nothing
 checkIds ::
