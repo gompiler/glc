@@ -1,11 +1,12 @@
 module Symbol where
 
+import           Base
 import qualified CheckedData      as T (Ident (..), Scope (..),
                                         ScopedIdent (..))
 import           Control.Monad.ST
 import           Data             (Identifier (..))
 import           Data.List        (intercalate)
-import           ErrorBundle
+import qualified Data.Maybe       as Maybe
 import qualified SymbolTableCore  as S
 
 -- We define new types for symbols and types here
@@ -93,13 +94,9 @@ resolve ::
   -> ST s (Either ErrorMessage' SType)
 resolve (Identifier _ idv) st notDeclError = do
   res <- S.lookup st idv
-  case res of
-    Nothing -> return $ Left notDeclError -- createError ident (NotDecl "Type " ident)
-    Just (scope, t) ->
-      return $
-      case resolve' t scope idv of
-        Nothing -> Right Void -- createError ident (VoidFunc ident)
-        Just t' -> Right t'
+  return $ do
+    (scope, t) <- res <?> notDeclError
+    return $ Maybe.fromMaybe Void $ resolve' t scope idv
     -- | Resolve symbol to type
   where
     resolve' :: Symbol -> S.Scope -> String -> Maybe SType
