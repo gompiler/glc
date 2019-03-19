@@ -25,7 +25,8 @@ type SymbolTable s = S.SymbolTable s Symbol (Maybe SymbolInfo)
 
 data Symbol
   = Base -- Base type, resolve to themselves, i.e. int
-  | Constant -- For bools only
+  -- In Golite, the only constants we have are booleans
+  | ConstantBool
   | Func [Param]
          (Maybe SType)
   | Variable SType
@@ -112,7 +113,7 @@ resolve (Identifier _ vname) st notDeclError =
         "rune"    -> PRune
         "string"  -> PString
         _         -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
-    resolve' Constant _ _ = Just PBool -- Constants reserved for bools only
+    resolve' ConstantBool _ _ = Just PBool
     resolve' (Variable t') _ _ = Just t'
     resolve' (SType t') scope ident' = Just $ TypeMap (mkSIdStr scope ident') t'
     resolve' (Func _ mt) _ _ = mt

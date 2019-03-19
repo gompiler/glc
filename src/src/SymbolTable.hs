@@ -47,8 +47,8 @@ new = do
     , ("bool", Base)
     , ("rune", Base)
     , ("string", Base)
-    , ("true", Constant)
-    , ("false", Constant)
+    , ("true", ConstantBool)
+    , ("false", ConstantBool)
     ]
   S.insert st "_" (Variable Infer) -- Dummy symbol so that we can lookup the blank identifier and just ignore the type
   return st
@@ -1042,7 +1042,7 @@ sl2str (em, sl) =
            key ++
            (case sym of
               Base -> " [type] = " ++ key
-              Constant -> " [constant] = bool"
+              ConstantBool -> " [constant] = bool"
               Func {} ->
                 if key == "init"
                   then " [function] = <unmapped>"
