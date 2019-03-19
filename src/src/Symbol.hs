@@ -101,14 +101,13 @@ resolve (Identifier _ idv) st notDeclError = do
   where
     resolve' :: Symbol -> S.Scope -> String -> Maybe SType
     resolve' Base _ ident' =
-      Just $
       case ident' of
-        "int"     -> PInt
-        "float64" -> PFloat64
-        "bool"    -> PBool
-        "rune"    -> PRune
-        "string"  -> PString
-        _         -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
+        "int"     -> Just PInt
+        "float64" -> Just PFloat64
+        "bool"    -> Just PBool
+        "rune"    -> Just PRune
+        "string"  -> Just PString
+        _         -> Nothing -- This shouldn't happen, don't insert any other base types
     resolve' ConstantBool _ _ = Just PBool
     resolve' (Variable t') _ _ = Just t'
     resolve' (SType t') scope ident' = Just $ TypeMap (mkSIdStr scope ident') t'
