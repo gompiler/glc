@@ -225,8 +225,9 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
   where
     lastIsReturn :: Stmt -> Maybe ErrorMessage'
     lastIsReturn (If _ ifb elseb) = lastIsReturn ifb <|> lastIsReturn elseb
-    lastIsReturn (For (ForClause EmptyStmt Nothing EmptyStmt) _) =
-      Nothing -- infinite for loops don't 'need' return
+    lastIsReturn (For (ForClause EmptyStmt Nothing EmptyStmt) forb) =
+      -- infinite for loops don't 'need' return unless they have a break in them
+      checkForBreak forb
     lastIsReturn (For _ forb) = lastIsReturn forb
     lastIsReturn (BlockStmt stmts) =
       case reverse stmts of
@@ -239,6 +240,11 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
     getSwitchCaseStmt :: SwitchCase -> Stmt
     getSwitchCaseStmt (Case _ _ stmt) = stmt
     getSwitchCaseStmt (Default _ stmt) = stmt
+    checkForBreak :: Stmt -> Maybe ErrorMessage'
+    checkForBreak (BlockStmt stmts) = asum $ map checkForBreak stmts
+    checkForBreak (If _ ifb elseb) = checkForBreak ifb <|> checkForBreak elseb
+    checkForBreak (Break o) = Just $ createError o LastReturnBreak
+    checkForBreak _ = Nothing -- fors/switches start their own break 'scope'
 
 initReturnVerify :: PureConstraint Program
 initReturnVerify program = asum errors
@@ -423,6 +429,7 @@ data WeedingError
   | ContinueScope
   | BreakScope
   | LastReturn
+  | LastReturnBreak
   | InitReturn
   | NonFunctionSpecial String
   | SpecialFunctionType String
@@ -440,6 +447,8 @@ instance ErrorEntry WeedingError where
       BreakScope -> "Break statement must occur in for loop or switch statement"
       LastReturn ->
         "Function declaration with non-void return type must have return as last statement"
+      LastReturnBreak ->
+        "Function declaration with non-void return type must have return as last statement [infinite loops can't break]"
       InitReturn -> "init function cannot have non-void return"
       NonFunctionSpecial s ->
         s ++ " can only be declared as a function in this scope"
