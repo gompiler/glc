@@ -11,7 +11,7 @@ import           Prelude                 hiding (lookup)
 import           SymbolTableCore
 import           Test.Hspec
 
-type TestSymbolTable = SymbolTable (PrimState IO) Int Int
+type TestSymbolTable = SymbolTable (PrimState IO) Int Int Int
 
 data Action
   = Lookup Int

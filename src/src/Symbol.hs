@@ -22,7 +22,7 @@ type SymbolInfo = (String, Symbol, S.Scope)
 
 -- | SymbolTable, cactus stack of SymbolScope
 -- specific instantiation for our uses
-type SymbolTable s = S.SymbolTable s Symbol (Maybe SymbolInfo)
+type SymbolTable s = S.SymbolTable s Symbol (Maybe SymbolInfo) Symbol
 
 data Symbol
   = Base -- Base type, resolve to themselves, i.e. int
