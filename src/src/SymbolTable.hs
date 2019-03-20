@@ -296,14 +296,14 @@ instance Symbolize SimpleStmt C.SimpleStmt where
           (\t -> do
              et' <- recurse st e
              eb <- checkId' ident t
-             either (return . Left) (checkExpr eb) et')
+             either (return . Left) (attachExpr eb) et')
           et
         where
-          checkExpr ::
+          attachExpr ::
                Either ErrorMessage' (Bool, SIdent)
             -> C.Expr
             -> ST s (Either ErrorMessage' (Bool, (SIdent, C.Expr)))
-          checkExpr eb e' =
+          attachExpr eb e' =
             return $ either Left (\(b, sid) -> Right (b, (sid, e'))) eb
           checkId' ::
                Identifier
