@@ -147,8 +147,10 @@ infer st e@(Binary _ op i1 i2) =
   where
     innerList :: NonEmpty Expr
     innerList = fromList [i1, i2]
+    -- Does not always just return bool! May return a defined type which
+    -- resolves to bool instead.
     andOrConstraint =
-      inferConstraint st isBoolean (const PBool) (BadBinaryOp "boolean")
+      inferConstraint st isBoolean NE.head (BadBinaryOp "boolean")
     comparableConstraint _ _ -- Special ugly case
      = do
       ei1 <- infer st i1
