@@ -118,6 +118,11 @@ instance Symbolize FuncDecl C.FuncDecl
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
+  recurse ::
+       forall s.
+       SymbolTable s
+    -> FuncDecl
+    -> ST s (Either ErrorMessage' C.FuncDecl)
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
       then maybe
@@ -144,7 +149,7 @@ instance Symbolize FuncDecl C.FuncDecl
         if notdef
           then do
             _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
-            epl <- checkParams st pdl -- Either ErrorMessage' [Param]
+            epl <- checkParams pdl -- Either ErrorMessage' [Param]
       -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
             ef <-
               either
@@ -176,45 +181,39 @@ instance Symbolize FuncDecl C.FuncDecl
           else return $ Left $ createError ident (AlreadyDecl "Function " ident)
     where
       checkParams ::
-           SymbolTable s
-        -> [ParameterDecl]
+           [ParameterDecl]
         -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
-      checkParams st2 pdl' = do
-        pl <- mapM (checkParam st2) pdl'
+      checkParams pdl' = do
+        pl <- mapM checkParam pdl'
         return $ eitherL concatUnzip pl
       checkParam ::
-           SymbolTable s
-        -> ParameterDecl
-        -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
-      checkParam st2 (ParameterDecl idl (_, t')) = do
-        et <- toType st2 t' -- Remove ST
+           ParameterDecl -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
+      checkParam (ParameterDecl idl (_, t')) = do
+        et <- toType st t' -- Remove ST
         either
           (return . Left)
           (\t2 -> do
-             (err, pil) <- checkIds' st2 t2 idl
+             (err, pil) <- checkIds' t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
              case err of
-               Just e  -> S.addMessage st2 Nothing $> Left e -- Signal error so we don't print symbols beyond this
+               Just e  -> S.addMessage st Nothing $> Left e -- Signal error so we don't print symbols beyond this
                Nothing -> return $ Right pil)
           et
       checkIds' ::
-           SymbolTable s
-        -> SType
+           SType
         -> Identifiers
         -> ST s (Maybe ErrorMessage', ([Param], [SymbolInfo]))
-      checkIds' st2 t' idl =
-        (\(a, b) -> (a, unzip b)) . pEithers <$>
-        mapM (checkId' st2 t') (toList idl)
+      checkIds' t' idl =
+        (\(a, b) -> (a, unzip b)) . pEithers <$> mapM (checkId' t') (toList idl)
       checkId' ::
-           SymbolTable s
-        -> SType
+           SType
         -> Identifier
         -> ST s (Either ErrorMessage' (Param, SymbolInfo))
-      checkId' st2 t' ident'@(Identifier _ idv) = do
-        notdef <- isNDefL st2 idv -- Should not be declared
+      checkId' t' ident'@(Identifier _ idv) = do
+        notdef <- isNDefL st idv -- Should not be declared
         if notdef
           then do
-            scope <- S.insert' st2 idv (Variable t')
+            scope <- S.insert' st idv (Variable t')
             return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
