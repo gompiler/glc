@@ -220,22 +220,25 @@ returnConstraint (TopDecl _) = Nothing
 returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
   maybe
     Nothing
-    (const $
-     if lastIsReturn fb
-       then Nothing
-       else Just $ createError fd LastReturn)
+    (const $ lastIsReturn fb)
     mrt
   where
-    lastIsReturn :: Stmt -> Bool
-    lastIsReturn (If _ ifb elseb) = lastIsReturn ifb && lastIsReturn elseb
-    lastIsReturn (For (ForClause EmptyStmt Nothing EmptyStmt) _) = True -- infinite for loops don't 'need' return
+    lastIsReturn :: Stmt -> Maybe ErrorMessage'
+    lastIsReturn (If _ ifb elseb) = lastIsReturn ifb <|> lastIsReturn elseb
+    lastIsReturn (For (ForClause EmptyStmt Nothing EmptyStmt) _) =
+      Nothing -- infinite for loops don't 'need' return
     lastIsReturn (For _ forb) = lastIsReturn forb
     lastIsReturn (BlockStmt stmts) =
       case reverse stmts of
         st:_ -> lastIsReturn st
-        []   -> False
-    lastIsReturn (Return _ _) = True
-    lastIsReturn _ = False
+        []   -> Just $ createError fd LastReturn
+    lastIsReturn (Switch _ _ cl) =
+      asum $ map (lastIsReturn . getSwitchCaseStmt) cl
+    lastIsReturn (Return _ _) = Nothing -- Just $ createError o LastReturn
+    lastIsReturn _ = Just $ createError fd LastReturn
+    getSwitchCaseStmt :: SwitchCase -> Stmt
+    getSwitchCaseStmt (Case _ _ stmt) = stmt
+    getSwitchCaseStmt (Default _ stmt) = stmt
 
 initReturnVerify :: PureConstraint Program
 initReturnVerify program = asum errors
