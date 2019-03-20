@@ -273,19 +273,18 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       checkDecl = do
         eb <- zipWithM checkDec idl' el'
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-        return $
-          either
-            Left
-            (\l ->
-               let (bl, decl) =
-                     unzip
-                       (filter
-                          (\(_, (sident, _)) -> not (isBlankIdent sident))
-                          l)
-                in if True `elem` bl
-                     then Right (fromList decl)
-                     else Left $ createError (head idl') ShortDec)
-            (sequence eb)
+        return $ sequence eb >>= check
+        where
+          check ::
+               [(Bool, (C.ScopedIdent, C.Expr))]
+            -> Either (String -> ErrorMessage) (NonEmpty (C.ScopedIdent, C.Expr))
+          check l =
+            let (bl, decl) =
+                  unzip
+                    (filter (\(_, (sident, _)) -> not (isBlankIdent sident)) l)
+             in if True `elem` bl
+                  then Right (fromList decl)
+                  else Left $ createError (head idl') ShortDec
       checkDec ::
            Identifier
         -> Expr
@@ -297,13 +296,15 @@ instance Symbolize SimpleStmt C.SimpleStmt where
           (\t -> do
              et' <- recurse st e
              eb <- checkId' ident t
-             either
-               (return . Left)
-               (\e' ->
-                  return $ either Left (\(b, sid) -> Right (b, (sid, e'))) eb)
-               et')
+             either (return . Left) (checkExpr eb) et')
           et
         where
+          checkExpr ::
+               Either ErrorMessage' (Bool, SIdent)
+            -> C.Expr
+            -> ST s (Either ErrorMessage' (Bool, (SIdent, C.Expr)))
+          checkExpr eb e' =
+            return $ either Left (\(b, sid) -> Right (b, (sid, e'))) eb
           checkId' ::
                Identifier
             -> SType
