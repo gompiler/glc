@@ -314,7 +314,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
             case val of
               Just (scope, Variable t2) ->
                 return $
-                if t2 == t
+                if t2 == t || vname == "_" -- Don't check type of blank
                   then Right (False, mkSIdStr scope vname)
                             -- if locally defined, check if type matches
                   else Left $ createError e (TypeMismatch2 ident t t2)
@@ -330,7 +330,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
     either
       (return . Left)
       (\t ->
-         if isNumeric t && isAddr e
+         if isNumeric (resolveSType t) && isAddr e
            then fmap C.Increment <$> recurse st e
            else return $ Left $ createError e (NonNumeric e "incremented"))
       et
@@ -339,7 +339,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
     either
       (return . Left)
       (\t ->
-         if isNumeric t && isAddr e
+         if isNumeric (resolveSType t) && isAddr e
            then fmap C.Decrement <$> recurse st e
            else return $ Left $ createError e (NonNumeric e "decremented"))
       et
@@ -443,13 +443,13 @@ instance Symbolize Stmt C.Stmt where
   recurse st (SimpleStmt s) = fmap C.SimpleStmt <$> recurse st s
   recurse st (If (ss, e) s1 s2) =
     wrap st $ do
+      ess' <- recurse st ss
       et <- infer st e
       either
         (return . Left)
         (\t ->
-           if t == PBool
+           if resolveSType t == PBool
              then do
-               ess' <- recurse st ss
                ee' <- recurse st e
                es1' <- recurse st s1
                es2' <- recurse st s2
@@ -522,7 +522,7 @@ instance Symbolize Stmt C.Stmt where
            either
              (return . Left)
              (\t' ->
-                if t' == PBool
+                if resolveSType t' == PBool
                   then return $
                        (\ss1' ->
                           (\ss2' ->
@@ -536,9 +536,8 @@ instance Symbolize Stmt C.Stmt where
   recurse _ (Break _) = return $ Right C.Break
   recurse _ (Continue _) = return $ Right C.Continue
   recurse st (Declare d) = fmap C.Declare <$> recurse st d
-  recurse st (Print el) = (fmap C.Print . sequence) <$> mapM (recBaseE st) el
-  recurse st (Println el) =
-    (fmap C.Println . sequence) <$> mapM (recBaseE st) el
+  recurse st (Print el) = fmap C.Print . sequence <$> mapM (recBaseE st) el
+  recurse st (Println el) = fmap C.Println . sequence <$> mapM (recBaseE st) el
   recurse st (Return _ (Just e)) = do
     mt <- getRet st
     maybe
@@ -568,7 +567,7 @@ recBaseE st e = do
   either
     (return . Left)
     (\t ->
-       if isBase t
+       if isBase (resolveSType t)
          then recurse st e
          else return $ Left $ createError e (NonBaseP t))
     et

@@ -94,7 +94,7 @@ lookup st !k = do
     lookup' :: SymbolScope s v -> ST s (Maybe (Scope, v))
     lookup' (scope, ht) = do
       v <- HT.lookup ht k
-      return $ fmap (scope, ) v
+      return $! fmap (scope, ) v
 
 -- | Look up provided key at current scope only
 lookupCurrent ::
@@ -102,14 +102,14 @@ lookupCurrent ::
 lookupCurrent st !k = do
   (scope, ht) <- currentScope st
   v <- HT.lookup ht k
-  return $ fmap (scope, ) v
+  return $! fmap (scope, ) v
 
 -- | Create new scope
 enterScope :: SymbolTable s v l -> ST s ()
 enterScope st = do
   SymbolTable st'@((Scope scope, _) :| _) list <- readRef st
   ht <- HT.new
-  writeRef st $ SymbolTable ((Scope (scope + 1), ht) <| st') list
+  writeRef st $! SymbolTable ((Scope (scope + 1), ht) <| st') list
 
 -- | Discard current scope
 -- Note that if the current scope is the last scope,
@@ -117,7 +117,7 @@ enterScope st = do
 exitScope :: SymbolTable s v l -> ST s ()
 exitScope st = do
   SymbolTable (_ :| scopes) list <- readRef st
-  writeRef st $ SymbolTable (fromList scopes) list
+  writeRef st $! SymbolTable (fromList scopes) list
 
 -- | Retrieve current scope level
 scopeLevel :: SymbolTable s v l -> ST s Scope
@@ -135,16 +135,16 @@ currentScope st = do
 topScope :: SymbolTable s v l -> ST s (SymbolScope s v)
 topScope st = do
   SymbolTable scopes _ <- readRef st
-  return $ NonEmpty.last scopes
+  return $! NonEmpty.last scopes
 
 -- | Add a new message
 addMessage :: SymbolTable s v l -> l -> ST s ()
 addMessage st !msg = do
   SymbolTable scopes list <- readRef st
-  writeRef st $ SymbolTable scopes (msg : list)
+  writeRef st $! SymbolTable scopes (msg : list)
 
 -- | Retrieve list of messages in the order they were stored
 getMessages :: SymbolTable s v l -> ST s [l]
 getMessages st = do
   SymbolTable _ list <- readRef st
-  return $ reverse list
+  return $! reverse list
