@@ -349,13 +349,13 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   return $ do
     ts <- eitherTs
      -- all the same and one of the valid types:
-    if length (NE.nub ts) == 1 && (isCorrect . resolveSType) (NE.head ts)
+    if length (NE.nub ts) == 1 && isCorrect (NE.head ts)
       then Right $ resultSType ts
       else Left $ createError parentExpr (makeError ts)
 
 isLenCompatible :: SType -> Bool
 isLenCompatible t =
-  case t of
+  case resolveSType t of
     PString  -> True
     Array {} -> True
     Slice {} -> True
@@ -363,30 +363,30 @@ isLenCompatible t =
 
 isCapCompatible :: SType -> Bool
 isCapCompatible t =
-  case t of
+  case resolveSType t of
     Array {} -> True
     Slice {} -> True
     _        -> False
 
 isNumeric :: SType -> Bool
-isNumeric = flip elem [PInt, PFloat64, PRune] -- . resolveSType
+isNumeric = flip elem [PInt, PFloat64, PRune] . resolveSType
 
 isAddable :: SType -> Bool
 isAddable = isOrdered
 
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
-isOrdered = flip elem [PInt, PFloat64, PRune, PString]
+isOrdered = flip elem [PInt, PFloat64, PRune, PString] . resolveSType
 
 isBase :: SType -> Bool
-isBase = flip elem [PInt, PFloat64, PBool, PRune, PString] -- . resolveSType
+isBase = flip elem [PInt, PFloat64, PBool, PRune, PString] . resolveSType
 
 -- | Check if a type resolves to a boolean
 isBoolean :: SType -> Bool
-isBoolean = (==) PBool -- . resolveSType
+isBoolean = (==) PBool . resolveSType
 
 isIntegerLike :: SType -> Bool
-isIntegerLike = flip elem [PInt, PRune]
+isIntegerLike = flip elem [PInt, PRune] . resolveSType
 
 -- | Checks if a type is comparable at all (arrays still need length checks).
 isComparable :: SType -> Bool
