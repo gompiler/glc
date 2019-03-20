@@ -116,8 +116,7 @@ instance Symbolize FuncDecl C.FuncDecl
                                                                                         where
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
-      then 
-           maybe
+      then maybe
              (if null pdl
                 then (do scope <- S.scopeLevel st -- Should be 1
                          _ <-
@@ -125,8 +124,8 @@ instance Symbolize FuncDecl C.FuncDecl
                            Just (vname, Func [] Nothing, scope)
                          fmap
                            (C.FuncDecl
-                             (mkSIdStr scope vname)
-                             (C.Signature (C.Parameters []) Nothing)) <$>
+                              (mkSIdStr scope vname)
+                              (C.Signature (C.Parameters []) Nothing)) <$>
                            recurse st body)
                 else do
                   _ <- S.addMessage st Nothing
@@ -164,10 +163,10 @@ instance Symbolize FuncDecl C.FuncDecl
                  wrap
                    st
                    (do mapM_ (\(k, sym, _) -> add st k sym) sil
-                       (fmap
-                          (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
-                           C.BlockStmt) .
-                        sequence) <$>
+                       fmap
+                         (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
+                          C.BlockStmt) .
+                         sequence <$>
                          mapM (recurse st) sl))
               ef
           else return $ Left $ createError ident (AlreadyDecl "Function " ident)
@@ -437,7 +436,7 @@ aopConv op =
 
 instance Symbolize Stmt C.Stmt where
   recurse st (BlockStmt sl) =
-    wrap st $ (fmap C.BlockStmt . sequence) <$> mapM (recurse st) sl
+    wrap st $ fmap C.BlockStmt . sequence <$> mapM (recurse st) sl
   recurse st (SimpleStmt s) = fmap C.SimpleStmt <$> recurse st s
   recurse st (If (ss, e) s1 s2) =
     wrap st $ do
@@ -445,7 +444,7 @@ instance Symbolize Stmt C.Stmt where
       either
         (return . Left)
         (\t ->
-           if (resolveSType t) == PBool
+           if resolveSType t == PBool
              then do
                ess' <- recurse st ss
                ee' <- recurse st e
@@ -520,7 +519,7 @@ instance Symbolize Stmt C.Stmt where
            either
              (return . Left)
              (\t' ->
-                if (resolveSType t') == PBool
+                if resolveSType t' == PBool
                   then return $
                        (\ss1' ->
                           (\ss2' ->
@@ -534,9 +533,8 @@ instance Symbolize Stmt C.Stmt where
   recurse _ (Break _) = return $ Right C.Break
   recurse _ (Continue _) = return $ Right C.Continue
   recurse st (Declare d) = fmap C.Declare <$> recurse st d
-  recurse st (Print el) = (fmap C.Print . sequence) <$> mapM (recBaseE st) el
-  recurse st (Println el) =
-    (fmap C.Println . sequence) <$> mapM (recBaseE st) el
+  recurse st (Print el) = fmap C.Print . sequence <$> mapM (recBaseE st) el
+  recurse st (Println el) = fmap C.Println . sequence <$> mapM (recBaseE st) el
   recurse st (Return _ (Just e)) = do
     mt <- getRet st
     maybe
