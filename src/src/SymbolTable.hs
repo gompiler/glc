@@ -437,6 +437,8 @@ aopConv op =
     BitClear  -> C.BitClear
 
 instance Symbolize Stmt C.Stmt where
+  recurse ::
+       forall s. SymbolTable s -> Stmt -> ST s (Either ErrorMessage' C.Stmt)
   recurse st (BlockStmt sl) =
     wrap st $ fmap C.BlockStmt . sequence <$> mapM (recurse st) sl
   recurse st (SimpleStmt s) = fmap C.SimpleStmt <$> recurse st s
@@ -463,7 +465,7 @@ instance Symbolize Stmt C.Stmt where
     wrap st $ do
       ess' <- recurse st ss
       maybe
-        (do escs' <- sequence <$> mapM (recurse' st PBool) scs
+        (do escs' <- sequence <$> mapM (recurse' PBool) scs
             return $ (\ss' -> C.Switch ss' Nothing <$> escs') =<< ess')
         (\e -> do
            t <- infer st e
@@ -473,7 +475,7 @@ instance Symbolize Stmt C.Stmt where
              (\t' ->
                 if isComparable t'
                   then do
-                    escs' <- sequence <$> mapM (recurse' st t') scs
+                    escs' <- sequence <$> mapM (recurse' t') scs
                     return $
                       (\ss' ->
                          (\scs' -> (\e' -> C.Switch ss' (Just e') scs') <$> ee') =<<
@@ -484,25 +486,21 @@ instance Symbolize Stmt C.Stmt where
         me
     where
       recurse' ::
-           SymbolTable s
-        -> SType
-        -> SwitchCase
-        -> ST s (Either ErrorMessage' C.SwitchCase)
-      recurse' st' t (Case _ nEl s) = do
-        eel <- sequence <$> mapM (isType st' t) (toList nEl)
-        es' <- recurse st' s
+           SType -> SwitchCase -> ST s (Either ErrorMessage' C.SwitchCase)
+      recurse' t (Case _ nEl s) = do
+        eel <- sequence <$> mapM (isType t) (toList nEl)
+        es' <- recurse st s
         return $ (\el -> C.Case (fromList el) <$> es') =<< eel
-      recurse' st' _ (Default _ s) = fmap C.Default <$> recurse st' s
+      recurse' _ (Default _ s) = fmap C.Default <$> recurse st s
           -- Also return new expr after check
-      isType ::
-           SymbolTable s -> SType -> Expr -> ST s (Either ErrorMessage' C.Expr)
-      isType st' t e = do
-        et <- infer st' e
+      isType :: SType -> Expr -> ST s (Either ErrorMessage' C.Expr)
+      isType t e = do
+        et <- infer st e
         either
           (return . Left)
           (\t2 ->
              if t2 == t
-               then recurse st' e
+               then recurse st e
                else return $ Left $ createError e (NotComp t2 t))
           et
   recurse st (For (ForClause ss1 me ss2) s) =
