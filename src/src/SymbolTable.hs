@@ -306,12 +306,13 @@ instance Symbolize SimpleStmt C.SimpleStmt where
             -> SymbolTable s
             -> ST s (Either ErrorMessage' (Bool, SIdent)) -- Bool is to indicate whether the variable was already declared or not and also create scoped ident
       -- Note that short declarations require at least *one* new declaration
-          checkId' ident'@(Identifier _ vname) t st2 = do
+          checkId' ident'@(Identifier _ vname) t st2 =
+            do
             val <- S.lookupCurrent st2 vname
             case val of
               Just (scope, Variable t2) ->
                 return $
-                if t2 == t
+                if t2 == t || vname == "_" -- Don't check type of blank
                   then Right (False, mkSIdStr scope vname)
                             -- if locally defined, check if type matches
                   else Left $ createError e (TypeMismatch2 ident t t2)
