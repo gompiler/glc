@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 
 module SymbolTable
@@ -30,6 +32,7 @@ import           Weeding            (weed)
 
 import           Symbol
 
+import           Control.Monad      (zipWithM)
 import qualified SymbolTableCore    as S
 
 -- | Insert n tabs
@@ -252,62 +255,62 @@ checkId st s pfix ident@(Identifier _ vname) = do
       else Just $ createError ident (AlreadyDecl pfix ident)
 
 instance Symbolize SimpleStmt C.SimpleStmt where
+  recurse ::
+       forall s.
+       SymbolTable s
+    -> SimpleStmt
+    -> ST s (Either ErrorMessage' C.SimpleStmt)
   recurse st (ShortDeclare idl el) = do
-    ets <- mapM (infer st) (toList el) -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
+    ets <- mapM (infer st) el' -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
     either
       (return . Left)
-      (const $ fmap C.ShortDeclare <$> checkDecl (toList idl) (toList el) st)
+      (const $ fmap C.ShortDeclare <$> checkDecl)
       (sequence ets)
     where
-      checkDecl ::
-           [Identifier]
-        -> [Expr]
-        -> SymbolTable s
-        -> ST s (Either ErrorMessage' (NonEmpty (SIdent, C.Expr)))
-      checkDecl idl' el' st' = do
-        eb <- mapM (\(ident, e) -> checkDec ident e st') (zip idl' el')
+      idl' = toList idl
+      el' = toList el
+      checkDecl :: ST s (Either ErrorMessage' (NonEmpty (SIdent, C.Expr)))
+      checkDecl = do
+        eb <- zipWithM checkDec idl' el'
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-        return $
-          either
-            Left
-            (\l ->
-               let (bl, decl) =
-                     unzip
-                       (filter
-                          (\(_, (sident, _)) -> not (isBlankIdent sident))
-                          l)
-                in if True `elem` bl
-                     then Right (fromList decl)
-                     else Left $ createError (head idl') ShortDec)
-            (sequence eb)
+        return $ sequence eb >>= check
+        where
+          check ::
+               [(Bool, (C.ScopedIdent, C.Expr))]
+            -> Either (String -> ErrorMessage) (NonEmpty (C.ScopedIdent, C.Expr))
+          check l =
+            let (bl, decl) =
+                  unzip
+                    (filter (\(_, (sident, _)) -> not (isBlankIdent sident)) l)
+             in if True `elem` bl
+                  then Right (fromList decl)
+                  else Left $ createError (head idl') ShortDec
       checkDec ::
            Identifier
         -> Expr
-        -> SymbolTable s
         -> ST s (Either ErrorMessage' (Bool, (SIdent, C.Expr)))
-      checkDec ident e st' = do
-        et <- infer st' e -- Either ErrorMessage' SType
+      checkDec ident e = do
+        et <- infer st e -- Either ErrorMessage' SType
         either
           (return . Left)
           (\t -> do
-             et' <- recurse st' e
-             eb <- checkId' ident t st'
-             either
-               (return . Left)
-               (\e' ->
-                  return $ either Left (\(b, sid) -> Right (b, (sid, e'))) eb)
-               et')
+             et' <- recurse st e
+             eb <- checkId' ident t
+             either (return . Left) (attachExpr eb) et')
           et
         where
+          attachExpr ::
+               Either ErrorMessage' (Bool, SIdent)
+            -> C.Expr
+            -> ST s (Either ErrorMessage' (Bool, (SIdent, C.Expr)))
+          attachExpr eb e' = return $ (\(b, sid) -> (b, (sid, e'))) <$> eb
           checkId' ::
                Identifier
             -> SType
-            -> SymbolTable s
             -> ST s (Either ErrorMessage' (Bool, SIdent)) -- Bool is to indicate whether the variable was already declared or not and also create scoped ident
-      -- Note that short declarations require at least *one* new declaration
-          checkId' ident'@(Identifier _ vname) t st2 =
-            do
-            val <- S.lookupCurrent st2 vname
+          -- Note that short declarations require at least *one* new declaration
+          checkId' ident'@(Identifier _ vname) t = do
+            val <- S.lookupCurrent st vname
             case val of
               Just (scope, Variable t2) ->
                 return $
@@ -317,8 +320,8 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                   else Left $ createError e (TypeMismatch2 ident t t2)
               Just _ -> return $ Left $ createError ident' (NotVar ident')
               Nothing -> do
-                _ <- add st2 vname (Variable Infer) -- Add infer so that we don't print out the actual type
-                scope <- S.insert' st2 vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
+                _ <- add st vname (Variable Infer) -- Add infer so that we don't print out the actual type
+                scope <- S.insert' st vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
                 return $ Right (True, mkSIdStr scope vname)
   recurse _ EmptyStmt = return $ Right C.EmptyStmt
   recurse st (ExprStmt e) = fmap C.ExprStmt <$> recurse st e -- Verify that expr only uses things that are defined

@@ -1,6 +1,6 @@
-{-# LANGUAGE BangPatterns  #-}
-{-# LANGUAGE GADTs         #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE GADTs               #-}
+{-# LANGUAGE TupleSections       #-}
 
 -- | State based eager symbol table
 -- Heavily modeled around https://hackage.haskell.org/package/hashtables-1.2.3.1/docs/src/Data-HashTable-ST-Basic.html#HashTable
@@ -97,7 +97,8 @@ lookup st !k = do
       return $! fmap (scope, ) v
 
 -- | Look up provided key at current scope only
-lookupCurrent :: SymbolTable s v l -> String -> ST s (Maybe (Scope, v))
+lookupCurrent ::
+     SymbolTable s v l -> String -> ST s (Maybe (Scope, v))
 lookupCurrent st !k = do
   (scope, ht) <- currentScope st
   v <- HT.lookup ht k
