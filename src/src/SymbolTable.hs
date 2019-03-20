@@ -303,8 +303,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                Either ErrorMessage' (Bool, SIdent)
             -> C.Expr
             -> ST s (Either ErrorMessage' (Bool, (SIdent, C.Expr)))
-          attachExpr eb e' =
-            return $ either Left (\(b, sid) -> Right (b, (sid, e'))) eb
+          attachExpr eb e' = return $ (\(b, sid) -> (b, (sid, e'))) <$> eb
           checkId' ::
                Identifier
             -> SType
