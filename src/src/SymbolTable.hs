@@ -207,12 +207,12 @@ instance Symbolize FuncDecl C.FuncDecl
         -> SType
         -> Identifier
         -> ST s (Either ErrorMessage' (Param, SymbolInfo))
-      checkId' st2 t' ident'@(Identifier _ idv) = do
-        notdef <- isNDefL st2 idv -- Should not be declared
+      checkId' st2 t' ident'@(Identifier _ vname) = do
+        notdef <- isNDefL st2 vname -- Should not be declared
         if notdef
           then do
-            scope <- S.insert' st2 idv (Variable t')
-            return $ Right ((idv, t'), (idv, Variable t', scope))
+            scope <- S.insert' st2 vname (Variable t')
+            return $ Right ((vname, t'), (vname, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
       p2pd (s, t') = C.ParameterDecl (mkSIdStr (S.Scope 2) s) (toBase t')
@@ -245,8 +245,7 @@ checkId ::
   -> Identifier
   -> ST s (Maybe ErrorMessage')
 checkId st s pfix ident@(Identifier _ vname) =
-  let idv = vname
-   in do success <- add st idv s -- Should not be declared
+   in do success <- add st vname s -- Should not be declared
          return $
            if success
              then Nothing
