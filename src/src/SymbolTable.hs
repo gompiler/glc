@@ -328,7 +328,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
     either
       (return . Left)
       (\t ->
-         if isNumeric t && isAddr e
+         if isNumeric (resolveSType t) && isAddr e
            then fmap C.Increment <$> recurse st e
            else return $ Left $ createError e (NonNumeric e "incremented"))
       et
@@ -337,7 +337,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
     either
       (return . Left)
       (\t ->
-         if isNumeric t && isAddr e
+         if isNumeric (resolveSType t) && isAddr e
            then fmap C.Decrement <$> recurse st e
            else return $ Left $ createError e (NonNumeric e "decremented"))
       et
@@ -445,7 +445,7 @@ instance Symbolize Stmt C.Stmt where
       either
         (return . Left)
         (\t ->
-           if t == PBool
+           if (resolveSType t) == PBool
              then do
                ess' <- recurse st ss
                ee' <- recurse st e
@@ -520,7 +520,7 @@ instance Symbolize Stmt C.Stmt where
            either
              (return . Left)
              (\t' ->
-                if t' == PBool
+                if (resolveSType t') == PBool
                   then return $
                        (\ss1' ->
                           (\ss2' ->
@@ -566,7 +566,7 @@ recBaseE st e = do
   either
     (return . Left)
     (\t ->
-       if isBase t
+       if isBase (resolveSType t)
          then recurse st e
          else return $ Left $ createError e (NonBaseP t))
     et
