@@ -354,7 +354,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                l2 <- mapM (recurse st) (toList el2)
                case mop of
                  Nothing -> do
-                   me <- mapM (sameType st) (zip (toList el1) (toList el2))
+                   me <- mapM sameType (zip (toList el1) (toList el2))
                    maybe
                      (either
                         (return . Left)
@@ -400,11 +400,11 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       aop2aop' (AssignOp (Just aop')) = C.AssignOp $ Just $ aopConv aop'
       aop2aop' (AssignOp Nothing)     = C.AssignOp Nothing
       -- | Check if two expressions have the same type and if LHS is addressable, helper for assignments
-      sameType :: SymbolTable s -> (Expr, Expr) -> ST s (Maybe ErrorMessage')
-      sameType _ (Var (Identifier _ "_"), _) = return Nothing -- Do not compare if LHS is "_"
-      sameType st' (e1, e2) = do
-        et1 <- infer st' e1
-        et2 <- infer st' e2
+      sameType :: (Expr, Expr) -> ST s (Maybe ErrorMessage')
+      sameType (Var (Identifier _ "_"), _) = return Nothing -- Do not compare if LHS is "_"
+      sameType (e1, e2) = do
+        et1 <- infer st e1
+        et2 <- infer st e2
         return $
           either
             Just
