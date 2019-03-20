@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns        #-}
 {-# LANGUAGE GADTs               #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
 -- | State based eager symbol table
