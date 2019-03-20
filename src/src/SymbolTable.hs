@@ -51,9 +51,11 @@ new = do
     , ("true", ConstantBool)
     , ("false", ConstantBool)
     ]
-  S.insert st "_" (Variable Infer) -- Dummy symbol so that we can lookup the blank identifier and just ignore the type
+  _ <- S.insert st "_" (Variable Infer) -- Dummy symbol so that we can lookup the blank identifier and just ignore the type
   return st
 
+-- | Wrapper for insert from symbol table core, but returns a bool telling us whether we returned successfully instead of a Maybe
+-- Also account for blank identifiers (we should never lookup _)
 add :: SymbolTable s -> String -> Symbol -> ST s Bool -- Did we add successfully?
 add st ident sym =
   if ident == "_"
@@ -88,11 +90,14 @@ isNDefL st k = do
 --     Nothing -> do
 --       _ <- S.addMessage st Nothing -- Signal error, key should be defined
 --       return False
--- Class to generalize traverse function for each AST structure
+
+
+-- | Class to generalize traverse function for each AST structure (symbol table generation + typecheck in one pass)
 -- also return the typechecked AST
 class Symbolize a b where
   recurse :: SymbolTable s -> a -> ST s (Either ErrorMessage' b)
 
+-- | Class to convert AST types to SType, could possibly be just changed to a function
 class Typify a
   -- Resolve AST types to SType, may return error message if type error
   where
@@ -100,12 +105,15 @@ class Typify a
 
 instance Symbolize Program C.Program where
   recurse st (Program (Identifier _ pkg) tdl) =
+    -- Recurse on the top level declarations of a program in a new scope
     wrap st $ fmap (C.Program (C.Ident pkg)) <$> recurse st tdl
 
 instance Symbolize TopDecl C.TopDecl where
+  -- Recurse on declarations
   recurse st (TopDecl d)      = fmap C.TopDecl <$> recurse st d
   recurse st (TopFuncDecl fd) = fmap C.TopFuncDecl <$> recurse st fd
 
+-- | Helper for a list of top declarations, does the same thing as above except we use mapM and sequence the results (i.e. if we have a Left in any of the results, we'll just use that because we have an error)
 instance Symbolize [TopDecl] [C.TopDecl] where
   recurse st vdl = do
     el <- mapM (recurse st) vdl
