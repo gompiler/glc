@@ -441,23 +441,23 @@ instance Symbolize Stmt C.Stmt where
   recurse st (SimpleStmt s) = fmap C.SimpleStmt <$> recurse st s
   recurse st (If (ss, e) s1 s2) =
     wrap st $ do
-      et <- infer st e
-      either
-        (return . Left)
-        (\t ->
-           if (resolveSType t) == PBool
-             then do
-               ess' <- recurse st ss
-               ee' <- recurse st e
-               es1' <- recurse st s1
-               es2' <- recurse st s2
-               return $
-                 (\ss' ->
-                    (\e' -> (\s1' -> C.If (ss', e') s1' <$> es2') =<< es1') =<<
-                    ee') =<<
-                 ess'
-             else return $ Left $ createError e (CondBool e t))
-        et
+    ess' <- recurse st ss
+    et <- infer st e
+    either
+      (return . Left)
+      (\t ->
+          if (resolveSType t) == PBool
+          then do
+            ee' <- recurse st e
+            es1' <- recurse st s1
+            es2' <- recurse st s2
+            return $
+              (\ss' ->
+                  (\e' -> (\s1' -> C.If (ss', e') s1' <$> es2') =<< es1') =<<
+                  ee') =<<
+              ess'
+          else return $ Left $ createError e (CondBool e t))
+      et
   recurse st (Switch ss me scs) =
     wrap st $ do
       ess' <- recurse st ss

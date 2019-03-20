@@ -130,6 +130,7 @@ spec = do
     , "type a struct {g struct { z struct { l int;};};}; var g a; g.g.z.l = 5"
     , "for i:=0;;{var i = 3;}"
     , "if i:=0;true{var i = 3;}"
+    , "if i:=0;i{}"
     ]
   expectTypecheckFail
     -- Assignment ops
