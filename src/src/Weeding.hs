@@ -374,7 +374,13 @@ instance BlankWeed SimpleStmt where
   toIdent (ExprStmt e)        = toIdent e
   toIdent (Increment _ e)     = toIdent e
   toIdent (Decrement _ e)     = toIdent e
-  toIdent (Assign _ _ _ el)   = toList el >>= toIdent -- We don't care about identifiers on the LHS
+  toIdent (Assign _ (AssignOp (Just _)) el1 el2)   = (toList el1 >>= toIdent)  ++ (toList el2 >>= toIdent)
+  toIdent (Assign _ _ el1 el2)   = (toList el1 >>= toIdent')  ++ (toList el2 >>= toIdent)
+    where
+      -- Helper function, LHS of assign actually matters it's not a var, otherwise for vars don't check
+      toIdent' :: Expr -> [Identifier]
+      toIdent' (Var _) = []
+      toIdent' e@(_) = toIdent e
   toIdent (ShortDeclare _ el) = toList el >>= toIdent -- Don't care about LHS
   toIdent _                   = []
 
@@ -387,6 +393,7 @@ instance BlankWeed Expr where
   toIdent (Selector _ e ident) = ident : toIdent e
   toIdent (Index _ e1 e2)      = toIdent e1 ++ toIdent e2
   toIdent (Arguments _ e el)   = toIdent e ++ (el >>= toIdent)
+  toIdent (AppendExpr _ e1 e2) = toIdent e1 ++ toIdent e2
   toIdent _                    = []
 
 instance BlankWeed SwitchCase where
