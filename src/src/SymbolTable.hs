@@ -14,6 +14,7 @@ module SymbolTable
 import           Control.Monad.ST
 import           Data
 import           Data.Either        (partitionEithers)
+import           Data.Functor       (($>))
 
 import           Data.List.Extra    (concatUnzip)
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
@@ -47,8 +48,8 @@ new = do
     , ("bool", Base)
     , ("rune", Base)
     , ("string", Base)
-    , ("true", Constant)
-    , ("false", Constant)
+    , ("true", ConstantBool)
+    , ("false", ConstantBool)
     ]
   S.insert st "_" (Variable Infer) -- Dummy symbol so that we can lookup the blank identifier and just ignore the type
   return st
@@ -190,9 +191,7 @@ instance Symbolize FuncDecl C.FuncDecl
              (err, pil) <- checkIds' st2 t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
              case err of
-               Just e -> do
-                 _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
-                 return $ Left e
+               Just e  -> S.addMessage st2 Nothing $> Left e -- Signal error so we don't print symbols beyond this
                Nothing -> return $ Right pil)
           et
       checkIds' ::
@@ -208,15 +207,13 @@ instance Symbolize FuncDecl C.FuncDecl
         -> SType
         -> Identifier
         -> ST s (Either ErrorMessage' (Param, SymbolInfo))
-      checkId' st2 t' ident'@(Identifier _ vname') =
-        let idv = vname'
-         in do notdef <- isNDefL st2 idv -- Should not be declared
-               if notdef
-                 then do
-                   scope <- S.insert' st2 vname' (Variable t')
-                   return $ Right ((vname', t'), (vname', Variable t', scope))
-                 else return $
-                      Left $ createError ident (AlreadyDecl "Param " ident')
+      checkId' st2 t' ident'@(Identifier _ idv) = do
+        notdef <- isNDefL st2 idv -- Should not be declared
+        if notdef
+          then do
+            scope <- S.insert' st2 idv (Variable t')
+            return $ Right ((idv, t'), (idv, Variable t', scope))
+          else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
       p2pd (s, t') = C.ParameterDecl (mkSIdStr (S.Scope 2) s) (toBase t')
       func2sig :: Symbol -> C.Signature
@@ -227,6 +224,9 @@ instance Symbolize FuncDecl C.FuncDecl
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
+--               do
+--                 _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
+--                 return $ Left e
 -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
 -- | checkId over a list of identifiers, keep first error or return nothing
 checkIds ::
@@ -244,13 +244,12 @@ checkId ::
   -> String -- Error prefix for AlreadyDecl, what are we checking? i.e. Param, Var, Type
   -> Identifier
   -> ST s (Maybe ErrorMessage')
-checkId st s pfix ident@(Identifier _ vname) =
-  let idv = vname
-   in do success <- add st idv s -- Should not be declared
-         return $
-           if success
-             then Nothing
-             else Just $ createError ident (AlreadyDecl pfix ident)
+checkId st s pfix ident@(Identifier _ vname) = do
+  success <- add st vname s -- Should not be declared
+  return $
+    if success
+      then Nothing
+      else Just $ createError ident (AlreadyDecl pfix ident)
 
 instance Symbolize SimpleStmt C.SimpleStmt where
   recurse st (ShortDeclare idl el) = do
@@ -1019,37 +1018,37 @@ sl2str (em, sl) =
    in if b
         then (Nothing, pt) -- Ignore error as we fully printed the symbol table
         else (em, pt)
-
--- | Recursive helper for sl2str with accumulator
-sl2str' ::
-     [Maybe SymbolInfo]
-  -> S.Scope -- Previous scope
-  -> String -- Accumulated string
-  -> (String, Bool) -- Result, bool is to determine whether we finished printing the whole list or not to differentiate between symbol table errors and typecheck errors
--- Base case, no more scopes to close and nothing to convert, just return accumulator
-sl2str' [] (S.Scope 0) acc = (acc, True)
--- Close each scope's brace at end
-sl2str' [] (S.Scope scope) acc =
-  sl2str' [] (S.Scope (scope - 1)) (acc ++ tabs (scope - 1) ++ "}\n")
-sl2str' (mh:mt) (S.Scope pScope) acc =
-  maybe
-    (acc, False)
-    (\(key, sym, S.Scope scope) ->
-       sl2str' mt (S.Scope scope) $
-       acc ++
-       br pScope scope ++
-       tabs scope ++
-       key ++
-       (case sym of
-          Base -> " [type] = " ++ key
-          Constant -> " [constant] = bool"
-          Func {} ->
-            if key == "init"
-              then " [function] = <unmapped>"
-              else show sym
-          _ -> show sym) ++
-       "\n")
-    mh
+    -- | Recursive helper for sl2str with accumulator
+  where
+    sl2str' ::
+         [Maybe SymbolInfo]
+      -> S.Scope -- Previous scope
+      -> String -- Accumulated string
+      -> (String, Bool) -- Result, bool is to determine whether we finished printing the whole list or not to differentiate between symbol table errors and typecheck errors
+    -- Base case, no more scopes to close and nothing to convert, just return accumulator
+    sl2str' [] (S.Scope 0) acc = (acc, True)
+    -- Close each scope's brace at end
+    sl2str' [] (S.Scope scope) acc =
+      sl2str' [] (S.Scope (scope - 1)) (acc ++ tabs (scope - 1) ++ "}\n")
+    sl2str' (mh:mt) (S.Scope pScope) acc =
+      maybe
+        (acc, False)
+        (\(key, sym, S.Scope scope) ->
+           sl2str' mt (S.Scope scope) $
+           acc ++
+           br pScope scope ++
+           tabs scope ++
+           key ++
+           (case sym of
+              Base -> " [type] = " ++ key
+              ConstantBool -> " [constant] = bool"
+              Func {} ->
+                if key == "init"
+                  then " [function] = <unmapped>"
+                  else show sym
+              _ -> show sym) ++
+           "\n")
+        mh
 
 -- | Account for braces given previous scope and current scope
 br :: Int -> Int -> String

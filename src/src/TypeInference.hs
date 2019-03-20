@@ -198,11 +198,12 @@ infer st (Var ident@(Identifier _ vname)) = resolveVar st
         Nothing -> do
           _ <- S.addMessage st' Nothing -- Signal error to symbol table checker
           return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
-        Just (_, sym) -> return $
+        Just (_, sym) ->
+          return $
           case sym of
-            Variable t' -> Right t'
-            Constant    -> Right PBool -- Constants can only be booleans
-            _           -> Left $ createError ident (NotVar ident)
+            Variable t'  -> Right t'
+            ConstantBool -> Right PBool
+            _            -> Left $ createError ident (NotVar ident)
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
@@ -211,8 +212,9 @@ infer st ae@(AppendExpr _ e1 e2) = do
   sle <- infer st e1 -- Infer type of slice (e1)
   exe <- infer st e2 -- Infer type of value to append (e2)
   return $
-    case (sle, exe) of
+    case (sle, exe)
     -- TODO: MORE CASES FOR NICER ERRORS?
+          of
       (Right st1, Right t2) ->
         case resolveSType st1 of
           Slice t1 ->
@@ -293,11 +295,7 @@ infer st ae@(Arguments _ expr args) = do
     (Var ident@(Identifier _ vname), Right ts) -> do
       fl <- S.lookup st vname
       -- Only used for base types, since it goes all the way
-      fn <-
-        resolve
-          ident
-          st
-          (createError ident (ExprNotDecl "Type " ident))
+      fn <- resolve ident st (createError ident (ExprNotDecl "Type " ident))
       return $
         case fl of
           Just (_, Func pl rtm) ->
@@ -315,7 +313,7 @@ infer st ae@(Arguments _ expr args) = do
                 tryCast
                   (TypeMap (T.ScopedIdent (T.Scope scp) (T.Ident vname)) ft)
                   ct -- Left $ createError ae $ ExprNotDecl (show ft) ident
-              _    -> Left $ createError ae $ CastArguments (length ts)
+              _ -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId vname -- non-function identifier
           Nothing -> Left $ createError ae $ ExprNotDecl "Function " ident -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
@@ -326,11 +324,11 @@ infer st ae@(Arguments _ expr args) = do
       case (isBase rct, isBase rft) of
         (True, True) ->
           if rct == rft ||
-            (isNumeric rct && isNumeric rft) ||
-            (rft == PString && isIntegerLike rct)
+             (isNumeric rct && isNumeric rft) ||
+             (rft == PString && isIntegerLike rct)
             then Right ft
             else Left $ createError ae $ IncompatibleCast ft ct
-        (False, _)    -> Left $ createError ae $ ExpectBaseType rct
+        (False, _) -> Left $ createError ae $ ExpectBaseType rct
         (True, False) -> Left $ createError ae $ ExpectBaseType rft
       where
         rct :: SType
