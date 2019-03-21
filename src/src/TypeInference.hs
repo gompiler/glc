@@ -393,6 +393,7 @@ isComparable :: SType -> Bool
 isComparable styp =
   case styp of
     Slice _         -> False
+    Array _ atyp    -> isComparable atyp
     TypeMap _ styp' -> isComparable styp'
     Struct fdl      -> and $ map (\(_, ftyp) -> isComparable ftyp) fdl
     _               -> True

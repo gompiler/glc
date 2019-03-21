@@ -83,6 +83,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
             "sr_var"
             (Variable $ TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
         _ <- SymTab.add st "struct_slice" (SType $ (Struct [("a", Slice PInt)]))
+        _ <- SymTab.add st "arr_slice" (SType $ Array 5 (Slice PInt))
         either (Left . errgen) Right <$> infer st e
 
 expectPass :: Stringable s => String -> [(s, SType)] -> SpecWith ()
@@ -189,9 +190,11 @@ spec
     , "int_t_slice < int_t_slice"
     , "true <= false"
     , "\"a\" || \"b\""
-    , "int_5_arr == int_3_arr" -- not comparable
-    , "int_slice == int_slice" -- not comparable
+    -- not comparable:
+    , "int_5_arr == int_3_arr"
+    , "int_slice == int_slice"
     , "struct_slice == struct_slice"
+    , "arr_slice == arr_slice"
     ]
   -- | Type casts
   -- type(expr) is valid if:
