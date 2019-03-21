@@ -1,3 +1,6 @@
+{-# LANGUAGE InstanceSigs        #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module TypeInference
   ( ExpressionTypeError
   , infer
@@ -89,7 +92,7 @@ instance ErrorEntry ExpressionTypeError where
         "Cast expects base type; non-base type " ++ show styp ++ " provided"
 
 -- | Main type inference function
-infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
+infer :: forall s. SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
 -- | Infers the types of '+' unary operator expressions
 infer st e@(Unary _ Pos inner) =
   inferConstraint
@@ -113,7 +116,7 @@ infer st e@(Unary _ Not inner) =
   inferConstraint
     st
     isBoolean
-    (const PBool)
+    NE.head
     (BadUnaryOp "boolean")
     e
     (fromList [inner])
@@ -189,20 +192,18 @@ infer _ (Lit l) =
     RuneLit {}   -> PRune
     StringLit {} -> PString
 -- | Resolve variables to the type their identifier points to in the scope
-infer st (Var ident@(Identifier _ vname)) = resolveVar st
-  where
-    resolveVar :: SymbolTable s -> ST s (Either ErrorMessage' SType)
-    resolveVar st' = do
-      res <- S.lookup st' vname
-      case res of
-        Nothing -> do
-          _ <- S.addMessage st' Nothing -- Signal error to symbol table checker
-          return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
-        Just (_, sym) -> return $
-          case sym of
-            Variable t' -> Right t'
-            Constant    -> Right PBool -- Constants can only be booleans
-            _           -> Left $ createError ident (NotVar ident)
+infer st (Var ident@(Identifier _ vname)) = do
+  res <- S.lookup st vname
+  case res of
+    Nothing -> do
+      _ <- S.addMessage st Nothing -- Signal error to symbol table checker
+      return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
+    Just (_, sym) ->
+      return $
+      case sym of
+        Variable t' -> Right t'
+        Constant    -> Right PBool -- Constants can only be booleans
+        _           -> Left $ createError ident (NotVar ident)
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
@@ -293,11 +294,7 @@ infer st ae@(Arguments _ expr args) = do
     (Var ident@(Identifier _ vname), Right ts) -> do
       fl <- S.lookup st vname
       -- Only used for base types, since it goes all the way
-      fn <-
-        resolve
-          ident
-          st
-          (createError ident (ExprNotDecl "Type " ident))
+      fn <- resolve ident st (createError ident (ExprNotDecl "Type " ident))
       return $
         case fl of
           Just (_, Func pl rtm) ->
@@ -315,7 +312,7 @@ infer st ae@(Arguments _ expr args) = do
                 tryCast
                   (TypeMap (T.ScopedIdent (T.Scope scp) (T.Ident vname)) ft)
                   ct -- Left $ createError ae $ ExprNotDecl (show ft) ident
-              _    -> Left $ createError ae $ CastArguments (length ts)
+              _ -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId vname -- non-function identifier
           Nothing -> Left $ createError ae $ ExprNotDecl "Function " ident -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
@@ -326,11 +323,11 @@ infer st ae@(Arguments _ expr args) = do
       case (isBase rct, isBase rft) of
         (True, True) ->
           if rct == rft ||
-            (isNumeric rct && isNumeric rft) ||
-            (rft == PString && isIntegerLike rct)
+             (isNumeric rct && isNumeric rft) ||
+             (rft == PString && isIntegerLike rct)
             then Right ft
             else Left $ createError ae $ IncompatibleCast ft ct
-        (False, _)    -> Left $ createError ae $ ExpectBaseType rct
+        (False, _) -> Left $ createError ae $ ExpectBaseType rct
         (True, False) -> Left $ createError ae $ ExpectBaseType rft
       where
         rct :: SType
