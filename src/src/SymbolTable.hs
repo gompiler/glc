@@ -125,7 +125,6 @@ instance Symbolize [TopDecl] [C.TopDecl] where
 instance Symbolize FuncDecl C.FuncDecl where
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
-                                                                                        where
   recurse ::
        forall s.
        SymbolTable s
@@ -133,57 +132,67 @@ instance Symbolize FuncDecl C.FuncDecl where
     -> ST s (Either ErrorMessage' C.FuncDecl)
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
-      then maybe
-             (do scope <- S.scopeLevel st -- Should be 1
-                 _ <-
-                   S.addMessage st $
-                   Just (vname, Func [] Nothing, scope)
-                 fmap
-                   (C.FuncDecl
-                   (mkSIdStr scope vname)
-                   (C.Signature (C.Parameters []) Nothing)) <$>
-                   recurse st body)
-             (\(_, t') -> do
-                et2 <- toType st t'
-                _ <- S.addMessage st Nothing
-                return $ (Left . createError ident . InitNVoid) =<< et2)
-             t
-      else do
+      then addInit
+      else addFunc
+    where
+      -- Add any function that is not init to symbol table
+      addFunc :: ST s (Either ErrorMessage' C.FuncDecl)
+      addFunc = do
         notdef <- isNDefL st vname -- Check if defined in symbol table
         if notdef
           then do
-            _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
-            epl <- checkParams pdl -- Either ErrorMessage' [Param]
-      -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
-            ef <-
-              either
-                (return . Left)
-                (\(pl, sil) ->
-                   maybe
-                     (return $ Right (Func pl Nothing, sil))
-                     (\(_, t') -> do
-                        et <- toType st t'
-                        return $ fmap (\ret -> (Func pl (Just ret), sil)) et)
-                     t)
-                epl
-      -- We then take the Either ErrorMessage' Symbol, if no error we exit dummy scope so we're at the right scope level, insert the Symbol (newly declared function) and then wrap the real scope of the function, adding all the parameters that are already resolved as symbols and recursing on statement list sl (from body of func) to declare things in body
-            either
-              (return . Left)
-              (\(f, sil) -> do
-                 _ <- S.exitScope st
-                 scope <- S.insert' st vname f
-                 _ <- S.addMessage st (Just (vname, f, scope))
-                 wrap
-                   st
-                   (do mapM_ (\(k, sym, _) -> add st k sym) sil
-                       fmap
-                         (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
-                          C.BlockStmt) .
-                         sequence <$>
-                         mapM (recurse st) sl))
-              ef
+          _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
+          epl <- checkParams pdl -- Either ErrorMessage' [Param]
+      -- Either ErrorMessage' Symbol, want to get the corresponding
+      -- Func symbol using our resolved params (if no errors in param
+      -- declaration) and the type of the return of the signature, t,
+      -- which is a Maybe Type'
+          ef <-
+            either (return . Left) createFunc epl
+      -- We then take the Either ErrorMessage' Symbol, if no error we
+      -- exit dummy scope so we're at the right scope level, insert
+      -- the Symbol (newly declared function) and then wrap the real
+      -- scope of the function, adding all the parameters that are
+      -- already resolved as symbols and recursing on statement list
+      -- sl (from body of func) to declare things in body
+          either (return . Left) insertFunc ef
           else return $ Left $ createError ident (AlreadyDecl "Function " ident)
-    where
+          where
+            createFunc :: ([Param], [SymbolInfo]) -> ST s (Either ErrorMessage' (Symbol, [SymbolInfo]))
+            createFunc (pl, sil) =
+              maybe (return $ Right (Func pl Nothing, sil)) (\(_, t') -> do
+                  et <- toType st t'
+                  return $ fmap (\ret -> (Func pl (Just ret), sil)) et) t
+            insertFunc :: (Symbol, [SymbolInfo]) -> ST s (Either ErrorMessage' C.FuncDecl)
+            insertFunc (f, sil) = do
+              _ <- S.exitScope st
+              scope <- S.insert' st vname f
+              _ <- S.addMessage st (Just (vname, f, scope))
+              wrap
+                st
+                (do mapM_ (\(k, sym, _) -> add st k sym) sil
+                    fmap
+                      (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
+                       C.BlockStmt) .
+                      sequence <$>
+                      mapM (recurse st) sl)
+      -- Adds the init function to symbol table
+      addInit :: ST s (Either ErrorMessage' C.FuncDecl)
+      addInit = maybe
+                (do scope <- S.scopeLevel st -- Should be 1
+                    _ <-
+                      S.addMessage st $
+                      Just (vname, Func [] Nothing, scope)
+                    fmap
+                      (C.FuncDecl
+                       (mkSIdStr scope vname)
+                       (C.Signature (C.Parameters []) Nothing)) <$>
+                      recurse st body)
+                (\(_, t') -> do
+                    et2 <- toType st t'
+                    _ <- S.addMessage st Nothing
+                    return $ (Left . createError ident . InitNVoid) =<< et2)
+                t
       checkParams ::
            [ParameterDecl]
         -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
