@@ -106,7 +106,7 @@ class Typify a
     eitherSType <- toType' st (Just parentIdent) t
     return $ do
       stype <- eitherSType
-      let stype' = TypeMap parentIdent $ resolveType stype' stype'
+      let stype' = TypeMap parentIdent $ resolveType stype' stype
       return stype'
     where
       -- Given parent type and current subtype, recursively resolve all instances of
@@ -122,7 +122,7 @@ class Typify a
         if ident == parentIdent && stype == Infer
           then TypeMap ident parentType
           else TypeMap ident $ resolveType parentType stype
-      resolveType parentType t = t
+      resolveType _ stype = stype
       resolveField :: SType -> Field -> Field
       resolveField parentType (ident, stype) =
         if parent == ident
@@ -220,7 +220,7 @@ instance Symbolize FuncDecl C.FuncDecl
                   _ <- S.addMessage st Nothing
                   return $ Left $ createError ident InitParams)
              (\(_, t') -> do
-                et2 <- toType st t'
+                et2 <- toType st Nothing t'
                 _ <- S.addMessage st Nothing
                 return $ (Left . createError ident . InitNVoid) =<< et2)
              t
@@ -238,7 +238,7 @@ instance Symbolize FuncDecl C.FuncDecl
                    maybe
                      (return $ Right (Func pl Nothing, sil))
                      (\(_, t') -> do
-                        et <- toType st t'
+                        et <- toType st Nothing t'
                         return $ fmap (\ret -> (Func pl (Just ret), sil)) et)
                      t)
                 epl
@@ -269,7 +269,7 @@ instance Symbolize FuncDecl C.FuncDecl
       checkParam ::
            ParameterDecl -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkParam (ParameterDecl idl (_, t')) = do
-        et <- toType st t' -- Remove ST
+        et <- toType st Nothing t' -- Remove ST
         either
           (return . Left)
           (\t2 -> do
@@ -668,7 +668,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
     case edef of
       Left ((_, t), el) -> do
         ets <- mapM (infer st) el -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
-        et <- toType st t
+        et <- toType st Nothing t
         either
           (return . Left)
           (const $
@@ -749,7 +749,7 @@ instance Symbolize [TypeDef'] [C.TypeDef'] where
 
 instance Symbolize TypeDef' C.TypeDef' where
   recurse st (TypeDef' ident@(Identifier _ vname) (_, t)) = do
-    et <- toType st t
+    et <- toType st Nothing t
     either
       (return . Left)
       (\t' -> do
