@@ -119,26 +119,21 @@ instance Symbolize [TopDecl] [C.TopDecl] where
     el <- mapM (recurse st) vdl
     return (sequence el)
 
-instance Symbolize FuncDecl C.FuncDecl
+instance Symbolize FuncDecl C.FuncDecl where
   -- Check if function (ident) is declared in current scope (top scope)
-  -- if not, we open new scope to symbolize body and then validate sig before declaring
-                                                                                        where
+  -- if not, we open new scope to symbolize body and then validate sig before declaring 
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
       then maybe
-             (if null pdl
-                then (do scope <- S.scopeLevel st -- Should be 1
-                         _ <-
-                           S.addMessage st $
-                           Just (vname, Func [] Nothing, scope)
-                         fmap
-                           (C.FuncDecl
-                              (mkSIdStr scope vname)
-                              (C.Signature (C.Parameters []) Nothing)) <$>
-                           recurse st body)
-                else do
-                  _ <- S.addMessage st Nothing
-                  return $ Left $ createError ident InitParams)
+             (do scope <- S.scopeLevel st -- Should be 1
+                 _ <-
+                   S.addMessage st $
+                   Just (vname, Func [] Nothing, scope)
+                 fmap
+                   (C.FuncDecl
+                   (mkSIdStr scope vname)
+                   (C.Signature (C.Parameters []) Nothing)) <$>
+                   recurse st body)
              (\(_, t') -> do
                 et2 <- toType st t'
                 _ <- S.addMessage st Nothing
