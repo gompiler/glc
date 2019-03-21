@@ -99,27 +99,56 @@ class Symbolize a b where
 class Typify a
   -- Resolve AST types to SType, may return error message if type error
   where
-  toType :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
-
+  toType ::
+       SymbolTable s -> Maybe SIdent -> a -> ST s (Either ErrorMessage' SType)
+  toType st Nothing t = toType' st Nothing t
+  toType st (Just parentIdent@(C.ScopedIdent _ (C.Ident parent))) t = do
+    eitherSType <- toType' st (Just parentIdent) t
+    return $ do
+      stype <- eitherSType
+      return $ resolveType (TypeMap parentIdent stype) stype
+    where
+      resolveType :: SType -> SType -> SType
+      resolveType parentType (Array i stype) =
+        Array i $ resolveType parentType stype
+      resolveType parentType (Slice stype) =
+        Slice $ resolveType parentType stype
+      resolveType parentType (Struct fields) =
+        Struct $ map (resolveField parentType) fields
+      resolveType parentType (TypeMap ident stype) =
+        if ident == parentIdent && stype == Infer
+          then TypeMap ident parentType
+          else TypeMap ident $ resolveType parentType stype
+      resolveField :: SType -> Field -> Field
+      resolveField parentType (ident, stype) =
+        if parent == ident
+          then (ident, parentType)
+          else (ident, stype)
+  toType' ::
+       SymbolTable s -> Maybe SIdent -> a -> ST s (Either ErrorMessage' SType)
 
 instance Typify Type where
-  toType st (ArrayType (Lit l) t) = do
-    sym <- toType st t
+  toType' ::
+       forall s.
+       SymbolTable s
+    -> Maybe SIdent
+    -> Type
+    -> ST s (Either ErrorMessage' SType)
+  toType' st parent (ArrayType (Lit l) t) = do
+    sym <- toType' st parent t
     return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
-  toType st (SliceType t) = do
-    sym <- toType st t
+  toType' st parent (SliceType t) = do
+    sym <- toType' st parent t
     return $ sym >>= Right . Slice
-  toType st (StructType fdl) = do
-    fl <- checkFields st fdl
+  toType' st parent (StructType fdl) = do
+    fl <- checkFields fdl
     return $ fl >>= Right . Struct
     where
-      checkFields ::
-           SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      checkFields st' fdl' = eitherL concat <$> mapM (checkField st') fdl'
-      checkField ::
-           SymbolTable s -> FieldDecl -> ST s (Either ErrorMessage' [Field])
-      checkField st' (FieldDecl idl (_, t)) = do
-        et <- toType st' t
+      checkFields :: [FieldDecl] -> ST s (Either ErrorMessage' [Field])
+      checkFields fdl' = eitherL concat <$> mapM checkField fdl'
+      checkField :: FieldDecl -> ST s (Either ErrorMessage' [Field])
+      checkField (FieldDecl idl (_, t)) = do
+        et <- toType' st parent t
         return $
           either
             Left
@@ -131,12 +160,20 @@ instance Typify Type where
                  Just ident ->
                    Left $ createError ident (AlreadyDecl "Field " ident))
             et
-  toType st (Type ident) =
-    resolve ident st (createError ident (NotDecl "Type " ident))
+  toType' st parent (Type ident@(Identifier _ identName)) =
+    case parent of
+      Just (C.ScopedIdent _ (C.Ident parentIdent)) ->
+        if parentIdent == identName
+          then parentType
+          else resolveType
+      Nothing -> resolveType
+    where
+      parentType = return $ Right (TypeMap undefined Infer)
+      resolveType = resolve ident st (createError ident (NotDecl "Type " ident))
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType _ (ArrayType _ _) =
+  toType' _ _ (ArrayType _ _) =
     error
       "Trying to convert type of an ArrayType with non literal int as length"
 
