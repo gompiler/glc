@@ -394,6 +394,7 @@ isComparable styp =
   case styp of
     Slice _         -> False
     TypeMap _ styp' -> isComparable styp'
+    Struct fdl      -> and $ map (\(_, ftyp) -> isComparable ftyp) fdl
     _               -> True
 
 -- | Resolves a defined type to a base type, WITHOUT nested types (arrays, etc)
