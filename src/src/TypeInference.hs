@@ -192,6 +192,7 @@ infer _ (Lit l) =
     RuneLit {}   -> PRune
     StringLit {} -> PString
 -- | Resolve variables to the type their identifier points to in the scope
+<<<<<<< HEAD
 infer st (Var ident@(Identifier _ vname)) = do
   res <- S.lookup st vname
   case res of
@@ -204,6 +205,23 @@ infer st (Var ident@(Identifier _ vname)) = do
         Variable t' -> Right t'
         Constant    -> Right PBool -- Constants can only be booleans
         _           -> Left $ createError ident (NotVar ident)
+=======
+infer st (Var ident@(Identifier _ vname)) = resolveVar st
+  where
+    resolveVar :: SymbolTable s -> ST s (Either ErrorMessage' SType)
+    resolveVar st' = do
+      res <- S.lookup st' vname
+      case res of
+        Nothing -> do
+          _ <- S.addMessage st' Nothing -- Signal error to symbol table checker
+          return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
+        Just (_, sym) ->
+          return $
+          case sym of
+            Variable t'  -> Right t'
+            ConstantBool -> Right PBool
+            _            -> Left $ createError ident (NotVar ident)
+>>>>>>> origin/m2-typecheck-fixes
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
@@ -212,8 +230,9 @@ infer st ae@(AppendExpr _ e1 e2) = do
   sle <- infer st e1 -- Infer type of slice (e1)
   exe <- infer st e2 -- Infer type of value to append (e2)
   return $
-    case (sle, exe) of
+    case (sle, exe)
     -- TODO: MORE CASES FOR NICER ERRORS?
+          of
       (Right st1, Right t2) ->
         case resolveSType st1 of
           Slice t1 ->
@@ -348,13 +367,13 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   return $ do
     ts <- eitherTs
      -- all the same and one of the valid types:
-    if length (NE.nub ts) == 1 && (isCorrect . resolveSType) (NE.head ts)
+    if length (NE.nub ts) == 1 && isCorrect (NE.head ts)
       then Right $ resultSType ts
       else Left $ createError parentExpr (makeError ts)
 
 isLenCompatible :: SType -> Bool
 isLenCompatible t =
-  case t of
+  case resolveSType t of
     PString  -> True
     Array {} -> True
     Slice {} -> True
@@ -362,30 +381,30 @@ isLenCompatible t =
 
 isCapCompatible :: SType -> Bool
 isCapCompatible t =
-  case t of
+  case resolveSType t of
     Array {} -> True
     Slice {} -> True
     _        -> False
 
 isNumeric :: SType -> Bool
-isNumeric = flip elem [PInt, PFloat64, PRune] -- . resolveSType
+isNumeric = flip elem [PInt, PFloat64, PRune] . resolveSType
 
 isAddable :: SType -> Bool
 isAddable = isOrdered
 
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
-isOrdered = flip elem [PInt, PFloat64, PRune, PString]
+isOrdered = flip elem [PInt, PFloat64, PRune, PString] . resolveSType
 
 isBase :: SType -> Bool
-isBase = flip elem [PInt, PFloat64, PBool, PRune, PString] -- . resolveSType
+isBase = flip elem [PInt, PFloat64, PBool, PRune, PString] . resolveSType
 
 -- | Check if a type resolves to a boolean
 isBoolean :: SType -> Bool
-isBoolean = (==) PBool -- . resolveSType
+isBoolean = (==) PBool . resolveSType
 
 isIntegerLike :: SType -> Bool
-isIntegerLike = flip elem [PInt, PRune]
+isIntegerLike = flip elem [PInt, PRune] . resolveSType
 
 -- | Checks if a type is comparable at all (arrays still need length checks).
 isComparable :: SType -> Bool
