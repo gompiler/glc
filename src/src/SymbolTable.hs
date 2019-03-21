@@ -106,8 +106,11 @@ class Typify a
     eitherSType <- toType' st (Just parentIdent) t
     return $ do
       stype <- eitherSType
-      return $ resolveType (TypeMap parentIdent stype) stype
+      let stype' = TypeMap parentIdent $ resolveType stype' stype'
+      return stype'
     where
+      -- Given parent type and current subtype, recursively resolve all instances of
+      -- `TypeMap parentIdent Infer` to `parentType`
       resolveType :: SType -> SType -> SType
       resolveType parentType (Array i stype) =
         Array i $ resolveType parentType stype
