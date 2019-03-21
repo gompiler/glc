@@ -192,7 +192,6 @@ infer _ (Lit l) =
     RuneLit {}   -> PRune
     StringLit {} -> PString
 -- | Resolve variables to the type their identifier points to in the scope
-<<<<<<< HEAD
 infer st (Var ident@(Identifier _ vname)) = do
   res <- S.lookup st vname
   case res of
@@ -205,23 +204,6 @@ infer st (Var ident@(Identifier _ vname)) = do
         Variable t' -> Right t'
         Constant    -> Right PBool -- Constants can only be booleans
         _           -> Left $ createError ident (NotVar ident)
-=======
-infer st (Var ident@(Identifier _ vname)) = resolveVar st
-  where
-    resolveVar :: SymbolTable s -> ST s (Either ErrorMessage' SType)
-    resolveVar st' = do
-      res <- S.lookup st' vname
-      case res of
-        Nothing -> do
-          _ <- S.addMessage st' Nothing -- Signal error to symbol table checker
-          return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
-        Just (_, sym) ->
-          return $
-          case sym of
-            Variable t'  -> Right t'
-            ConstantBool -> Right PBool
-            _            -> Left $ createError ident (NotVar ident)
->>>>>>> origin/m2-typecheck-fixes
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
