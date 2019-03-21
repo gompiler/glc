@@ -108,12 +108,17 @@ class Typify a
       stype <- eitherSType
       let stype' = TypeMap parentIdent $ resolveType stype' stype
       return stype'
-    where
       -- Given parent type and current subtype, recursively resolve all instances of
       -- `TypeMap parentIdent Infer` to `parentType`
+    where
       resolveType :: SType -> SType -> SType
       resolveType parentType (Array i stype) =
         Array i $ resolveType parentType stype
+      -- Only slices allow for recursive types
+      resolveType parentType stype@(Slice (TypeMap ident Infer)) =
+        if ident == parentIdent
+          then Slice parentType
+          else stype
       resolveType parentType (Slice stype) =
         Slice $ resolveType parentType stype
       resolveType parentType (Struct fields) =
@@ -141,9 +146,27 @@ instance Typify Type where
   toType' st parent (ArrayType (Lit l) t) = do
     sym <- toType' st parent t
     return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
-  toType' st parent (SliceType t) = do
-    sym <- toType' st parent t
-    return $ sym >>= Right . Slice
+  -- In golite, we can use a slice type x while creating type x
+  toType' st parent (SliceType t) =
+    case (parent, t) of
+      (Just parentScope, Type ident) ->
+        if parentScope `matchesId` ident
+          then parentType parentScope
+          else resolveType
+      _ -> resolveType
+    where
+      matchesId :: C.ScopedIdent -> Identifier -> Bool
+      (C.ScopedIdent _ (C.Ident parentIdent)) `matchesId` Identifier _ identName =
+        parentIdent == identName
+      -- Placeholder to reference parent type
+      parentType :: SIdent -> ST s (Either ErrorMessage' SType)
+      parentType parentScope =
+        return $ Right $ Slice $ TypeMap parentScope Infer
+      -- Default resolution method
+      resolveType :: ST s (Either ErrorMessage' SType)
+      resolveType = do
+        sym <- toType' st parent t
+        return $ sym >>= Right . Slice
   toType' st parent (StructType fdl) = do
     fl <- checkFields fdl
     return $ fl >>= Right . Struct
@@ -164,16 +187,8 @@ instance Typify Type where
                  Just ident ->
                    Left $ createError ident (AlreadyDecl "Field " ident))
             et
-  toType' st parent (Type ident@(Identifier _ identName)) =
-    case parent of
-      Just (C.ScopedIdent _ (C.Ident parentIdent)) ->
-        if parentIdent == identName
-          then parentType
-          else resolveType
-      Nothing -> resolveType
-    where
-      parentType = return $ Right (TypeMap undefined Infer)
-      resolveType = resolve ident st (createError ident (NotDecl "Type " ident))
+  toType' st _ (Type ident) =
+      resolve ident st (createError ident (NotDecl "Type " ident))
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
@@ -749,7 +764,9 @@ instance Symbolize [TypeDef'] [C.TypeDef'] where
 
 instance Symbolize TypeDef' C.TypeDef' where
   recurse st (TypeDef' ident@(Identifier _ vname) (_, t)) = do
-    et <- toType st Nothing t
+    scope <- S.scopeLevel st
+    let sident = mkSIdStr scope vname
+    et <- toType st (Just sident) t
     either
       (return . Left)
       (\t' -> do
@@ -757,10 +774,8 @@ instance Symbolize TypeDef' C.TypeDef' where
          maybe
            (case t' -- Ignore all types except for structs, as structs will be the only types we will have to define
                   of
-              Struct _ -> do
-                scope <- S.scopeLevel st
-                return $ Right $ C.TypeDef' (mkSIdStr scope vname) (toBase t')
-              _ -> return $ Right C.NoDef)
+              Struct _ -> return $ Right $ C.TypeDef' sident (toBase t')
+              _        -> return $ Right C.NoDef)
            (return . Left)
            me)
       et

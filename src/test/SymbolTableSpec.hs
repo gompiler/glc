@@ -117,6 +117,8 @@ spec = do
     , "type _ int"
     , "type int int"
     , "type float64 int"
+    , "type x struct {a []x;}"
+    , "type a []struct {x a;}"
     -- Assignment ops
     , "var a int; a += 2;"
     , "var a rune; a -= 'a'"
@@ -142,6 +144,8 @@ spec = do
     , "'a' = 'b'"
     , "type inta [3]int; var a inta; var b [3]int; a = b"
     , "type inta [3]int; var a inta; var b [3]int; a = inta(b);"
+    , "type x struct {a x;}"
+    , "type x struct {a [5]x;}"
     , "switch i:=0; true {case 5: var a = 6;};"
     , "switch i:=0; i {case 1: var a = 5; case 2: var b = a;}"
     , "if true {var a = 21;} else {var b = a;}"
