@@ -101,6 +101,45 @@ class Typify a
   where
   toType :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
 
+
+instance Typify Type where
+  toType st (ArrayType (Lit l) t) = do
+    sym <- toType st t
+    return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
+  toType st (SliceType t) = do
+    sym <- toType st t
+    return $ sym >>= Right . Slice
+  toType st (StructType fdl) = do
+    fl <- checkFields st fdl
+    return $ fl >>= Right . Struct
+    where
+      checkFields ::
+           SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
+      checkFields st' fdl' = eitherL concat <$> mapM (checkField st') fdl'
+      checkField ::
+           SymbolTable s -> FieldDecl -> ST s (Either ErrorMessage' [Field])
+      checkField st' (FieldDecl idl (_, t)) = do
+        et <- toType st' t
+        return $
+          either
+            Left
+            (\t' ->
+               case getFirstDuplicate (toList idl) of
+                 Nothing ->
+                   Right $
+                   map (\(Identifier _ vname) -> (vname, t')) (toList idl)
+                 Just ident ->
+                   Left $ createError ident (AlreadyDecl "Field " ident))
+            et
+  toType st (Type ident) =
+    resolve ident st (createError ident (NotDecl "Type " ident))
+  -- This should never happen, this is here for exhaustive pattern matching
+  -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
+  -- if we expand to support Go later, then we'll change this to support actual expressions
+  toType _ (ArrayType _ _) =
+    error
+      "Trying to convert type of an ArrayType with non literal int as length"
+
 instance Symbolize Program C.Program where
   recurse st (Program (Identifier _ pkg) tdl) =
     wrap st $ fmap (C.Program (C.Ident pkg)) <$> recurse st tdl
@@ -834,44 +873,6 @@ maybeJ l =
   if null (catMaybes l)
     then Nothing
     else Just $ head $ catMaybes l
-
-instance Typify Type where
-  toType st (ArrayType (Lit l) t) = do
-    sym <- toType st t
-    return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
-  toType st (SliceType t) = do
-    sym <- toType st t
-    return $ sym >>= Right . Slice
-  toType st (StructType fdl) = do
-    fl <- checkFields st fdl
-    return $ fl >>= Right . Struct
-    where
-      checkFields ::
-           SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      checkFields st' fdl' = eitherL concat <$> mapM (checkField st') fdl'
-      checkField ::
-           SymbolTable s -> FieldDecl -> ST s (Either ErrorMessage' [Field])
-      checkField st' (FieldDecl idl (_, t)) = do
-        et <- toType st' t
-        return $
-          either
-            Left
-            (\t' ->
-               case getFirstDuplicate (toList idl) of
-                 Nothing ->
-                   Right $
-                   map (\(Identifier _ vname) -> (vname, t')) (toList idl)
-                 Just ident ->
-                   Left $ createError ident (AlreadyDecl "Field " ident))
-            et
-  toType st (Type ident) =
-    resolve ident st (createError ident (NotDecl "Type " ident))
-  -- This should never happen, this is here for exhaustive pattern matching
-  -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
-  -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType _ (ArrayType _ _) =
-    error
-      "Trying to convert type of an ArrayType with non literal int as length"
 
 data SymbolError
   = AlreadyDecl String
