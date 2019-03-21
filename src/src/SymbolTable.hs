@@ -122,6 +122,7 @@ class Typify a
         if ident == parentIdent && stype == Infer
           then TypeMap ident parentType
           else TypeMap ident $ resolveType parentType stype
+      resolveType parentType t = t
       resolveField :: SType -> Field -> Field
       resolveField parentType (ident, stype) =
         if parent == ident
