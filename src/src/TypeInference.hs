@@ -201,9 +201,9 @@ infer st (Var ident@(Identifier _ vname)) = do
     Just (_, sym) ->
       return $
       case sym of
-        Variable t' -> Right t'
-        Constant    -> Right PBool -- Constants can only be booleans
-        _           -> Left $ createError ident (NotVar ident)
+        Variable t'  -> Right t'
+        ConstantBool -> Right PBool -- Constants can only be booleans
+        _            -> Left $ createError ident (NotVar ident)
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
