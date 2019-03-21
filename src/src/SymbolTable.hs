@@ -101,94 +101,115 @@ class Typify a
   where
   toType ::
        SymbolTable s -> Maybe SIdent -> a -> ST s (Either ErrorMessage' SType)
-  toType st Nothing t = toType' st Nothing t
-  toType st (Just parentIdent@(C.ScopedIdent _ (C.Ident parent))) t = do
-    eitherSType <- toType' st (Just parentIdent) t
+  toType st Nothing t = toType' st (Nothing, t) t
+  toType st (Just rootIdent) t = do
+    eitherSType <- toType' st (Just rootIdent, t) t
     return $ do
       stype <- eitherSType
-      let stype' = TypeMap parentIdent $ resolveType stype' stype
+      let stype' = TypeMap rootIdent $ resolveType stype' stype
       return stype'
-      -- Given parent type and current subtype, recursively resolve all instances of
-      -- `TypeMap parentIdent Infer` to `parentType`
+      -- Given root type and current subtype, recursively resolve all instances of
+      -- `TypeMap rootIdent Infer` to `rootType`
     where
       resolveType :: SType -> SType -> SType
-      resolveType parentType (Array i stype) =
-        Array i $ resolveType parentType stype
+      resolveType rootType (Array i stype) =
+        Array i $ resolveType rootType stype
       -- Only slices allow for recursive types
-      resolveType parentType stype@(Slice (TypeMap ident Infer)) =
-        if ident == parentIdent
-          then Slice parentType
+      resolveType rootType stype@(Slice (TypeMap ident Infer)) =
+        if ident == rootIdent
+          then Slice rootType
           else stype
-      resolveType parentType (Slice stype) =
-        Slice $ resolveType parentType stype
-      resolveType parentType (Struct fields) =
-        Struct $ map (resolveField parentType) fields
-      resolveType parentType (TypeMap ident stype) =
-        if ident == parentIdent && stype == Infer
-          then TypeMap ident parentType
-          else TypeMap ident $ resolveType parentType stype
+      resolveType rootType (Slice stype) = Slice $ resolveType rootType stype
+      resolveType rootType (Struct fields) =
+        Struct $ map (resolveField rootType) fields
+      resolveType rootType (TypeMap ident stype) =
+        if ident == rootIdent && stype == Infer
+          then TypeMap ident rootType
+          else TypeMap ident $ resolveType rootType stype
       resolveType _ stype = stype
       resolveField :: SType -> Field -> Field
-      resolveField parentType (ident, stype) =
-        if parent == ident
-          then (ident, parentType)
-          else (ident, stype)
+      resolveField rootType (ident, stype) = (ident, resolveType rootType stype)
+  -- | Underlying type checker.
+  -- If SIdent is not Nothing, it represents the top most identity.
+  -- If cyclic types are allowed, then it should be used to create a typemap with infer
+  -- The `a` value within the tuple is the parent typify argument, which is used to check
+  -- for constraints for cyclic types
   toType' ::
-       SymbolTable s -> Maybe SIdent -> a -> ST s (Either ErrorMessage' SType)
+       SymbolTable s
+    -> (Maybe SIdent, a)
+    -> a
+    -> ST s (Either ErrorMessage' SType)
+
+-- | Returns matching id if current type is a reference,
+-- and parent identity matches current type identity
+getMatchingSIdent :: Maybe SIdent -> Type -> Maybe SIdent
+getMatchingSIdent (Just sident@(C.ScopedIdent _ (C.Ident rootIdent))) (Type (Identifier _ ident)) =
+  if rootIdent == ident
+    then Just sident
+    else Nothing
+getMatchingSIdent _ _ = Nothing
 
 instance Typify Type where
   toType' ::
        forall s.
        SymbolTable s
-    -> Maybe SIdent
+    -> (Maybe SIdent, Type)
     -> Type
     -> ST s (Either ErrorMessage' SType)
-  toType' st parent (ArrayType (Lit l) t) = do
-    sym <- toType' st parent t
+  toType' st root (ArrayType (Lit l) t) = do
+    sym <- toType' st root t
     return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
   -- In golite, we can use a slice type x while creating type x
-  toType' st parent (SliceType t) =
-    case (parent, t) of
-      (Just parentScope, Type ident) ->
-        if parentScope `matchesId` ident
-          then parentType parentScope
-          else resolveType
-      _ -> resolveType
+  toType' st root@(rootSIdent, rootType) (SliceType t) =
+    case (getMatchingSIdent rootSIdent t, isTypeSlice rootType)
+      -- Cycles only permitted on matching root sident with a non slice root type
+          of
+      (Just sident, False) -> cyclicType sident
+      _                    -> resolveType
     where
-      matchesId :: C.ScopedIdent -> Identifier -> Bool
-      (C.ScopedIdent _ (C.Ident parentIdent)) `matchesId` Identifier _ identName =
-        parentIdent == identName
-      -- Placeholder to reference parent type
-      parentType :: SIdent -> ST s (Either ErrorMessage' SType)
-      parentType parentScope =
-        return $ Right $ Slice $ TypeMap parentScope Infer
+      isTypeSlice :: Type -> Bool
+      isTypeSlice (SliceType _) = True
+      isTypeSlice _             = False
+      -- Placeholder to reference root type
+      cyclicType :: SIdent -> ST s (Either ErrorMessage' SType)
+      cyclicType rootScope = return $ Right $ Slice $ TypeMap rootScope Infer
       -- Default resolution method
       resolveType :: ST s (Either ErrorMessage' SType)
       resolveType = do
-        sym <- toType' st parent t
+        sym <- toType' st root t
         return $ sym >>= Right . Slice
-  toType' st parent (StructType fdl) = do
+  toType' st root@(rootSIdent, rootType) (StructType fdl) = do
     fl <- checkFields fdl
     return $ fl >>= Right . Struct
     where
       checkFields :: [FieldDecl] -> ST s (Either ErrorMessage' [Field])
       checkFields fdl' = eitherL concat <$> mapM checkField fdl'
       checkField :: FieldDecl -> ST s (Either ErrorMessage' [Field])
-      checkField (FieldDecl idl (_, t)) = do
-        et <- toType' st parent t
-        return $
-          either
-            Left
-            (\t' ->
-               case getFirstDuplicate (toList idl) of
-                 Nothing ->
-                   Right $
-                   map (\(Identifier _ vname) -> (vname, t')) (toList idl)
-                 Just ident ->
-                   Left $ createError ident (AlreadyDecl "Field " ident))
-            et
+      checkField (FieldDecl idl (_, t)) =
+        either Left (resolveFieldDuplicate idl) <$> fieldType' t
+      -- | Checks first for cyclic type, then defaults to the generic type resolver
+      fieldType' t =
+        case (getMatchingSIdent rootSIdent t, isTypeStruct rootType)
+                -- Cycles only permitted on matching root sident with a non struct root type
+              of
+          (Just sident, False) -> cyclicType sident
+          _                    -> toType' st root t
+      -- Given stype and identifiers, ensure no duplicates and map to fields
+      resolveFieldDuplicate ::
+           Identifiers -> SType -> Either ErrorMessage' [Field]
+      resolveFieldDuplicate idl t =
+        case getFirstDuplicate (toList idl) of
+          Nothing ->
+            Right $ map (\(Identifier _ vname) -> (vname, t)) (toList idl)
+          Just ident -> Left $ createError ident $ AlreadyDecl "Field " ident
+      isTypeStruct :: Type -> Bool
+      isTypeStruct (StructType _) = True
+      isTypeStruct _              = False
+          -- Placeholder to reference root type
+      cyclicType :: SIdent -> ST s (Either ErrorMessage' SType)
+      cyclicType rootScope = return $ Right $ TypeMap rootScope Infer
   toType' st _ (Type ident) =
-      resolve ident st (createError ident (NotDecl "Type " ident))
+    resolve ident st (createError ident (NotDecl "Type " ident))
   -- This should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
