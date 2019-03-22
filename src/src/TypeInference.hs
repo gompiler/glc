@@ -196,7 +196,7 @@ infer st (Var ident@(Identifier _ vname)) = resolveVar st
       res <- S.lookup st' vname
       case res of
         Nothing -> do
-          _ <- S.addMessage st' Nothing -- Signal error to symbol table checker
+          _ <- S.disableMessages st' -- Signal error to symbol table checker
           return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
         Just (_, sym) ->
           return $

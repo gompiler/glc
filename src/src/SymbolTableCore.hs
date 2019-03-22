@@ -25,6 +25,7 @@ module SymbolTableCore
   ) where
 
 import           Control.Monad.ST
+import           Control.Monad (unless)
 import           Data.Foldable           (asum)
 import qualified Data.HashTable.ST.Basic as HT
 import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, (<|))
@@ -142,8 +143,9 @@ topScope st = do
 -- | Add a new message
 addMessage :: SymbolTable s v l c -> l -> ST s ()
 addMessage st !msg = do
-  SymbolTable scopes list msgStatus <- readRef st
-  writeRef st $! SymbolTable scopes (msg : list) msgStatus
+  SymbolTable scopes list msgDisabled <- readRef st
+  -- Only add messages if messages are enabled
+  unless msgDisabled $ writeRef st $! SymbolTable scopes (msg : list) msgDisabled
 
 -- | Retrieve list of messages in the order they were stored
 getMessages :: SymbolTable s v l c -> ST s [l]
@@ -154,7 +156,7 @@ getMessages st = do
 disableMessages :: SymbolTable s v l c -> ST s ()
 disableMessages st = do
   SymbolTable scopes list _ <- readRef st
-  writeRef st $ SymbolTable scopes list False
+  writeRef st $ SymbolTable scopes list True
 
 getMsgStatus :: SymbolTable s v l c -> ST s Bool
 getMsgStatus st = do
