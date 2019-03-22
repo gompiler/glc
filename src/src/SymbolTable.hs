@@ -168,8 +168,9 @@ instance Symbolize FuncDecl C.FuncDecl where
               _ <- S.exitScope st
               scope <- S.insert' st vname f
               _ <- S.addMessage st (vname, f, scope)
-              wrap
+              wrap'
                 st
+                f
                 (do mapM_ (\(k, sym, _) -> add st k sym) sil
                     fmap
                       (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
@@ -974,6 +975,14 @@ wrap st stres = do
   S.exitScope st
   return res
 
+-- | Wrap but add a function context
+wrap' :: SymbolTable s -> Symbol -> ST s (Either ErrorMessage' a) -> ST s (Either ErrorMessage' a)
+wrap' st sym stres = do
+  S.enterScopeCtx st sym
+  res <- stres
+  S.exitScope st
+  return res
+
 -- | Get the first duplicate in a list, for checking if fields of a struct are all unique
 getFirstDuplicate :: Eq a => [a] -> Maybe a
 getFirstDuplicate [] = Nothing
@@ -1012,13 +1021,14 @@ isAddrE e =
 -- | Get the return value of function we are currently declaring, aka latest declared function
 getRet :: SymbolTable s -> ST s (Maybe SType)
 getRet st = do
-  l <- S.getMessages st
-  return $ getRet' (reverse l) -- Reverse to get latest declared rather than first
+  f <- S.getCtx st
+  return $ maybe (error "Not in a function body" -- This should never happen as our parser doesn't allow a return statement outside of a function body
+        -- We could put this as Nothing but it'd be misleading as Nothing should mean no SType from the function, not no function at all
+        ) getRet' f
   where
-    getRet' :: [SymbolInfo] -> Maybe SType
-    getRet' []                         = Nothing
-    getRet' ((_, Func _ mt, _):_) = mt
-    getRet' (_:t)                      = getRet' t
+    getRet' :: Symbol -> Maybe SType
+    getRet' (Func _ mt) = mt
+    getRet' _ = error "Not a function" -- Also shouldn't happen and also can be Nothing, but once again, misleading
 
 -- | Convert SymbolInfo list to String (pass through show) to get string representation of symbol table
 -- ignore error if not a symbol table error (i.e. typecheck error)
