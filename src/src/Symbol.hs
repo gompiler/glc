@@ -5,6 +5,7 @@ import qualified CheckedData      as T (Ident (..), Scope (..),
                                         ScopedIdent (..))
 import           Control.Monad.ST
 import           Data             (Identifier (..))
+import           Data.Functor       (($>))
 import           Data.List        (intercalate)
 import qualified Data.Maybe       as Maybe
 import qualified SymbolTableCore  as S
@@ -22,7 +23,7 @@ type SymbolInfo = (String, Symbol, S.Scope)
 
 -- | SymbolTable, cactus stack of SymbolScope
 -- specific instantiation for our uses
-type SymbolTable s = S.SymbolTable s Symbol (Maybe SymbolInfo)
+type SymbolTable s = S.SymbolTable s Symbol SymbolInfo Symbol
 
 data Symbol
   = Base -- Base type, resolve to themselves, i.e. int
@@ -94,8 +95,9 @@ resolve ::
   -> ST s (Either ErrorMessage' SType)
 resolve (Identifier _ idv) st notDeclError = do
   res <- S.lookup st idv
+  sres <- maybe (S.disableMessages st $> Left notDeclError) (return . Right) res
   return $ do
-    (scope, t) <- res <?> notDeclError
+    (scope, t) <- sres
     return $ Maybe.fromMaybe Void $ resolve' t scope idv
     -- | Resolve symbol to type
   where

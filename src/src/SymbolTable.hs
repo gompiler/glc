@@ -15,7 +15,7 @@ module SymbolTable
 
 import           Control.Monad.ST
 import           Data
-import           Data.Either        (partitionEithers)
+import           Data.Either        (partitionEithers, isLeft)
 import           Data.Functor       (($>))
 
 import           Data.List.Extra    (concatUnzip)
@@ -54,9 +54,11 @@ new = do
     , ("true", ConstantBool)
     , ("false", ConstantBool)
     ]
-  S.insert st "_" (Variable Infer) -- Dummy symbol so that we can lookup the blank identifier and just ignore the type
+  _ <- S.insert st "_" (Variable Infer) -- Dummy symbol so that we can lookup the blank identifier and just ignore the type
   return st
 
+-- | Wrapper for insert from symbol table core, but returns a bool telling us whether we returned successfully instead of a Maybe
+-- Also account for blank identifiers (we should never lookup _)
 add :: SymbolTable s -> String -> Symbol -> ST s Bool -- Did we add successfully?
 add st ident sym =
   if ident == "_"
@@ -65,11 +67,11 @@ add st ident sym =
       result <- S.lookupCurrent st ident -- We only need to check current scope for declarations
       case result of
         Just _ -> do
-          _ <- S.addMessage st Nothing -- Found something, aka a conflict, so stop printing symbol table after this
+          _ <- S.disableMessages st -- Found something, aka a conflict, so stop printing symbol table after this
           return False
         Nothing -> do
-          scope <- S.insert' st ident sym
-          _ <- S.addMessage st $ Just (ident, sym, scope) -- Add the symbol info of what we added
+          scope <- S.insert st ident sym
+          _ <- S.addMessage st (ident, sym, scope) -- Add the symbol info of what we added
           return True
 
 -- | lookupCurrent wrapper but insert message on if declared, because we want to declare something ourself
@@ -79,7 +81,7 @@ isNDefL st k = do
   case res of
     Nothing -> return True
     Just _ -> do
-      _ <- S.addMessage st Nothing -- Signal error, key should not be defined
+      _ <- S.disableMessages st-- Signal error, key should not be defined
       return False
 
 -- | S.isDef  wrapper but insert message if not declared
@@ -91,11 +93,14 @@ isNDefL st k = do
 --     Nothing -> do
 --       _ <- S.addMessage st Nothing -- Signal error, key should be defined
 --       return False
--- Class to generalize traverse function for each AST structure
+
+
+-- | Class to generalize traverse function for each AST structure (symbol table generation + typecheck in one pass)
 -- also return the typechecked AST
 class Symbolize a b where
   recurse :: SymbolTable s -> a -> ST s (Either ErrorMessage' b)
 
+-- | Class to convert AST types to SType, could possibly be just changed to a function
 class Typify a
   -- Resolve AST types to SType, may return error message if type error
   where
@@ -221,21 +226,23 @@ instance Typify Type where
 
 instance Symbolize Program C.Program where
   recurse st (Program (Identifier _ pkg) tdl) =
+    -- Recurse on the top level declarations of a program in a new scope
     wrap st $ fmap (C.Program (C.Ident pkg)) <$> recurse st tdl
 
 instance Symbolize TopDecl C.TopDecl where
+  -- Recurse on declarations
   recurse st (TopDecl d)      = fmap C.TopDecl <$> recurse st d
   recurse st (TopFuncDecl fd) = fmap C.TopFuncDecl <$> recurse st fd
 
+-- | Helper for a list of top declarations, does the same thing as above except we use mapM and sequence the results (i.e. if we have a Left in any of the results, we'll just use that because we have an error)
 instance Symbolize [TopDecl] [C.TopDecl] where
   recurse st vdl = do
     el <- mapM (recurse st) vdl
     return (sequence el)
 
-instance Symbolize FuncDecl C.FuncDecl
+instance Symbolize FuncDecl C.FuncDecl where
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
-                                                                                        where
   recurse ::
        forall s.
        SymbolTable s
@@ -243,61 +250,68 @@ instance Symbolize FuncDecl C.FuncDecl
     -> ST s (Either ErrorMessage' C.FuncDecl)
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
-      then maybe
-             (if null pdl
-                then (do scope <- S.scopeLevel st -- Should be 1
-                         _ <-
-                           S.addMessage st $
-                           Just (vname, Func [] Nothing, scope)
-                         fmap
-                           (C.FuncDecl
-                              (mkSIdStr scope vname)
-                              (C.Signature (C.Parameters []) Nothing)) <$>
-                           recurse st body)
-                else do
-                  _ <- S.addMessage st Nothing
-                  return $ Left $ createError ident InitParams)
-             (\(_, t') -> do
-                et2 <- toType st Nothing t'
-                _ <- S.addMessage st Nothing
-                return $ (Left . createError ident . InitNVoid) =<< et2)
-             t
-      else do
+      then addInit
+      else addFunc
+    where
+      -- Add any function that is not init to symbol table
+      addFunc :: ST s (Either ErrorMessage' C.FuncDecl)
+      addFunc = do
         notdef <- isNDefL st vname -- Check if defined in symbol table
         if notdef
           then do
-            _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
-            epl <- checkParams pdl -- Either ErrorMessage' [Param]
-      -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
-            ef <-
-              either
-                (return . Left)
-                (\(pl, sil) ->
-                   maybe
-                     (return $ Right (Func pl Nothing, sil))
-                     (\(_, t') -> do
-                        et <- toType st Nothing t'
-                        return $ fmap (\ret -> (Func pl (Just ret), sil)) et)
-                     t)
-                epl
-      -- We then take the Either ErrorMessage' Symbol, if no error we exit dummy scope so we're at the right scope level, insert the Symbol (newly declared function) and then wrap the real scope of the function, adding all the parameters that are already resolved as symbols and recursing on statement list sl (from body of func) to declare things in body
-            either
-              (return . Left)
-              (\(f, sil) -> do
-                 _ <- S.exitScope st
-                 scope <- S.insert' st vname f
-                 _ <- S.addMessage st (Just (vname, f, scope))
-                 wrap
-                   st
-                   (do mapM_ (\(k, sym, _) -> add st k sym) sil
-                       fmap
-                         (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
-                          C.BlockStmt) .
-                         sequence <$>
-                         mapM (recurse st) sl))
-              ef
+          _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
+          epl <- checkParams pdl -- Either ErrorMessage' [Param]
+      -- Either ErrorMessage' Symbol, want to get the corresponding
+      -- Func symbol using our resolved params (if no errors in param
+      -- declaration) and the type of the return of the signature, t,
+      -- which is a Maybe Type'
+          ef <-
+            either (return . Left) createFunc epl
+      -- We then take the Either ErrorMessage' Symbol, if no error we
+      -- exit dummy scope so we're at the right scope level, insert
+      -- the Symbol (newly declared function) and then wrap the real
+      -- scope of the function, adding all the parameters that are
+      -- already resolved as symbols and recursing on statement list
+      -- sl (from body of func) to declare things in body
+          either (return . Left) insertFunc ef
           else return $ Left $ createError ident (AlreadyDecl "Function " ident)
-    where
+          where
+            createFunc :: ([Param], [SymbolInfo]) -> ST s (Either ErrorMessage' (Symbol, [SymbolInfo]))
+            createFunc (pl, sil) =
+              maybe (return $ Right (Func pl Nothing, sil)) (\(_, t') -> do
+                  et <- toType st Nothing t'
+                  return $ fmap (\ret -> (Func pl (Just ret), sil)) et) t
+            insertFunc :: (Symbol, [SymbolInfo]) -> ST s (Either ErrorMessage' C.FuncDecl)
+            insertFunc (f, sil) = do
+              _ <- S.exitScope st
+              scope <- S.insert st vname f
+              _ <- S.addMessage st (vname, f, scope)
+              wrap'
+                st
+                f
+                (do mapM_ (\(k, sym, _) -> add st k sym) sil
+                    fmap
+                      (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
+                       C.BlockStmt) .
+                      sequence <$>
+                      mapM (recurse st) sl)
+      -- Adds the init function to symbol table
+      addInit :: ST s (Either ErrorMessage' C.FuncDecl)
+      addInit = maybe
+                (do scope <- S.scopeLevel st -- Should be 1
+                    _ <-
+                      S.addMessage st $
+                      (vname, Func [] Nothing, scope)
+                    fmap
+                      (C.FuncDecl
+                       (mkSIdStr scope vname)
+                       (C.Signature (C.Parameters []) Nothing)) <$>
+                      recurse st body)
+                (\(_, t') -> do
+                    et2 <- toType st t'
+                    _ <- S.disableMessages st
+                    return $ (Left . createError ident . InitNVoid) =<< et2)
+                t
       checkParams ::
            [ParameterDecl]
         -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
@@ -311,18 +325,19 @@ instance Symbolize FuncDecl C.FuncDecl
         either
           (return . Left)
           (\t2 -> do
-             (err, pil) <- checkIds' t2 idl
+             einfo <- checkIds' t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
-             case err of
-               Just e  -> S.addMessage st Nothing $> Left e -- Signal error so we don't print symbols beyond this
-               Nothing -> return $ Right pil)
+             either (\e -> do
+                        _ <- S.disableMessages st
+                        return $ Left e) (return . Right) einfo)
           et
       checkIds' ::
            SType
         -> Identifiers
-        -> ST s (Maybe ErrorMessage', ([Param], [SymbolInfo]))
+        -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkIds' t' idl =
-        (\(a, b) -> (a, unzip b)) . pEithers <$> mapM (checkId' t') (toList idl)
+        (\l -> unzip <$> sequence l) <$>
+        mapM (checkId' t') (toList idl)
       checkId' ::
            SType
         -> Identifier
@@ -331,7 +346,7 @@ instance Symbolize FuncDecl C.FuncDecl
         notdef <- isNDefL st idv -- Should not be declared
         if notdef
           then do
-            scope <- S.insert' st idv (Variable t')
+            scope <- S.insert st idv (Variable t')
             return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
@@ -366,10 +381,9 @@ checkId ::
   -> ST s (Maybe ErrorMessage')
 checkId st s pfix ident@(Identifier _ vname) = do
   success <- add st vname s -- Should not be declared
-  return $
-    if success
-      then Nothing
-      else Just $ createError ident (AlreadyDecl pfix ident)
+  if success
+    then return Nothing
+    else S.disableMessages st $> (Just $ createError ident (AlreadyDecl pfix ident))
 
 instance Symbolize SimpleStmt C.SimpleStmt where
   recurse ::
@@ -390,7 +404,8 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       checkDecl = do
         eb <- zipWithM checkDec idl' el'
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-        return $ sequence eb >>= check
+        let eit = sequence eb >>= check in
+          if (isLeft eit) then S.disableMessages st $> eit else return eit
         where
           check ::
                [(Bool, (C.ScopedIdent, C.Expr))]
@@ -435,10 +450,10 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                   then Right (False, mkSIdStr scope vname)
                             -- if locally defined, check if type matches
                   else Left $ createError e (TypeMismatch2 ident t t2)
-              Just _ -> return $ Left $ createError ident' (NotVar ident')
+              Just _ -> S.disableMessages st $> (Left $ createError ident' (NotVar ident'))
               Nothing -> do
                 _ <- add st vname (Variable Infer) -- Add infer so that we don't print out the actual type
-                scope <- S.insert' st vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
+                scope <- S.insert st vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
                 return $ Right (True, mkSIdStr scope vname)
   recurse _ EmptyStmt = return $ Right C.EmptyStmt
   recurse st (ExprStmt e) = fmap C.ExprStmt <$> recurse st e -- Verify that expr only uses things that are defined
@@ -774,7 +789,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
         either
           (return . Left)
           (\t' -> do
-             scope <- S.insert' st vname (Variable t') -- Update type of variable
+             scope <- S.insert st vname (Variable t') -- Update type of variable
              ee' <- recurse st e
              return $
                fmap (C.VarDecl' (mkSIdStr scope vname) (toBase t') . Just) ee')
@@ -875,8 +890,7 @@ instance Symbolize Expr C.Expr where
    = do
     msi <- S.lookup st vname
     maybe
-      (do _ <- S.addMessage st Nothing
-          return $ Left $ createError ident (NotDecl "Variable " ident))
+      (S.disableMessages st $> (Left $ createError ident (NotDecl "Variable " ident)))
       (\(scope, _) -> return $ Right $ C.Var (mkSIdStr scope vname))
       msi
   recurse st e@(AppendExpr _ e1 e2) = do
@@ -929,14 +943,6 @@ intTypeToInt _ = error "Trying to convert a literal that isn't an int to an int"
                  -- This should never happen because we only use this for ArrayType
                  -- just here for exhaustive pattern matching
                  -- if we want to remove this we must change ArrayType as mentioned below
-
--- | Partition either but only keep first error
-pEithers :: [Either a b] -> (Maybe a, [b])
-pEithers eil =
-  let (err, l) = partitionEithers eil
-   in if null err
-        then (Nothing, l)
-        else (Just $ head err, l)
 
 -- | List of maybes, return first Just or nothing if all nothing
 maybeJ :: [Maybe b] -> Maybe b
@@ -1031,6 +1037,14 @@ wrap st stres = do
   S.exitScope st
   return res
 
+-- | Wrap but add a function context
+wrap' :: SymbolTable s -> Symbol -> ST s (Either ErrorMessage' a) -> ST s (Either ErrorMessage' a)
+wrap' st sym stres = do
+  S.enterScopeCtx st sym
+  res <- stres
+  S.exitScope st
+  return res
+
 -- | Get the first duplicate in a list, for checking if fields of a struct are all unique
 getFirstDuplicate :: Eq a => [a] -> Maybe a
 getFirstDuplicate [] = Nothing
@@ -1069,40 +1083,35 @@ isAddrE e =
 -- | Get the return value of function we are currently declaring, aka latest declared function
 getRet :: SymbolTable s -> ST s (Maybe SType)
 getRet st = do
-  l <- S.getMessages st
-  return $ getRet' (reverse l) -- Reverse to get latest declared rather than first
+  f <- S.getCtx st
+  return $ maybe (error "Not in a function body" -- This should never happen as our parser doesn't allow a return statement outside of a function body
+        -- We could put this as Nothing but it'd be misleading as Nothing should mean no SType from the function, not no function at all
+        ) getRet' f
   where
-    getRet' :: [Maybe SymbolInfo] -> Maybe SType
-    getRet' []                         = Nothing
-    getRet' (Just (_, Func _ mt, _):_) = mt
-    getRet' (_:t)                      = getRet' t
+    getRet' :: Symbol -> Maybe SType
+    getRet' (Func _ mt) = mt
+    getRet' _ = error "Not a function" -- Also shouldn't happen and also can be Nothing, but once again, misleading
 
 -- | Convert SymbolInfo list to String (pass through show) to get string representation of symbol table
 -- ignore error if not a symbol table error (i.e. typecheck error)
 sl2str ::
-     (Maybe ErrorMessage', [Maybe SymbolInfo]) -> (Maybe ErrorMessage', String)
+     (Maybe ErrorMessage', [SymbolInfo]) -> (Maybe ErrorMessage', String)
 sl2str (em, sl) =
-  let (pt, b) = sl2str' sl (S.Scope 0) ""
-   in if b
-        then (Nothing, pt) -- Ignore error as we fully printed the symbol table
-        else (em, pt)
+  (em, sl2str' sl (S.Scope 0) "")
     -- | Recursive helper for sl2str with accumulator
   where
     sl2str' ::
-         [Maybe SymbolInfo]
+         [SymbolInfo]
       -> S.Scope -- Previous scope
       -> String -- Accumulated string
-      -> (String, Bool) -- Result, bool is to determine whether we finished printing the whole list or not to differentiate between symbol table errors and typecheck errors
+      -> String -- Result
     -- Base case, no more scopes to close and nothing to convert, just return accumulator
-    sl2str' [] (S.Scope 0) acc = (acc, True)
+    sl2str' [] (S.Scope 0) acc = acc
     -- Close each scope's brace at end
     sl2str' [] (S.Scope scope) acc =
       sl2str' [] (S.Scope (scope - 1)) (acc ++ tabs (scope - 1) ++ "}\n")
-    sl2str' (mh:mt) (S.Scope pScope) acc =
-      maybe
-        (acc, False)
-        (\(key, sym, S.Scope scope) ->
-           sl2str' mt (S.Scope scope) $
+    sl2str' ((key, sym, S.Scope scope):tl) (S.Scope pScope) acc =
+           sl2str' tl (S.Scope scope) $
            acc ++
            br pScope scope ++
            tabs scope ++
@@ -1115,8 +1124,7 @@ sl2str (em, sl) =
                   then " [function] = <unmapped>"
                   else show sym
               _ -> show sym) ++
-           "\n")
-        mh
+           "\n"
 
 -- | Account for braces given previous scope and current scope
 br :: Int -> Int -> String
@@ -1170,10 +1178,11 @@ pTable' :: Program -> (Maybe ErrorMessage', String)
 pTable' p =
   sl2str $
   runST $ do
-    st <- new
-    res <- recurse @Program @C.Program st p
-    syml <- S.getMessages st
-    return $ either (\err -> (Just err, syml)) (const (Nothing, syml)) res
+    st <- new -- Create new symbol table with base types
+    res <- recurse @Program @C.Program st p -- Traverse, generating symbol table modifications and typechecking (don't care about typecheck errors here)
+    syml <- S.getMessages st -- Get inserted symbols
+    msgDisabled <- S.getMsgStatus st -- Only take error if messages are disabled, i.e. symbol table error, not typecheck error
+    return $ either (\err -> if msgDisabled then (Just err, syml) else (Nothing, syml)) (const (Nothing, syml)) res
 
 isBlankIdent :: C.ScopedIdent -> Bool
 isBlankIdent (C.ScopedIdent _ (C.Ident vname)) = vname == "_"
