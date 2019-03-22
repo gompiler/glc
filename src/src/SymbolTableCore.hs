@@ -10,7 +10,6 @@ module SymbolTableCore
   , Scope(..)
   , new
   , insert
-  , insert'
   , lookup
   , lookupCurrent
   , enterScope
@@ -76,15 +75,9 @@ new = do
   ht <- HT.new
   newRef $ SymbolTable (fromList [(Scope 1, ht, Nothing)]) [] False
 
--- | Inserts a key value pair at the upper most scope
-insert :: SymbolTable s v l c -> String -> v -> ST s ()
-insert st !k !v = do
-  SymbolTable ((_, ht, _) :| _) _ _ <- readRef st
-  HT.insert ht k v
-
 -- | Inserts a key value pair at the upper most scope and return scope level
-insert' :: SymbolTable s v l c-> String -> v -> ST s Scope
-insert' st k v = do
+insert :: SymbolTable s v l c-> String -> v -> ST s Scope
+insert st k v = do
   SymbolTable ((Scope s, ht, _) :| _) _ _ <- readRef st
   HT.insert ht k v
   return (Scope s)

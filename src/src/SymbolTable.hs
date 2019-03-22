@@ -70,7 +70,7 @@ add st ident sym =
           _ <- S.disableMessages st -- Found something, aka a conflict, so stop printing symbol table after this
           return False
         Nothing -> do
-          scope <- S.insert' st ident sym
+          scope <- S.insert st ident sym
           _ <- S.addMessage st (ident, sym, scope) -- Add the symbol info of what we added
           return True
 
@@ -166,7 +166,7 @@ instance Symbolize FuncDecl C.FuncDecl where
             insertFunc :: (Symbol, [SymbolInfo]) -> ST s (Either ErrorMessage' C.FuncDecl)
             insertFunc (f, sil) = do
               _ <- S.exitScope st
-              scope <- S.insert' st vname f
+              scope <- S.insert st vname f
               _ <- S.addMessage st (vname, f, scope)
               wrap
                 st
@@ -226,7 +226,7 @@ instance Symbolize FuncDecl C.FuncDecl where
         notdef <- isNDefL st idv -- Should not be declared
         if notdef
           then do
-            scope <- S.insert' st idv (Variable t')
+            scope <- S.insert st idv (Variable t')
             return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
@@ -333,7 +333,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
               Just _ -> S.disableMessages st $> (Left $ createError ident' (NotVar ident'))
               Nothing -> do
                 _ <- add st vname (Variable Infer) -- Add infer so that we don't print out the actual type
-                scope <- S.insert' st vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
+                scope <- S.insert st vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
                 return $ Right (True, mkSIdStr scope vname)
   recurse _ EmptyStmt = return $ Right C.EmptyStmt
   recurse st (ExprStmt e) = fmap C.ExprStmt <$> recurse st e -- Verify that expr only uses things that are defined
@@ -673,7 +673,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
         either
           (return . Left)
           (\t' -> do
-             scope <- S.insert' st' vname (Variable t') -- Update type of variable
+             scope <- S.insert st' vname (Variable t') -- Update type of variable
              ee' <- recurse st' e
              return $
                fmap (C.VarDecl' (mkSIdStr scope vname) (toBase t') . Just) ee')
