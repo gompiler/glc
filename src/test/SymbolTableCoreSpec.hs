@@ -7,6 +7,7 @@ module SymbolTableCoreSpec
 import           Control.Monad           (foldM_)
 import           Control.Monad.Primitive (PrimState)
 import           Control.Monad.ST        (stToIO)
+import           Data.Functor            (($>))
 import           Prelude                 hiding (lookup)
 import           SymbolTableCore
 import           Test.Hspec
@@ -26,7 +27,7 @@ applyAction :: TestSymbolTable -> Action -> Expectation
 applyAction s (Lookup key expect) =
   stToIO (lookup s (show key)) >>=
   (`shouldBe` fmap (\(sc, v) -> (Scope sc, v)) expect)
-applyAction s (Insert key value) = stToIO $ insert s (show key) value
+applyAction s (Insert key value) = stToIO $ insert s (show key) value $> ()
 applyAction s (AddMessage msg) = stToIO $ addMessage s msg
 applyAction s (CheckMessages msgs) =
   stToIO (getMessages s) >>= (`shouldBe` msgs)
