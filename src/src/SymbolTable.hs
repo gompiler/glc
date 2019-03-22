@@ -206,18 +206,19 @@ instance Symbolize FuncDecl C.FuncDecl where
         either
           (return . Left)
           (\t2 -> do
-             (err, pil) <- checkIds' t2 idl
+             einfo <- checkIds' t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
-             case err of
-               Just e  -> S.disableMessages st $> Left e -- Signal error so we don't print symbols beyond this
-               Nothing -> return $ Right pil)
+             either (\e -> do
+                        _ <- S.disableMessages st
+                        return $ Left e) (return . Right) einfo)
           et
       checkIds' ::
            SType
         -> Identifiers
-        -> ST s (Maybe ErrorMessage', ([Param], [SymbolInfo]))
+        -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkIds' t' idl =
-        (\(a, b) -> (a, unzip b)) . pEithers <$> mapM (checkId' t') (toList idl)
+        (\l -> unzip <$> sequence l) <$>
+        mapM (checkId' t') (toList idl)
       checkId' ::
            SType
         -> Identifier
@@ -835,14 +836,6 @@ eitherL f eil =
    in if null err
         then Right $ f l
         else Left $ head err -- Return first error
-
--- | Partition either but only keep first error
-pEithers :: [Either a b] -> (Maybe a, [b])
-pEithers eil =
-  let (err, l) = partitionEithers eil
-   in if null err
-        then (Nothing, l)
-        else (Just $ head err, l)
 
 -- | List of maybes, return first Just or nothing if all nothing
 maybeJ :: [Maybe b] -> Maybe b
