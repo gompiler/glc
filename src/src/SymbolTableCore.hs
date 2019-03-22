@@ -13,10 +13,12 @@ module SymbolTableCore
   , lookup
   , lookupCurrent
   , enterScope
+  , enterScopeCtx
   , exitScope
   , currentScope
   , scopeLevel
   , topScope
+  , getCtx
   , addMessage
   , getMessages
   , disableMessages
@@ -103,9 +105,16 @@ lookupCurrent st !k = do
 -- | Create new scope
 enterScope :: SymbolTable s v l c -> ST s ()
 enterScope st = do
+  SymbolTable st'@((Scope scope, _, ctx) :| _) list msgStatus <- readRef st
+  ht <- HT.new
+  writeRef st $! SymbolTable ((Scope (scope + 1), ht, ctx) <| st') list msgStatus
+
+-- | Create new scope with new context
+enterScopeCtx :: SymbolTable s v l c -> c -> ST s ()
+enterScopeCtx st ctx = do
   SymbolTable st'@((Scope scope, _, _) :| _) list msgStatus <- readRef st
   ht <- HT.new
-  writeRef st $! SymbolTable ((Scope (scope + 1), ht, Nothing) <| st') list msgStatus
+  writeRef st $! SymbolTable ((Scope (scope + 1), ht, Just ctx) <| st') list msgStatus
 
 -- | Discard current scope
 -- Note that if the current scope is the last scope,
@@ -132,6 +141,12 @@ topScope :: SymbolTable s v l c -> ST s (SymbolScope s v c)
 topScope st = do
   SymbolTable scopes _ _ <- readRef st
   return $! NonEmpty.last scopes
+
+-- | Get context
+getCtx :: SymbolTable s v l c -> ST s (Maybe c)
+getCtx st = do
+  SymbolTable ((_, _, ctx) :| _) _ _ <- readRef st
+  return ctx
 
 -- | Add a new message
 addMessage :: SymbolTable s v l c -> l -> ST s ()
