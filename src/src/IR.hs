@@ -62,11 +62,19 @@ instance IRRep Stmt where
   toIR (If (sstmt, expr) ifs elses) = -- TODO: SIMPLE STMT!!!
     toIR sstmt ++ toIR expr ++ IRInst IfEq : toIR ifs ++
     IRInst (Goto "TODOElse") : toIR elses ++ [IRInst (Goto "TODOStop")]
-  toIR (Switch {}) = undefined
+  toIR (Switch {}) = undefined -- duplicate expression as many times as non-default case statement expressions in lists
+
   toIR (For {}) = undefined
   toIR Break = undefined -- [IRInst (Goto "TODO")]
   toIR Continue = undefined -- [IRInst (Goto "TODO")]
   toIR _ = undefined
+
+instance IRRep ForClause where
+  toIR (ForClause {}) = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
+
+instance IRRep SwitchCase where
+  toIR (Case {}) = undefined -- concat $ map (toIR . some equality check) exprs
+  toIR (Default stmt) = toIR stmt -- Default doesn't need to check expr value
 
 instance IRRep SimpleStmt where
   toIR EmptyStmt         = []
