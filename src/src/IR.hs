@@ -1,6 +1,7 @@
 module IR where
 
 import CheckedData
+-- import Data.List.NonEmpty (toList)
 
 type LabelName = String
 
@@ -16,9 +17,14 @@ data IRItem
   | IRLabel LabelName
   deriving (Show)
 
+data IRPrimitive
+  = Integer -- Integers, booleans, runes
+  | Float -- Float64
+  deriving (Show)
+
 data IRType
-  = Integer
-  | Object
+  = Prim IRPrimitive -- Integer, boolean, rune, float64
+  | Object -- String, array, struct, slice
   deriving (Show)
 
 data Instruction
@@ -27,14 +33,14 @@ data Instruction
   | Return (Maybe IRType)
   | Dup
   | Goto LabelName
-  | IAdd
-  | IDiv -- TODO: Turn into Op instruction?
-  | IMul
-  | INeg
+  | Add IRPrimitive
+  | Div IRPrimitive -- TODO: Turn into Op instruction?
+  | Mul IRPrimitive
+  | Neg IRPrimitive
+  | Sub IRPrimitive
   | IRem
   | IShL
   | IShR
-  | ISub
   | IALoad
   | IAnd
   | IAStore
@@ -52,14 +58,27 @@ class IRRep a where
 
 instance IRRep Stmt where
   toIR (BlockStmt stmts) = concat $ map toIR stmts
-  toIR (If (_, expr) ifs elses) = -- TODO: SIMPLE STMT!!!
-    toIR expr ++ IRInst IfEq : toIR ifs ++ IRInst (Goto "TODOElse") : toIR elses
-    ++ [IRInst (Goto "TODOStop")]
+  toIR (SimpleStmt stmt) = toIR stmt
+  toIR (If (sstmt, expr) ifs elses) = -- TODO: SIMPLE STMT!!!
+    toIR sstmt ++ toIR expr ++ IRInst IfEq : toIR ifs ++
+    IRInst (Goto "TODOElse") : toIR elses ++ [IRInst (Goto "TODOStop")]
   toIR (Switch {}) = undefined
   toIR (For {}) = undefined
   toIR Break = undefined -- [IRInst (Goto "TODO")]
   toIR Continue = undefined -- [IRInst (Goto "TODO")]
   toIR _ = undefined
 
+instance IRRep SimpleStmt where
+  toIR EmptyStmt         = []
+  toIR (ExprStmt e)      = toIR e ++ [IRInst Pop] -- Invariant: pop expression result
+  toIR (Increment {})    = undefined -- iinc for int, otherwise load/save + 1
+  toIR (Decrement {})    = undefined -- iinc for int (-1), otherwise "
+  toIR (Assign {})       = undefined -- store IRType
+  toIR (ShortDeclare _) = undefined -- concat (map toIR $ toList el) ++ [istores...]
+
 instance IRRep Expr where
+  toIR (Binary (Arithm CheckedData.Add) _ _ ) = undefined -- toIR e1 ++ toIR e2 ++ [IRInst $ Add typeToPrimitive TODO]
+  toIR _ = undefined
+
+instance IRRep Literal where
   toIR _ = undefined
