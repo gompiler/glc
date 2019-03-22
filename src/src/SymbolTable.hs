@@ -15,7 +15,7 @@ module SymbolTable
 
 import           Control.Monad.ST
 import           Data
-import           Data.Either        (partitionEithers, isLeft)
+import           Data.Either        (isLeft)
 import           Data.Functor       (($>))
 
 import           Data.List.Extra    (concatUnzip)
@@ -308,7 +308,7 @@ instance Symbolize FuncDecl C.FuncDecl where
                        (C.Signature (C.Parameters []) Nothing)) <$>
                       recurse st body)
                 (\(_, t') -> do
-                    et2 <- toType st t'
+                    et2 <- toType st Nothing t'
                     _ <- S.disableMessages st
                     return $ (Left . createError ident . InitNVoid) =<< et2)
                 t
