@@ -23,7 +23,7 @@ import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
 import           Data.Maybe         (catMaybes)
 
 import qualified CheckedData        as C
-import           ErrorBundle
+import           Base
 import           Numeric            (readOct)
 import           Prettify           (prettify)
 import           Scanner            (putExit, putSucc)
@@ -94,12 +94,12 @@ isNDefL st k = do
 -- Class to generalize traverse function for each AST structure
 -- also return the typechecked AST
 class Symbolize a b where
-  recurse :: SymbolTable s -> a -> ST s (Either ErrorMessage' b)
+  recurse :: SymbolTable s -> a -> ST s (Glc' b)
 
 class Typify a
   -- Resolve AST types to SType, may return error message if type error
   where
-  toType :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
+  toType :: SymbolTable s -> a -> ST s (Glc' SType)
 
 instance Symbolize Program C.Program where
   recurse st (Program (Identifier _ pkg) tdl) =
@@ -122,7 +122,7 @@ instance Symbolize FuncDecl C.FuncDecl
        forall s.
        SymbolTable s
     -> FuncDecl
-    -> ST s (Either ErrorMessage' C.FuncDecl)
+    -> ST s (Glc' C.FuncDecl)
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
     if vname == "init"
       then maybe
@@ -149,8 +149,8 @@ instance Symbolize FuncDecl C.FuncDecl
         if notdef
           then do
             _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
-            epl <- checkParams pdl -- Either ErrorMessage' [Param]
-      -- Either ErrorMessage' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
+            epl <- checkParams pdl -- Glc' [Param]
+      -- Glc' Symbol, want to get the corresponding Func symbol using our resolved params (if no errors in param declaration) and the type of the return of the signature, t, which is a Maybe Type'
             ef <-
               either
                 (return . Left)
@@ -162,7 +162,7 @@ instance Symbolize FuncDecl C.FuncDecl
                         return $ fmap (\ret -> (Func pl (Just ret), sil)) et)
                      t)
                 epl
-      -- We then take the Either ErrorMessage' Symbol, if no error we exit dummy scope so we're at the right scope level, insert the Symbol (newly declared function) and then wrap the real scope of the function, adding all the parameters that are already resolved as symbols and recursing on statement list sl (from body of func) to declare things in body
+      -- We then take the Glc' Symbol, if no error we exit dummy scope so we're at the right scope level, insert the Symbol (newly declared function) and then wrap the real scope of the function, adding all the parameters that are already resolved as symbols and recursing on statement list sl (from body of func) to declare things in body
             either
               (return . Left)
               (\(f, sil) -> do
@@ -182,12 +182,12 @@ instance Symbolize FuncDecl C.FuncDecl
     where
       checkParams ::
            [ParameterDecl]
-        -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
+        -> ST s (Glc' ([Param], [SymbolInfo]))
       checkParams pdl' = do
         pl <- mapM checkParam pdl'
         return $ eitherL concatUnzip pl
       checkParam ::
-           ParameterDecl -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
+           ParameterDecl -> ST s (Glc' ([Param], [SymbolInfo]))
       checkParam (ParameterDecl idl (_, t')) = do
         et <- toType st t' -- Remove ST
         either
@@ -208,7 +208,7 @@ instance Symbolize FuncDecl C.FuncDecl
       checkId' ::
            SType
         -> Identifier
-        -> ST s (Either ErrorMessage' (Param, SymbolInfo))
+        -> ST s (Glc' (Param, SymbolInfo))
       checkId' t' ident'@(Identifier _ idv) = do
         notdef <- isNDefL st idv -- Should not be declared
         if notdef
@@ -258,7 +258,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
        forall s.
        SymbolTable s
     -> SimpleStmt
-    -> ST s (Either ErrorMessage' C.SimpleStmt)
+    -> ST s (Glc' C.SimpleStmt)
   recurse st (ShortDeclare idl el) = do
     ets <- mapM (infer st) el' -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
     either
@@ -268,7 +268,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
     where
       idl' = toList idl
       el' = toList el
-      checkDecl :: ST s (Either ErrorMessage' (NonEmpty (SIdent, C.Expr)))
+      checkDecl :: ST s (Glc' (NonEmpty (SIdent, C.Expr)))
       checkDecl = do
         eb <- zipWithM checkDec idl' el'
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
@@ -287,9 +287,9 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       checkDec ::
            Identifier
         -> Expr
-        -> ST s (Either ErrorMessage' (Bool, (SIdent, C.Expr)))
+        -> ST s (Glc' (Bool, (SIdent, C.Expr)))
       checkDec ident e = do
-        et <- infer st e -- Either ErrorMessage' SType
+        et <- infer st e -- Glc' SType
         either
           (return . Left)
           (\t -> do
@@ -299,14 +299,14 @@ instance Symbolize SimpleStmt C.SimpleStmt where
           et
         where
           attachExpr ::
-               Either ErrorMessage' (Bool, SIdent)
+               Glc' (Bool, SIdent)
             -> C.Expr
-            -> ST s (Either ErrorMessage' (Bool, (SIdent, C.Expr)))
+            -> ST s (Glc' (Bool, (SIdent, C.Expr)))
           attachExpr eb e' = return $ (\(b, sid) -> (b, (sid, e'))) <$> eb
           checkId' ::
                Identifier
             -> SType
-            -> ST s (Either ErrorMessage' (Bool, SIdent)) -- Bool is to indicate whether the variable was already declared or not and also create scoped ident
+            -> ST s (Glc' (Bool, SIdent)) -- Bool is to indicate whether the variable was already declared or not and also create scoped ident
           -- Note that short declarations require at least *one* new declaration
           checkId' ident'@(Identifier _ vname) t = do
             val <- S.lookupCurrent st vname
@@ -438,7 +438,7 @@ aopConv op =
 
 instance Symbolize Stmt C.Stmt where
   recurse ::
-       forall s. SymbolTable s -> Stmt -> ST s (Either ErrorMessage' C.Stmt)
+       forall s. SymbolTable s -> Stmt -> ST s (Glc' C.Stmt)
   recurse st (BlockStmt sl) =
     wrap st $ fmap C.BlockStmt . sequence <$> mapM (recurse st) sl
   recurse st (SimpleStmt s) = fmap C.SimpleStmt <$> recurse st s
@@ -486,14 +486,14 @@ instance Symbolize Stmt C.Stmt where
         me
     where
       recurse' ::
-           SType -> SwitchCase -> ST s (Either ErrorMessage' C.SwitchCase)
+           SType -> SwitchCase -> ST s (Glc' C.SwitchCase)
       recurse' t (Case _ nEl s) = do
         eel <- sequence <$> mapM (isType t) (toList nEl)
         es' <- recurse st s
         return $ (\el -> C.Case (fromList el) <$> es') =<< eel
       recurse' _ (Default _ s) = fmap C.Default <$> recurse st s
           -- Also return new expr after check
-      isType :: SType -> Expr -> ST s (Either ErrorMessage' C.Expr)
+      isType :: SType -> Expr -> ST s (Glc' C.Expr)
       isType t e = do
         et <- infer st e
         either
@@ -558,7 +558,7 @@ instance Symbolize Stmt C.Stmt where
         mt
 
 -- | recurse wrapper but guarantee that expression is a base type for printing
-recBaseE :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' C.Expr)
+recBaseE :: SymbolTable s -> Expr -> ST s (Glc' C.Expr)
 recBaseE st e = do
   et <- infer st e
   either
@@ -583,7 +583,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
        forall s.
        SymbolTable s
     -> VarDecl'
-    -> ST s (Either ErrorMessage' [C.VarDecl'])
+    -> ST s (Glc' [C.VarDecl'])
   recurse st (VarDecl' neIdl edef) =
     case edef of
       Left ((_, t), el) -> do
@@ -612,7 +612,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
            SType
         -> [Identifier]
         -> [Expr]
-        -> ST s (Either ErrorMessage' [C.VarDecl'])
+        -> ST s (Glc' [C.VarDecl'])
       checkDecl t2 idl [] = do
         edl <- mapM (checkDec t2 Nothing) idl
         return $ sequence edl
@@ -623,7 +623,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
            SType
         -> Maybe Expr
         -> Identifier
-        -> ST s (Either ErrorMessage' C.VarDecl')
+        -> ST s (Glc' C.VarDecl')
       checkDec t2 me ident@(Identifier _ vname) = do
         scope <- S.scopeLevel st
         maybe
@@ -646,11 +646,11 @@ instance Symbolize VarDecl' [C.VarDecl'] where
                et')
           me
       checkDeclI ::
-           [Identifier] -> [Expr] -> ST s (Either ErrorMessage' [C.VarDecl'])
+           [Identifier] -> [Expr] -> ST s (Glc' [C.VarDecl'])
       checkDeclI idl el' = do
         edl <- mapM (\(i, ex) -> checkDecI ex i) (zip idl el')
         return $ sequence edl
-      checkDecI :: Expr -> Identifier -> ST s (Either ErrorMessage' C.VarDecl')
+      checkDecI :: Expr -> Identifier -> ST s (Glc' C.VarDecl')
       checkDecI e (Identifier _ vname) = do
         et' <- infer st e
         either
@@ -847,10 +847,10 @@ instance Typify Type where
     return $ fl >>= Right . Struct
     where
       checkFields ::
-           SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
+           SymbolTable s -> [FieldDecl] -> ST s (Glc' [Field])
       checkFields st' fdl' = eitherL concat <$> mapM (checkField st') fdl'
       checkField ::
-           SymbolTable s -> FieldDecl -> ST s (Either ErrorMessage' [Field])
+           SymbolTable s -> FieldDecl -> ST s (Glc' [Field])
       checkField st' (FieldDecl idl (_, t)) = do
         et <- toType st' t
         return $
@@ -951,8 +951,8 @@ instance ErrorEntry TypeCheckError where
 -- | Wrap a result of recurse inside a new scope
 wrap ::
      SymbolTable s
-  -> ST s (Either ErrorMessage' a)
-  -> ST s (Either ErrorMessage' a)
+  -> ST s (Glc' a)
+  -> ST s (Glc' a)
 wrap st stres = do
   S.enterScope st
   res <- stres
@@ -1066,7 +1066,7 @@ typecheckGen code =
     (weed code)
 
 -- | Generate new AST from Program
-typecheckGen' :: Program -> Either ErrorMessage' C.Program
+typecheckGen' :: Program -> Glc' C.Program
 typecheckGen' p =
   runST $ do
     st <- new

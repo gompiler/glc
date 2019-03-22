@@ -20,7 +20,7 @@ module Scanner
 import           System.Exit
 import           System.IO
 
-import           ErrorBundle
+import           Base
 
 -- Helper functions for scanning using tokens and also pass relevant things to parser
 import qualified TokenGen    as T
@@ -213,7 +213,7 @@ prettyPrint :: [T.InnerToken] -> IO ()
 prettyPrint = mapM_ (putStrLn . prettify)
 
 -- | scan', the main scan function. Takes input String and runs it through a recursive loop that keeps processing it through the alex Monad
-scan' :: String -> Either ErrorMessage' [T.InnerToken]
+scan' :: String -> Glc' [T.InnerToken]
 scan' s =
   T.runAlex s $ do
     let loop tokl = do

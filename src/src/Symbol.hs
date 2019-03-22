@@ -91,7 +91,7 @@ resolve ::
      Identifier
   -> SymbolTable s
   -> ErrorMessage'
-  -> ST s (Either ErrorMessage' SType)
+  -> ST s (Glc' SType)
 resolve (Identifier _ idv) st notDeclError = do
   res <- S.lookup st idv
   return $ do

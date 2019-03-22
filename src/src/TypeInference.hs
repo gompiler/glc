@@ -14,7 +14,7 @@ import           Data
 import           Data.List          (intercalate)
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
 import qualified Data.List.NonEmpty as NE (head, map, nub)
-import           ErrorBundle
+import           Base
 import           Symbol             (SType (..), Symbol (..), SymbolTable,
                                      resolve)
 import qualified SymbolTableCore    as S
@@ -89,7 +89,7 @@ instance ErrorEntry ExpressionTypeError where
         "Cast expects base type; non-base type " ++ show styp ++ " provided"
 
 -- | Main type inference function
-infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
+infer :: SymbolTable s -> Expr -> ST s (Glc' SType)
 -- | Infers the types of '+' unary operator expressions
 infer st e@(Unary _ Pos inner) =
   inferConstraint
@@ -191,7 +191,7 @@ infer _ (Lit l) =
 -- | Resolve variables to the type their identifier points to in the scope
 infer st (Var ident@(Identifier _ vname)) = resolveVar st
   where
-    resolveVar :: SymbolTable s -> ST s (Either ErrorMessage' SType)
+    resolveVar :: SymbolTable s -> ST s (Glc' SType)
     resolveVar st' = do
       res <- S.lookup st' vname
       case res of
@@ -256,7 +256,7 @@ infer st se@(Selector _ expr (Identifier _ ident)) = do
   return $ eitherSele >>= (infer' . resolveSType)
   -- TODO: Look into resolveSType / alternates for this
   where
-    infer' :: SType -> Either ErrorMessage' SType
+    infer' :: SType -> Glc' SType
     infer' (Struct fdl) =
       case filter (\(fid, _) -> fid == ident) fdl of
         [(_, sft)] -> Right sft
@@ -279,7 +279,7 @@ infer st ie@(Index _ e1 e2) = do
       t         -> Left $ createError ie $ NonIndexable t
      -- | Checks that second type is an int before returning type or error
   where
-    indexable :: SType -> SType -> String -> Either ErrorMessage' SType
+    indexable :: SType -> SType -> String -> Glc' SType
     indexable t t' errTag =
       case resolveSType t' of
         PInt -> Right t
@@ -319,7 +319,7 @@ infer st ae@(Arguments _ expr args) = do
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
   where
-    tryCast :: SType -> SType -> Either ErrorMessage' SType
+    tryCast :: SType -> SType -> Glc' SType
     tryCast ft ct =
       case (isBase rct, isBase rft) of
         (True, True) ->
@@ -343,7 +343,7 @@ inferConstraint ::
   -> (NonEmpty SType -> ExpressionTypeError) -- makeError
   -> Expr -- parentExpr
   -> NonEmpty Expr -- childs
-  -> ST s (Either ErrorMessage' SType)
+  -> ST s (Glc' SType)
 inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   eitherTs <- sequence <$> mapM (infer st) inners
   return $ do
