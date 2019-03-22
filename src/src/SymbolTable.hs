@@ -594,6 +594,11 @@ instance Symbolize [VarDecl'] [C.VarDecl'] where
     return $ concat <$> sequence el
 
 instance Symbolize VarDecl' [C.VarDecl'] where
+  recurse ::
+       forall s.
+       SymbolTable s
+    -> VarDecl'
+    -> ST s (Either ErrorMessage' [C.VarDecl'])
   recurse st (VarDecl' neIdl edef) =
     case edef of
       Left ((_, t), el) -> do
@@ -606,7 +611,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
              (return . Left)
              (\t' -> do
                 me <- checkIds st (Variable t') "Variable " neIdl
-                maybe (checkDecl st t' (toList neIdl) el) (return . Left) me)
+                maybe (checkDecl t' (toList neIdl) el) (return . Left) me)
              et)
           (sequence ets)
       Right nel -> do
@@ -615,39 +620,37 @@ instance Symbolize VarDecl' [C.VarDecl'] where
         either
           (return . Left)
           (const $
-           maybe (checkDeclI st (toList neIdl) (toList nel)) (return . Left) me)
+           maybe (checkDeclI (toList neIdl) (toList nel)) (return . Left) me)
           (sequence ets)
     where
       checkDecl ::
-           SymbolTable s
-        -> SType
+           SType
         -> [Identifier]
         -> [Expr]
         -> ST s (Either ErrorMessage' [C.VarDecl'])
-      checkDecl st' t2 idl [] = do
-        edl <- mapM (checkDec st' t2 Nothing) idl
+      checkDecl t2 idl [] = do
+        edl <- mapM (checkDec t2 Nothing) idl
         return $ sequence edl
-      checkDecl st' t2 idl el' = do
-        edl <- mapM (\(i, ex) -> checkDec st' t2 (Just ex) i) (zip idl el')
+      checkDecl t2 idl el' = do
+        edl <- mapM (\(i, ex) -> checkDec t2 (Just ex) i) (zip idl el')
         return $ sequence edl
       checkDec ::
-           SymbolTable s
-        -> SType
+           SType
         -> Maybe Expr
         -> Identifier
         -> ST s (Either ErrorMessage' C.VarDecl')
-      checkDec st' t2 me ident@(Identifier _ vname) = do
-        scope <- S.scopeLevel st'
+      checkDec t2 me ident@(Identifier _ vname) = do
+        scope <- S.scopeLevel st
         maybe
           (return $
            Right $ C.VarDecl' (mkSIdStr scope vname) (toBase t2) Nothing)
           (\e -> do
-             et' <- infer st' e
+             et' <- infer st e
              either
                (return . Left)
                (\t' ->
                   if t2 == t'
-                    then (do ee' <- recurse st' e
+                    then (do ee' <- recurse st e
                              return $
                                fmap
                                  (C.VarDecl' (mkSIdStr scope vname) (toBase t2) .
@@ -658,25 +661,18 @@ instance Symbolize VarDecl' [C.VarDecl'] where
                et')
           me
       checkDeclI ::
-           SymbolTable s
-        -> [Identifier]
-        -> [Expr]
-        -> ST s (Either ErrorMessage' [C.VarDecl'])
-      checkDeclI st' idl el' = do
-        edl <- mapM (\(i, ex) -> checkDecI st' ex i) (zip idl el')
+           [Identifier] -> [Expr] -> ST s (Either ErrorMessage' [C.VarDecl'])
+      checkDeclI idl el' = do
+        edl <- mapM (\(i, ex) -> checkDecI ex i) (zip idl el')
         return $ sequence edl
-      checkDecI ::
-           SymbolTable s
-        -> Expr
-        -> Identifier
-        -> ST s (Either ErrorMessage' C.VarDecl')
-      checkDecI st' e (Identifier _ vname) = do
-        et' <- infer st' e
+      checkDecI :: Expr -> Identifier -> ST s (Either ErrorMessage' C.VarDecl')
+      checkDecI e (Identifier _ vname) = do
+        et' <- infer st e
         either
           (return . Left)
           (\t' -> do
-             scope <- S.insert st' vname (Variable t') -- Update type of variable
-             ee' <- recurse st' e
+             scope <- S.insert st vname (Variable t') -- Update type of variable
+             ee' <- recurse st e
              return $
                fmap (C.VarDecl' (mkSIdStr scope vname) (toBase t') . Just) ee')
           et'
