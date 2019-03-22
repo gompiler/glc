@@ -182,8 +182,7 @@ instance Symbolize FuncDecl C.FuncDecl where
       addInit = maybe
                 (do scope <- S.scopeLevel st -- Should be 1
                     _ <-
-                      S.addMessage st $
-                      (vname, Func [] Nothing, scope)
+                      S.addMessage st (vname, Func [] Nothing, scope)
                     fmap
                       (C.FuncDecl
                        (mkSIdStr scope vname)
@@ -218,8 +217,7 @@ instance Symbolize FuncDecl C.FuncDecl where
         -> Identifiers
         -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkIds' t' idl =
-        (\l -> unzip <$> sequence l) <$>
-        mapM (checkId' t') (toList idl)
+        fmap unzip . sequence <$> mapM (checkId' t') (toList idl)
       checkId' ::
            SType
         -> Identifier
@@ -287,7 +285,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
         eb <- zipWithM checkDec idl' el'
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
         let eit = sequence eb >>= check in
-          if (isLeft eit) then S.disableMessages st $> eit else return eit
+          if isLeft eit then S.disableMessages st $> eit else return eit
         where
           check ::
                [(Bool, (C.ScopedIdent, C.Expr))]
