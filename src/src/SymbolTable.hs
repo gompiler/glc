@@ -129,7 +129,7 @@ class Typify a
       resolveType _ stype = stype
       resolveField :: SType -> Field -> Field
       resolveField rootType (ident, stype) = (ident, resolveType rootType stype)
-  -- | Underlying type checker.
+  -- | Underlying type resolver.
   -- If SIdent is not Nothing, it represents the top most identity.
   -- If cyclic types are allowed, then it should be used to create a typemap with infer
   -- The `a` value within the tuple is the parent typify argument, which is used to check
@@ -183,7 +183,9 @@ instance Typify Type where
     return $ fl >>= Right . Struct
     where
       checkFields :: [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      checkFields fdl' = eitherL concat <$> mapM checkField fdl'
+      checkFields fdl' = do
+        fields <- mapM checkField fdl'
+        return $ concat <$> sequence fields
       checkField :: FieldDecl -> ST s (Either ErrorMessage' [Field])
       checkField (FieldDecl idl (_, t)) =
         either Left (resolveFieldDuplicate idl) <$> fieldType' t
@@ -301,7 +303,7 @@ instance Symbolize FuncDecl C.FuncDecl
         -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkParams pdl' = do
         pl <- mapM checkParam pdl'
-        return $ eitherL concatUnzip pl
+        return $ concatUnzip <$> sequence pl
       checkParam ::
            ParameterDecl -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkParam (ParameterDecl idl (_, t')) = do
@@ -927,14 +929,6 @@ intTypeToInt _ = error "Trying to convert a literal that isn't an int to an int"
                  -- This should never happen because we only use this for ArrayType
                  -- just here for exhaustive pattern matching
                  -- if we want to remove this we must change ArrayType as mentioned below
-
--- | either for a list, if any Left, take first Left, otherwise use lists of Rights
-eitherL :: ([b] -> c) -> [Either a b] -> Either a c
-eitherL f eil =
-  let (err, l) = partitionEithers eil
-   in if null err
-        then Right $ f l
-        else Left $ head err -- Return first error
 
 -- | Partition either but only keep first error
 pEithers :: [Either a b] -> (Maybe a, [b])
