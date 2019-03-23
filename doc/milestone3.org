@@ -1,0 +1,20 @@
+#+TITLE: Design Document for Milestone 3
+#+AUTHOR: Lore, J., Lougheed D., Wang A.
+#+LATEX_HEADER: \usepackage[margin=0.9in]{geometry}
+#+LATEX_HEADER: \usepackage[fontsize=10.5pt]{scrextend}
+This document is for explaining the design decisions we had to make
+whilst implementing the components for milestone 3.  \newpage
+* Language for Code Generation
+  TODO
+* Semantics
+** TODO: ASPECT 1
+*** Go Semantics
+*** Mapping Strategy
+** TODO: ASPECT 2
+*** Go Semantics
+*** Mapping Strategy
+** TODO: ASPECT 3
+*** Go Semantics
+*** Mapping Strategy
+* Currently Implemented
+  TODO
