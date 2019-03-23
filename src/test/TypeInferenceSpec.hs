@@ -68,6 +68,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
         -- var as_var as_type
         _ <- SymTab.add st "a5s" (Variable $ Array 5 PString)
         _ <- SymTab.add st "as_type" (SType $ Array 5 PString)
+        _ <- SymTab.add st "b_type" (SType PBool)
         _ <-
           SymTab.add
             st
@@ -81,6 +82,8 @@ parseAndInferNoST expStr = either Left runExpr parseResult
             st
             "sr_var"
             (Variable $ TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+        _ <- SymTab.add st "struct_slice" (SType $ (Struct [("a", Slice PInt)]))
+        _ <- SymTab.add st "arr_slice" (SType $ Array 5 (Slice PInt))
         either (Left . errgen) Right <$> infer st e
 
 expectPass :: Stringable s => String -> [(s, SType)] -> SpecWith ()
@@ -187,8 +190,11 @@ spec
     , "int_t_slice < int_t_slice"
     , "true <= false"
     , "\"a\" || \"b\""
-    , "int_5_arr == int_3_arr" -- not comparable
-    , "int_slice == int_slice" -- not comparable
+    -- not comparable:
+    , "int_5_arr == int_3_arr"
+    , "int_slice == int_slice"
+    , "struct_slice == struct_slice"
+    , "arr_slice == arr_slice"
     ]
   -- | Type casts
   -- type(expr) is valid if:
@@ -300,6 +306,7 @@ spec
     , ("int_t(5) + int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
     , ("int_t(5) == int_t(5)", PBool)
     , ("int_t(5) >= int_t(5)", PBool)
+    , ("b_type(true) || b_type(true)", TypeMap (mkSIdStr' 1 "b_type") PBool)
     ]
   expectFail
     "custom"
