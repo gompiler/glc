@@ -1,6 +1,7 @@
 module IR where
 
 import CheckedData
+import Data.Char (ord)
 -- import Data.List.NonEmpty (toList)
 
 type LabelName = String
@@ -18,13 +19,19 @@ data IRItem
   deriving (Show)
 
 data IRPrimitive
-  = Integer -- Integers, booleans, runes
-  | Float -- Float64
+  = IRInt Int -- Integers, booleans, runes
+  | IRFloat Float -- Float64s
   deriving (Show)
 
 data IRType
   = Prim IRPrimitive -- Integer, boolean, rune, float64
   | Object -- String, array, struct, slice
+  deriving (Show)
+
+data LDCType
+  = LDCInt Int -- Integers, booleans, runes
+  | LDCFloat Float -- Float64s
+  | LDCString String -- Strings
   deriving (Show)
 
 data Instruction
@@ -47,7 +54,7 @@ data Instruction
   | IfEq
   | IStore Int
   | IXOr
-  | LDCInt Int
+  | LDC LDCType -- pushes an int/float/string value onto the stack
   | NOp
   | Pop
   | Swap
@@ -86,7 +93,11 @@ instance IRRep SimpleStmt where
 
 instance IRRep Expr where
   toIR (Binary (Arithm CheckedData.Add) _ _ ) = undefined -- toIR e1 ++ toIR e2 ++ [IRInst $ Add typeToPrimitive TODO]
+  toIR (Lit l) = toIR l
   toIR _ = undefined
 
 instance IRRep Literal where
-  toIR _ = undefined
+  toIR (IntLit i) = [IRInst $ LDC (LDCInt i)]
+  toIR (FloatLit f) = [IRInst $ LDC (LDCFloat f)]
+  toIR (RuneLit r) = [IRInst $ LDC (LDCInt $ ord r)]
+  toIR (StringLit s) = [IRInst $ LDC (LDCString s)]
