@@ -106,9 +106,9 @@ class Typify a
   where
   toType ::
        SymbolTable s -> Maybe SIdent -> a -> ST s (Either ErrorMessage' SType)
-  toType st Nothing t = toType' st (Nothing, t) t
+  toType st Nothing t = toType' st (Nothing, t) t False -- Do not allow recursive types by default
   toType st (Just rootIdent) t = do
-    eitherSType <- toType' st (Just rootIdent, t) t
+    eitherSType <- toType' st (Just rootIdent, t) t False
     return $ do
       stype <- eitherSType
       let stype' = resolveType stype' stype
@@ -143,6 +143,7 @@ class Typify a
        SymbolTable s
     -> (Maybe SIdent, a)
     -> a
+    -> Bool -- Is recursion allowed? Are we nested inside of a slice?
     -> ST s (Either ErrorMessage' SType)
 
 -- | Returns matching id if current type is a reference,
@@ -160,26 +161,20 @@ instance Typify Type where
        SymbolTable s
     -> (Maybe SIdent, Type)
     -> Type
+    -> Bool -- Allow recursion? If the call is nested inside a slice
     -> ST s (Either ErrorMessage' SType)
-  toType' st root (ArrayType (Lit l) t) = do
-    sym <- toType' st root t
+  toType' st root (ArrayType (Lit l) t) brec = do
+    sym <- toType' st root t brec
     return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
   -- In golite, we can use a slice type x while creating type x
-  toType' st root@(rootSIdent, _) (SliceType t) =
-    case getMatchingSIdent rootSIdent t
-          of
-      Just sident -> cyclicType sident
-      _           -> resolveType
+  toType' st root@(_, _) (SliceType t) _ = resolveType
     where
-      -- Placeholder to reference root type
-      cyclicType :: SIdent -> ST s (Either ErrorMessage' SType)
-      cyclicType rootScope = return $ Right $ Slice $ TypeMap rootScope Infer
       -- Default resolution method
       resolveType :: ST s (Either ErrorMessage' SType)
       resolveType = do
-        sym <- toType' st root t
+        sym <- toType' st root t True -- Allow recursion since we're inside a struct
         return $ sym >>= Right . Slice
-  toType' st root@(rootSIdent, rootType) (StructType fdl) = do
+  toType' st root@(rootSIdent, rootType) (StructType fdl) brec = do
     fl <- checkFields fdl
     return $ fl >>= Right . Struct
     where
@@ -196,7 +191,7 @@ instance Typify Type where
                 -- Cycles only permitted on matching root sident with a non struct root type
               of
           (Just sident, False) -> cyclicType sident
-          _                    -> toType' st root t
+          _                    -> toType' st root t brec
       -- Given stype and identifiers, ensure no duplicates and map to fields
       resolveFieldDuplicate ::
            Identifiers -> SType -> Either ErrorMessage' [Field]
@@ -208,17 +203,24 @@ instance Typify Type where
       isTypeStruct :: Type -> Bool
       isTypeStruct (StructType _) = True
       isTypeStruct _              = False
-          -- Placeholder to reference root type
-      cyclicType :: SIdent -> ST s (Either ErrorMessage' SType)
-      cyclicType rootScope = return $ Right $ TypeMap rootScope Infer
-  toType' st _ (Type ident) =
-    resolve ident st (createError ident (NotDecl "Type " ident))
-  -- This should never happen, this is here for exhaustive pattern matching
+  toType' st (rootSIdent, _) t@(Type ident) brec =
+    case getMatchingSIdent rootSIdent t of
+      Just sident -> if brec then cyclicType sident
+                     else notDecl
+      _ -> notDecl
+    where
+      notDecl :: ST s (Either ErrorMessage' SType)
+      notDecl = resolve ident st (createError ident (NotDecl "Type " ident))
+  -- This last array case should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType' _ _ (ArrayType _ _) =
+  toType' _ _ (ArrayType _ _) _ =
     error
       "Trying to convert type of an ArrayType with non literal int as length"
+
+-- | Placeholder to reference root type
+cyclicType :: SIdent -> ST s (Either ErrorMessage' SType)
+cyclicType rootScope = return $ Right $ TypeMap rootScope Infer
 
 instance Symbolize Program C.Program where
   recurse st (Program (Identifier _ pkg) tdl) =
