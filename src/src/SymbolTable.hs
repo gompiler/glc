@@ -111,7 +111,7 @@ class Typify a
     eitherSType <- toType' st (Just rootIdent, t) t
     return $ do
       stype <- eitherSType
-      let stype' = TypeMap rootIdent $ resolveType stype' stype
+      let stype' = resolveType stype' stype
       return stype'
       -- Given root type and current subtype, recursively resolve all instances of
       -- `TypeMap rootIdent Infer` to `rootType`
