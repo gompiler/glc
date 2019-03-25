@@ -32,7 +32,7 @@ import           Weeding            (weed)
 
 import           Symbol
 
-import           Control.Monad      (zipWithM)
+import           Control.Monad      (zipWithM, join)
 import qualified SymbolTableCore    as S
 
 -- | Insert n tabs
@@ -276,9 +276,9 @@ instance Symbolize FuncDecl C.FuncDecl where
           where
             createFunc :: ([Param], [SymbolInfo]) -> ST s (Either ErrorMessage' (Symbol, [SymbolInfo]))
             createFunc (pl, sil) =
-              maybe (return $ Right (Func pl Nothing, sil)) (\(_, t') -> do
+              maybe (return $ Right (Func pl Void, sil)) (\(_, t') -> do
                   et <- toType st Nothing t'
-                  return $ fmap (\ret -> (Func pl (Just ret), sil)) et) t
+                  return $ fmap (\ret -> (Func pl ret, sil)) et) t
             insertFunc :: (Symbol, [SymbolInfo]) -> ST s (Either ErrorMessage' C.FuncDecl)
             insertFunc (f, sil) = do
               _ <- S.exitScope st
@@ -299,7 +299,7 @@ instance Symbolize FuncDecl C.FuncDecl where
                 (do scope <- S.scopeLevel st -- Should be 1
                     _ <-
                       S.addMessage st $
-                      (vname, Func [] Nothing, scope)
+                      (vname, Func [] Void, scope)
                     fmap
                       (C.FuncDecl
                        (mkSIdStr scope vname)
@@ -350,8 +350,10 @@ instance Symbolize FuncDecl C.FuncDecl where
       p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
       p2pd (s, t') = C.ParameterDecl (mkSIdStr (S.Scope 2) s) (toBase t')
       func2sig :: Symbol -> C.Signature
-      func2sig (Func pl mt) =
-        C.Signature (C.Parameters (map p2pd pl)) (toBase <$> mt)
+      func2sig (Func pl t') =
+        C.Signature (C.Parameters (map p2pd pl)) (case toBase t' of
+                                                    C.Type (C.Ident "void") -> Nothing
+                                                    ct -> Just ct)
       func2sig _ =
         error "Trying to convert a symbol that isn't a function to a signature" -- Should never happen
   recurse _ FuncDecl {} =
@@ -666,27 +668,19 @@ instance Symbolize Stmt C.Stmt where
   recurse st (Declare d) = fmap C.Declare <$> recurse st d
   recurse st (Print el) = fmap C.Print . sequence <$> mapM (recBaseE st) el
   recurse st (Println el) = fmap C.Println . sequence <$> mapM (recBaseE st) el
-  recurse st (Return _ (Just e)) = do
-    mt <- getRet st
-    maybe
-      (return $ Left $ createError e VoidRet)
-      (\t -> do
-         et' <- infer st e
-         either
-           (return . Left)
-           (\t' ->
-              if t == t'
-                then fmap (C.Return . Just) <$> recurse st e
-                else return $ Left $ createError e (RetMismatch t' t))
-           et')
-      mt
+  recurse st (Return o (Just e)) = do
+    et <- getRet o st
+    et' <- infer st e
+    ee' <- recurse st e
+    return $ join $ (\t t' e' -> if t == Void then Left $ createError e VoidRet
+                                   else if t == t'
+                                        then Right (C.Return $ Just e')
+                                        else Left $ createError e (RetMismatch t' t)) <$> et <*> et' <*> ee'
   recurse st (Return o Nothing) = do
-    mt <- getRet st
+    et <- getRet o st
     return $
-      maybe
-        (Right $ C.Return Nothing)
-        (Left . createError o . RetMismatch Void)
-        mt
+        (\t -> if t == Void then Right $ C.Return Nothing
+               else Left $ createError o $ RetMismatch Void t) =<< et
 
 -- | recurse wrapper but guarantee that expression is a base type for printing
 recBaseE :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' C.Expr)
@@ -980,6 +974,8 @@ data TypeCheckError
   | RetMismatch SType
                 SType
   | NonLVal Expr
+  | RetOut -- Return outside of function, should never happen
+  | NotFunc -- Trying to get the return value of a symbol that isn't a function, shouldn't happen
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -1023,6 +1019,8 @@ instance ErrorEntry TypeCheckError where
         "Return expression resolves to type " ++
         show t1 ++ " but function return type is " ++ show t2
       NonLVal e -> prettify e ++ " is not an lvalue and cannot be assigned to"
+      RetOut -> "Return expression outside of function context"
+      NotFunc -> "Trying to get return value of a symbol that isn't a function"
 
 -- | Wrap a result of recurse inside a new scope
 wrap ::
@@ -1079,16 +1077,15 @@ isAddrE e =
     else [createError e (NonLVal e)]
 
 -- | Get the return value of function we are currently declaring, aka latest declared function
-getRet :: SymbolTable s -> ST s (Maybe SType)
-getRet st = do
-  f <- S.getCtx st
-  return $ maybe (error "Not in a function body" -- This should never happen as our parser doesn't allow a return statement outside of a function body
-        -- We could put this as Nothing but it'd be misleading as Nothing should mean no SType from the function, not no function at all
-        ) getRet' f
+getRet :: Offset -> SymbolTable s -> ST s (Either ErrorMessage' SType)
+getRet o st = do
+  fm <- S.getCtx st
+  -- This error should never happen as our parser doesn't allow a return statement outside of a function body
+  return $ maybe (Left $ createError o RetOut) getRet' fm
   where
-    getRet' :: Symbol -> Maybe SType
-    getRet' (Func _ mt) = mt
-    getRet' _ = error "Not a function" -- Also shouldn't happen and also can be Nothing, but once again, misleading
+    getRet' :: Symbol -> Either ErrorMessage' SType
+    getRet' (Func _ t) = Right t
+    getRet' _ = Left $ createError o NotFunc -- Also shouldn't happen and also can be Nothing, but once again, misleading
 
 -- | Convert SymbolInfo list to String (pass through show) to get string representation of symbol table
 -- ignore error if not a symbol table error (i.e. typecheck error)
