@@ -94,7 +94,7 @@ instance IRRep SimpleStmt where
 instance IRRep Expr where
   toIR (Unary Pos e) = toIR e -- unary pos is identity function after typecheck
   toIR (Unary CheckedData.Neg _) = undefined -- int: toIR e ++ (IRInst $ LDC (LDCInt -1)) : [Mul typeToPrimitive]
-  toIR (Unary Not e) = toIR e ++ IRInst (LDC (LDCInt 1)) : [IRInst IXOr] -- !i is equivalent to i XOR 1
+  toIR (Unary Not e) = toIR e ++ [IRInst (LDC (LDCInt 1)), IRInst IXOr] -- !i is equivalent to i XOR 1
   toIR (Unary BitComplement _) = undefined -- TODO: how to do this?
   toIR (Binary (Arithm CheckedData.Add) _ _ ) = undefined -- toIR e1 ++ toIR e2 ++ [IRInst $ Add typeToPrimitive TODO]
   toIR (Lit l) = toIR l
