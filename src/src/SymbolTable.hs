@@ -15,7 +15,7 @@ module SymbolTable
 
 import           Control.Monad.ST
 import           Data
-import           Data.Either        (isLeft, partitionEithers)
+import           Data.Either        (isLeft)
 import           Data.Functor       (($>))
 
 import           Data.List.Extra    (concatUnzip)
@@ -32,7 +32,7 @@ import           Weeding            (weed)
 
 import           Symbol
 
-import           Control.Monad      (zipWithM)
+import           Control.Monad      (join, zipWithM)
 import qualified SymbolTableCore    as S
 
 -- | Insert n tabs
@@ -102,7 +102,125 @@ class Symbolize a b where
 class Typify a
   -- Resolve AST types to SType, may return error message if type error
   where
-  toType :: SymbolTable s -> a -> ST s (Either ErrorMessage' SType)
+  toType ::
+       SymbolTable s -> Maybe SIdent -> a -> ST s (Either ErrorMessage' SType)
+  toType st Nothing t = toType' st (Nothing, t) t False -- Do not allow recursive types by default
+  toType st (Just rootIdent) t = do
+    eitherSType <- toType' st (Just rootIdent, t) t False
+    return $ do
+      stype <- eitherSType
+      let stype' = resolveType stype' stype
+      return stype'
+      -- Given root type and current subtype, recursively resolve all instances of
+      -- `TypeMap rootIdent Infer` to `rootType`
+    where
+      resolveType :: SType -> SType -> SType
+      resolveType rootType (Array i stype) =
+        Array i $ resolveType rootType stype
+      -- Only slices allow for recursive types
+      resolveType rootType stype@(Slice (TypeMap ident Infer)) =
+        if ident == rootIdent
+          then Slice rootType
+          else stype
+      resolveType rootType (Slice stype) = Slice $ resolveType rootType stype
+      resolveType rootType (Struct fields) =
+        Struct $ map (resolveField rootType) fields
+      resolveType rootType (TypeMap ident stype) =
+        if ident == rootIdent && stype == Infer
+          then TypeMap ident rootType
+          else TypeMap ident $ resolveType rootType stype
+      resolveType _ stype = stype
+      resolveField :: SType -> Field -> Field
+      resolveField rootType (ident, stype) = (ident, resolveType rootType stype)
+  -- | Underlying type resolver.
+  -- If SIdent is not Nothing, it represents the top most identity.
+  -- If cyclic types are allowed, then it should be used to create a typemap with infer
+  -- The `a` value within the tuple is the parent typify argument, which is used to check
+  -- for constraints for cyclic types
+  toType' ::
+       SymbolTable s
+    -> (Maybe SIdent, a)
+    -> a
+    -> Bool -- Is recursion allowed? Are we nested inside of a slice?
+    -> ST s (Either ErrorMessage' SType)
+
+-- | Returns matching id if current type is a reference,
+-- and parent identity matches current type identity
+getMatchingSIdent :: Maybe SIdent -> Type -> Maybe SIdent
+getMatchingSIdent (Just sident@(C.ScopedIdent _ (C.Ident rootIdent))) (Type (Identifier _ ident)) =
+  if rootIdent == ident
+    then Just sident
+    else Nothing
+getMatchingSIdent _ _ = Nothing
+
+instance Typify Type where
+  toType' ::
+       forall s.
+       SymbolTable s
+    -> (Maybe SIdent, Type)
+    -> Type
+    -> Bool -- Allow recursion? If the call is nested inside a slice
+    -> ST s (Either ErrorMessage' SType)
+  toType' st root (ArrayType (Lit l) t) brec = do
+    sym <- toType' st root t brec
+    return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
+  -- In golite, we can use a slice type x while creating type x
+  toType' st root@(_, _) (SliceType t) _ = resolveType
+      -- Default resolution method
+    where
+      resolveType :: ST s (Either ErrorMessage' SType)
+      resolveType = do
+        sym <- toType' st root t True -- Allow recursion since we're inside a slice
+        return $ sym >>= Right . Slice
+  toType' st root@(rootSIdent, rootType) (StructType fdl) brec = do
+    fl <- checkFields fdl
+    return $ fl >>= Right . Struct
+    where
+      checkFields :: [FieldDecl] -> ST s (Either ErrorMessage' [Field])
+      checkFields fdl' = do
+        fields <- mapM checkField fdl'
+        return $ concat <$> sequence fields
+      checkField :: FieldDecl -> ST s (Either ErrorMessage' [Field])
+      checkField (FieldDecl idl (_, t)) =
+        either Left (resolveFieldDuplicate idl) <$> fieldType' t
+      -- | Checks first for cyclic type, then defaults to the generic type resolver
+      fieldType' t =
+        case (getMatchingSIdent rootSIdent t, isTypeStruct rootType)
+                -- Cycles only permitted on matching root sident with a non struct root type
+              of
+          (Just sident, False) -> cyclicType sident
+          _                    -> toType' st root t brec
+      -- Given stype and identifiers, ensure no duplicates and map to fields
+      resolveFieldDuplicate ::
+           Identifiers -> SType -> Either ErrorMessage' [Field]
+      resolveFieldDuplicate idl t =
+        case getFirstDuplicate (toList idl) of
+          Nothing ->
+            Right $ map (\(Identifier _ vname) -> (vname, t)) (toList idl)
+          Just ident -> Left $ createError ident $ AlreadyDecl "Field " ident
+      isTypeStruct :: Type -> Bool
+      isTypeStruct (StructType _) = True
+      isTypeStruct _              = False
+  toType' st (rootSIdent, _) t@(Type ident) brec =
+    case getMatchingSIdent rootSIdent t of
+      Just sident ->
+        if brec
+          then cyclicType sident
+          else notDecl
+      _ -> notDecl
+    where
+      notDecl :: ST s (Either ErrorMessage' SType)
+      notDecl = resolve ident st (createError ident (NotDecl "Type " ident))
+  -- This last array case should never happen, this is here for exhaustive pattern matching
+  -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
+  -- if we expand to support Go later, then we'll change this to support actual expressions
+  toType' _ _ (ArrayType _ _) _ =
+    error
+      "Trying to convert type of an ArrayType with non literal int as length"
+
+-- | Placeholder to reference root type
+cyclicType :: SIdent -> ST s (Either ErrorMessage' SType)
+cyclicType rootScope = return $ Right $ TypeMap rootScope Infer
 
 instance Symbolize Program C.Program where
   recurse st (Program (Identifier _ pkg) tdl)
@@ -163,8 +281,8 @@ instance Symbolize FuncDecl C.FuncDecl
           createFunc (pl, sil)
               -- TODO don't use toType here; resolve only type def types
            = do
-            returnTypeEither <- maybe (return $ Right Void) (toType st . snd) t
-            return $ (\ret -> (Func pl (Just ret), sil)) <$> returnTypeEither
+            returnTypeEither <- maybe (return $ Right Void) (toType st Nothing . snd) t
+            return $ (\ret -> (Func pl ret, sil)) <$> returnTypeEither
           insertFunc ::
                (Symbol, [SymbolInfo]) -> ST s (Either ErrorMessage' C.FuncDecl)
           insertFunc (f, sil) = do
@@ -185,14 +303,14 @@ instance Symbolize FuncDecl C.FuncDecl
       addInit =
         maybe
           (do scope <- S.scopeLevel st -- Should be 1
-              _ <- S.addMessage st (vname, Func [] Nothing, scope)
+              _ <- S.addMessage st (vname, Func [] Void, scope)
               fmap
                 (C.FuncDecl
                    (mkSIdStr scope vname)
                    (C.Signature (C.Parameters []) Nothing)) <$>
                 recurse st body)
           (\(_, t') -> do
-             et2 <- toType st t'
+             et2 <- toType st Nothing t'
              _ <- S.disableMessages st
              return $ (Left . createError ident . InitNVoid) =<< et2)
           t
@@ -201,11 +319,11 @@ instance Symbolize FuncDecl C.FuncDecl
         -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkParams pdl' = do
         pl <- mapM checkParam pdl'
-        return $ eitherL concatUnzip pl
+        return $ concatUnzip <$> sequence pl
       checkParam ::
            ParameterDecl -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
       checkParam (ParameterDecl idl (_, t')) = do
-        et <- toType st t' -- Remove ST
+        et <- toType st Nothing t' -- Remove ST
         either
           (return . Left)
           (\t2 -> do
@@ -238,8 +356,12 @@ instance Symbolize FuncDecl C.FuncDecl
       p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
       p2pd (s, t') = C.ParameterDecl (mkSIdStr (S.Scope 2) s) (toBase t')
       func2sig :: Symbol -> C.Signature
-      func2sig (Func pl mt) =
-        C.Signature (C.Parameters (map p2pd pl)) (toBase <$> mt)
+      func2sig (Func pl t') =
+        C.Signature
+          (C.Parameters (map p2pd pl))
+          (case toBase t' of
+             C.Type (C.Ident "void") -> Nothing
+             ct                      -> Just ct)
       func2sig _ =
         error "Trying to convert a symbol that isn't a function to a signature" -- Should never happen
   recurse _ FuncDecl {} =
@@ -559,27 +681,29 @@ instance Symbolize Stmt C.Stmt where
   recurse st (Declare d) = fmap C.Declare <$> recurse st d
   recurse st (Print el) = fmap C.Print . sequence <$> mapM (recBaseE st) el
   recurse st (Println el) = fmap C.Println . sequence <$> mapM (recBaseE st) el
-  recurse st (Return _ (Just e)) = do
-    mt <- getRet st
-    maybe
-      (return $ Left $ createError e VoidRet)
-      (\t -> do
-         et' <- infer st e
-         either
-           (return . Left)
-           (\t' ->
-              if t == t'
-                then fmap (C.Return . Just) <$> recurse st e
-                else return $ Left $ createError e (RetMismatch t' t))
-           et')
-      mt
-  recurse st (Return o Nothing) = do
-    mt <- getRet st
+  recurse st (Return o (Just e)) = do
+    et <- getRet o st
+    et' <- infer st e
+    ee' <- recurse st e
     return $
-      maybe
-        (Right $ C.Return Nothing)
-        (Left . createError o . RetMismatch Void)
-        mt
+      join $
+      (\t t' e' ->
+         if t == Void
+           then Left $ createError e VoidRet
+           else if t == t'
+                  then Right (C.Return $ Just e')
+                  else Left $ createError e (RetMismatch t' t)) <$>
+      et <*>
+      et' <*>
+      ee'
+  recurse st (Return o Nothing) = do
+    et <- getRet o st
+    return $
+      (\t ->
+         if t == Void
+           then Right $ C.Return Nothing
+           else Left $ createError o $ RetMismatch Void t) =<<
+      et
 
 -- | recurse wrapper but guarantee that expression is a base type for printing
 recBaseE :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' C.Expr)
@@ -612,7 +736,7 @@ instance Symbolize VarDecl' [C.VarDecl'] where
     case edef of
       Left ((_, t), el) -> do
         ets <- mapM (infer st) el -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
-        et <- toType st t
+        et <- toType st Nothing t
         either
           (return . Left)
           (const $
@@ -693,7 +817,9 @@ instance Symbolize [TypeDef'] [C.TypeDef'] where
 
 instance Symbolize TypeDef' C.TypeDef' where
   recurse st (TypeDef' ident@(Identifier _ vname) (_, t)) = do
-    et <- toType st t
+    scope <- S.scopeLevel st
+    let sident = mkSIdStr scope vname
+    et <- toType st (Just sident) t
     either
       (return . Left)
       (\t' -> do
@@ -701,10 +827,8 @@ instance Symbolize TypeDef' C.TypeDef' where
          maybe
            (case t' -- Ignore all types except for structs, as structs will be the only types we will have to define
                   of
-              Struct _ -> do
-                scope <- S.scopeLevel st
-                return $ Right $ C.TypeDef' (mkSIdStr scope vname) (toBase t')
-              _ -> return $ Right C.NoDef)
+              Struct _ -> return $ Right $ C.TypeDef' sident (toBase t')
+              _        -> return $ Right C.NoDef)
            (return . Left)
            me)
       et
@@ -836,58 +960,12 @@ intTypeToInt _ = error "Trying to convert a literal that isn't an int to an int"
                  -- just here for exhaustive pattern matching
                  -- if we want to remove this we must change ArrayType as mentioned below
 
--- | either for a list, if any Left, take first Left, otherwise use lists of Rights
-eitherL :: ([b] -> c) -> [Either a b] -> Either a c
-eitherL f eil =
-  let (err, l) = partitionEithers eil
-   in if null err
-        then Right $ f l
-        else Left $ head err -- Return first error
-
 -- | List of maybes, return first Just or nothing if all nothing
 maybeJ :: [Maybe b] -> Maybe b
 maybeJ l =
   if null (catMaybes l)
     then Nothing
     else Just $ head $ catMaybes l
-
-instance Typify Type where
-  toType st (ArrayType (Lit l) t) = do
-    sym <- toType st t
-    return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
-  toType st (SliceType t) = do
-    sym <- toType st t
-    return $ sym >>= Right . Slice
-  toType st (StructType fdl) = do
-    fl <- checkFields st fdl
-    return $ fl >>= Right . Struct
-    where
-      checkFields ::
-           SymbolTable s -> [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      checkFields st' fdl' = eitherL concat <$> mapM (checkField st') fdl'
-      checkField ::
-           SymbolTable s -> FieldDecl -> ST s (Either ErrorMessage' [Field])
-      checkField st' (FieldDecl idl (_, t)) = do
-        et <- toType st' t
-        either
-          (return . Left)
-          (\t' ->
-             case getFirstDuplicate (toList idl) of
-               Nothing ->
-                 return $
-                 Right $ map (\(Identifier _ vname) -> (vname, t')) (toList idl)
-               Just ident ->
-                 S.disableMessages st' $>
-                 (Left $ createError ident (AlreadyDecl "Field " ident)))
-          et
-  toType st (Type ident) =
-    resolve ident st (createError ident (NotDecl "Type " ident))
-  -- This should never happen, this is here for exhaustive pattern matching
-  -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
-  -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType _ (ArrayType _ _) =
-    error
-      "Trying to convert type of an ArrayType with non literal int as length"
 
 data SymbolError
   = AlreadyDecl String
@@ -920,6 +998,8 @@ data TypeCheckError
   | RetMismatch SType
                 SType
   | NonLVal Expr
+  | RetOut -- Return outside of function, should never happen
+  | NotFunc -- Trying to get the return value of a symbol that isn't a function, shouldn't happen
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -963,6 +1043,8 @@ instance ErrorEntry TypeCheckError where
         "Return expression resolves to type " ++
         show t1 ++ " but function return type is " ++ show t2
       NonLVal e -> prettify e ++ " is not an lvalue and cannot be assigned to"
+      RetOut -> "Return expression outside of function context"
+      NotFunc -> "Trying to get return value of a symbol that isn't a function"
 
 -- | Wrap a result of recurse inside a new scope
 wrap ::
@@ -1023,20 +1105,15 @@ isAddrE e =
     else [createError e (NonLVal e)]
 
 -- | Get the return value of function we are currently declaring, aka latest declared function
-getRet :: SymbolTable s -> ST s (Maybe SType)
-getRet st = do
-  f <- S.getCtx st
-  return $
-    maybe
-      (error "Not in a function body" -- This should never happen as our parser doesn't allow a return statement outside of a function body
-        -- We could put this as Nothing but it'd be misleading as Nothing should mean no SType from the function, not no function at all
-       )
-      getRet'
-      f
+getRet :: Offset -> SymbolTable s -> ST s (Either ErrorMessage' SType)
+getRet o st = do
+  fm <- S.getCtx st
+  -- This error should never happen as our parser doesn't allow a return statement outside of a function body
+  return $ maybe (Left $ createError o RetOut) getRet' fm
   where
-    getRet' :: Symbol -> Maybe SType
-    getRet' (Func _ mt) = mt
-    getRet' _           = error "Not a function" -- Also shouldn't happen and also can be Nothing, but once again, misleading
+    getRet' :: Symbol -> Either ErrorMessage' SType
+    getRet' (Func _ t) = Right t
+    getRet' _          = Left $ createError o NotFunc -- Also shouldn't happen and also can be Nothing, but once again, misleading
 
 -- | Convert SymbolInfo list to String (pass through show) to get string representation of symbol table
 -- ignore error if not a symbol table error (i.e. typecheck error)

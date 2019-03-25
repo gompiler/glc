@@ -298,9 +298,9 @@ infer st ae@(Arguments _ expr args) = do
       fn <- resolve ident st (createError ident (ExprNotDecl "Type " ident))
       return $
         case fl of
-          Just (_, Func pl rtm) ->
+          Just (_, Func pl rt) ->
             if map snd pl == ts
-              then maybe (Right Void) Right rtm
+              then Right rt
               else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
           Just (_, Base) -> do
             ft <- fn
