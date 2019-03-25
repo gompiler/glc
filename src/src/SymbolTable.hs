@@ -281,7 +281,8 @@ instance Symbolize FuncDecl C.FuncDecl
           createFunc (pl, sil)
               -- TODO don't use toType here; resolve only type def types
            = do
-            returnTypeEither <- maybe (return $ Right Void) (toType st Nothing . snd) t
+            returnTypeEither <-
+              maybe (return $ Right Void) (toType st Nothing . snd) t
             return $ (\ret -> (Func pl ret, sil)) <$> returnTypeEither
           insertFunc ::
                (Symbol, [SymbolInfo]) -> ST s (Either ErrorMessage' C.FuncDecl)
