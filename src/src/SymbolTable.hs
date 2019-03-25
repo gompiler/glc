@@ -705,7 +705,7 @@ instance Symbolize Expr C.Expr where
     et' <- infer st eu -- Use typecheck from type inference
     either
       (return . Left)
-      (const $ fmap (C.Unary (convOp op)) <$> recurse st e)
+      (\t -> fmap (C.Unary (toBase t) (convOp op)) <$> recurse st e)
       et'
     where
       convOp :: UnaryOp -> C.UnaryOp
@@ -721,7 +721,9 @@ instance Symbolize Expr C.Expr where
     ee2' <- recurse st e2
     either
       (return . Left)
-      (const $ return $ (\e1' -> C.Binary (convOp op) e1' <$> ee2') =<< ee1')
+      (\t ->
+         return $
+         (\e1' -> C.Binary (toBase t) (convOp op) e1' <$> ee2') =<< ee1')
       et'
     where
       convOp :: BinaryOp -> C.BinaryOp
@@ -781,7 +783,7 @@ instance Symbolize Expr C.Expr where
     ee2' <- recurse st e2
     either
       (return . Left)
-      (const $ return $ (\e1' -> C.AppendExpr e1' <$> ee2') =<< ee1')
+      (\t -> return $ (\e1' -> C.AppendExpr (toBase t) e1' <$> ee2') =<< ee1')
       et'
   recurse st ec@(LenExpr _ e) = do
     ect' <- infer st ec
@@ -796,7 +798,7 @@ instance Symbolize Expr C.Expr where
     ee' <- recurse st e
     either
       (return . Left)
-      (const $ return $ (\e' -> C.Selector e' (C.Ident vname)) <$> ee')
+      (\t -> return $ (\e' -> C.Selector (toBase t) e' (C.Ident vname)) <$> ee')
       ect'
   recurse st e@(Index _ e1 e2) = do
     et' <- infer st e
@@ -804,7 +806,7 @@ instance Symbolize Expr C.Expr where
     ee2' <- recurse st e2
     either
       (return . Left)
-      (const $ return $ (\e1' -> C.Index e1' <$> ee2') =<< ee1')
+      (\t -> return $ (\e1' -> C.Index (toBase t) e1' <$> ee2') =<< ee1')
       et'
   recurse st ec@(Arguments _ e el) = do
     ect' <- infer st ec
@@ -812,7 +814,8 @@ instance Symbolize Expr C.Expr where
     eel' <- mapM (recurse st) el
     either
       (return . Left)
-      (const $ return $ (\e' -> C.Arguments e' <$> sequence eel') =<< ee')
+      (\t ->
+         return $ (\e' -> C.Arguments (toBase t) e' <$> sequence eel') =<< ee')
       ect'
 
 intTypeToInt :: Literal -> Int
