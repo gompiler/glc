@@ -172,7 +172,7 @@ instance Typify Type where
       -- Default resolution method
       resolveType :: ST s (Either ErrorMessage' SType)
       resolveType = do
-        sym <- toType' st root t True -- Allow recursion since we're inside a struct
+        sym <- toType' st root t True -- Allow recursion since we're inside a slice
         return $ sym >>= Right . Slice
   toType' st root@(rootSIdent, rootType) (StructType fdl) brec = do
     fl <- checkFields fdl
