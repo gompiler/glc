@@ -165,16 +165,12 @@ instance Typify Type where
     sym <- toType' st root t
     return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
   -- In golite, we can use a slice type x while creating type x
-  toType' st root@(rootSIdent, rootType) (SliceType t) =
-    case (getMatchingSIdent rootSIdent t, isTypeSlice rootType)
-      -- Cycles only permitted on matching root sident with a non slice root type
+  toType' st root@(rootSIdent, _) (SliceType t) =
+    case getMatchingSIdent rootSIdent t
           of
-      (Just sident, False) -> cyclicType sident
-      _                    -> resolveType
+      Just sident -> cyclicType sident
+      _           -> resolveType
     where
-      isTypeSlice :: Type -> Bool
-      isTypeSlice (SliceType _) = True
-      isTypeSlice _             = False
       -- Placeholder to reference root type
       cyclicType :: SIdent -> ST s (Either ErrorMessage' SType)
       cyclicType rootScope = return $ Right $ Slice $ TypeMap rootScope Infer

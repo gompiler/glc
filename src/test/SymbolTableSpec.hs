@@ -495,6 +495,7 @@ spec = do
     , "func main(){}; func main(){};"
     , "type a int2"
     , "func zz (a, b int) int {}"
+    -- , "var a int; type b a;"
     ]
   expectTypecheckFailNoMain
     -- Init must have no inputs, no return, and be correctly typed
