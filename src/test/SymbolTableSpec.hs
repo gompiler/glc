@@ -295,6 +295,12 @@ spec = do
     , "func init(){}; func init(){};"
     , "func zz (a, b int) int{ return 5; }"
     , "func zz (a,b int) {}"
+    , "type a []a"
+    , "type a struct {b []a;}"
+    , "type a []struct {b a;}"
+    , "type a []struct {a1 a; a2 a; a3 a;}"
+    , "type a struct {a1 []a; a2 []a; a3 []a;}"
+    , "type a []struct {a struct {a a;}; }"
     ]
   expectTypecheckPassNoMain
     [ [text|
@@ -495,6 +501,8 @@ spec = do
     , "func main(){}; func main(){};"
     , "type a int2"
     , "func zz (a, b int) int {}"
+    , "type a struct {b a;}"
+    , "type a struct {a1 []a; a2 []a; a3 a;}"
     -- , "var a int; type b a;"
     ]
   expectTypecheckFailNoMain
