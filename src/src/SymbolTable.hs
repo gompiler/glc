@@ -27,7 +27,7 @@ import           Numeric            (readOct)
 import           Prettify           (prettify)
 import           Scanner            (putExit, putSucc)
 import           TypeInference
-import           Weeding            (weed)
+import           WeedingTypes       (weedT)
 
 import           Symbol
 
@@ -1145,7 +1145,7 @@ typecheckGen code =
     Left
     (either (\e -> Left $ e code `withPrefix` "Typecheck error at ") Right .
      typecheckGen')
-    (weed code)
+    (weedT code)
 
 -- | Generate new AST from Program
 typecheckGen' :: Program -> Glc' C.Program
@@ -1174,7 +1174,7 @@ pTable code =
        let (me, syml) = pTable' p
         in ( me >>= (\e -> Just $ e code `withPrefix` "Symbol table error at ")
            , syml))
-    (weed code)
+    (weedT code)
 
 pTable' :: Program -> (Maybe ErrorMessage', String)
 pTable' p =
