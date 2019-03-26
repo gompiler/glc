@@ -256,7 +256,7 @@ instance Symbolize FuncDecl C.FuncDecl
         rtm <- retType
         either
           (return . Just)
-          (\rt -> S.insert st vname (Func [] rt) Data.Functor.$> Nothing)
+          (\rt -> S.insert st vname (Func [] rt) $> Nothing)
           rtm
       -- Add any function that is not init to symbol table
       addFunc :: ST s (Either ErrorMessage' C.FuncDecl)
