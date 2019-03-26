@@ -359,12 +359,12 @@ instance Symbolize FuncDecl C.FuncDecl
             scope <- S.insert st idv (Variable t')
             return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
-      p2pd :: S.Scope -> Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
-      p2pd scope' (s, t') = C.ParameterDecl (mkSIdStr scope' s) (toBase t')
+      p2pd :: S.Scope -> Param -> C.ParameterDecl
+      p2pd scope (s, t') = C.ParameterDecl (mkSIdStr scope s) (toBase t')
       func2sig :: S.Scope -> Symbol -> C.Signature
-      func2sig scope' (Func pl t') =
+      func2sig scope (Func pl t') =
         C.Signature
-          (C.Parameters (map (p2pd scope') pl))
+          (C.Parameters (map (p2pd scope) pl))
           (case toBase t' of
              C.Type (C.Ident "void") -> Nothing
              ct                      -> Just ct)
