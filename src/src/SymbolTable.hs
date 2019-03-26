@@ -171,31 +171,34 @@ instance Typify Type where
         sym <- toType' st root t True -- Allow recursion since we're inside a slice
         return $ sym >>= Right . Slice
   toType' st root@(rootSIdent, rootType) (StructType fdl) brec = do
-    fl <- checkFields fdl
+    fl <- checkFields
     return $ fl >>= Right . Struct
     where
-      checkFields :: [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      checkFields fdl' = do
-        fields <- mapM checkField fdl'
-        return $ concat <$> sequence fields
+      -- Get all identifiers from field declarations
+      getAllIdents :: [Identifier]
+      getAllIdents = concat $ map (\(FieldDecl nidl _) -> toList nidl) fdl
+      checkFields :: ST s (Either ErrorMessage' [Field])
+      checkFields = case getFirstDuplicate getAllIdents of -- Check for duplicates first
+        Nothing -> do
+          fields <- mapM checkField fdl
+          return $ concat <$> sequence fields
+        Just ident -> return $ Left $ createError ident $ AlreadyDecl "Field " ident
       checkField :: FieldDecl -> ST s (Either ErrorMessage' [Field])
-      checkField (FieldDecl idl (_, t)) =
-        either Left (resolveFieldDuplicate idl) <$> fieldType' t
+      checkField (FieldDecl idl (_, t)) = do
+        ft <- fieldType' t
+        return $ toField idl <$> ft
       -- | Checks first for cyclic type, then defaults to the generic type resolver
+      fieldType' :: Type -> ST s (Either ErrorMessage' SType)
       fieldType' t =
         case (getMatchingSIdent rootSIdent t, isTypeStruct rootType)
                 -- Cycles only permitted on matching root sident with a non struct root type
               of
           (Just sident, False) -> cyclicType sident
           _                    -> toType' st root t brec
-      -- Given stype and identifiers, ensure no duplicates and map to fields
-      resolveFieldDuplicate ::
-           Identifiers -> SType -> Either ErrorMessage' [Field]
-      resolveFieldDuplicate idl t =
-        case getFirstDuplicate (toList idl) of
-          Nothing ->
-            Right $ map (\(Identifier _ vname) -> (vname, t)) (toList idl)
-          Just ident -> Left $ createError ident $ AlreadyDecl "Field " ident
+      toField ::
+           Identifiers -> SType -> [Field]
+      toField idl t =
+        map (\(Identifier _ vname) -> (vname, t)) (toList idl)
       isTypeStruct :: Type -> Bool
       isTypeStruct (StructType _) = True
       isTypeStruct _              = False
@@ -412,24 +415,27 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       idl' = toList idl
       el' = toList el
       checkDecl :: ST s (Glc' (NonEmpty (SIdent, C.Expr)))
-      checkDecl = do
-        eb <- zipWithM checkDec idl' el'
+      checkDecl = case getFirstDuplicate idl' of
+        Nothing ->
+          do
+            eb <- zipWithM checkDec idl' el'
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-        let eit = sequence eb >>= check
-         in if isLeft eit
-              then S.disableMessages st $> eit
-              else return eit
-        where
-          check ::
-               [(Bool, (C.ScopedIdent, C.Expr))]
-            -> Either (String -> ErrorMessage) (NonEmpty (C.ScopedIdent, C.Expr))
-          check l =
-            let (bl, decl) =
-                  unzip
-                    (filter (\(_, (sident, _)) -> not (isBlankIdent sident)) l)
-             in if True `elem` bl
+            let eit = sequence eb >>= check
+              in if isLeft eit
+                 then S.disableMessages st $> eit
+                 else return eit
+              where
+                check ::
+                  [(Bool, (C.ScopedIdent, C.Expr))]
+                  -> Either (String -> ErrorMessage) (NonEmpty (C.ScopedIdent, C.Expr))
+                check l =
+                  let (bl, decl) =
+                        unzip
+                        (filter (\(_, (sident, _)) -> not (isBlankIdent sident)) l)
+                  in if True `elem` bl
                   then Right (fromList decl)
                   else Left $ createError (head idl') ShortDec
+        Just ident -> S.disableMessages st $> (Left $ createError ident $ DuplicateShort ident)
       checkDec :: Identifier -> Expr -> ST s (Glc' (Bool, (SIdent, C.Expr)))
       checkDec ident e = do
         et <- infer st e -- Glc' SType
@@ -958,6 +964,7 @@ data SymbolError
             Identifier
   | VoidFunc Identifier
   | NotVar Identifier
+  | DuplicateShort Identifier
   | ShortDec
   | InitNVoid SType
   | InitParams
@@ -994,6 +1001,8 @@ instance ErrorEntry SymbolError where
       VoidFunc (Identifier _ vname) -> vname ++ " resolves to a void function"
       NotVar (Identifier _ vname) ->
         vname ++ " is not a var and cannot be short declared"
+      DuplicateShort (Identifier _ vname) ->
+        "Repeated identifier " ++ vname ++ " on LHS of short declaration"
       ShortDec -> "Short declaration list contains no new variables"
       InitNVoid t -> "init has non void return type " ++ show t
       InitParams -> "init must not have any parameters"
