@@ -283,30 +283,34 @@ instance Symbolize FuncDecl C.FuncDecl
               me
           else return $ Left $ createError ident (AlreadyDecl "Function " ident)
         where
+          funcSym :: ([Param], SType) -> Symbol
+          funcSym (pl, ret) = Func pl ret
           createFunc ::
                [(Param, SymbolInfo)]
-            -> ST s (Either ErrorMessage' (Symbol, [SymbolInfo]))
+            -> ST s (Either ErrorMessage' (([Param], SType), [SymbolInfo]))
           createFunc l
               -- TODO don't use toType here; resolve only type def types
            =
             let (pl, sil) = unzip l
              in do returnTypeEither <- retType
-                   return $ (\ret -> (Func pl ret, sil)) <$> returnTypeEither
+                   return $ (\ret -> ((pl, ret), sil)) <$> returnTypeEither
           insertFunc ::
-               (Symbol, [SymbolInfo]) -> ST s (Either ErrorMessage' C.FuncDecl)
-          insertFunc (f, sil) = do
-            scope <- S.insert st vname f
-            _ <- S.addMessage st (vname, f, scope)
-            wrap'
-              st
-              f
-              (do mapM_ (\(k, sym, _) -> add st k sym) sil
-                  recurseSl scope)
+               (([Param], SType), [SymbolInfo])
+            -> ST s (Either ErrorMessage' C.FuncDecl)
+          insertFunc (ftup, sil) =
+            let f = funcSym ftup
+             in do scope <- S.insert st vname f
+                   _ <- S.addMessage st (vname, f, scope)
+                   wrap'
+                     st
+                     f
+                     (do mapM_ (\(k, sym, _) -> add st k sym) sil
+                         recurseSl scope)
             where
               recurseSl :: S.Scope -> ST s (Either ErrorMessage' C.FuncDecl)
               recurseSl scope' =
                 fmap
-                  (C.FuncDecl (mkSIdStr scope' vname) (func2sig scope' f) .
+                  (C.FuncDecl (mkSIdStr scope' vname) (func2sig scope' ftup) .
                    C.BlockStmt) .
                 sequence <$>
                 mapM (recurse st) sl
@@ -361,15 +365,13 @@ instance Symbolize FuncDecl C.FuncDecl
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: S.Scope -> Param -> C.ParameterDecl
       p2pd scope (s, t') = C.ParameterDecl (mkSIdStr scope s) (toBase t')
-      func2sig :: S.Scope -> Symbol -> C.Signature
-      func2sig scope (Func pl t') =
+      func2sig :: S.Scope -> ([Param], SType) -> C.Signature
+      func2sig scope (pl, t') =
         C.Signature
           (C.Parameters (map (p2pd scope) pl))
           (case toBase t' of
              C.Type (C.Ident "void") -> Nothing
              ct                      -> Just ct)
-      func2sig _ _ =
-        error "Trying to convert a symbol that isn't a function to a signature" -- Should never happen
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
 
