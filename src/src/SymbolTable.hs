@@ -294,27 +294,31 @@ instance Symbolize FuncDecl C.FuncDecl
               st
               f
               (do mapM_ (\(k, sym, _) -> add st k sym) sil
-                  fmap
-                    (C.FuncDecl (mkSIdStr scope vname) (func2sig f) .
-                     C.BlockStmt) .
-                    sequence <$>
-                    mapM (recurse st) sl)
-      -- Adds the init function to symbol table
+                  recurseSl scope)
+                    where
+                      recurseSl :: S.Scope -> ST s (Either ErrorMessage' C.FuncDecl)
+                      recurseSl scope' = fmap (C.FuncDecl (mkSIdStr scope' vname) (func2sig scope' f) .
+                                        C.BlockStmt) .
+                                  sequence <$>
+                                  mapM (recurse st) sl
+      -- Adds the init function to message list
       addInit :: ST s (Either ErrorMessage' C.FuncDecl)
       addInit =
-        maybe
-          (do scope <- S.scopeLevel st -- Should be 1
-              _ <- S.addMessage st (vname, Func [] Void, scope)
-              fmap
-                (C.FuncDecl
-                   (mkSIdStr scope vname)
-                   (C.Signature (C.Parameters []) Nothing)) <$>
-                recurse st body)
-          (\(_, t') -> do
-             et2 <- toType st Nothing t'
-             _ <- S.disableMessages st
-             return $ (Left . createError ident . InitNVoid) =<< et2)
-          t
+        maybe (do
+                  scope <- S.scopeLevel st -- Should be 1
+                  _ <- S.addMessage st (vname, Func [] Void, scope)
+                  recurseBody scope)
+                  (\(_, t') -> do
+                      et2 <- toType st Nothing t'
+                      _ <- S.disableMessages st
+                      return $ (Left . createError ident . InitNVoid) =<< et2)
+                  t
+                    where
+                      recurseBody :: S.Scope -> ST s (Either ErrorMessage' C.FuncDecl)
+                      recurseBody scope' = fmap (C.FuncDecl
+                                          (mkSIdStr scope' vname)
+                                          (C.Signature (C.Parameters []) Nothing)) <$>
+                                    recurse st body
       checkParams ::
            [ParameterDecl]
         -> ST s (Glc' ([Param], [SymbolInfo]))
@@ -354,16 +358,16 @@ instance Symbolize FuncDecl C.FuncDecl
             scope <- S.insert st idv (Variable t')
             return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
-      p2pd :: Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
-      p2pd (s, t') = C.ParameterDecl (mkSIdStr (S.Scope 2) s) (toBase t')
-      func2sig :: Symbol -> C.Signature
-      func2sig (Func pl t') =
+      p2pd :: S.Scope -> Param -> C.ParameterDecl -- Params are only at scope 2, inside scope of function
+      p2pd scope' (s, t') = C.ParameterDecl (mkSIdStr scope' s) (toBase t')
+      func2sig :: S.Scope -> Symbol -> C.Signature
+      func2sig scope' (Func pl t') =
         C.Signature
-          (C.Parameters (map p2pd pl))
+          (C.Parameters (map (p2pd scope') pl))
           (case toBase t' of
              C.Type (C.Ident "void") -> Nothing
              ct                      -> Just ct)
-      func2sig _ =
+      func2sig _ _ =
         error "Trying to convert a symbol that isn't a function to a signature" -- Should never happen
   recurse _ FuncDecl {} =
     error "Function declaration's body is not a block stmt"
@@ -1087,7 +1091,7 @@ toBase (Struct fls) = C.StructType (map f2fd fls)
     f2fd :: Field -> C.FieldDecl
     f2fd (s, t) = C.FieldDecl (C.Ident s) (toBase t)
 toBase (TypeMap _ t) = toBase t
-toBase t = C.Type $ C.Ident $ show t -- The last ones are primitive types
+toBase t = C.Type $ C.Ident $ show t -- The last ones are primitive types, void or infer
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: Expr -> Bool
