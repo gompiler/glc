@@ -412,28 +412,28 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       idl' = toList idl
       el' = toList el
       checkDecl :: ST s (Glc' (NonEmpty (SIdent, C.Expr)))
-      checkDecl = do
-        eb <- zipWithM checkDec idl' el'
+      checkDecl = case getFirstDuplicate idl' of
+        Nothing ->
+          do
+            eb <- zipWithM checkDec idl' el'
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-        let eit = sequence eb >>= check
-         in if isLeft eit
-              then S.disableMessages st $> eit
-              else return eit
-        where
-          check ::
-               [(Bool, (C.ScopedIdent, C.Expr))]
-            -> Either (String -> ErrorMessage) (NonEmpty (C.ScopedIdent, C.Expr))
-          check l =
-            let (bl, decl) =
-                  unzip
-                    (filter (\(_, (sident, _)) -> not (isBlankIdent sident)) l)
-             in if True `elem` bl
+            let eit = sequence eb >>= check
+              in if isLeft eit
+                 then S.disableMessages st $> eit
+                 else return eit
+              where
+                check ::
+                  [(Bool, (C.ScopedIdent, C.Expr))]
+                  -> Either (String -> ErrorMessage) (NonEmpty (C.ScopedIdent, C.Expr))
+                check l =
+                  let (bl, decl) =
+                        unzip
+                        (filter (\(_, (sident, _)) -> not (isBlankIdent sident)) l)
+                  in if True `elem` bl
                   then Right (fromList decl)
                   else Left $ createError (head idl') ShortDec
-      checkDec ::
-           Identifier
-        -> Expr
-        -> ST s (Glc' (Bool, (SIdent, C.Expr)))
+        Just ident -> S.disableMessages st $> (Left $ createError ident $ DuplicateShort ident)
+      checkDec :: Identifier -> Expr -> ST s (Glc' (Bool, (SIdent, C.Expr)))
       checkDec ident e = do
         et <- infer st e -- Glc' SType
         either
@@ -976,6 +976,7 @@ data SymbolError
             Identifier
   | VoidFunc Identifier
   | NotVar Identifier
+  | DuplicateShort Identifier
   | ShortDec
   | InitNVoid SType
   | InitParams
@@ -1012,6 +1013,8 @@ instance ErrorEntry SymbolError where
       VoidFunc (Identifier _ vname) -> vname ++ " resolves to a void function"
       NotVar (Identifier _ vname) ->
         vname ++ " is not a var and cannot be short declared"
+      DuplicateShort (Identifier _ vname) ->
+        "Repeated identifier " ++ vname ++ " on LHS of short declaration"
       ShortDec -> "Short declaration list contains no new variables"
       InitNVoid t -> "init has non void return type " ++ show t
       InitParams -> "init must not have any parameters"

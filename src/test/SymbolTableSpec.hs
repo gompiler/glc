@@ -151,6 +151,7 @@ spec = do
     , "if true {var a = 21;} else {var b = a;}"
     -- Append alone is an expression
     , "var a []int; var b int; append(a, b)"
+    , "a, a := 0, 1"
     ]
   expectTypecheckPass
     [ [text|
