@@ -18,7 +18,6 @@ import           Data
 import           Data.Either        (isLeft)
 import           Data.Functor       (($>))
 
-import           Data.List.Extra    (concatUnzip)
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
 import           Data.Maybe         (catMaybes)
 
@@ -276,11 +275,12 @@ instance Symbolize FuncDecl C.FuncDecl
           else return $ Left $ createError ident (AlreadyDecl "Function " ident)
         where
           createFunc ::
-               ([Param], [SymbolInfo])
+               [(Param, SymbolInfo)]
             -> ST s (Either ErrorMessage' (Symbol, [SymbolInfo]))
-          createFunc (pl, sil)
+          createFunc l
               -- TODO don't use toType here; resolve only type def types
-           = do
+           = let (pl, sil) = unzip l in
+            do
             returnTypeEither <-
               maybe (return $ Right Void) (toType st Nothing . snd) t
             return $ (\ret -> (Func pl ret, sil)) <$> returnTypeEither
@@ -321,12 +321,12 @@ instance Symbolize FuncDecl C.FuncDecl
                                     recurse st body
       checkParams ::
            [ParameterDecl]
-        -> ST s (Glc' ([Param], [SymbolInfo]))
+        -> ST s (Glc' [(Param, SymbolInfo)])
       checkParams pdl' = do
         pl <- mapM checkParam pdl'
-        return $ concatUnzip <$> sequence pl
+        return $ concat <$> sequence pl
       checkParam ::
-           ParameterDecl -> ST s (Glc' ([Param], [SymbolInfo]))
+           ParameterDecl -> ST s (Glc' [(Param, SymbolInfo)])
       checkParam (ParameterDecl idl (_, t')) = do
         et <- toType st Nothing t' -- Remove ST
         either
@@ -344,9 +344,9 @@ instance Symbolize FuncDecl C.FuncDecl
       checkIds' ::
            SType
         -> Identifiers
-        -> ST s (Either ErrorMessage' ([Param], [SymbolInfo]))
+        -> ST s (Glc' [(Param, SymbolInfo)])
       checkIds' t' idl =
-        fmap unzip . sequence <$> mapM (checkId' t') (toList idl)
+        sequence <$> mapM (checkId' t') (toList idl)
       checkId' ::
            SType
         -> Identifier
