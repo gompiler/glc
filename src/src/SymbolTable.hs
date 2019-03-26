@@ -188,7 +188,7 @@ instance Typify Type where
       checkField :: FieldDecl -> ST s (Either ErrorMessage' [Field])
       checkField (FieldDecl idl (_, t)) = do
         ft <- fieldType' t
-        return $ (toField idl) <$> ft
+        return $ toField idl <$> ft
       -- | Checks first for cyclic type, then defaults to the generic type resolver
       fieldType' :: Type -> ST s (Either ErrorMessage' SType)
       fieldType' t =
