@@ -102,7 +102,7 @@ newtype Parameters =
 -- No result type needed
 data Signature =
   Signature Parameters
-            Type
+            (Maybe Type)
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
