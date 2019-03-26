@@ -1079,7 +1079,7 @@ toBase PFloat64 = C.PFloat64
 toBase PBool = C.PBool
 toBase PRune = C.PRune
 toBase PString = C.PString
-toBase Void = C.Void
+toBase Void = undefined
 toBase Infer = undefined
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?

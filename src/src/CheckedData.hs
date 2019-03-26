@@ -312,7 +312,6 @@ data Type
   | PBool
   | PRune
   | PString
-  | Void
   -- | Empty return type
   deriving (Show, Eq)
 
