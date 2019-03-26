@@ -173,16 +173,21 @@ instance Typify Type where
         sym <- toType' st root t True -- Allow recursion since we're inside a slice
         return $ sym >>= Right . Slice
   toType' st root@(rootSIdent, rootType) (StructType fdl) brec = do
-    fl <- checkFields fdl
+    fl <- checkFields
     return $ fl >>= Right . Struct
     where
-      checkFields :: [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      checkFields fdl' = do
-        fields <- mapM checkField fdl'
-        return $ concat <$> sequence fields
+      -- Get all identifiers from field declarations
+      getAllIdents :: [Identifier]
+      getAllIdents = concat $ map (\(FieldDecl nidl _) -> toList nidl) fdl
+      checkFields :: ST s (Either ErrorMessage' [Field])
+      checkFields = case getFirstDuplicate getAllIdents of -- Check for duplicates first
+        Nothing -> do
+          fields <- mapM checkField fdl
+          return $ concat <$> sequence fields
+        Just ident -> return $ Left $ createError ident $ AlreadyDecl "Field " ident
       checkField :: FieldDecl -> ST s (Either ErrorMessage' [Field])
       checkField (FieldDecl idl (_, t)) =
-        either Left (resolveFieldDuplicate idl) <$> fieldType' t
+        either Left (Right . toField idl) <$> fieldType' t
       -- | Checks first for cyclic type, then defaults to the generic type resolver
       fieldType' t =
         case (getMatchingSIdent rootSIdent t, isTypeStruct rootType)
@@ -190,14 +195,10 @@ instance Typify Type where
               of
           (Just sident, False) -> cyclicType sident
           _                    -> toType' st root t brec
-      -- Given stype and identifiers, ensure no duplicates and map to fields
-      resolveFieldDuplicate ::
-           Identifiers -> SType -> Either ErrorMessage' [Field]
-      resolveFieldDuplicate idl t =
-        case getFirstDuplicate (toList idl) of
-          Nothing ->
-            Right $ map (\(Identifier _ vname) -> (vname, t)) (toList idl)
-          Just ident -> Left $ createError ident $ AlreadyDecl "Field " ident
+      toField ::
+           Identifiers -> SType -> [Field]
+      toField idl t =
+        map (\(Identifier _ vname) -> (vname, t)) (toList idl)
       isTypeStruct :: Type -> Bool
       isTypeStruct (StructType _) = True
       isTypeStruct _              = False
