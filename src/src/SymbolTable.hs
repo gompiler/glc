@@ -365,13 +365,9 @@ instance Symbolize FuncDecl C.FuncDecl
       func2sig scope (Func pl t') =
         C.Signature
           (C.Parameters (map (p2pd scope) pl))
-          (case followMap t' of
+          (case t' of
              Void -> Nothing
              _    -> Just (toBase t'))
-        where
-          followMap :: SType -> SType
-          followMap (TypeMap _ stype') = followMap stype'
-          followMap stype'             = stype'
       func2sig _ _ =
         error "Trying to convert a symbol that isn't a function to a signature" -- Should never happen
   recurse _ FuncDecl {} =
