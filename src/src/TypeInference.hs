@@ -1,3 +1,6 @@
+{-# LANGUAGE InstanceSigs        #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module TypeInference
   ( ExpressionTypeError
   , infer
@@ -89,7 +92,7 @@ instance ErrorEntry ExpressionTypeError where
         "Cast expects base type; non-base type " ++ show styp ++ " provided"
 
 -- | Main type inference function
-infer :: SymbolTable s -> Expr -> ST s (Glc' SType)
+infer :: forall s. SymbolTable s -> Expr -> ST s (Glc' SType)
 -- | Infers the types of '+' unary operator expressions
 infer st e@(Unary _ Pos inner) =
   inferConstraint
@@ -113,7 +116,7 @@ infer st e@(Unary _ Not inner) =
   inferConstraint
     st
     isBoolean
-    (const PBool)
+    NE.head
     (BadUnaryOp "boolean")
     e
     (fromList [inner])
@@ -189,20 +192,20 @@ infer _ (Lit l) =
     RuneLit {}   -> PRune
     StringLit {} -> PString
 -- | Resolve variables to the type their identifier points to in the scope
-infer st (Var ident@(Identifier _ vname)) = resolveVar st
+infer st (Var ident@(Identifier _ vname)) = resolveVar
   where
-    resolveVar :: SymbolTable s -> ST s (Glc' SType)
-    resolveVar st' = do
-      res <- S.lookup st' vname
+    resolveVar :: ST s (Glc' SType)
+    resolveVar = do
+      res <- S.lookup st vname
       case res of
         Nothing -> do
-          _ <- S.addMessage st' Nothing -- Signal error to symbol table checker
+          _ <- S.disableMessages st -- Signal error to symbol table checker
           return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
         Just (_, sym) ->
           return $
           case sym of
             Variable t'  -> Right t'
-            ConstantBool -> Right PBool
+            ConstantBool -> Right PBool -- Constants can only be booleans
             _            -> Left $ createError ident (NotVar ident)
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
@@ -298,9 +301,9 @@ infer st ae@(Arguments _ expr args) = do
       fn <- resolve ident st (createError ident (ExprNotDecl "Type " ident))
       return $
         case fl of
-          Just (_, Func pl rtm) ->
+          Just (_, Func pl rt) ->
             if map snd pl == ts
-              then maybe (Right Void) Right rtm
+              then Right rt
               else Left $ createError ae $ ArgumentMismatch ts (map snd pl) -- argument mismatch
           Just (_, Base) -> do
             ft <- fn
@@ -393,7 +396,9 @@ isComparable :: SType -> Bool
 isComparable styp =
   case styp of
     Slice _         -> False
+    Array _ atyp    -> isComparable atyp
     TypeMap _ styp' -> isComparable styp'
+    Struct fdl      -> all (isComparable . snd) fdl
     _               -> True
 
 -- | Resolves a defined type to a base type, WITHOUT nested types (arrays, etc)

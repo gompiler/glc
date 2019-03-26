@@ -5,8 +5,8 @@ import qualified CheckedData      as T (Ident (..), Scope (..),
                                         ScopedIdent (..))
 import           Control.Monad.ST
 import           Data             (Identifier (..))
+import           Data.Functor       (($>))
 import           Data.List        (intercalate)
-import qualified Data.Maybe       as Maybe
 import qualified SymbolTableCore  as S
 
 -- We define new types for symbols and types here
@@ -22,14 +22,14 @@ type SymbolInfo = (String, Symbol, S.Scope)
 
 -- | SymbolTable, cactus stack of SymbolScope
 -- specific instantiation for our uses
-type SymbolTable s = S.SymbolTable s Symbol (Maybe SymbolInfo)
+type SymbolTable s = S.SymbolTable s Symbol SymbolInfo Symbol
 
 data Symbol
   = Base -- Base type, resolve to themselves, i.e. int
   -- In Golite, the only constants we have are booleans
   | ConstantBool
   | Func [Param]
-         (Maybe SType)
+         SType
   | Variable SType
   | SType SType -- Declared types
   deriving (Eq)
@@ -53,10 +53,10 @@ data SType
 instance Show Symbol where
   show s =
     case s of
-      Func pl mt ->
+      Func pl t ->
         " [function] = (" ++
         intercalate "," (map (\(_, t') -> show t') pl) ++
-        ") -> " ++ maybe "void" show mt
+        ") -> " ++ show t
       Variable t' -> " [variable] = " ++ show t'
       SType t' -> " [type] = " ++ showDef t'
       _ -> ""
@@ -92,11 +92,12 @@ resolve ::
   -> SymbolTable s
   -> ErrorMessage'
   -> ST s (Glc' SType)
-resolve (Identifier _ idv) st notDeclError = do
+resolve ident@(Identifier _ idv) st notDeclError = do
   res <- S.lookup st idv
+  sres <- maybe (S.disableMessages st $> Left notDeclError) (return . Right) res
   return $ do
-    (scope, t) <- res <?> notDeclError
-    return $ Maybe.fromMaybe Void $ resolve' t scope idv
+    (scope, t) <- sres
+    maybe (Left $ createError ident "Undefined base type") Right $ resolve' t scope idv
     -- | Resolve symbol to type
   where
     resolve' :: Symbol -> S.Scope -> String -> Maybe SType
@@ -111,7 +112,7 @@ resolve (Identifier _ idv) st notDeclError = do
     resolve' ConstantBool _ _ = Just PBool
     resolve' (Variable t') _ _ = Just t'
     resolve' (SType t') scope ident' = Just $ TypeMap (mkSIdStr scope ident') t'
-    resolve' (Func _ mt) _ _ = mt
+    resolve' (Func _ t') _ _ = Just t'
 
 -- | Take Symbol table scope and string to make ScopedIdent, add dummy offset
 mkSIdStr :: S.Scope -> String -> SIdent
