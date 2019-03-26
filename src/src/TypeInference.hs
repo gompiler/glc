@@ -1,9 +1,13 @@
+{-# LANGUAGE InstanceSigs        #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module TypeInference
   ( ExpressionTypeError
   , infer
   , isNumeric
   , isComparable
   , isBase
+  , resolveSType
   ) where
 
 import qualified CheckedData        as T (Ident (..), Scope (..),
@@ -88,7 +92,7 @@ instance ErrorEntry ExpressionTypeError where
         "Cast expects base type; non-base type " ++ show styp ++ " provided"
 
 -- | Main type inference function
-infer :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
+infer :: forall s. SymbolTable s -> Expr -> ST s (Either ErrorMessage' SType)
 -- | Infers the types of '+' unary operator expressions
 infer st e@(Unary _ Pos inner) =
   inferConstraint
@@ -112,7 +116,7 @@ infer st e@(Unary _ Not inner) =
   inferConstraint
     st
     isBoolean
-    (const PBool)
+    NE.head
     (BadUnaryOp "boolean")
     e
     (fromList [inner])
@@ -147,8 +151,10 @@ infer st e@(Binary _ op i1 i2) =
   where
     innerList :: NonEmpty Expr
     innerList = fromList [i1, i2]
+    -- Does not always just return bool! May return a defined type which
+    -- resolves to bool instead.
     andOrConstraint =
-      inferConstraint st isBoolean (const PBool) (BadBinaryOp "boolean")
+      inferConstraint st isBoolean NE.head (BadBinaryOp "boolean")
     comparableConstraint _ _ -- Special ugly case
      = do
       ei1 <- infer st i1
@@ -186,20 +192,18 @@ infer _ (Lit l) =
     RuneLit {}   -> PRune
     StringLit {} -> PString
 -- | Resolve variables to the type their identifier points to in the scope
-infer st (Var ident@(Identifier _ vname)) = resolveVar st
-  where
-    resolveVar :: SymbolTable s -> ST s (Either ErrorMessage' SType)
-    resolveVar st' = do
-      res <- S.lookup st' vname
-      case res of
-        Nothing -> do
-          _ <- S.addMessage st' Nothing -- Signal error to symbol table checker
-          return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
-        Just (_, sym) -> return $
-          case sym of
-            Variable t' -> Right t'
-            Constant    -> Right PBool -- Constants can only be booleans
-            _           -> Left $ createError ident (NotVar ident)
+infer st (Var ident@(Identifier _ vname)) = do
+  res <- S.lookup st vname
+  case res of
+    Nothing -> do
+      _ <- S.disableMessages st -- Signal error to symbol table checker
+      return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
+    Just (_, sym) ->
+      return $
+      case sym of
+        Variable t'  -> Right t'
+        ConstantBool -> Right PBool -- Constants can only be booleans
+        _            -> Left $ createError ident (NotVar ident)
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
@@ -208,10 +212,11 @@ infer st ae@(AppendExpr _ e1 e2) = do
   sle <- infer st e1 -- Infer type of slice (e1)
   exe <- infer st e2 -- Infer type of value to append (e2)
   return $
-    case (sle, exe) of
+    case (sle, exe)
     -- TODO: MORE CASES FOR NICER ERRORS?
+          of
       (Right st1, Right t2) ->
-        case rpartSType st1 of
+        case resolveSType st1 of
           Slice t1 ->
             if t1 == t2
               then Right st1
@@ -248,7 +253,7 @@ infer st ce@(CapExpr _ expr) =
 -- * S resolves to a struct type that has a field named id.
 infer st se@(Selector _ expr (Identifier _ ident)) = do
   eitherSele <- infer st expr
-  return $ eitherSele >>= (infer' . rpartSType)
+  return $ eitherSele >>= (infer' . resolveSType)
   -- TODO: Look into resolveSType / alternates for this
   where
     infer' :: SType -> Either ErrorMessage' SType
@@ -268,7 +273,7 @@ infer st ie@(Index _ e1 e2) = do
   return $ do
     t1 <- e1e
     t2 <- e2e
-    case rpartSType t1 of
+    case resolveSType t1 of
       Slice t   -> indexable t t2 "slice"
       Array _ t -> indexable t t2 "array"
       t         -> Left $ createError ie $ NonIndexable t
@@ -276,7 +281,7 @@ infer st ie@(Index _ e1 e2) = do
   where
     indexable :: SType -> SType -> String -> Either ErrorMessage' SType
     indexable t t' errTag =
-      case rpartSType t' of
+      case resolveSType t' of
         PInt -> Right t
         _    -> Left $ createError ie $ BadIndex errTag t'
 -- | Infer types of arguments (function call / typecast) expressions
@@ -290,11 +295,7 @@ infer st ae@(Arguments _ expr args) = do
     (Var ident@(Identifier _ vname), Right ts) -> do
       fl <- S.lookup st vname
       -- Only used for base types, since it goes all the way
-      fn <-
-        resolve
-          ident
-          st
-          (createError ident (ExprNotDecl "Type " ident))
+      fn <- resolve ident st (createError ident (ExprNotDecl "Type " ident))
       return $
         case fl of
           Just (_, Func pl rtm) ->
@@ -312,7 +313,7 @@ infer st ae@(Arguments _ expr args) = do
                 tryCast
                   (TypeMap (T.ScopedIdent (T.Scope scp) (T.Ident vname)) ft)
                   ct -- Left $ createError ae $ ExprNotDecl (show ft) ident
-              _    -> Left $ createError ae $ CastArguments (length ts)
+              _ -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId vname -- non-function identifier
           Nothing -> Left $ createError ae $ ExprNotDecl "Function " ident -- not declared
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
@@ -323,17 +324,17 @@ infer st ae@(Arguments _ expr args) = do
       case (isBase rct, isBase rft) of
         (True, True) ->
           if rct == rft ||
-            (isNumeric rct && isNumeric rft) ||
-            (rft == PString && isIntegerLike rct)
+             (isNumeric rct && isNumeric rft) ||
+             (rft == PString && isIntegerLike rct)
             then Right ft
             else Left $ createError ae $ IncompatibleCast ft ct
-        (False, _)    -> Left $ createError ae $ ExpectBaseType rct
+        (False, _) -> Left $ createError ae $ ExpectBaseType rct
         (True, False) -> Left $ createError ae $ ExpectBaseType rft
       where
         rct :: SType
-        rct = rpartSType ct
+        rct = resolveSType ct
         rft :: SType
-        rft = rpartSType ft
+        rft = resolveSType ft
 
 inferConstraint ::
      SymbolTable s -- st
@@ -348,13 +349,13 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   return $ do
     ts <- eitherTs
      -- all the same and one of the valid types:
-    if length (NE.nub ts) == 1 && (isCorrect . rpartSType) (NE.head ts)
+    if length (NE.nub ts) == 1 && isCorrect (NE.head ts)
       then Right $ resultSType ts
       else Left $ createError parentExpr (makeError ts)
 
 isLenCompatible :: SType -> Bool
 isLenCompatible t =
-  case t of
+  case resolveSType t of
     PString  -> True
     Array {} -> True
     Slice {} -> True
@@ -362,39 +363,42 @@ isLenCompatible t =
 
 isCapCompatible :: SType -> Bool
 isCapCompatible t =
-  case t of
+  case resolveSType t of
     Array {} -> True
     Slice {} -> True
     _        -> False
 
 isNumeric :: SType -> Bool
-isNumeric = flip elem [PInt, PFloat64, PRune]
+isNumeric = flip elem [PInt, PFloat64, PRune] . resolveSType
 
 isAddable :: SType -> Bool
 isAddable = isOrdered
 
 -- isComparable: many many things...
 isOrdered :: SType -> Bool
-isOrdered = flip elem [PInt, PFloat64, PRune, PString]
+isOrdered = flip elem [PInt, PFloat64, PRune, PString] . resolveSType
 
 isBase :: SType -> Bool
-isBase = flip elem [PInt, PFloat64, PBool, PRune, PString]
+isBase = flip elem [PInt, PFloat64, PBool, PRune, PString] . resolveSType
 
+-- | Check if a type resolves to a boolean
 isBoolean :: SType -> Bool
-isBoolean = (==) PBool
+isBoolean = (==) PBool . resolveSType
 
 isIntegerLike :: SType -> Bool
-isIntegerLike = flip elem [PInt, PRune]
+isIntegerLike = flip elem [PInt, PRune] . resolveSType
 
 -- | Checks if a type is comparable at all (arrays still need length checks).
 isComparable :: SType -> Bool
 isComparable styp =
   case styp of
     Slice _         -> False
+    Array _ atyp    -> isComparable atyp
     TypeMap _ styp' -> isComparable styp'
+    Struct fdl      -> all (isComparable . snd) fdl
     _               -> True
 
 -- | Resolves a defined type to a base type, WITHOUT nested types (arrays, etc)
-rpartSType :: SType -> SType
-rpartSType (TypeMap _ st) = rpartSType st
-rpartSType t              = t -- Other types
+resolveSType :: SType -> SType
+resolveSType (TypeMap _ st) = resolveSType st
+resolveSType t              = t -- Other types

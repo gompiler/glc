@@ -1,11 +1,13 @@
 module Symbol where
 
+import           Base
 import qualified CheckedData      as T (Ident (..), Scope (..),
                                         ScopedIdent (..))
 import           Control.Monad.ST
 import           Data             (Identifier (..))
+import           Data.Functor       (($>))
 import           Data.List        (intercalate)
-import           ErrorBundle
+import qualified Data.Maybe       as Maybe
 import qualified SymbolTableCore  as S
 
 -- We define new types for symbols and types here
@@ -21,11 +23,12 @@ type SymbolInfo = (String, Symbol, S.Scope)
 
 -- | SymbolTable, cactus stack of SymbolScope
 -- specific instantiation for our uses
-type SymbolTable s = S.SymbolTable s Symbol (Maybe SymbolInfo)
+type SymbolTable s = S.SymbolTable s Symbol SymbolInfo Symbol
 
 data Symbol
   = Base -- Base type, resolve to themselves, i.e. int
-  | Constant -- For bools only
+  -- In Golite, the only constants we have are booleans
+  | ConstantBool
   | Func [Param]
          (Maybe SType)
   | Variable SType
@@ -90,29 +93,24 @@ resolve ::
   -> SymbolTable s
   -> ErrorMessage'
   -> ST s (Either ErrorMessage' SType)
-resolve (Identifier _ vname) st notDeclError =
-  let idv = vname
-   in do res <- S.lookup st idv
-         case res of
-           Nothing -> return $ Left notDeclError -- createError ident (NotDecl "Type " ident)
-           Just (scope, t) ->
-             return $
-             case resolve' t scope idv of
-               Nothing -> Right Void -- createError ident (VoidFunc ident)
-               Just t' -> Right t'
+resolve (Identifier _ idv) st notDeclError = do
+  res <- S.lookup st idv
+  sres <- maybe (S.disableMessages st $> Left notDeclError) (return . Right) res
+  return $ do
+    (scope, t) <- sres
+    return $ Maybe.fromMaybe Void $ resolve' t scope idv
     -- | Resolve symbol to type
   where
     resolve' :: Symbol -> S.Scope -> String -> Maybe SType
     resolve' Base _ ident' =
-      Just $
       case ident' of
-        "int"     -> PInt
-        "float64" -> PFloat64
-        "bool"    -> PBool
-        "rune"    -> PRune
-        "string"  -> PString
-        _         -> error "Nonexistent base type in GoLite" -- This shouldn't happen, don't insert any other base types
-    resolve' Constant _ _ = Just PBool -- Constants reserved for bools only
+        "int"     -> Just PInt
+        "float64" -> Just PFloat64
+        "bool"    -> Just PBool
+        "rune"    -> Just PRune
+        "string"  -> Just PString
+        _         -> Nothing -- This shouldn't happen, don't insert any other base types
+    resolve' ConstantBool _ _ = Just PBool
     resolve' (Variable t') _ _ = Just t'
     resolve' (SType t') scope ident' = Just $ TypeMap (mkSIdStr scope ident') t'
     resolve' (Func _ mt) _ _ = mt
