@@ -266,8 +266,7 @@ instance Symbolize FuncDecl C.FuncDecl
           then do
             me <- dummyFunc
             maybe
-              (do _ <- S.enterScope st -- This is a dummy scope just to check that there are no duplicate parameters
-                  epl <- checkParams pdl -- Glc' [Param]
+              (do epl <- wrap st $ checkParams pdl -- Dummy scope to check params
                 -- Glc' Symbol, want to get the corresponding
                 -- Func symbol using our resolved params (if no errors in param
                 -- declaration) and the type of the return of the signature, t,
@@ -296,7 +295,6 @@ instance Symbolize FuncDecl C.FuncDecl
           insertFunc ::
                (Symbol, [SymbolInfo]) -> ST s (Either ErrorMessage' C.FuncDecl)
           insertFunc (f, sil) = do
-            _ <- S.exitScope st
             scope <- S.insert st vname f
             _ <- S.addMessage st (vname, f, scope)
             wrap'
