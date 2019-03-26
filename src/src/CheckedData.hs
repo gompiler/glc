@@ -102,7 +102,7 @@ newtype Parameters =
 -- No result type needed
 data Signature =
   Signature Parameters
-            (Maybe Type)
+            Type
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -312,7 +312,7 @@ data Type
   | PBool
   | PRune
   | PString
-  | Type Ident -- TODO: REMOVE
+  | Void
   -- | Empty return type
   deriving (Show, Eq)
 

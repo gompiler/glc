@@ -328,7 +328,7 @@ instance Symbolize FuncDecl C.FuncDecl
             fmap
               (C.FuncDecl
                  (mkSIdStr scope' vname)
-                 (C.Signature (C.Parameters []) Nothing)) <$>
+                 (C.Signature (C.Parameters []) C.Void)) <$>
             recurse st body
       checkParams :: [ParameterDecl] -> ST s (Glc' [(Param, SymbolInfo)])
       checkParams pdl' = do
@@ -365,9 +365,7 @@ instance Symbolize FuncDecl C.FuncDecl
       func2sig scope (Func pl t') =
         C.Signature
           (C.Parameters (map (p2pd scope) pl))
-          (case toBase t' of
-             C.Type (C.Ident "void") -> Nothing
-             ct                      -> Just ct)
+          (toBase t')
       func2sig _ _ =
         error "Trying to convert a symbol that isn't a function to a signature" -- Should never happen
   recurse _ FuncDecl {} =
@@ -1075,7 +1073,8 @@ toBase PFloat64 = C.PFloat64
 toBase PBool = C.PBool
 toBase PRune = C.PRune
 toBase PString = C.PString
-toBase t = C.Type $ C.Ident $ show t -- The last ones are void or infer: TODO: Remove
+toBase Void = C.Void
+toBase Infer = undefined
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: Expr -> Bool
