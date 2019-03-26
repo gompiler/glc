@@ -37,7 +37,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
           SymTab.add
             st
             "fi_func"
-            (Func [("a", PFloat64), ("b", PInt)] (Just PInt))
+            (Func [("a", PFloat64), ("b", PInt)] PInt)
         -- type int_t int
         -- var it_var int_t
         _ <- SymTab.add st "int_t" (SType PInt)
