@@ -1070,7 +1070,12 @@ toBase (Struct fls) = C.StructType (map f2fd fls)
     f2fd :: Field -> C.FieldDecl
     f2fd (s, t) = C.FieldDecl (C.Ident s) (toBase t)
 toBase (TypeMap _ t) = toBase t
-toBase t = C.Type $ C.Ident $ show t -- The last ones are primitive types, void or infer
+toBase PInt = C.PInt
+toBase PFloat64 = C.PFloat64
+toBase PBool = C.PBool
+toBase PRune = C.PRune
+toBase PString = C.PString
+toBase t = C.Type $ C.Ident $ show t -- The last ones are void or infer: TODO: Remove
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: Expr -> Bool
