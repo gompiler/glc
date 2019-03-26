@@ -1079,8 +1079,8 @@ toBase PFloat64 = C.PFloat64
 toBase PBool = C.PBool
 toBase PRune = C.PRune
 toBase PString = C.PString
-toBase Void = undefined
-toBase Infer = undefined
+toBase Void = error "Void cannot be converted to CheckedData base type"
+toBase Infer = error "Infer cannot be converted to CheckedData base type"
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: Expr -> Bool
