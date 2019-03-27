@@ -7,9 +7,9 @@ module Parser
   , P.ParseError(..)
   ) where
 
+import           Base
 import           Data
 import           Data.List.NonEmpty (fromList)
-import           ErrorBundle
 import qualified ParserGen          as P (ParseError (..), pDec, pE, pEl,
                                           pIDecl, pId, pPar, pSig, pStmt, pT,
                                           pTDecl, parse, parsef, parsefNL)

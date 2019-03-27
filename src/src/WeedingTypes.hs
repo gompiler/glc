@@ -4,11 +4,11 @@ module WeedingTypes
   ( weedT
   ) where
 
+import           Base
 import           Control.Applicative
 import           Data
 import           Data.Foldable       (asum)
 import           Data.List.NonEmpty  (toList)
-import           ErrorBundle
 import           Weeding
 
 -- | Main weeding function
@@ -42,27 +42,25 @@ returnVerify program = asum errors
 returnConstraint :: TopDecl -> Maybe ErrorMessage'
 returnConstraint (TopDecl _) = Nothing
 returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
-  maybe
-    Nothing
-    (const $ lastIsReturn fb)
-    mrt
+  maybe Nothing (const $ lastIsReturn fb) mrt
   where
     lastIsReturn :: Stmt -> Maybe ErrorMessage'
     lastIsReturn (If _ ifb elseb) = lastIsReturn ifb <|> lastIsReturn elseb
-    lastIsReturn (For (ForClause _ Nothing _) forb) =
+    lastIsReturn (For (ForClause _ Nothing _) forb)
       -- infinite for loops don't 'need' return unless they have a break in them
-      checkForBreak forb
+     = checkForBreak forb
     lastIsReturn (BlockStmt stmts) =
       case reverse stmts of
         st:_ -> lastIsReturn st
         []   -> Just $ createError fd LastReturn
-    lastIsReturn (Switch _ _ cl) = if not (True `elem` (map checkForDefault cl)) then
-                                     Just $ createError fd ReturnNoDefault
-                                   else asum $ map (lastIsReturn . getSwitchCaseStmt) cl
+    lastIsReturn (Switch _ _ cl) =
+      if not (True `elem` (map checkForDefault cl))
+        then Just $ createError fd ReturnNoDefault
+        else asum $ map (lastIsReturn . getSwitchCaseStmt) cl
     lastIsReturn (Return _ _) = Nothing -- Just $ createError o LastReturn
     lastIsReturn _ = Just $ createError fd LastReturn
     getSwitchCaseStmt :: SwitchCase -> Stmt
-    getSwitchCaseStmt (Case _ _ stmt) = stmt
+    getSwitchCaseStmt (Case _ _ stmt)  = stmt
     getSwitchCaseStmt (Default _ stmt) = stmt
     checkForBreak :: Stmt -> Maybe ErrorMessage'
     checkForBreak (BlockStmt stmts) = asum $ map checkForBreak stmts
@@ -71,7 +69,7 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
     checkForBreak _ = Nothing -- fors/switches start their own break 'scope'
     checkForDefault :: SwitchCase -> Bool
     checkForDefault (Default _ _) = True
-    checkForDefault _ = False
+    checkForDefault _             = False
 
 initReturnVerify :: PureConstraint Program
 initReturnVerify program = asum errors
@@ -100,10 +98,8 @@ initMainFunctionVerify program = asum errors
     errors :: [Maybe ErrorMessage']
     errors = map initFunctionConstraint (topLevels program)
     initFunctionConstraint :: TopDecl -> Maybe ErrorMessage'
-    initFunctionConstraint (TopDecl (VarDecl vdl))  =
-      asum (map vdConstraint vdl)
-    initFunctionConstraint (TopDecl (TypeDef tdl)) =
-      asum (map tdConstraint tdl)
+    initFunctionConstraint (TopDecl (VarDecl vdl)) = asum (map vdConstraint vdl)
+    initFunctionConstraint (TopDecl (TypeDef tdl)) = asum (map tdConstraint tdl)
     initFunctionConstraint _ = Nothing -- Function declarations are fine
     vdConstraint :: VarDecl' -> Maybe ErrorMessage'
     vdConstraint (VarDecl' idents _) = asum (map iToE (toList idents))

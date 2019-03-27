@@ -5,13 +5,13 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeApplications      #-}
 
-module Base
+module TestBase
   ( SpecBuilder(..)
   , Data.Text.Text
   , Data.Text.unpack
   , NeatInterpolation.text
   , o
-  , module ErrorBundle
+  , module Base
   , Stringable(..)
   , ParseTest(..)
   , expectBase
@@ -29,15 +29,13 @@ module Base
   , expectPrettyExact
   , expectPrettyInvar
   , qcGen
-  , (<&>), ($>)
   ) where
 
+import           Base
 import           Control.Monad         (unless)
 import           Data
-import           Data.Functor          ((<&>), ($>))
 import           Data.List.NonEmpty    (NonEmpty (..))
 import           Data.Text             (Text, unpack)
-import           ErrorBundle
 import           Examples
 import           NeatInterpolation
 import           Parser
@@ -142,8 +140,10 @@ expectError =
     (tag @a)
 
 containsError :: ErrorEntry e => ErrorMessage -> e -> Expectation
-err `containsError` e = unless (err `hasError` e) . expectationFailure $
-      "Expected error:\t" ++ show e ++ "\nbut got:\t" ++ showErrorEntry err ++ "\n\n" ++ show err
+err `containsError` e =
+  unless (err `hasError` e) . expectationFailure $
+  "Expected error:\t" ++
+  show e ++ "\nbut got:\t" ++ showErrorEntry err ++ "\n\n" ++ show err
 
 -- | Expects that input parses with an exact ast match
 expectAst ::
@@ -181,7 +181,8 @@ expectPrettyInvar =
         in case multiPass s' of
              Left err ->
                expectationFailure $
-               "Invalid prettify for:\n\n" ++ s' ++ "\n\nfailed with\n\n" ++ show err
+               "Invalid prettify for:\n\n" ++
+               s' ++ "\n\nfailed with\n\n" ++ show err
              Right _ -> return ())
     toString
     (tag @a)

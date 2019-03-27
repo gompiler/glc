@@ -4,14 +4,14 @@ module TypeInferenceSpec
   ( spec
   ) where
 
-import           Base             (Stringable (..), expectBase, toString)
+import           Base
 import           Control.Monad.ST
 import           Data             (Expr)
-import           ErrorBundle
 import           Parser           (parse)
 import           Symbol
 import qualified SymbolTable      as SymTab (add, new)
 import           Test.Hspec
+import           TestBase         (Stringable (..), expectBase, toString)
 import           TypeInference    (infer)
 
 parseAndInferNoST :: String -> Either ErrorMessage SType
@@ -33,11 +33,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
         _ <- SymTab.add st "int_5_arr_2" (Variable (Array 5 PInt))
         _ <- SymTab.add st "int_3_arr" (Variable (Array 3 PInt))
         _ <- SymTab.add st "int_slice" (Variable (Slice PInt))
-        _ <-
-          SymTab.add
-            st
-            "fi_func"
-            (Func [("a", PFloat64), ("b", PInt)] PInt)
+        _ <- SymTab.add st "fi_func" (Func [("a", PFloat64), ("b", PInt)] PInt)
         -- type int_t int
         -- var it_var int_t
         _ <- SymTab.add st "int_t" (SType PInt)

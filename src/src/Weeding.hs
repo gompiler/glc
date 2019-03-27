@@ -6,12 +6,12 @@ module Weeding
   , PureConstraint
   ) where
 
+import           Base
 import           Control.Applicative
 import           Data
 import           Data.Foldable       (asum)
 import           Data.List.NonEmpty  (toList)
 import           Data.Maybe          as Maybe
-import           ErrorBundle
 import           Parser
 
 type PureConstraint a = a -> Maybe ErrorMessage'
@@ -30,12 +30,7 @@ weed code = do
 verify :: Program -> Maybe ErrorMessage'
 verify program =
   asum $
-  [ programVerify
-  , continueVerify
-  , breakVerify
-  , progVerifyDecl
-  , progVerifyBlank
-  ] <*>
+  [programVerify, continueVerify, breakVerify, progVerifyDecl, progVerifyBlank] <*>
   [program]
 
 verifyAll :: PureConstraint a -> [a] -> Maybe ErrorMessage'
@@ -264,18 +259,20 @@ instance BlankWeed Stmt where
   toIdent _ = []
 
 instance BlankWeed SimpleStmt where
-  toIdent (ExprStmt e)        = toIdent e
-  toIdent (Increment _ e)     = toIdent e
-  toIdent (Decrement _ e)     = toIdent e
-  toIdent (Assign _ (AssignOp (Just _)) el1 el2)   = (toList el1 >>= toIdent)  ++ (toList el2 >>= toIdent)
-  toIdent (Assign _ _ el1 el2)   = (toList el1 >>= toIdent')  ++ (toList el2 >>= toIdent)
-    where
+  toIdent (ExprStmt e) = toIdent e
+  toIdent (Increment _ e) = toIdent e
+  toIdent (Decrement _ e) = toIdent e
+  toIdent (Assign _ (AssignOp (Just _)) el1 el2) =
+    (toList el1 >>= toIdent) ++ (toList el2 >>= toIdent)
+  toIdent (Assign _ _ el1 el2) =
+    (toList el1 >>= toIdent') ++ (toList el2 >>= toIdent)
       -- Helper function, LHS of assign actually matters it's not a var, otherwise for vars don't check
+    where
       toIdent' :: Expr -> [Identifier]
       toIdent' (Var _) = []
-      toIdent' e@(_) = toIdent e
+      toIdent' e@(_)   = toIdent e
   toIdent (ShortDeclare _ el) = toList el >>= toIdent -- Don't care about LHS
-  toIdent _                   = []
+  toIdent _ = []
 
 instance BlankWeed Expr where
   toIdent (Unary _ _ e)        = toIdent e

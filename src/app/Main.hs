@@ -1,6 +1,6 @@
 module Main where
 
-import           ErrorBundle
+import           Base
 import qualified Options.Applicative as Op
 import           ParseCLI
 import           Prettify            (checkPrettifyInvariance, prettify)
