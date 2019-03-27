@@ -6,7 +6,6 @@ import qualified Data.List.NonEmpty as NE (map)
 import           Scanner            (putExit, putSucc)
 import qualified SymbolTable        as S
 
--- import Data.List.NonEmpty (toList)
 type LabelName = String
 
 data FieldAccess
@@ -123,8 +122,8 @@ toClass (C.Program _ tls) =
              C.TopFuncDecl (C.FuncDecl si _ fb) ->
                [ Method
                    { mname = siToName si
-                   , stackLimit = 25
-                   , localsLimit = 25
+                   , stackLimit = 25 -- TODO
+                   , localsLimit = 25 -- TODO
                    , body = toIR fb
                    }
                ])
@@ -148,7 +147,7 @@ instance IRRep C.Stmt where
       -- duplicate expression for case statement expressions in lists
     where
       seIR :: [IRItem]
-      seIR = maybe (iri [LDC (LDCInt 1)]) toIR me -- 1 = true
+      seIR = maybe (iri [LDC (LDCInt 1)]) toIR me -- 1 = true? TODO
   toIR C.For {} = undefined
   toIR C.Break = undefined -- [IRInst (Goto "TODO")]
   toIR C.Continue = undefined -- [IRInst (Goto "TODO")]
