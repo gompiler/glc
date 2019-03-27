@@ -485,71 +485,76 @@ instance Symbolize SimpleStmt C.SimpleStmt where
   recurse st (ExprStmt e) = fmap C.ExprStmt <$> recurse st e -- Verify that expr only uses things that are defined
   recurse st (Increment _ e) = do
     et <- infer st e
-    either
-      (return . Left)
-      (\t ->
-         if isNumeric (resolveSType t) && isAddr e
-           then fmap C.Increment <$> recurse st e
-           else return $ Left $ createError e (NonNumeric e "incremented"))
-      et
+    eaddr <- isAddr st e
+    ee <- recurse st e
+    return $ join $ createInc <$> et <*> eaddr <*> ee
+    where
+      createInc :: SType -> Bool -> C.Expr -> Either ErrorMessage' C.SimpleStmt
+      createInc t' addressible e' =
+        if isNumeric t' && addressible
+          then Right $ C.Increment e'
+          else Left $ createError e (NonNumeric e "incremented")
   recurse st (Decrement _ e) = do
     et <- infer st e
-    either
-      (return . Left)
-      (\t ->
-         if isNumeric (resolveSType t) && isAddr e
-           then fmap C.Decrement <$> recurse st e
-           else return $ Left $ createError e (NonNumeric e "decremented"))
-      et
+    eaddr <- isAddr st e
+    ee <- recurse st e
+    return $ join $ createDec <$> et <*> eaddr <*> ee
+    where
+      createDec :: SType -> Bool -> C.Expr -> Either ErrorMessage' C.SimpleStmt
+      createDec t' addressible e' =
+        if isNumeric t' && addressible
+          then Right $ C.Decrement e'
+          else Left $ createError e (NonNumeric e "decremented")
   recurse st (Assign _ aop@(AssignOp mop) el1 el2) = do
     ets <- mapM (infer st) (toList el2) -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
+    me <- mapM (isAddrE st) (toList el1) -- Make sure everything is an lvalue
     either
       (return . Left)
       (const $
-       let errL = concatMap isAddrE (toList el1) -- Make sure everything is an lvalue
-        in if null errL
-             then do
-               l1 <- mapM (recurse st) (toList el1)
-               l2 <- mapM (recurse st) (toList el2)
-               case mop of
-                 Nothing -> do
-                   me <- mapM sameType (zip (toList el1) (toList el2))
-                   maybe
-                     (either
-                        (return . Left)
-                        (\l1' ->
-                           either
-                             (return . Left)
-                             (return .
-                              Right .
-                              C.Assign (C.AssignOp Nothing) . fromList . zip l1')
-                             (sequence l2))
-                        (sequence l1))
-                     (return . Left)
-                     (maybeJ me)
-                 Just op -> do
-                   el <-
-                     mapM
-                       (infer st . aop2e (Arithm op))
-                       (zip (toList el1) (toList el2))
-                   either
-                     (return . Left)
-                     (const
-                        (either
+       maybe
+         (do l1 <- mapM (recurse st) (toList el1)
+             l2 <- mapM (recurse st) (toList el2)
+             case mop of
+               Nothing -> do
+                 ee <- mapM sameType (zip (toList el1) (toList el2))
+                 either
+                   (return . Left)
+                   (const $
+                    either
+                      (return . Left)
+                      (\l1' ->
+                         either
                            (return . Left)
-                           (\l1' ->
-                              either
-                                (return . Left)
-                                (\l2' ->
-                                   return $
-                                   Right $
-                                   C.Assign
-                                     (aop2aop' aop)
-                                     (fromList $ zip l1' l2'))
-                                (sequence l2))
-                           (sequence l1)))
-                     (sequence el)
-             else return $ Left $ head errL)
+                           (return .
+                            Right .
+                            C.Assign (C.AssignOp Nothing) . fromList . zip l1')
+                           (sequence l2))
+                      (sequence l1))
+                   (sequence ee)
+               Just op -> do
+                 el <-
+                   mapM
+                     (infer st . aop2e (Arithm op))
+                     (zip (toList el1) (toList el2))
+                 either
+                   (return . Left)
+                   (const
+                      (either
+                         (return . Left)
+                         (\l1' ->
+                            either
+                              (return . Left)
+                              (\l2' ->
+                                 return $
+                                 Right $
+                                 C.Assign
+                                   (aop2aop' aop)
+                                   (fromList $ zip l1' l2'))
+                              (sequence l2))
+                         (sequence l1)))
+                   (sequence el))
+         (return . Left . head)
+         (sequence me))
       (sequence ets)
       -- convert op and 2 expressions to binary op, infer type of this to make sure it makes sense
     where
@@ -559,25 +564,19 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       aop2aop' (AssignOp (Just aop')) = C.AssignOp $ Just $ aopConv aop'
       aop2aop' (AssignOp Nothing)     = C.AssignOp Nothing
       -- | Check if two expressions have the same type and if LHS is addressable, helper for assignments
-      sameType :: (Expr, Expr) -> ST s (Maybe ErrorMessage')
-      sameType (Var (Identifier _ "_"), _) = return Nothing -- Do not compare if LHS is "_"
+      sameType :: (Expr, Expr) -> ST s (Either ErrorMessage' ())
+      sameType (Var (Identifier _ "_"), _) = return $ Right () -- Do not compare if LHS is "_"
       sameType (e1, e2) = do
         et1 <- infer st e1
         et2 <- infer st e2
-        return $
-          either
-            Just
-            (\t1 ->
-               either
-                 Just
-                 (\t2 ->
-                    if t1 /= t2
-                      then Just (createError e1 (TypeMismatch1 t1 t2 e2))
-                      else if isAddr e1
-                             then Nothing
-                             else Just $ createError e1 (NonLVal e1))
-                 et2)
-            et1
+        eaddr <- isAddr st e1
+        return $ join $ comp <$> et1 <*> et2 <*> eaddr
+        where
+          comp :: SType -> SType -> Bool -> Either ErrorMessage' ()
+          comp t1 t2 addr
+            | t1 /= t2 = Left $ createError e1 (TypeMismatch1 t1 t2 e2)
+            | addr = Right ()
+            | otherwise = Left $ createError e1 (NonLVal e1)
 
 -- | Convert ArithmOp from original AST to new AST
 aopConv :: ArithmOp -> C.ArithmOp
@@ -723,7 +722,7 @@ recBaseE st e = do
   either
     (return . Left)
     (\t ->
-       if isBase (resolveSType t)
+       if isBase t
          then recurse st e
          else return $ Left $ createError e (NonBaseP t))
     et
@@ -1103,20 +1102,35 @@ toBase (TypeMap _ t) = toBase t
 toBase t = C.Type $ C.Ident $ show t -- The last ones are primitive types, void or infer
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
-isAddr :: Expr -> Bool
-isAddr e =
+isAddr :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' Bool)
+isAddr st e =
   case e of
-    Var _           -> True
-    Selector _ e' _ -> isAddr e'
-    Index _ e' _    -> isAddr e'
-    _               -> False
+    Var _ -> return $ Right True
+    Selector _ e' _ -> isAddr st e'
+    Index _ e' _ -> do
+      et' <- infer st e'
+      eaddr <- isAddr st e'
+      return $
+        (\t addr ->
+           case t of
+             Slice _ -> True
+             _       -> addr) <$>
+        et' <*>
+        eaddr
+    _ -> return $ Right False
 
 -- | Check if given expression is addressable, if not, return error message
-isAddrE :: Expr -> [ErrorMessage']
-isAddrE e =
-  if isAddr e
-    then []
-    else [createError e (NonLVal e)]
+isAddrE :: SymbolTable s -> Expr -> ST s (Maybe ErrorMessage')
+isAddrE st e = do
+  eaddr <- isAddr st e
+  return $
+    either
+      Just
+      (\addressable ->
+         if addressable
+           then Nothing
+           else Just $ createError e (NonLVal e))
+      eaddr
 
 -- | Get the return value of function we are currently declaring, aka latest declared function
 getRet :: Offset -> SymbolTable s -> ST s (Either ErrorMessage' SType)
