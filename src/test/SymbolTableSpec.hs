@@ -389,6 +389,16 @@ spec = do
       }
       |]
     , [text|
+               func a () []int{
+                    var r []int
+                    return r
+               }
+               func main (){
+                    // Slices always addressable
+                    a()[0] = 3
+                }
+               |]
+    , [text|
               type s1 struct{
 	      a bool
 	      a2 int
@@ -627,7 +637,7 @@ spec = do
         return 2
       }
       |]
-   , [text|
+    , [text|
     type a struct {b int;}
     func f() a {
         var r a
@@ -636,16 +646,18 @@ spec = do
     func main(){ f().b++
     }
      |]
-   , [text|
+    , [text|
     type a struct {b int;}
     func f() a {
         var r a
         return r
     }
-    func main(){ f().b--
+    func main(){
+        // Not addressable because it's a function return
+        f().b--
     }
      |]
-   , [text|
+    , [text|
     type a struct {b int;}
     func f() a {
         var r a
@@ -653,34 +665,38 @@ spec = do
     }
     func main(){
         var g a;
+        // Func return not addressable
         f() = g;
     }
      |]
-   , [text|
+    , [text|
     type a struct {b int;}
     func f() a {
         var r a
         return r
     }
     func main(){
+        // Func return not addressable
         f().b = 3;
     }
      |]
-   , [text|
+    , [text|
     func f() [5]int {
         var r [5]int
         return r
     }
     func main(){
+        // Func return (not slice) not addressable
         f()[3] = 3;
     }
      |]
-   , [text|
+    , [text|
     func f() [5]int {
         var r [5]int
         return r
     }
     func main(){
+        // Func return (not slice) not addressable
         f()[3]++;
     }
      |]

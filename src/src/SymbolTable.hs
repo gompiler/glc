@@ -1111,8 +1111,12 @@ isAddr st e =
         Nothing -> return $ Left $ createError ident (NotDecl "Variable " ident)
         Just (_, ConstantBool) -> return $ Right False
         Just _ -> return $ Right True
-    Selector _ e' _ -> isAddr st e'
+    Selector _ e' _ -> isAddr st e' -- Check if expr on LHS is addressable, e.g. function return is not addressable
     Index _ e' _ -> do
+      -- Indices are only addressable if the underlying expression is
+      -- addressable (is var) or if the expression is a slice, any
+      -- slice can be assigned to but arrays returned by functions
+      -- (without being assigned to a variable), cannot
       et' <- infer st e'
       eaddr <- isAddr st e'
       return $
