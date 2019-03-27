@@ -51,11 +51,15 @@ data ClassRef =
   deriving (Show)
 
 data FieldRef =
-  FieldRef ClassRef String
+  FieldRef ClassRef
+           String
   deriving (Show)
 
 data MethodRef =
-  MethodRef ClassRef String [JType] JType
+  MethodRef ClassRef
+            String
+            [JType]
+            JType
   deriving (Show)
 
 data JType
@@ -114,7 +118,8 @@ data Instruction
   | NOp
   | Pop
   | Swap
-  | GetStatic FieldRef ClassRef -- field spec, descriptor
+  | GetStatic FieldRef
+              ClassRef -- field spec, descriptor
   | InvokeSpecial MethodRef -- method spec
   | InvokeVirtual MethodRef -- method spec
   | Debug String -- TODO: remove
@@ -123,10 +128,13 @@ data Instruction
 -- Predefined Java language constructs to use in code generation
 systemOut :: FieldRef
 systemOut = FieldRef (ClassRef "java/lang/System") "out"
+
 printStream :: ClassRef
 printStream = ClassRef "java/io/PrintStream"
+
 stringBuilder :: ClassRef
 stringBuilder = ClassRef "java/lang/StringBuilder"
+
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
 
@@ -186,7 +194,7 @@ instance IRRep C.Stmt where
     [IRInst (Goto "end_todo"), IRLabel "else_todo"] ++
     toIR elses ++ [IRLabel "end_todo"]
   toIR (C.Switch sstmt me scs) =
-    toIR sstmt ++ seIR ++ concat (map toIR scs) ++ [IRLabel "end_todo"]
+    toIR sstmt ++ seIR ++ concatMap toIR scs ++ [IRLabel "end_todo"]
       -- duplicate expression for case statement expressions in lists
     where
       seIR :: [IRItem]
@@ -197,30 +205,30 @@ instance IRRep C.Stmt where
   toIR (C.Declare d) = toIR d
   toIR (C.Print el) = concatMap printIR el
   toIR (C.Println el) =
-    (intercalate (printIR (C.Lit $ C.StringLit " "))
-      (map printIR el)) ++ printIR (C.Lit $ C.StringLit "\n") -- TODO
+    intercalate (printIR (C.Lit $ C.StringLit " ")) (map printIR el) ++
+    printIR (C.Lit $ C.StringLit "\n") -- TODO
   toIR _ = undefined
 
 printIR :: C.Expr -> [IRItem]
 printIR e =
   case exprType e of
-    C.PInt -> printLoad ++ toIR e ++ intPrint
+    C.PInt     -> printLoad ++ toIR e ++ intPrint
     C.PFloat64 -> printLoad ++ toIR e ++ floatPrint
-    C.PRune -> printLoad ++ toIR e ++ intPrint
-    C.PBool -> undefined -- TODO: PRINT true/false
-    C.PString -> printLoad ++ toIR e ++ stringPrint
-    wot -> iri [Debug $ show wot] -- TODO
+    C.PRune    -> printLoad ++ toIR e ++ intPrint
+    C.PBool    -> undefined -- TODO: PRINT true/false
+    C.PString  -> printLoad ++ toIR e ++ stringPrint
+    wot        -> iri [Debug $ show wot] -- TODO
   where
-  printLoad :: [IRItem]
-  printLoad = iri [GetStatic systemOut printStream]
-  intPrint :: [IRItem]
-  intPrint = iri [InvokeVirtual $ MethodRef printStream "print" [JInt] JVoid]
-  floatPrint :: [IRItem]
-  floatPrint =
-    iri [InvokeVirtual $ MethodRef printStream "print" [JFloat] JVoid]
-  stringPrint :: [IRItem]
-  stringPrint =
-    iri [InvokeVirtual $ MethodRef printStream "print" [JClass jString] JVoid]
+    printLoad :: [IRItem]
+    printLoad = iri [GetStatic systemOut printStream]
+    intPrint :: [IRItem]
+    intPrint = iri [InvokeVirtual $ MethodRef printStream "print" [JInt] JVoid]
+    floatPrint :: [IRItem]
+    floatPrint =
+      iri [InvokeVirtual $ MethodRef printStream "print" [JFloat] JVoid]
+    stringPrint :: [IRItem]
+    stringPrint =
+      iri [InvokeVirtual $ MethodRef printStream "print" [JClass jString] JVoid]
 
 instance IRRep C.ForClause where
   toIR C.ForClause {} = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
@@ -270,17 +278,38 @@ instance IRRep C.Expr where
   toIR (C.Unary _ C.BitComplement _) = undefined -- TODO: how to do this?
   toIR (C.Binary t (C.Arithm C.Add) e1 e2) =
     case t of
-      C.PInt     -> binary e1 e2 (Add IRInt)
+      C.PInt -> binary e1 e2 (Add IRInt)
       C.PFloat64 -> binary e1 e2 (Add IRFloat)
-      C.PRune    -> binary e1 e2 (Add IRInt)
-      C.PString  ->
-        iri [ New stringBuilder
-            , Dup
-            , InvokeSpecial (MethodRef stringBuilder "<init>" [] JVoid)] ++
-        toIR e1 ++ iri [InvokeVirtual (MethodRef stringBuilder "append" [JClass jString] (JClass stringBuilder))] ++
-        toIR e2 ++ iri [InvokeVirtual (MethodRef stringBuilder "append" [JClass jString] (JClass stringBuilder))] ++
-        iri [InvokeVirtual (MethodRef stringBuilder "toString" [] (JClass jString))]
-      _          -> iri [Debug $ show t] -- undefined
+      C.PRune -> binary e1 e2 (Add IRInt)
+      C.PString ->
+        iri
+          [ New stringBuilder
+          , Dup
+          , InvokeSpecial (MethodRef stringBuilder "<init>" [] JVoid)
+          ] ++
+        toIR e1 ++
+        iri
+          [ InvokeVirtual
+              (MethodRef
+                 stringBuilder
+                 "append"
+                 [JClass jString]
+                 (JClass stringBuilder))
+          ] ++
+        toIR e2 ++
+        iri
+          [ InvokeVirtual
+              (MethodRef
+                 stringBuilder
+                 "append"
+                 [JClass jString]
+                 (JClass stringBuilder))
+          ] ++
+        iri
+          [ InvokeVirtual
+              (MethodRef stringBuilder "toString" [] (JClass jString))
+          ]
+      _ -> iri [Debug $ show t] -- undefined
   toIR (C.Binary t (C.Arithm aop) e1 e2) =
     case astToIRPrim t of
       Just t' -> binary e1 e2 (opToInst t')
@@ -329,8 +358,7 @@ exprType (C.Index t _ _)      = t
 exprType (C.Arguments t _ _)  = t
 
 astToIRType :: C.Type -> IRType
-astToIRType t =
-  maybe Object Prim (astToIRPrim t)
+astToIRType t = maybe Object Prim (astToIRPrim t)
 
 astToIRPrim :: C.Type -> Maybe IRPrimitive
 astToIRPrim C.PInt     = Just IRInt
