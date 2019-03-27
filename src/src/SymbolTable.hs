@@ -170,31 +170,34 @@ instance Typify Type where
         sym <- toType' st root t True -- Allow recursion since we're inside a slice
         return $ sym >>= Right . Slice
   toType' st root@(rootSIdent, rootType) (StructType fdl) brec = do
-    fl <- checkFields fdl
+    fl <- checkFields
     return $ fl >>= Right . Struct
+      -- Get all identifiers from field declarations
     where
-      checkFields :: [FieldDecl] -> ST s (Either ErrorMessage' [Field])
-      checkFields fdl' = do
-        fields <- mapM checkField fdl'
-        return $ concat <$> sequence fields
+      getAllIdents :: [Identifier]
+      getAllIdents = concatMap (\(FieldDecl nidl _) -> toList nidl) fdl
+      checkFields :: ST s (Either ErrorMessage' [Field]) -- Check for duplicates first
+      checkFields =
+        checkDup
+          st
+          getAllIdents
+          (AlreadyDecl "Field ")
+          (do fields <- mapM checkField fdl
+              return $ concat <$> sequence fields)
       checkField :: FieldDecl -> ST s (Either ErrorMessage' [Field])
-      checkField (FieldDecl idl (_, t)) =
-        either Left (resolveFieldDuplicate idl) <$> fieldType' t
+      checkField (FieldDecl idl (_, t)) = do
+        ft <- fieldType' t
+        return $ toField idl <$> ft
       -- | Checks first for cyclic type, then defaults to the generic type resolver
+      fieldType' :: Type -> ST s (Either ErrorMessage' SType)
       fieldType' t =
         case (getMatchingSIdent rootSIdent t, isTypeStruct rootType)
                 -- Cycles only permitted on matching root sident with a non struct root type
               of
           (Just sident, False) -> cyclicType sident
           _                    -> toType' st root t brec
-      -- Given stype and identifiers, ensure no duplicates and map to fields
-      resolveFieldDuplicate ::
-           Identifiers -> SType -> Either ErrorMessage' [Field]
-      resolveFieldDuplicate idl t =
-        case getFirstDuplicate (toList idl) of
-          Nothing ->
-            Right $ map (\(Identifier _ vname) -> (vname, t)) (toList idl)
-          Just ident -> Left $ createError ident $ AlreadyDecl "Field " ident
+      toField :: Identifiers -> SType -> [Field]
+      toField idl t = map (\(Identifier _ vname) -> (vname, t)) (toList idl)
       isTypeStruct :: Type -> Bool
       isTypeStruct (StructType _) = True
       isTypeStruct _              = False
@@ -203,11 +206,11 @@ instance Typify Type where
       Just sident ->
         if brec
           then cyclicType sident
-          else notDecl
-      _ -> notDecl
+          else resolveId
+      _ -> resolveId
     where
-      notDecl :: ST s (Either ErrorMessage' SType)
-      notDecl = resolve ident st (createError ident (NotDecl "Type " ident))
+      resolveId :: ST s (Either ErrorMessage' SType)
+      resolveId = resolve ident st (createError ident (NotDecl "Type " ident))
   -- This last array case should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
@@ -282,30 +285,34 @@ instance Symbolize FuncDecl C.FuncDecl
               me
           else return $ Left $ createError ident (AlreadyDecl "Function " ident)
         where
+          funcSym :: ([Param], SType) -> Symbol
+          funcSym (pl, ret) = Func pl ret
           createFunc ::
                [(Param, SymbolInfo)]
-            -> ST s (Either ErrorMessage' (Symbol, [SymbolInfo]))
+            -> ST s (Either ErrorMessage' (([Param], SType), [SymbolInfo]))
           createFunc l
               -- TODO don't use toType here; resolve only type def types
            =
             let (pl, sil) = unzip l
              in do returnTypeEither <- retType
-                   return $ (\ret -> (Func pl ret, sil)) <$> returnTypeEither
+                   return $ (\ret -> ((pl, ret), sil)) <$> returnTypeEither
           insertFunc ::
-               (Symbol, [SymbolInfo]) -> ST s (Either ErrorMessage' C.FuncDecl)
-          insertFunc (f, sil) = do
-            scope <- S.insert st vname f
-            _ <- S.addMessage st (vname, f, scope)
-            wrap'
-              st
-              f
-              (do mapM_ (\(k, sym, _) -> add st k sym) sil
-                  recurseSl scope)
+               (([Param], SType), [SymbolInfo])
+            -> ST s (Either ErrorMessage' C.FuncDecl)
+          insertFunc (ftup, sil) =
+            let f = funcSym ftup
+             in do scope <- S.insert st vname f
+                   _ <- S.addMessage st (vname, f, scope)
+                   wrap'
+                     st
+                     f
+                     (do mapM_ (\(k, sym, _) -> add st k sym) sil
+                         recurseSl scope)
             where
               recurseSl :: S.Scope -> ST s (Either ErrorMessage' C.FuncDecl)
               recurseSl scope' =
                 fmap
-                  (C.FuncDecl (mkSIdStr scope' vname) (func2sig scope' f) .
+                  (C.FuncDecl (mkSIdStr scope' vname) (func2sig scope' ftup) .
                    C.BlockStmt) .
                 sequence <$>
                 mapM (recurse st) sl
@@ -347,19 +354,24 @@ instance Symbolize FuncDecl C.FuncDecl
                einfo)
           et
       checkIds' :: SType -> Identifiers -> ST s (Glc' [(Param, SymbolInfo)])
-      checkIds' t' idl = sequence <$> mapM (checkId' t') (toList idl)
-      checkId' :: SType -> Identifier -> ST s (Glc' (Param, SymbolInfo))
-      checkId' t' ident'@(Identifier _ idv) = do
+      checkIds' t' idl =
+        checkDup
+          st
+          (toList idl)
+          DuplicateParam
+          (do scope <- S.scopeLevel st
+              sequence <$> mapM (checkId' scope t') (toList idl))
+      checkId' ::
+           S.Scope -> SType -> Identifier -> ST s (Glc' (Param, SymbolInfo))
+      checkId' scope t' ident'@(Identifier _ idv) = do
         notdef <- isNDefL st idv -- Should not be declared
         if notdef
-          then do
-            scope <- S.insert st idv (Variable t')
-            return $ Right ((idv, t'), (idv, Variable t', scope))
+          then return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: S.Scope -> Param -> C.ParameterDecl
       p2pd scope (s, t') = C.ParameterDecl (mkSIdStr scope s) (toBase t')
-      func2sig :: S.Scope -> Symbol -> C.Signature
-      func2sig scope (Func pl t') =
+      func2sig :: S.Scope -> ([Param], SType) -> C.Signature
+      func2sig scope (pl, t') =
         C.Signature
           (C.Parameters (map (p2pd scope) pl))
           (case t' of
@@ -410,13 +422,17 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       idl' = toList idl
       el' = toList el
       checkDecl :: ST s (Glc' (NonEmpty (SIdent, C.Expr)))
-      checkDecl = do
-        eb <- zipWithM checkDec idl' el'
+      checkDecl =
+        checkDup
+          st
+          idl'
+          DuplicateShort
+          (do eb <- zipWithM checkDec idl' el'
         -- may want to add offsets to ShortDeclarations and create an error with those here for ShortDec
-        let eit = sequence eb >>= check
-         in if isLeft eit
-              then S.disableMessages st $> eit
-              else return eit
+              let eit = sequence eb >>= check
+               in if isLeft eit
+                    then S.disableMessages st $> eit
+                    else return eit)
         where
           check ::
                [(Bool, (C.ScopedIdent, C.Expr))]
@@ -965,6 +981,8 @@ data SymbolError
             Identifier
   | VoidFunc Identifier
   | NotVar Identifier
+  | DuplicateShort Identifier
+  | DuplicateParam Identifier
   | ShortDec
   | InitNVoid SType
   | InitParams
@@ -1001,6 +1019,10 @@ instance ErrorEntry SymbolError where
       VoidFunc (Identifier _ vname) -> vname ++ " resolves to a void function"
       NotVar (Identifier _ vname) ->
         vname ++ " is not a var and cannot be short declared"
+      DuplicateShort (Identifier _ vname) ->
+        "Repeated identifier " ++ vname ++ " on LHS of short declaration"
+      DuplicateParam (Identifier _ vname) ->
+        "Duplicate parameter " ++ vname ++ " in function declaration"
       ShortDec -> "Short declaration list contains no new variables"
       InitNVoid t -> "init has non void return type " ++ show t
       InitParams -> "init must not have any parameters"
@@ -1064,6 +1086,19 @@ getFirstDuplicate (x:xs) =
   if x `elem` xs
     then Just x
     else getFirstDuplicate xs
+
+-- | Wrapper for check duplicate that will do an action if no duplicate found
+checkDup ::
+     (Eq a, ErrorBreakpoint a)
+  => SymbolTable s
+  -> [a]
+  -> (a -> SymbolError)
+  -> ST s (Glc' b)
+  -> ST s (Glc' b)
+checkDup st l err stres =
+  case getFirstDuplicate l of
+    Nothing  -> stres
+    Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
 
 -- | Convert SType to base type, aka Type from CheckedData
 toBase :: SType -> C.Type

@@ -97,22 +97,31 @@ resolve ident@(Identifier _ idv) st notDeclError = do
   sres <- maybe (S.disableMessages st $> Left notDeclError) (return . Right) res
   return $ do
     (scope, t) <- sres
-    maybe (Left $ createError ident "Undefined base type") Right $ resolve' t scope idv
+    resolve' t scope idv
     -- | Resolve symbol to type
   where
-    resolve' :: Symbol -> S.Scope -> String -> Maybe SType
+    resolve' :: Symbol -> S.Scope -> String -> Either ErrorMessage' SType
     resolve' Base _ ident' =
       case ident' of
-        "int"     -> Just PInt
-        "float64" -> Just PFloat64
-        "bool"    -> Just PBool
-        "rune"    -> Just PRune
-        "string"  -> Just PString
-        _         -> Nothing -- This shouldn't happen, don't insert any other base types
-    resolve' ConstantBool _ _ = Just PBool
-    resolve' (Variable t') _ _ = Just t'
-    resolve' (SType t') scope ident' = Just $ TypeMap (mkSIdStr scope ident') t'
-    resolve' (Func _ t') _ _ = Just t'
+        "int"     -> Right PInt
+        "float64" -> Right PFloat64
+        "bool"    -> Right PBool
+        "rune"    -> Right PRune
+        "string"  -> Right PString
+        _         -> Left $ createError ident NotBase -- This shouldn't happen, don't insert any other base types
+    resolve' ConstantBool _ _ = Right PBool
+    resolve' (Variable _) _ _ = Left $ createError ident $ NotTypeMap "variable "
+    resolve' (SType t') scope ident' = Right $ TypeMap (mkSIdStr scope ident') t'
+    resolve' (Func _ _) _ _ = Left $ createError ident $ NotTypeMap "function "
+
+data ResolveError
+  = NotTypeMap String
+  | NotBase
+  deriving (Show, Eq)
+
+instance ErrorEntry ResolveError where
+  errorMessage (NotTypeMap s) = "Identifier resolves to a " ++ s ++ " which is not a type map and so we cannot resolve its type"
+  errorMessage NotBase = "Undefined base type, cannot resolve to a base type"
 
 -- | Take Symbol table scope and string to make ScopedIdent, add dummy offset
 mkSIdStr :: S.Scope -> String -> SIdent

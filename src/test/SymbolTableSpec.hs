@@ -151,6 +151,7 @@ spec = do
     , "if true {var a = 21;} else {var b = a;}"
     -- Append alone is an expression
     , "var a []int; var b int; append(a, b)"
+    , "a, a := 0, 1"
     ]
   expectTypecheckPass
     [ [text|
@@ -301,6 +302,8 @@ spec = do
     , "type a []struct {a1 a; a2 a; a3 a;}"
     , "type a struct {a1 []a; a2 []a; a3 []a;}"
     , "type a []struct {a struct {a a;}; }"
+    , "func a (int, float64, string, rune int){}"
+    , "func a (int int, b int){}"
     ]
   expectTypecheckPassNoMain
     [ [text|
@@ -503,6 +506,8 @@ spec = do
     , "func zz (a, b int) int {}"
     , "type a struct {b a;}"
     , "type a struct {a1 []a; a2 []a; a3 a;}"
+    , "type a struct {a int; a int;}"
+    , "type a struct {a,b,a int; c int;}"
     -- , "var a int; type b a;"
     ]
   expectTypecheckFailNoMain
