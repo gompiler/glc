@@ -65,9 +65,7 @@ add st ident sym =
     else do
       result <- S.lookupCurrent st ident -- We only need to check current scope for declarations
       case result of
-        Just _ -> do
-          _ <- S.disableMessages st -- Found something, aka a conflict, so stop printing symbol table after this
-          return False
+        Just _ -> S.disableMessages st $> False -- Found something, aka a conflict, so stop printing symbol table after this
         Nothing -> do
           scope <- S.insert st ident sym
           _ <- S.addMessage st (ident, sym, scope) -- Add the symbol info of what we added
@@ -79,9 +77,7 @@ isNDefL st k = do
   res <- S.lookupCurrent st k
   case res of
     Nothing -> return True
-    Just _ -> do
-      _ <- S.disableMessages st -- Signal error, key should not be defined
-      return False
+    Just _  -> S.disableMessages st $> False -- Signal error, key should not be defined
 
 -- | S.isDef  wrapper but insert message if not declared
 -- isDef :: SymbolTable s -> String -> ST s Bool
@@ -160,8 +156,11 @@ instance Typify Type where
     -> Bool -- Allow recursion? If the call is nested inside a slice
     -> ST s (Either ErrorMessage' SType)
   toType' st root (ArrayType (Lit l) t) brec = do
-    sym <- toType' st root t brec
-    return $ sym >>= Right . Array (intTypeToInt l) -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
+    symEither <- toType' st root t brec
+    return $ do
+      sym <- symEither
+      size <- intTypeToInt l <?> createError (Offset 0) "Invalid index" -- TODO add actual offset
+      Right $ Array size sym -- Negative indices are not possible because we only accept int lits, no unary ops, no need to check
   -- In golite, we can use a slice type x while creating type x
   toType' st root@(_, _) (SliceType t) _ = resolveType
       -- Default resolution method
@@ -353,9 +352,7 @@ instance Symbolize FuncDecl C.FuncDecl
              einfo <- checkIds' t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
              either
-               (\e -> do
-                  _ <- S.disableMessages st
-                  return $ Left e)
+               (\e -> S.disableMessages st $> Left e)
                (return . Right)
                einfo)
           et
@@ -376,11 +373,12 @@ instance Symbolize FuncDecl C.FuncDecl
       func2sig scope (pl, t') =
         C.Signature
           (C.Parameters (map (p2pd scope) pl))
-          (case toBase t' of
-             C.Type (C.Ident "void") -> Nothing
-             ct                      -> Just ct)
-  recurse _ FuncDecl {} =
-    error "Function declaration's body is not a block stmt"
+          (case t' of
+             Void -> Nothing
+             _    -> Just (toBase t'))
+      -- TODO use more specific type to avoid errors
+  recurse st (FuncDecl idents sig stmt) =
+    recurse st (FuncDecl idents sig (BlockStmt [stmt]))
 
 --               do
 --                 _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
@@ -840,7 +838,7 @@ instance Symbolize Expr C.Expr where
     et' <- infer st eu -- Use typecheck from type inference
     either
       (return . Left)
-      (const $ fmap (C.Unary (convOp op)) <$> recurse st e)
+      (\t -> fmap (C.Unary (toBase t) (convOp op)) <$> recurse st e)
       et'
     where
       convOp :: UnaryOp -> C.UnaryOp
@@ -856,7 +854,9 @@ instance Symbolize Expr C.Expr where
     ee2' <- recurse st e2
     either
       (return . Left)
-      (const $ return $ (\e1' -> C.Binary (convOp op) e1' <$> ee2') =<< ee1')
+      (\t ->
+         return $
+         (\e1' -> C.Binary (toBase t) (convOp op) e1' <$> ee2') =<< ee1')
       et'
     where
       convOp :: BinaryOp -> C.BinaryOp
@@ -873,10 +873,12 @@ instance Symbolize Expr C.Expr where
           GEQ        -> C.GEQ
   recurse _ (Lit lit) =
     return $
-    Right $
     case lit of
-      IntLit {} -> C.Lit $ C.IntLit $ intTypeToInt lit
+      IntLit {} -> do
+        int <- intTypeToInt lit <?> createError (Offset 0) "Invalid index" -- TODO add actual offset
+        Right $ C.Lit $ C.IntLit int
       FloatLit _ fs ->
+        Right $
         C.Lit $
         C.FloatLit $
         read $
@@ -886,6 +888,7 @@ instance Symbolize Expr C.Expr where
           ([], '.':_) -> '0' : fs -- Prepend 0 because .1 is not a valid Float
           (_, _)      -> fs
       RuneLit _ cs ->
+        Right $
         C.Lit $
         C.RuneLit $
         case cs !! 1 of
@@ -902,22 +905,28 @@ instance Symbolize Expr C.Expr where
               '\\' -> '\\'
               _    -> error "Invalid escape character in rune lit" -- Should never happen because scanner guarantees these escape characters
           c -> c
-      StringLit _ _ s -> C.Lit $ C.StringLit s -- TODO: Resolve separate types of strings
+      StringLit _ _ s -> Right $ C.Lit $ C.StringLit s -- TODO: Resolve separate types of strings
   recurse st (Var ident@(Identifier _ vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname
     maybe
       (S.disableMessages st $>
        (Left $ createError ident (NotDecl "Variable " ident)))
-      (\(scope, _) -> return $ Right $ C.Var (mkSIdStr scope vname))
+      (\(scope, sym) ->
+         return $ Right $ C.Var (toValType sym) (mkSIdStr scope vname))
       msi
+    where
+      toValType :: Symbol -> C.Type
+      toValType ConstantBool = C.PBool
+      toValType (Variable stype) = toBase stype
+      toValType _ = error "Cannot get type of non-const/var identifier"
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
     ee2' <- recurse st e2
     either
       (return . Left)
-      (const $ return $ (\e1' -> C.AppendExpr e1' <$> ee2') =<< ee1')
+      (\t -> return $ (\e1' -> C.AppendExpr (toBase t) e1' <$> ee2') =<< ee1')
       et'
   recurse st ec@(LenExpr _ e) = do
     ect' <- infer st ec
@@ -932,7 +941,7 @@ instance Symbolize Expr C.Expr where
     ee' <- recurse st e
     either
       (return . Left)
-      (const $ return $ (\e' -> C.Selector e' (C.Ident vname)) <$> ee')
+      (\t -> return $ (\e' -> C.Selector (toBase t) e' (C.Ident vname)) <$> ee')
       ect'
   recurse st e@(Index _ e1 e2) = do
     et' <- infer st e
@@ -940,7 +949,7 @@ instance Symbolize Expr C.Expr where
     ee2' <- recurse st e2
     either
       (return . Left)
-      (const $ return $ (\e1' -> C.Index e1' <$> ee2') =<< ee1')
+      (\t -> return $ (\e1' -> C.Index (toBase t) e1' <$> ee2') =<< ee1')
       et'
   recurse st ec@(Arguments _ e el) = do
     ect' <- infer st ec
@@ -948,19 +957,17 @@ instance Symbolize Expr C.Expr where
     eel' <- mapM (recurse st) el
     either
       (return . Left)
-      (const $ return $ (\e' -> C.Arguments e' <$> sequence eel') =<< ee')
+      (\t ->
+         return $ (\e' -> C.Arguments (toBase t) e' <$> sequence eel') =<< ee')
       ect'
 
-intTypeToInt :: Literal -> Int
+intTypeToInt :: Literal -> Maybe Int
 intTypeToInt (IntLit _ t s) =
   case t of
-    Decimal     -> read s
-    Hexadecimal -> read s
-    Octal       -> fst $ head $ readOct s
-intTypeToInt _ = error "Trying to convert a literal that isn't an int to an int"
-                 -- This should never happen because we only use this for ArrayType
-                 -- just here for exhaustive pattern matching
-                 -- if we want to remove this we must change ArrayType as mentioned below
+    Decimal     -> Just $ read s
+    Hexadecimal -> Just $ read s
+    Octal       -> Just $ fst $ head $ readOct s
+intTypeToInt _ = Nothing
 
 -- | List of maybes, return first Just or nothing if all nothing
 maybeJ :: [Maybe b] -> Maybe b
@@ -1106,7 +1113,14 @@ toBase (Struct fls) = C.StructType (map f2fd fls)
     f2fd :: Field -> C.FieldDecl
     f2fd (s, t) = C.FieldDecl (C.Ident s) (toBase t)
 toBase (TypeMap _ t) = toBase t
-toBase t = C.Type $ C.Ident $ show t -- The last ones are primitive types, void or infer
+toBase PInt = C.PInt
+toBase PFloat64 = C.PFloat64
+toBase PBool = C.PBool
+toBase PRune = C.PRune
+toBase PString = C.PString
+-- TODO remove error
+toBase Void = error "Void cannot be converted to CheckedData base type"
+toBase Infer = error "Infer cannot be converted to CheckedData base type"
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' Bool)

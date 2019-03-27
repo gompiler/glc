@@ -29,11 +29,12 @@ module Base
   , expectPrettyExact
   , expectPrettyInvar
   , qcGen
+  , (<&>), ($>)
   ) where
 
 import           Control.Monad         (unless)
 import           Data
-import           Data.Functor          ((<&>))
+import           Data.Functor          ((<&>), ($>))
 import           Data.List.NonEmpty    (NonEmpty (..))
 import           Data.Text             (Text, unpack)
 import           ErrorBundle

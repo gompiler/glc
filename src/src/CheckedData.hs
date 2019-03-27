@@ -59,9 +59,9 @@ data VarDecl' =
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
-data TypeDef' =
-  TypeDef' ScopedIdent
-           Type
+data TypeDef'
+  = TypeDef' ScopedIdent
+             Type
   -- For mappings that aren't structs, we resolve them to their base types so we don't need to define them anymore
   | NoDef
   deriving (Show, Eq)
@@ -194,19 +194,22 @@ data ForClause =
 -- Note that we don't care about parentheses here;
 -- We can infer them from the AST
 data Expr
-  = Unary UnaryOp
+  = Unary Type
+          UnaryOp
           Expr
-  | Binary BinaryOp
+  | Binary Type
+           BinaryOp
            Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var ScopedIdent
+  | Var Type ScopedIdent
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
-  | AppendExpr Expr
+  | AppendExpr Type
+               Expr
                Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
@@ -218,15 +221,18 @@ data Expr
   | CapExpr Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
-  | Selector Expr
+  | Selector Type
+             Expr
              Ident
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
-  | Index Expr
+  | Index Type
+          Expr
           Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
-  | Arguments Expr
+  | Arguments Type
+              Expr
               [Expr]
   deriving (Show, Eq)
 
@@ -301,7 +307,11 @@ data Type
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
   | StructType [FieldDecl]
-  | Type Ident
+  | PInt
+  | PFloat64
+  | PBool
+  | PRune
+  | PString
   -- | Empty return type
   deriving (Show, Eq)
 

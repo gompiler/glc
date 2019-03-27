@@ -10,6 +10,7 @@ module TypeInference
   , resolveSType
   ) where
 
+import           Base
 import qualified CheckedData        as T (Ident (..), Scope (..),
                                           ScopedIdent (..))
 import           Control.Monad.ST
@@ -17,7 +18,6 @@ import           Data
 import           Data.List          (intercalate)
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
 import qualified Data.List.NonEmpty as NE (head, map, nub)
-import           Base
 import           Symbol             (SType (..), Symbol (..), SymbolTable,
                                      resolve)
 import qualified SymbolTableCore    as S
@@ -198,9 +198,9 @@ infer st (Var ident@(Identifier _ vname)) = resolveVar
     resolveVar = do
       res <- S.lookup st vname
       case res of
-        Nothing -> do
-          _ <- S.disableMessages st -- Signal error to symbol table checker
-          return $ Left $ createError ident (ExprNotDecl "Identifier " ident)
+        Nothing ->
+          S.disableMessages st $>
+          Left (createError ident (ExprNotDecl "Identifier " ident)) -- Signal error to symbol table checker
         Just (_, sym) ->
           return $
           case sym of
