@@ -77,7 +77,6 @@ data Instruction
   | IAnd
   | IAStore
   | IfEq
-  | IStore Int
   | IXOr
   | LDC LDCType -- pushes an int/float/string value onto the stack
   | NOp
