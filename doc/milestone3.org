@@ -33,6 +33,13 @@ whilst implementing the components for milestone 3.  \newpage
 * Semantics
 ** Switch Statements
 *** Go Semantics
+    In GoLite, ~switch~ statements work differently when compared to Java, or
+    C / C++, in a few important ways. Most noticably, ~case~ statements do not
+    automatically fall through, and each ~case~ or ~default~ block defines its
+    own scope for declarations. ~case~ statements also can contain a list of
+    expressions which will each be checked for equality. In Java, ~case~ values
+    must contain only a single constant expression.
+
     TODO
 *** Mapping Strategy
     TODO
