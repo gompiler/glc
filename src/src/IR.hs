@@ -46,6 +46,26 @@ data Method = Method
   , body        :: [IRItem]
   } deriving (Show)
 
+data ClassRef =
+  ClassRef String
+  deriving (Show)
+
+data FieldRef =
+  FieldRef ClassRef String
+  deriving (Show)
+
+data MethodRef =
+  MethodRef ClassRef String [JType] JType
+  deriving (Show)
+
+data JType
+  = JClass ClassRef -- Lwhatever;
+  | JInt -- I
+  | JFloat -- F
+  | JBool -- Z
+  | JVoid -- V
+  deriving (Show)
+
 data IRItem
   = IRInst Instruction
   | IRLabel LabelName
@@ -90,15 +110,25 @@ data Instruction
   | IOr
   | IXOr
   | LDC LDCType -- pushes an int/float/string value onto the stack
-  | New String -- class
+  | New ClassRef -- class
   | NOp
   | Pop
   | Swap
-  | GetStatic String String -- field spec, descriptor
-  | InvokeSpecial String -- method spec
-  | InvokeVirtual String -- method spec
+  | GetStatic FieldRef ClassRef -- field spec, descriptor
+  | InvokeSpecial MethodRef -- method spec
+  | InvokeVirtual MethodRef -- method spec
   | Debug String -- TODO: remove
   deriving (Show)
+
+-- Predefined Java language constructs to use in code generation
+systemOut :: FieldRef
+systemOut = FieldRef (ClassRef "java/lang/System") "out"
+printStream :: ClassRef
+printStream = ClassRef "java/io/PrintStream"
+stringBuilder :: ClassRef
+stringBuilder = ClassRef "java/lang/StringBuilder"
+jString :: ClassRef
+jString = ClassRef "java/lang/String"
 
 displayIR :: String -> IO ()
 displayIR code = either putExit (putSucc . show . toClass) (S.typecheckGen code)
@@ -182,14 +212,15 @@ printIR e =
     wot -> iri [Debug $ show wot] -- TODO
   where
   printLoad :: [IRItem]
-  printLoad = iri [GetStatic "java/lang/System/out" "Ljava/io/PrintStream;"]
+  printLoad = iri [GetStatic systemOut printStream]
   intPrint :: [IRItem]
-  intPrint = iri [InvokeVirtual "java/io/PrintStream/print(I)V"]
+  intPrint = iri [InvokeVirtual $ MethodRef printStream "print" [JInt] JVoid]
   floatPrint :: [IRItem]
-  floatPrint = iri [InvokeVirtual "java/io/PrintStream/print(F)V"]
+  floatPrint =
+    iri [InvokeVirtual $ MethodRef printStream "print" [JFloat] JVoid]
   stringPrint :: [IRItem]
   stringPrint =
-    iri [InvokeVirtual "java/io/PrintStream/print(Ljava/lang/String;)V"]
+    iri [InvokeVirtual $ MethodRef printStream "print" [JClass jString] JVoid]
 
 instance IRRep C.ForClause where
   toIR C.ForClause {} = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
@@ -243,12 +274,12 @@ instance IRRep C.Expr where
       C.PFloat64 -> binary e1 e2 (Add IRFloat)
       C.PRune    -> binary e1 e2 (Add IRInt)
       C.PString  ->
-        iri [ New "java/lang/StringBuilder"
+        iri [ New stringBuilder
             , Dup
-            , InvokeSpecial "java/lang/StringBuilder/<init>()V"] ++
-        toIR e1 ++ iri [InvokeVirtual "java/lang/StringBuilder/append(Ljava/lang/String;)Ljava/lang/StringBuilder;"] ++
-        toIR e2 ++ iri [InvokeVirtual "java/lang/StringBuilder/append(Ljava/lang/String;)Ljava/lang/StringBuilder;"] ++
-        iri [InvokeVirtual "java/lang/StringBuilder/toString()Ljava/lang/String;"]
+            , InvokeSpecial (MethodRef stringBuilder "<init>" [] JVoid)] ++
+        toIR e1 ++ iri [InvokeVirtual (MethodRef stringBuilder "append" [JClass jString] (JClass stringBuilder))] ++
+        toIR e2 ++ iri [InvokeVirtual (MethodRef stringBuilder "append" [JClass jString] (JClass stringBuilder))] ++
+        iri [InvokeVirtual (MethodRef stringBuilder "toString" [] (JClass jString))]
       _          -> iri [Debug $ show t] -- undefined
   toIR (C.Binary t (C.Arithm aop) e1 e2) =
     case astToIRPrim t of
