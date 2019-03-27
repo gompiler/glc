@@ -129,8 +129,13 @@ instance IRRep C.Stmt where
   toIR (C.SimpleStmt stmt) = toIR stmt
   toIR (C.If (sstmt, expr) ifs elses) = -- TODO: SIMPLE STMT!!!
     toIR sstmt ++ toIR expr ++ IRInst IfEq : toIR ifs ++
-    IRInst (Goto "TODOElse") : toIR elses ++ iri [Goto "TODOStop"]
-  toIR (C.Switch {}) = undefined -- duplicate expression as many times as non-default case statement expressions in lists
+    IRLabel "TODOElse" : toIR elses ++ [IRLabel "TODOStop"]
+  toIR (C.Switch sstmt me scs) =
+    toIR sstmt ++ seIR ++ (concat $ map toIR scs) ++ [IRLabel "TODOStop"]
+    where
+      -- duplicate expression for case statement expressions in lists
+      seIR :: [IRItem]
+      seIR = maybe (iri [LDC (LDCInt 1)]) toIR me -- 1 = true
 
   toIR (C.For {}) = undefined
   toIR C.Break = undefined -- [IRInst (Goto "TODO")]
@@ -160,17 +165,8 @@ instance IRRep C.Decl where
 instance IRRep C.VarDecl' where
   toIR (C.VarDecl' _ t me) =
     case me of
-      Just e -> toIR e ++ iri [Store irType (-1)]
+      Just e -> toIR e ++ iri [Store (astToIRType t) (-1)]
       _ -> [] -- HOPEFULLY WE CAN REMOVE THE NOTHING!
-    where
-      irType :: IRType
-      irType =
-        case t of
-          C.PInt     -> Prim IRInt
-          C.PFloat64 -> Prim IRFloat
-          C.PBool    -> Prim IRInt
-          C.PRune    -> Prim IRInt
-          _          -> Object
 
 instance IRRep C.Expr where
   toIR (C.Unary _ C.Pos e) = toIR e -- unary pos is identity function after typecheck
@@ -200,6 +196,7 @@ instance IRRep C.Expr where
       C.PRune -> binary e1 e2 (Sub IRInt)
       _ -> iri [Debug $ show t] -- undefined
   toIR (C.Lit l) = toIR l
+  toIR (C.Var t _) = iri [Load (astToIRType t) (-1)] -- TODO (also bool?)
   toIR _ = undefined
 
 instance IRRep C.Literal where
@@ -225,6 +222,16 @@ exprType (C.CapExpr _) = C.PInt
 exprType (C.Selector t _ _) = t
 exprType (C.Index t _ _) = t
 exprType (C.Arguments t _ _) = t
+
+astToIRType :: C.Type -> IRType
+astToIRType (C.PInt) = Prim IRInt
+astToIRType (C.PFloat64) = Prim IRFloat
+astToIRType (C.PRune) = Prim IRInt
+astToIRType (C.PBool) = Prim IRInt
+astToIRType _ = Object
+
+exprIRType :: C.Expr -> IRType
+exprIRType = astToIRType . exprType
 
 getLiteralType :: C.Literal -> C.Type
 getLiteralType (C.IntLit _) = C.PInt
