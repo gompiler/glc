@@ -204,7 +204,7 @@ data Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var ScopedIdent -- TODO: Type
+  | Var Type ScopedIdent
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
@@ -312,7 +312,6 @@ data Type
   | PBool
   | PRune
   | PString
-  | Type Ident -- TODO: REMOVE
   -- | Empty return type
   deriving (Show, Eq)
 

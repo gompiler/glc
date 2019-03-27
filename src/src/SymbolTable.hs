@@ -365,9 +365,9 @@ instance Symbolize FuncDecl C.FuncDecl
       func2sig scope (Func pl t') =
         C.Signature
           (C.Parameters (map (p2pd scope) pl))
-          (case toBase t' of
-             C.Type (C.Ident "void") -> Nothing
-             ct                      -> Just ct)
+          (case t' of
+             Void -> Nothing
+             _    -> Just (toBase t'))
       func2sig _ _ =
         error "Trying to convert a symbol that isn't a function to a signature" -- Should never happen
   recurse _ FuncDecl {} =
@@ -893,8 +893,13 @@ instance Symbolize Expr C.Expr where
     maybe
       (S.disableMessages st $>
        (Left $ createError ident (NotDecl "Variable " ident)))
-      (\(scope, _) -> return $ Right $ C.Var (mkSIdStr scope vname))
+      (\(scope, sym) -> return $ Right $ C.Var (toValType sym) (mkSIdStr scope vname))
       msi
+    where
+      toValType :: Symbol -> C.Type
+      toValType ConstantBool = C.PBool
+      toValType (Variable stype) = toBase stype
+      toValType _ = error "Cannot get type of non-const/var identifier"
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
@@ -1075,7 +1080,8 @@ toBase PFloat64 = C.PFloat64
 toBase PBool = C.PBool
 toBase PRune = C.PRune
 toBase PString = C.PString
-toBase t = C.Type $ C.Ident $ show t -- The last ones are void or infer: TODO: Remove
+toBase Void = error "Void cannot be converted to CheckedData base type"
+toBase Infer = error "Infer cannot be converted to CheckedData base type"
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: Expr -> Bool
