@@ -10,10 +10,18 @@
 //~438
 //~6
 //~132
+//~2
 package main
 
 func println2(n int){
 	println(n)
+}
+
+var g int = 0
+
+func gplus() int{
+	g++
+	return g
 }
 
 func main() {
@@ -73,5 +81,14 @@ func main() {
 		println2(99)
 	default:
 		println2(122)
+	}
+
+	switch gplus() {
+	case 2:
+		println(1)
+	case 1:
+		println(2)
+	case 2:
+		println(3)
 	}
 }
