@@ -218,7 +218,7 @@ exprType :: C.Expr -> C.Type
 exprType (C.Unary t _ _) = t
 exprType (C.Binary t _ _ _) = t
 exprType (C.Lit l) = getLiteralType l
-exprType (C.Var _) = undefined
+exprType (C.Var t _) = t
 exprType (C.AppendExpr t _ _) = t
 exprType (C.LenExpr _) = C.PInt
 exprType (C.CapExpr _) = C.PInt
