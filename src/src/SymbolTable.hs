@@ -337,10 +337,13 @@ instance Symbolize FuncDecl C.FuncDecl
                  (mkSIdStr scope' vname)
                  (C.Signature (C.Parameters []) Nothing)) <$>
             recurse st body
+      getAllIdents :: [Identifier]
+      getAllIdents = concatMap (\(ParameterDecl nidl _) -> toList nidl) pdl
       checkParams :: [ParameterDecl] -> ST s (Glc' [(Param, SymbolInfo)])
-      checkParams pdl' = do
-        pl <- mapM checkParam pdl'
-        return $ concat <$> sequence pl
+      checkParams pdl' = checkDup st getAllIdents DuplicateParam $
+                         do
+                           pl <- mapM checkParam pdl'
+                           return $ concat <$> sequence pl
       checkParam :: ParameterDecl -> ST s (Glc' [(Param, SymbolInfo)])
       checkParam (ParameterDecl idl (_, t')) = do
         et <- toType st Nothing t' -- Remove ST
@@ -357,13 +360,9 @@ instance Symbolize FuncDecl C.FuncDecl
                einfo)
           et
       checkIds' :: SType -> Identifiers -> ST s (Glc' [(Param, SymbolInfo)])
-      checkIds' t' idl =
-        checkDup
-          st
-          (toList idl)
-          DuplicateParam
-          (do scope <- S.scopeLevel st
-              sequence <$> mapM (checkId' scope t') (toList idl))
+      checkIds' t' idl = do
+        scope <- S.scopeLevel st
+        sequence <$> mapM (checkId' scope t') (toList idl)
       checkId' ::
            S.Scope -> SType -> Identifier -> ST s (Glc' (Param, SymbolInfo))
       checkId' scope t' ident'@(Identifier _ idv) = do
