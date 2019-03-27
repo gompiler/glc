@@ -662,6 +662,24 @@ spec = do
         f().b = 3;
     }
      |]
+   , [text|
+    func f() [5]int {
+        var r [5]int
+        return r
+    }
+    func main(){
+        f()[3] = 3;
+    }
+     |]
+   , [text|
+    func f() [5]int {
+        var r [5]int
+        return r
+    }
+    func main(){
+        f()[3]++;
+    }
+     |]
 --    , [text|
 --      |]
 --    , [text|

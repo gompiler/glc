@@ -1108,7 +1108,7 @@ isAddr e =
   case e of
     Var _           -> True
     Selector _ e' _ -> isAddr e'
-    Index {}        -> True
+    Index _ e' _    -> isAddr e'
     _               -> False
 
 -- | Check if given expression is addressable, if not, return error message
