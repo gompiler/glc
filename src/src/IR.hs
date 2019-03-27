@@ -7,6 +7,13 @@ import qualified Data.List.NonEmpty as NE (map)
 import           Scanner            (putExit, putSucc)
 import qualified SymbolTable        as S
 
+-- Sources:
+-- http://jasmin.sourceforge.net/instructions.html
+-- https://en.wikibooks.org/wiki/Java_Programming/Byte_Code
+-- https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html
+-- https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
+-- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
+
 type LabelName = String
 
 data FieldAccess
@@ -83,10 +90,12 @@ data Instruction
   | IOr
   | IXOr
   | LDC LDCType -- pushes an int/float/string value onto the stack
+  | New String -- class
   | NOp
   | Pop
   | Swap
   | GetStatic String String -- field spec, descriptor
+  | InvokeSpecial String -- method spec
   | InvokeVirtual String -- method spec
   | Debug String -- TODO: remove
   deriving (Show)
@@ -169,6 +178,7 @@ printIR e =
     C.PFloat64 -> printLoad ++ toIR e ++ floatPrint
     C.PRune -> printLoad ++ toIR e ++ intPrint
     C.PBool -> undefined -- TODO: PRINT true/false
+    C.PString -> printLoad ++ toIR e ++ stringPrint
     wot -> iri [Debug $ show wot] -- TODO
   where
   printLoad :: [IRItem]
@@ -177,6 +187,9 @@ printIR e =
   intPrint = iri [InvokeVirtual "java/io/PrintStream/print(I)V"]
   floatPrint :: [IRItem]
   floatPrint = iri [InvokeVirtual "java/io/PrintStream/print(F)V"]
+  stringPrint :: [IRItem]
+  stringPrint =
+    iri [InvokeVirtual "java/io/PrintStream/print(Ljava/lang/String;)V"]
 
 instance IRRep C.ForClause where
   toIR C.ForClause {} = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
@@ -229,7 +242,13 @@ instance IRRep C.Expr where
       C.PInt     -> binary e1 e2 (Add IRInt)
       C.PFloat64 -> binary e1 e2 (Add IRFloat)
       C.PRune    -> binary e1 e2 (Add IRInt)
-      C.PString  -> undefined -- TODO
+      C.PString  ->
+        iri [ New "java/lang/StringBuilder"
+            , Dup
+            , InvokeSpecial "java/lang/StringBuilder/<init>()V"] ++
+        toIR e1 ++ iri [InvokeVirtual "java/lang/StringBuilder/append(Ljava/lang/String;)Ljava/lang/StringBuilder;"] ++
+        toIR e2 ++ iri [InvokeVirtual "java/lang/StringBuilder/append(Ljava/lang/String;)Ljava/lang/StringBuilder;"] ++
+        iri [InvokeVirtual "java/lang/StringBuilder/toString()Ljava/lang/String;"]
       _          -> iri [Debug $ show t] -- undefined
   toIR (C.Binary t (C.Arithm aop) e1 e2) =
     case astToIRPrim t of
