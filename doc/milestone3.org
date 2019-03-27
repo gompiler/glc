@@ -5,7 +5,26 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 * Language for Code Generation
-  TODO
+  We decided on targeting JVM bytecode for our compiler, through the Krakatau
+  bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
+  a more modern codebase (written in Python) and some additional features.
+
+  TODO: TALK ABOUT ADDITIONAL FEATURES?
+
+  The primary advantages of targeting JVM bytecode are: 1) portability,
+  2) execution speed, and 3) (surprisingly to us) its focus on stack
+  operations as opposed to a more `straightforward' language, which aids in
+  overcoming some of the common pain points of GoLite code generation:
+  1. The JVM has been ported to many common platforms, meaning code written in
+     GoLite, when compiled with our compiler, will be able to run on any
+     platform the JVM can run on.
+  2. Although Java is often considered slow as opposed to ahead-of-time compiled
+     languages such as C and C++ due to its garbage collection and non-native
+     compiled code, most implementations of the JVM provide JIT compilation,
+     By targeting JVM bytecode, we can take advantage of this, and our generated
+     code will likely be faster than if we generated code in a higher-level
+     language such as Python.
+  3. TODO
 * Semantics
 ** TODO: ASPECT 1
 *** Go Semantics
