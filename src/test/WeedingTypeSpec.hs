@@ -117,4 +117,40 @@ spec = do
     , [text|
       func main(a float) string {}
       |]
+    , [text|
+      func f() int {
+            for ; true ; { // This isn't valid because this condition can be false
+                return 42
+            }
+      }
+      |]
+    , [text|
+      func f() int {
+            for {
+                break // Break gets us out of infinite loop
+            }
+      }
+      |]
+    , [text|
+      func f() int {
+            switch { // Switch with no defaults cannot guarantee a return, might not enter any cases
+                case true:
+                    return 2;
+                case false:
+                    return 222;
+            }
+      }
+      |]
+    , [text|
+      func f() int {
+            switch { // Switch with break cannot guarantee return
+                case true:
+                    break;
+                case false:
+                    return 222;
+                default:
+                    return 3;
+            }
+      }
+      |]
     ]
