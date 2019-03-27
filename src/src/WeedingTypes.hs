@@ -56,8 +56,9 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
       case reverse stmts of
         st:_ -> lastIsReturn st
         []   -> Just $ createError fd LastReturn
-    lastIsReturn (Switch _ _ cl) =
-      asum $ map (lastIsReturn . getSwitchCaseStmt) cl
+    lastIsReturn (Switch _ _ cl) = if not (True `elem` (map checkForDefault cl)) then
+                                     Just $ createError fd ReturnNoDefault
+                                   else asum $ map (lastIsReturn . getSwitchCaseStmt) cl
     lastIsReturn (Return _ _) = Nothing -- Just $ createError o LastReturn
     lastIsReturn _ = Just $ createError fd LastReturn
     getSwitchCaseStmt :: SwitchCase -> Stmt
@@ -68,6 +69,9 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
     checkForBreak (If _ ifb elseb) = checkForBreak ifb <|> checkForBreak elseb
     checkForBreak (Break o) = Just $ createError o LastReturnBreak
     checkForBreak _ = Nothing -- fors/switches start their own break 'scope'
+    checkForDefault :: SwitchCase -> Bool
+    checkForDefault (Default _ _) = True
+    checkForDefault _ = False
 
 initReturnVerify :: PureConstraint Program
 initReturnVerify program = asum errors

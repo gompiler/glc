@@ -131,4 +131,26 @@ spec = do
             }
       }
       |]
+    , [text|
+      func f() int {
+            switch { // Switch with no defaults cannot guarantee a return, might not enter any cases
+                case true:
+                    return 2;
+                case false:
+                    return 222;
+            }
+      }
+      |]
+    , [text|
+      func f() int {
+            switch { // Switch with break cannot guarantee return
+                case true:
+                    break;
+                case false:
+                    return 222;
+                default:
+                    return 3;
+            }
+      }
+      |]
     ]

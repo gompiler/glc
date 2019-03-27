@@ -330,6 +330,7 @@ data WeedingError
   | BreakScope
   | LastReturn
   | LastReturnBreak
+  | ReturnNoDefault
   | InitReturn
   | NonFunctionSpecial String
   | SpecialFunctionType String
@@ -349,6 +350,8 @@ instance ErrorEntry WeedingError where
         "Function declaration with non-void return type must have return as last statement"
       LastReturnBreak ->
         "Function declaration with non-void return type must have return as last statement [infinite loops can't break]"
+      ReturnNoDefault ->
+        "Switch statement as final statement in non-void function must have a default case"
       InitReturn -> "init function cannot have non-void return"
       NonFunctionSpecial s ->
         s ++ " can only be declared as a function in this scope"
