@@ -1106,10 +1106,10 @@ toBase t = C.Type $ C.Ident $ show t -- The last ones are primitive types, void 
 isAddr :: Expr -> Bool
 isAddr e =
   case e of
-    Var _       -> True
-    Selector {} -> True
-    Index {}    -> True
-    _           -> False
+    Var _           -> True
+    Selector _ e' _ -> isAddr e'
+    Index {}        -> True
+    _               -> False
 
 -- | Check if given expression is addressable, if not, return error message
 isAddrE :: Expr -> [ErrorMessage']

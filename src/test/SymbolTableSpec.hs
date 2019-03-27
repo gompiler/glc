@@ -623,8 +623,45 @@ spec = do
         return 2
       }
       |]
---    , [text|
---      |]
+   , [text|
+    type a struct {b int;}
+    func f() a {
+        var r a
+        return r
+    }
+    func main(){ f().b++
+    }
+     |]
+   , [text|
+    type a struct {b int;}
+    func f() a {
+        var r a
+        return r
+    }
+    func main(){ f().b--
+    }
+     |]
+   , [text|
+    type a struct {b int;}
+    func f() a {
+        var r a
+        return r
+    }
+    func main(){
+        var g a;
+        f() = g;
+    }
+     |]
+   , [text|
+    type a struct {b int;}
+    func f() a {
+        var r a
+        return r
+    }
+    func main(){
+        f().b = 3;
+    }
+     |]
 --    , [text|
 --      |]
 --    , [text|
