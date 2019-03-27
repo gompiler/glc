@@ -378,8 +378,6 @@ instance Symbolize FuncDecl C.FuncDecl
              Void -> Nothing
              _    -> Just (toBase t'))
       -- TODO use more specific type to avoid errors
-      func2sig _ _ =
-        error "Trying to convert a symbol that isn't a function to a signature" -- Should never happen
   recurse st (FuncDecl idents sig stmt) =
     recurse st (FuncDecl idents sig (BlockStmt [stmt]))
 
