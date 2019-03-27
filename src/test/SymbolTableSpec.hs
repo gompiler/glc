@@ -302,6 +302,8 @@ spec = do
     , "type a []struct {a1 a; a2 a; a3 a;}"
     , "type a struct {a1 []a; a2 []a; a3 []a;}"
     , "type a []struct {a struct {a a;}; }"
+    , "func a (int, float64, string, rune int){}"
+    , "func a (int int, b int){}"
     ]
   expectTypecheckPassNoMain
     [ [text|
