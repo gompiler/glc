@@ -25,6 +25,11 @@ whilst implementing the components for milestone 3.  \newpage
      code will likely be faster than if we generated code in a higher-level
      language such as Python.
   3. TODO
+
+  The main disadvantages of generating JVM bytecode are its low-level semantics
+  and its comparatively slow speeds versus an ahead-of-time compiled language,
+  despite it being faster than other, higher-level languages.
+  TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 * Semantics
 ** TODO: ASPECT 1
 *** Go Semantics
