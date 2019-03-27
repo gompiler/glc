@@ -13,7 +13,7 @@ newtype VarIndex =
 data Program = Program
   { package   :: Ident
   , structs   :: [StructType]
-  , vars      :: [VarDecl]
+  , topVars   :: [VarDecl]
   , functions :: [FuncDecl]
   } deriving (Show, Eq)
 
@@ -111,8 +111,9 @@ data Stmt
   -- Golite does not support type switches
   -- Note that there should be at most one default
   -- The next AST model can make that distinction
+  -- Note that
   | Switch SimpleStmt
-           (Maybe Expr)
+           Expr
            [SwitchCase]
   -- | See https://golang.org/ref/spec#For_statements
   | For ForClause
