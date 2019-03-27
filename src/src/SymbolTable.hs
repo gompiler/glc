@@ -893,8 +893,13 @@ instance Symbolize Expr C.Expr where
     maybe
       (S.disableMessages st $>
        (Left $ createError ident (NotDecl "Variable " ident)))
-      (\(scope, _) -> return $ Right $ C.Var (mkSIdStr scope vname))
+      (\(scope, sym) -> return $ Right $ C.Var (toValType sym) (mkSIdStr scope vname))
       msi
+    where
+      toValType :: Symbol -> C.Type
+      toValType ConstantBool = C.PBool
+      toValType (Variable stype) = toBase stype
+      toValType _ = error "Cannot get type of non-const/var identifier"
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
