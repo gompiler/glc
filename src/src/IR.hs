@@ -1,9 +1,10 @@
 module IR where
 
 import qualified CheckedData as C
-import           Data.Char        (ord)
+import           Data.Char                (ord)
+import qualified Data.List.NonEmpty as NE (map)
 import qualified SymbolTable as S
-import           Scanner          (putExit, putSucc)
+import           Scanner                  (putExit, putSucc)
 -- import Data.List.NonEmpty (toList)
 
 type LabelName = String
@@ -76,7 +77,7 @@ data Instruction
   | IALoad
   | IAnd
   | IAStore
-  | IfEq
+  | IfEq LabelName
   | IXOr
   | LDC LDCType -- pushes an int/float/string value onto the stack
   | NOp
@@ -128,10 +129,11 @@ instance IRRep C.Stmt where
   toIR (C.BlockStmt stmts) = concat $ map toIR stmts
   toIR (C.SimpleStmt stmt) = toIR stmt
   toIR (C.If (sstmt, expr) ifs elses) = -- TODO: SIMPLE STMT!!!
-    toIR sstmt ++ toIR expr ++ IRInst IfEq : toIR ifs ++
-    IRLabel "TODOElse" : toIR elses ++ [IRLabel "TODOStop"]
+    toIR sstmt ++ toIR expr ++ iri [LDC (LDCInt 0), IfEq "else_todo"] ++ -- TODO: PROPER EQUALITY CHECK
+    toIR ifs ++ [IRInst (Goto "end_todo"), IRLabel "else_todo"] ++ toIR elses ++
+    [IRLabel "end_todo"]
   toIR (C.Switch sstmt me scs) =
-    toIR sstmt ++ seIR ++ (concat $ map toIR scs) ++ [IRLabel "TODOStop"]
+    toIR sstmt ++ seIR ++ (concat $ map toIR scs) ++ [IRLabel "end_todo"]
     where
       -- duplicate expression for case statement expressions in lists
       seIR :: [IRItem]
@@ -147,12 +149,18 @@ instance IRRep C.ForClause where
   toIR (C.ForClause {}) = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
 
 instance IRRep C.SwitchCase where
-  toIR (C.Case {}) = undefined -- concat $ map (toIR . some equality check) exprs
-  toIR (C.Default stmt) = toIR stmt -- Default doesn't need to check expr value
+  toIR (C.Case exprs stmt) = -- concat $ map (toIR . some equality check) exprs
+    (concat $ NE.map toCaseHeader exprs) ++ [IRLabel "case_todo"] ++
+    toIR stmt ++ iri [Goto "end_todo"]
+    where
+      toCaseHeader :: C.Expr -> [IRItem]
+      toCaseHeader e = (IRInst Dup) : toIR e ++ iri [IfEq "case_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF
+  toIR (C.Default stmt) =
+    IRLabel "default_todo" : toIR stmt ++ iri [Goto "end_todo"] -- Default doesn't need to check expr value
 
 instance IRRep C.SimpleStmt where
   toIR C.EmptyStmt         = []
-  toIR (C.ExprStmt e)      = toIR e ++ iri [Pop] -- Invariant: pop expression result
+  toIR (C.ExprStmt e)      = toIR e ++ iri [Pop] -- Invariant: pop expression result TODO: VOID FUNCTIONS
   toIR (C.Increment {})    = undefined -- iinc for int, otherwise load/save + 1
   toIR (C.Decrement {})    = undefined -- iinc for int (-1), otherwise "
   toIR (C.Assign {})       = undefined -- store IRType
