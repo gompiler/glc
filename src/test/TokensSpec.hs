@@ -15,7 +15,7 @@ module TokensSpec
   , genRString
   ) where
 
-import           Base
+import           TestBase
 import           Scanner
 
 spec :: Spec

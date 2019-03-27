@@ -4,7 +4,7 @@ module SymbolTableSpec
   ( spec
   ) where
 
-import           Base        (Stringable (..), expectBase, text, toString)
+import           TestBase        (Stringable (..), expectBase, text, toString)
 import           SymbolTable (pTable, typecheckGen)
 import           Test.Hspec
 

@@ -1,6 +1,6 @@
 module Main where
 
-import           ErrorBundle
+import           Base
 import           IR                  (displayIR)
 import qualified Options.Applicative as Op
 import           ParseCLI
