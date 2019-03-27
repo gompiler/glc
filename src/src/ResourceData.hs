@@ -1,63 +1,34 @@
-module CheckedData where
+module ResourceData where
 
+import           CheckedData        (Ident)
 import           Data.List.NonEmpty (NonEmpty (..))
 
-data ScopedIdent =
-  ScopedIdent Scope
-              Ident
-  deriving (Show, Eq)
-
-newtype Ident =
-  Ident String
-  deriving (Show, Eq)
-
-newtype Scope =
-  Scope Int
+-- Represents the stack index within a method
+newtype VarIndex =
+  VarIndex Int
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
 data Program = Program
   { package   :: Ident
-  , topLevels :: [TopDecl]
+  , structs   :: [StructType]
+  , vars      :: [VarDecl]
+  , functions :: [FuncDecl]
   } deriving (Show, Eq)
 
 ----------------------------------------------------------------------
 -- Declarations
--- | See https://golang.org/ref/spec#TopLevelDecl
-data TopDecl
-  = TopDecl Decl
-  | TopFuncDecl FuncDecl
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#Declaration
--- Golite does not support type alias
-data Decl
-  -- | See https://golang.org/ref/spec#VarDecl
-  -- If only one entry exists, it is treated as a single line declaration
-  -- Otherwise, it is treated as var ( ... )
-  = VarDecl [VarDecl']
-  | TypeDef [TypeDef']
-  deriving (Show, Eq)
-
 -- | See https://golang.org/ref/spec#VarDecl
 -- Note that a proper declaration can be mapped to pairs of ids and expressions
 -- The inferred type here is a valid type after we check that
 -- the expression type matches the declared type, if any.
 -- This is necessary for cases like var a float = 5,
 -- where the expression type is not necessarily the same as the declared one
-data VarDecl' =
-  VarDecl' ScopedIdent
-           Type
-           (Maybe Expr) -- Can declare a variable without an expression
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#TypeDef
-data TypeDef'
-  = TypeDef' ScopedIdent
-             Type
-  -- For mappings that aren't structs, we resolve them to their base types so we don't need to define them anymore
-  | NoDef
+data VarDecl =
+  VarDecl VarIndex
+          Type
+          Expr -- If no explicit expr, assign default
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -71,7 +42,7 @@ data TypeDef'
 -- * Unnamed input parameters
 -- * Variadic parameters
 data FuncDecl =
-  FuncDecl ScopedIdent
+  FuncDecl Ident -- TODO check if we want this
            Signature
            FuncBody
   deriving (Show, Eq)
@@ -81,7 +52,7 @@ data FuncDecl =
 -- Golite does not support unnamed parameters
 -- At this stage, we can map each individual identifier to its expected type
 data ParameterDecl =
-  ParameterDecl ScopedIdent
+  ParameterDecl VarIndex
                 Type
   deriving (Show, Eq)
 
@@ -116,7 +87,7 @@ data SimpleStmt
   | Assign AssignOp
            (NonEmpty (Expr, Expr))
   -- | See https://golang.org/ref/spec#ShortVarDecl
-  | ShortDeclare (NonEmpty (ScopedIdent, Expr))
+  | ShortDeclare (NonEmpty (VarIndex, Expr))
   deriving (Show, Eq)
 
 -- | Shortcut for a blank stmt
@@ -157,7 +128,7 @@ data Stmt
   -- Labels are not supported in Golite
   | Continue
   -- | See https://golang.org/ref/spec#Declaration
-  | Declare Decl
+  | Declare VarDecl
   -- Golite exclusive
   | Print [Expr]
   -- Golite exclusive
@@ -188,22 +159,19 @@ data ForClause =
 -- Note that we don't care about parentheses here;
 -- We can infer them from the AST
 data Expr
-  = Unary Type
-          UnaryOp
+  = Unary UnaryOp
           Expr
-  | Binary Type
-           BinaryOp
+  | Binary BinaryOp
            Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var Type ScopedIdent
+  | Var VarIndex
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
-  | AppendExpr Type
-               Expr
+  | AppendExpr Expr
                Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
@@ -215,18 +183,15 @@ data Expr
   | CapExpr Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
-  | Selector Type
-             Expr
+  | Selector Expr
              Ident
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
-  | Index Type
-          Expr
+  | Index Expr
           Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
-  | Arguments Type
-              Expr
+  | Arguments Expr
               [Expr]
   deriving (Show, Eq)
 
@@ -287,11 +252,6 @@ newtype AssignOp =
   AssignOp (Maybe ArithmOp)
   deriving (Show, Eq)
 
--- | Type with scope value
--- Used for caching inferrable types
--- type InferredType = (Scope, Type)
--- Use Type for base type resolution instead
--- | See https://golang.org/ref/spec#Types
 data Type
   -- | See https://golang.org/ref/spec#Array_types
   -- Note that golite only supports int literal sizes
@@ -300,12 +260,17 @@ data Type
   -- | See https://golang.org/ref/spec#Slice_types
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
-  | StructType [FieldDecl]
+  | StructType StructType
   | PInt
   | PFloat64
   | PBool
   | PRune
   | PString
+  deriving (Show, Eq)
+
+data StructType =
+  Struct Ident
+         [FieldDecl]
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl
