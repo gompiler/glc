@@ -6,7 +6,7 @@ module TypeInference
   , infer
   , isNumeric
   , isComparable
-  , isBase
+  , isPrim
   , resolveSType
   ) where
 
@@ -324,7 +324,7 @@ infer st ae@(Arguments _ expr args) = do
   where
     tryCast :: SType -> SType -> Glc' SType
     tryCast ft ct =
-      case (isBase rct, isBase rft) of
+      case (isPrim rct, isPrim rft) of
         (True, True) ->
           if rct == rft ||
              (isNumeric rct && isNumeric rft) ||
@@ -381,8 +381,8 @@ isAddable = isOrdered
 isOrdered :: SType -> Bool
 isOrdered = flip elem [PInt, PFloat64, PRune, PString] . resolveSType
 
-isBase :: SType -> Bool
-isBase = flip elem [PInt, PFloat64, PBool, PRune, PString] . resolveSType
+isPrim :: SType -> Bool
+isPrim = flip elem [PInt, PFloat64, PBool, PRune, PString] . resolveSType
 
 -- | Check if a type resolves to a boolean
 isBoolean :: SType -> Bool

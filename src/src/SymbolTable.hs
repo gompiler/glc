@@ -722,7 +722,7 @@ recBaseE st e = do
   either
     (return . Left)
     (\t ->
-       if isBase t
+       if isPrim t
          then recurse st e
          else return $ Left $ createError e (NonBaseP t))
     et
