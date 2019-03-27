@@ -288,28 +288,18 @@ instance IRRep C.Expr where
           , InvokeSpecial (MethodRef stringBuilder "<init>" [] JVoid)
           ] ++
         toIR e1 ++
-        iri
-          [ InvokeVirtual
-              (MethodRef
-                 stringBuilder
-                 "append"
-                 [JClass jString]
-                 (JClass stringBuilder))
-          ] ++
+        iri [InvokeVirtual sbAppend] ++
         toIR e2 ++
-        iri
-          [ InvokeVirtual
-              (MethodRef
-                 stringBuilder
-                 "append"
-                 [JClass jString]
-                 (JClass stringBuilder))
-          ] ++
+        iri [InvokeVirtual sbAppend] ++
         iri
           [ InvokeVirtual
               (MethodRef stringBuilder "toString" [] (JClass jString))
           ]
       _ -> iri [Debug $ show t] -- undefined
+    where
+      sbAppend :: MethodRef
+      sbAppend =
+        MethodRef stringBuilder "append" [JClass jString] (JClass stringBuilder)
   toIR (C.Binary t (C.Arithm aop) e1 e2) =
     case astToIRPrim t of
       Just t' -> binary e1 e2 (opToInst t')
