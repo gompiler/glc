@@ -2,6 +2,7 @@ module IR where
 
 import qualified CheckedData        as C
 import           Data.Char          (ord)
+import           Data.List          (intercalate)
 import qualified Data.List.NonEmpty as NE (map)
 import           Scanner            (putExit, putSucc)
 import qualified SymbolTable        as S
@@ -156,23 +157,26 @@ instance IRRep C.Stmt where
   toIR C.Continue = iri [Goto "loop_todo"] -- TODO: MAKE SURE POST-STMT IS DONE?
   toIR (C.Declare d) = toIR d
   toIR (C.Print el) = concatMap printIR el
-    where
-      printIR :: C.Expr -> [IRItem]
-      printIR e =
-        case exprType e of
-          C.PInt -> printLoad ++ toIR e ++ intPrint
-          C.PFloat64 -> printLoad ++ toIR e ++ floatPrint
-          C.PRune -> printLoad ++ toIR e ++ intPrint
-          C.PBool -> undefined -- TODO: PRINT true/false
-          _ -> undefined -- TODO
-      printLoad :: [IRItem]
-      printLoad = iri [GetStatic "java/lang/System/out" "Ljava/io/PrintStream;"]
-      intPrint :: [IRItem]
-      intPrint = iri [InvokeVirtual "java/io/PrintStream/print(I)V"]
-      floatPrint :: [IRItem]
-      floatPrint = iri [InvokeVirtual "java/io/PrintStream/print(F)V"]
-  toIR (C.Println _) = undefined -- TODO
+  toIR (C.Println el) =
+    (intercalate (printIR (C.Lit $ C.StringLit " "))
+      (map printIR el)) ++ printIR (C.Lit $ C.StringLit "\n") -- TODO
   toIR _ = undefined
+
+printIR :: C.Expr -> [IRItem]
+printIR e =
+  case exprType e of
+    C.PInt -> printLoad ++ toIR e ++ intPrint
+    C.PFloat64 -> printLoad ++ toIR e ++ floatPrint
+    C.PRune -> printLoad ++ toIR e ++ intPrint
+    C.PBool -> undefined -- TODO: PRINT true/false
+    wot -> iri [Debug $ show wot] -- TODO
+  where
+  printLoad :: [IRItem]
+  printLoad = iri [GetStatic "java/lang/System/out" "Ljava/io/PrintStream;"]
+  intPrint :: [IRItem]
+  intPrint = iri [InvokeVirtual "java/io/PrintStream/print(I)V"]
+  floatPrint :: [IRItem]
+  floatPrint = iri [InvokeVirtual "java/io/PrintStream/print(F)V"]
 
 instance IRRep C.ForClause where
   toIR C.ForClause {} = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
