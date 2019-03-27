@@ -65,9 +65,7 @@ add st ident sym =
     else do
       result <- S.lookupCurrent st ident -- We only need to check current scope for declarations
       case result of
-        Just _ -> do
-          _ <- S.disableMessages st -- Found something, aka a conflict, so stop printing symbol table after this
-          return False
+        Just _ -> S.disableMessages st $> False -- Found something, aka a conflict, so stop printing symbol table after this
         Nothing -> do
           scope <- S.insert st ident sym
           _ <- S.addMessage st (ident, sym, scope) -- Add the symbol info of what we added
@@ -79,9 +77,7 @@ isNDefL st k = do
   res <- S.lookupCurrent st k
   case res of
     Nothing -> return True
-    Just _ -> do
-      _ <- S.disableMessages st -- Signal error, key should not be defined
-      return False
+    Just _  -> S.disableMessages st $> False -- Signal error, key should not be defined
 
 -- | S.isDef  wrapper but insert message if not declared
 -- isDef :: SymbolTable s -> String -> ST s Bool
@@ -343,9 +339,7 @@ instance Symbolize FuncDecl C.FuncDecl
              einfo <- checkIds' t2 idl
                                    -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
              either
-               (\e -> do
-                  _ <- S.disableMessages st
-                  return $ Left e)
+               (\e -> S.disableMessages st $> Left e)
                (return . Right)
                einfo)
           et
@@ -893,7 +887,8 @@ instance Symbolize Expr C.Expr where
     maybe
       (S.disableMessages st $>
        (Left $ createError ident (NotDecl "Variable " ident)))
-      (\(scope, sym) -> return $ Right $ C.Var (toValType sym) (mkSIdStr scope vname))
+      (\(scope, sym) ->
+         return $ Right $ C.Var (toValType sym) (mkSIdStr scope vname))
       msi
     where
       toValType :: Symbol -> C.Type

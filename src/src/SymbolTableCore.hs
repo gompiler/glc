@@ -1,6 +1,6 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE TupleSections       #-}
+{-# LANGUAGE BangPatterns  #-}
+{-# LANGUAGE GADTs         #-}
+{-# LANGUAGE TupleSections #-}
 
 -- | State based eager symbol table
 -- Heavily modeled around https://hackage.haskell.org/package/hashtables-1.2.3.1/docs/src/Data-HashTable-ST-Basic.html#HashTable
@@ -25,8 +25,8 @@ module SymbolTableCore
   , getMsgStatus
   ) where
 
+import           Control.Monad           (unless)
 import           Control.Monad.ST
-import           Control.Monad (unless)
 import           Data.Foldable           (asum)
 import qualified Data.HashTable.ST.Basic as HT
 import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, (<|))
@@ -78,7 +78,7 @@ new = do
   newRef $ SymbolTable (fromList [(Scope 1, ht, Nothing)]) [] False
 
 -- | Inserts a key value pair at the upper most scope and return scope level
-insert :: SymbolTable s v l c-> String -> v -> ST s Scope
+insert :: SymbolTable s v l c -> String -> v -> ST s Scope
 insert st k v = do
   SymbolTable ((Scope s, ht, _) :| _) _ _ <- readRef st
   HT.insert ht k v
@@ -107,19 +107,21 @@ enterScope :: SymbolTable s v l c -> ST s ()
 enterScope st = do
   SymbolTable st'@((Scope scope, _, ctx) :| _) list msgStatus <- readRef st
   ht <- HT.new
-  writeRef st $! SymbolTable ((Scope (scope + 1), ht, ctx) <| st') list msgStatus
+  writeRef st $!
+    SymbolTable ((Scope (scope + 1), ht, ctx) <| st') list msgStatus
 
 -- | Create new scope with new context
 enterScopeCtx :: SymbolTable s v l c -> c -> ST s ()
 enterScopeCtx st ctx = do
   SymbolTable st'@((Scope scope, _, _) :| _) list msgStatus <- readRef st
   ht <- HT.new
-  writeRef st $! SymbolTable ((Scope (scope + 1), ht, Just ctx) <| st') list msgStatus
+  writeRef st $!
+    SymbolTable ((Scope (scope + 1), ht, Just ctx) <| st') list msgStatus
 
 -- | Discard current scope
 -- Note that if the current scope is the last scope,
 -- A crash will occur
-exitScope :: SymbolTable s v l c-> ST s ()
+exitScope :: SymbolTable s v l c -> ST s ()
 exitScope st = do
   SymbolTable (_ :| scopes) list msgStatus <- readRef st
   writeRef st $! SymbolTable (fromList scopes) list msgStatus
@@ -153,7 +155,8 @@ addMessage :: SymbolTable s v l c -> l -> ST s ()
 addMessage st !msg = do
   SymbolTable scopes list msgDisabled <- readRef st
   -- Only add messages if messages are enabled
-  unless msgDisabled $ writeRef st $! SymbolTable scopes (msg : list) msgDisabled
+  unless msgDisabled $!
+    writeRef st $! SymbolTable scopes (msg : list) msgDisabled
 
 -- | Retrieve list of messages in the order they were stored
 getMessages :: SymbolTable s v l c -> ST s [l]
