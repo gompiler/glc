@@ -1105,7 +1105,12 @@ toBase t = C.Type $ C.Ident $ show t -- The last ones are primitive types, void 
 isAddr :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' Bool)
 isAddr st e =
   case e of
-    Var _ -> return $ Right True
+    Var ident@(Identifier _ vname) -> do
+      res <- S.lookup st vname
+      case res of
+        Nothing -> return $ Left $ createError ident (NotDecl "Variable " ident)
+        Just (_, ConstantBool) -> return $ Right False
+        Just _ -> return $ Right True
     Selector _ e' _ -> isAddr st e'
     Index _ e' _ -> do
       et' <- infer st e'

@@ -152,6 +152,10 @@ spec = do
     -- Append alone is an expression
     , "var a []int; var b int; append(a, b)"
     , "a, a := 0, 1"
+    , "true = true"
+    , "false = false"
+    , "true = false"
+    , "false = true"
     ]
   expectTypecheckPass
     [ [text|
