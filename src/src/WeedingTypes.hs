@@ -49,10 +49,9 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
   where
     lastIsReturn :: Stmt -> Maybe ErrorMessage'
     lastIsReturn (If _ ifb elseb) = lastIsReturn ifb <|> lastIsReturn elseb
-    lastIsReturn (For (ForClause EmptyStmt Nothing EmptyStmt) forb) =
+    lastIsReturn (For (ForClause _ Nothing _) forb) =
       -- infinite for loops don't 'need' return unless they have a break in them
       checkForBreak forb
-    lastIsReturn (For _ forb) = lastIsReturn forb
     lastIsReturn (BlockStmt stmts) =
       case reverse stmts of
         st:_ -> lastIsReturn st

@@ -117,4 +117,18 @@ spec = do
     , [text|
       func main(a float) string {}
       |]
+    , [text|
+      func f() int {
+            for ; true ; { // This isn't valid because this condition can be false
+                return 42
+            }
+      }
+      |]
+    , [text|
+      func f() int {
+            for {
+                break // Break gets us out of infinite loop
+            }
+      }
+      |]
     ]

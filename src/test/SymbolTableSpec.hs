@@ -304,6 +304,11 @@ spec = do
     , "type a []struct {a struct {a a;}; }"
     , "func a (int, float64, string, rune int){}"
     , "func a (int int, b int){}"
+    , "func a ()int { for {};}" -- Infinite loops don't need to return
+    , "func a ()int { for ;; {};}"
+    , "func a ()int { for a:=0;; {};}"
+    , "func a ()int { for a:=0;;a++ {};}"
+    , "func a ()int { var a = 3; for ;;a=0 {};}"
     ]
   expectTypecheckPassNoMain
     [ [text|
