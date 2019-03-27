@@ -90,10 +90,6 @@ data SimpleStmt
   | ShortDeclare (NonEmpty (VarIndex, Expr))
   deriving (Show, Eq)
 
--- | Shortcut for a blank stmt
-blank :: Stmt
-blank = SimpleStmt EmptyStmt
-
 -- | See https://golang.org/ref/spec#Statement
 -- & See https://golang.org/ref/spec#Block
 -- Note that Golang specs makes a distinction of blocks and statements,
