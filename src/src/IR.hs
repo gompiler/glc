@@ -79,6 +79,7 @@ data Instruction
   | IAnd
   | IAStore
   | IfEq LabelName
+  | IOr
   | IXOr
   | LDC LDCType -- pushes an int/float/string value onto the stack
   | NOp
@@ -138,7 +139,7 @@ instance IRRep C.Stmt where
    =
     toIR sstmt ++
     toIR expr ++
-    iri [LDC (LDCInt 0), IfEq "else_todo"] ++ -- TODO: PROPER EQUALITY CHECK
+    iri [IfEq "else_todo"] ++ -- TODO: PROPER EQUALITY CHECK
     toIR ifs ++
     [IRInst (Goto "end_todo"), IRLabel "else_todo"] ++
     toIR elses ++ [IRLabel "end_todo"]
@@ -149,8 +150,8 @@ instance IRRep C.Stmt where
       seIR :: [IRItem]
       seIR = maybe (iri [LDC (LDCInt 1)]) toIR me -- 1 = true? TODO
   toIR C.For {} = undefined
-  toIR C.Break = undefined -- [IRInst (Goto "TODO")]
-  toIR C.Continue = undefined -- [IRInst (Goto "TODO")]
+  toIR C.Break = iri [Goto "end_todo"]
+  toIR C.Continue = iri [Goto "loop_todo"] -- TODO: MAKE SURE POST-STMT IS DONE?
   toIR (C.Declare d) = toIR d
   toIR _ = undefined
 
@@ -164,7 +165,7 @@ instance IRRep C.SwitchCase where
     [IRLabel "case_todo"] ++ toIR stmt ++ iri [Goto "end_todo"]
     where
       toCaseHeader :: C.Expr -> [IRItem]
-      toCaseHeader e = IRInst Dup : toIR e ++ iri [IfEq "case_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF
+      toCaseHeader e = IRInst Dup : toIR e ++ iri [IfEq "case_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
   toIR (C.Default stmt) =
     IRLabel "default_todo" : toIR stmt ++ iri [Goto "end_todo"] -- Default doesn't need to check expr value
 
@@ -207,12 +208,25 @@ instance IRRep C.Expr where
       C.PRune    -> binary e1 e2 (Add IRInt)
       C.PString  -> undefined -- TODO
       _          -> iri [Debug $ show t] -- undefined
-  toIR (C.Binary t (C.Arithm C.Subtract) e1 e2) =
-    case t of
-      C.PInt     -> binary e1 e2 (Sub IRInt)
-      C.PFloat64 -> binary e1 e2 (Sub IRFloat)
-      C.PRune    -> binary e1 e2 (Sub IRInt)
-      _          -> iri [Debug $ show t] -- undefined
+  toIR (C.Binary t (C.Arithm aop) e1 e2) =
+    case astToIRPrim t of
+      Just t' -> binary e1 e2 (opToInst t')
+      Nothing -> error "Cannot do op on non-primitive (non-numeric) types"
+    where
+      opToInst :: IRPrimitive -> Instruction
+      opToInst ip =
+        case aop of
+          C.Subtract  -> Sub ip
+          C.Multiply  -> Mul ip
+          C.Divide    -> Div ip
+          C.BitOr     -> IOr
+          C.BitXor    -> IXOr
+          C.Remainder -> IRem
+          C.ShiftL    -> IShL
+          C.ShiftR    -> IShR
+          C.BitAnd    -> IAnd
+          C.Add       -> undefined -- handled above
+          C.BitClear  -> undefined -- handled above TODO
   toIR (C.Lit l) = toIR l
   toIR (C.Var t _) = iri [Load (astToIRType t) (-1)] -- TODO (also bool?)
   toIR _ = undefined
@@ -242,11 +256,15 @@ exprType (C.Index t _ _)      = t
 exprType (C.Arguments t _ _)  = t
 
 astToIRType :: C.Type -> IRType
-astToIRType C.PInt     = Prim IRInt
-astToIRType C.PFloat64 = Prim IRFloat
-astToIRType C.PRune    = Prim IRInt
-astToIRType C.PBool    = Prim IRInt
-astToIRType _          = Object
+astToIRType t =
+  maybe Object Prim (astToIRPrim t)
+
+astToIRPrim :: C.Type -> Maybe IRPrimitive
+astToIRPrim C.PInt     = Just IRInt
+astToIRPrim C.PFloat64 = Just IRFloat
+astToIRPrim C.PRune    = Just IRInt
+astToIRPrim C.PBool    = Just IRInt
+astToIRPrim _          = Nothing
 
 exprIRType :: C.Expr -> IRType
 exprIRType = astToIRType . exprType
