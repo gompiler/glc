@@ -4,9 +4,13 @@ module Base
   , GlcConstraint
   , module ErrorBundle
   , (<?>)
+  , (<&>)
+  , ($>)
   ) where
 
-import qualified Data.Maybe  as Maybe
+import           Data.Functor (($>), (<&>))
+
+import qualified Data.Maybe   as Maybe
 
 import           ErrorBundle
 

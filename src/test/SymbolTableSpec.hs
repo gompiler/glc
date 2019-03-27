@@ -151,6 +151,12 @@ spec = do
     , "if true {var a = 21;} else {var b = a;}"
     -- Append alone is an expression
     , "var a []int; var b int; append(a, b)"
+    , "a, a := 0, 1"
+    , "true = true"
+    , "false = false"
+    , "true = false"
+    , "false = true"
+    , "type int2 int; int2(5)"
     ]
   expectTypecheckPass
     [ [text|
@@ -301,6 +307,13 @@ spec = do
     , "type a []struct {a1 a; a2 a; a3 a;}"
     , "type a struct {a1 []a; a2 []a; a3 []a;}"
     , "type a []struct {a struct {a a;}; }"
+    , "func a (int, float64, string, rune int){}"
+    , "func a (int int, b int){}"
+    , "func a ()int { for {};}" -- Infinite loops don't need to return
+    , "func a ()int { for ;; {};}"
+    , "func a ()int { for a:=0;; {};}"
+    , "func a ()int { for a:=0;;a++ {};}"
+    , "func a ()int { var a = 3; for ;;a=0 {};}"
     ]
   expectTypecheckPassNoMain
     [ [text|
@@ -381,6 +394,16 @@ spec = do
         return float64(b()) * 2.0
       }
       |]
+    , [text|
+               func a () []int{
+                    var r []int
+                    return r
+               }
+               func main (){
+                    // Slices always addressable
+                    a()[0] = 3
+                }
+               |]
     , [text|
               type s1 struct{
 	      a bool
@@ -503,6 +526,9 @@ spec = do
     , "func zz (a, b int) int {}"
     , "type a struct {b a;}"
     , "type a struct {a1 []a; a2 []a; a3 a;}"
+    , "type a struct {a int; a int;}"
+    , "type a struct {a,b,a int; c int;}"
+    , "func a(b int, b int){}"
     -- , "var a int; type b a;"
     ]
   expectTypecheckFailNoMain
@@ -618,8 +644,69 @@ spec = do
         return 2
       }
       |]
---    , [text|
---      |]
+    , [text|
+    type a struct {b int;}
+    func f() a {
+        var r a
+        return r
+    }
+    func main(){ f().b++
+    }
+     |]
+    , [text|
+    type a struct {b int;}
+    func f() a {
+        var r a
+        return r
+    }
+    func main(){
+        // Not addressable because it's a function return
+        f().b--
+    }
+     |]
+    , [text|
+    type a struct {b int;}
+    func f() a {
+        var r a
+        return r
+    }
+    func main(){
+        var g a;
+        // Func return not addressable
+        f() = g;
+    }
+     |]
+    , [text|
+    type a struct {b int;}
+    func f() a {
+        var r a
+        return r
+    }
+    func main(){
+        // Func return not addressable
+        f().b = 3;
+    }
+     |]
+    , [text|
+    func f() [5]int {
+        var r [5]int
+        return r
+    }
+    func main(){
+        // Func return (not slice) not addressable
+        f()[3] = 3;
+    }
+     |]
+    , [text|
+    func f() [5]int {
+        var r [5]int
+        return r
+    }
+    func main(){
+        // Func return (not slice) not addressable
+        f()[3]++;
+    }
+     |]
 --    , [text|
 --      |]
 --    , [text|
