@@ -14,13 +14,13 @@ import           Test.Hspec
 import           TestBase         (Stringable (..), expectBase, toString)
 import           TypeInference    (infer)
 
-parseAndInferNoST :: String -> Either ErrorMessage SType
+parseAndInferNoST :: String -> Glc SType
 parseAndInferNoST expStr = either Left runExpr parseResult
   where
     errgen e = e expStr `withPrefix` "typinf error"
-    parseResult :: Either ErrorMessage Expr
+    parseResult :: Glc Expr
     parseResult = parse expStr
-    runExpr :: Expr -> Either ErrorMessage SType
+    runExpr :: Expr -> Glc SType
     runExpr e =
       runST $ do
         st <- SymTab.new

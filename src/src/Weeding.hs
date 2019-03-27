@@ -18,7 +18,7 @@ type PureConstraint a = a -> Maybe ErrorMessage'
 
 -- | Main weeding function
 -- Takes in input code, will pass through parser
-weed :: String -> Either ErrorMessage Program
+weed :: String -> Glc Program
 weed code = do
   program <- parse code
   maybe

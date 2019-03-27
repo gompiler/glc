@@ -224,14 +224,14 @@ scan' s =
     loop []
 
 -- | Helper to process offsets
-scan :: String -> Either ErrorMessage [T.InnerToken]
+scan :: String -> Glc [T.InnerToken]
 scan s = either (Left . errODef s) Right (scan' s)
 
 -- | Passes input to error bundle
 errODef :: String -> ErrorMessage' -> ErrorMessage
 errODef input err = err input
 
-scanT :: String -> Either ErrorMessage [T.InnerToken]
+scanT :: String -> Glc [T.InnerToken]
 scanT s = fmap reverse (scan s)
 
 -- | putExit: function to output to stderr and exit with return code 1

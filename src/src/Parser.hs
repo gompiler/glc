@@ -17,7 +17,7 @@ import qualified ParserGen          as P (ParseError (..), pDec, pE, pEl,
 class (Show a, Eq a) =>
       Parsable a
   where
-  parse :: String -> Either ErrorMessage a
+  parse :: String -> Glc a
 
 instance Parsable Program where
   parse = P.parse

@@ -100,7 +100,7 @@ resolve ident@(Identifier _ idv) st notDeclError = do
     resolve' t scope idv
     -- | Resolve symbol to type
   where
-    resolve' :: Symbol -> S.Scope -> String -> Either ErrorMessage' SType
+    resolve' :: Symbol -> S.Scope -> String -> Glc' SType
     resolve' Base _ ident' =
       case ident' of
         "int"     -> Right PInt

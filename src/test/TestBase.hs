@@ -266,7 +266,7 @@ class (Parsable a) =>
       ParseTest a
   where
   tag :: String
-  parse' :: Stringable s => s -> Either ErrorMessage a
+  parse' :: Stringable s => s -> Glc a
   parse' = parse . toString
   placeholder :: a
 

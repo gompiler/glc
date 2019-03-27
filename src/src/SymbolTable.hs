@@ -136,7 +136,7 @@ class Typify a
     -> (Maybe SIdent, a)
     -> a
     -> Bool -- Is recursion allowed? Are we nested inside of a slice?
-    -> ST s (Either ErrorMessage' SType)
+    -> ST s (Glc' SType)
 
 -- | Returns matching id if current type is a reference,
 -- and parent identity matches current type identity
@@ -154,7 +154,7 @@ instance Typify Type where
     -> (Maybe SIdent, Type)
     -> Type
     -> Bool -- Allow recursion? If the call is nested inside a slice
-    -> ST s (Either ErrorMessage' SType)
+    -> ST s (Glc' SType)
   toType' st root (ArrayType (Lit l) t) brec = do
     symEither <- toType' st root t brec
     return $ do
@@ -165,7 +165,7 @@ instance Typify Type where
   toType' st root@(_, _) (SliceType t) _ = resolveType
       -- Default resolution method
     where
-      resolveType :: ST s (Either ErrorMessage' SType)
+      resolveType :: ST s (Glc' SType)
       resolveType = do
         sym <- toType' st root t True -- Allow recursion since we're inside a slice
         return $ sym >>= Right . Slice
@@ -176,7 +176,7 @@ instance Typify Type where
     where
       getAllIdents :: [Identifier]
       getAllIdents = concatMap (\(FieldDecl nidl _) -> toList nidl) fdl
-      checkFields :: ST s (Either ErrorMessage' [Field]) -- Check for duplicates first
+      checkFields :: ST s (Glc' [Field]) -- Check for duplicates first
       checkFields =
         checkDup
           st
@@ -184,12 +184,12 @@ instance Typify Type where
           (AlreadyDecl "Field ")
           (do fields <- mapM checkField fdl
               return $ concat <$> sequence fields)
-      checkField :: FieldDecl -> ST s (Either ErrorMessage' [Field])
+      checkField :: FieldDecl -> ST s (Glc' [Field])
       checkField (FieldDecl idl (_, t)) = do
         ft <- fieldType' t
         return $ toField idl <$> ft
       -- | Checks first for cyclic type, then defaults to the generic type resolver
-      fieldType' :: Type -> ST s (Either ErrorMessage' SType)
+      fieldType' :: Type -> ST s (Glc' SType)
       fieldType' t =
         case (getMatchingSIdent rootSIdent t, isTypeStruct rootType)
                 -- Cycles only permitted on matching root sident with a non struct root type
@@ -209,7 +209,7 @@ instance Typify Type where
           else resolveId
       _ -> resolveId
     where
-      resolveId :: ST s (Either ErrorMessage' SType)
+      resolveId :: ST s (Glc' SType)
       resolveId = resolve ident st (createError ident (NotDecl "Type " ident))
   -- This last array case should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
@@ -219,7 +219,7 @@ instance Typify Type where
       "Trying to convert type of an ArrayType with non literal int as length"
 
 -- | Placeholder to reference root type
-cyclicType :: SIdent -> ST s (Either ErrorMessage' SType)
+cyclicType :: SIdent -> ST s (Glc' SType)
 cyclicType rootScope = return $ Right $ TypeMap rootScope Infer
 
 instance Symbolize Program C.Program where
@@ -250,7 +250,7 @@ instance Symbolize FuncDecl C.FuncDecl
       else addFunc
       -- Get return type of function
     where
-      retType :: ST s (Either ErrorMessage' SType)
+      retType :: ST s (Glc' SType)
       retType = maybe (return $ Right Void) (toType st Nothing . snd) t
       -- Insert dummy function before checking arguments, in case arguments refer to function name
       dummyFunc :: ST s (Maybe ErrorMessage')
@@ -261,7 +261,7 @@ instance Symbolize FuncDecl C.FuncDecl
           (\rt -> S.insert st vname (Func [] rt) $> Nothing)
           rtm
       -- Add any function that is not init to symbol table
-      addFunc :: ST s (Either ErrorMessage' C.FuncDecl)
+      addFunc :: ST s (Glc' C.FuncDecl)
       addFunc = do
         notdef <- isNDefL st vname -- Check if defined in symbol table
         if notdef
@@ -274,7 +274,7 @@ instance Symbolize FuncDecl C.FuncDecl
                 -- declaration) and the type of the return of the signature, t,
                 -- which is a Maybe Type'
                   ef <- either (return . Left) createFunc epl
-                -- We then take the Either ErrorMessage' Symbol, if no error we
+                -- We then take the Glc' Symbol, if no error we
                 -- exit dummy scope so we're at the right scope level, insert
                 -- the Symbol (newly declared function) and then wrap the real
                 -- scope of the function, adding all the parameters that are
@@ -289,7 +289,7 @@ instance Symbolize FuncDecl C.FuncDecl
           funcSym (pl, ret) = Func pl ret
           createFunc ::
                [(Param, SymbolInfo)]
-            -> ST s (Either ErrorMessage' (([Param], SType), [SymbolInfo]))
+            -> ST s (Glc' (([Param], SType), [SymbolInfo]))
           createFunc l
               -- TODO don't use toType here; resolve only type def types
            =
@@ -298,7 +298,7 @@ instance Symbolize FuncDecl C.FuncDecl
                    return $ (\ret -> ((pl, ret), sil)) <$> returnTypeEither
           insertFunc ::
                (([Param], SType), [SymbolInfo])
-            -> ST s (Either ErrorMessage' C.FuncDecl)
+            -> ST s (Glc' C.FuncDecl)
           insertFunc (ftup, sil) =
             let f = funcSym ftup
              in do scope <- S.insert st vname f
@@ -309,7 +309,7 @@ instance Symbolize FuncDecl C.FuncDecl
                      (do mapM_ (\(k, sym, _) -> add st k sym) sil
                          recurseSl scope)
             where
-              recurseSl :: S.Scope -> ST s (Either ErrorMessage' C.FuncDecl)
+              recurseSl :: S.Scope -> ST s (Glc' C.FuncDecl)
               recurseSl scope' =
                 fmap
                   (C.FuncDecl (mkSIdStr scope' vname) (func2sig scope' ftup) .
@@ -317,7 +317,7 @@ instance Symbolize FuncDecl C.FuncDecl
                 sequence <$>
                 mapM (recurse st) sl
       -- Adds the init function to message list
-      addInit :: ST s (Either ErrorMessage' C.FuncDecl)
+      addInit :: ST s (Glc' C.FuncDecl)
       addInit =
         maybe
           (do scope <- S.scopeLevel st -- Should be 1
@@ -329,7 +329,7 @@ instance Symbolize FuncDecl C.FuncDecl
              return $ (Left . createError ident . InitNVoid) =<< et2)
           t
         where
-          recurseBody :: S.Scope -> ST s (Either ErrorMessage' C.FuncDecl)
+          recurseBody :: S.Scope -> ST s (Glc' C.FuncDecl)
           recurseBody scope' =
             fmap
               (C.FuncDecl
@@ -492,7 +492,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
     ee <- recurse st e
     return $ join $ createInc <$> et <*> eaddr <*> ee
     where
-      createInc :: SType -> Bool -> C.Expr -> Either ErrorMessage' C.SimpleStmt
+      createInc :: SType -> Bool -> C.Expr -> Glc' C.SimpleStmt
       createInc t' addressible e' =
         if isNumeric t' && addressible
           then Right $ C.Increment e'
@@ -503,7 +503,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
     ee <- recurse st e
     return $ join $ createDec <$> et <*> eaddr <*> ee
     where
-      createDec :: SType -> Bool -> C.Expr -> Either ErrorMessage' C.SimpleStmt
+      createDec :: SType -> Bool -> C.Expr -> Glc' C.SimpleStmt
       createDec t' addressible e' =
         if isNumeric t' && addressible
           then Right $ C.Decrement e'
@@ -567,7 +567,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
       aop2aop' (AssignOp (Just aop')) = C.AssignOp $ Just $ aopConv aop'
       aop2aop' (AssignOp Nothing)     = C.AssignOp Nothing
       -- | Check if two expressions have the same type and if LHS is addressable, helper for assignments
-      sameType :: (Expr, Expr) -> ST s (Either ErrorMessage' ())
+      sameType :: (Expr, Expr) -> ST s (Glc' ())
       sameType (Var (Identifier _ "_"), _) = return $ Right () -- Do not compare if LHS is "_"
       sameType (e1, e2) = do
         et1 <- infer st e1
@@ -575,7 +575,7 @@ instance Symbolize SimpleStmt C.SimpleStmt where
         eaddr <- isAddr st e1
         return $ join $ comp <$> et1 <*> et2 <*> eaddr
         where
-          comp :: SType -> SType -> Bool -> Either ErrorMessage' ()
+          comp :: SType -> SType -> Bool -> Glc' ()
           comp t1 t2 addr
             | t1 /= t2 = Left $ createError e1 (TypeMismatch1 t1 t2 e2)
             | addr = Right ()
@@ -1075,8 +1075,8 @@ wrap st stres = do
 wrap' ::
      SymbolTable s
   -> Symbol
-  -> ST s (Either ErrorMessage' a)
-  -> ST s (Either ErrorMessage' a)
+  -> ST s (Glc' a)
+  -> ST s (Glc' a)
 wrap' st sym stres = do
   S.enterScopeCtx st sym
   res <- stres
@@ -1123,7 +1123,7 @@ toBase Void = error "Void cannot be converted to CheckedData base type"
 toBase Infer = error "Infer cannot be converted to CheckedData base type"
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
-isAddr :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' Bool)
+isAddr :: SymbolTable s -> Expr -> ST s (Glc' Bool)
 isAddr st e =
   case e of
     Var ident@(Identifier _ vname) -> do
@@ -1163,13 +1163,13 @@ isAddrE st e = do
       eaddr
 
 -- | Get the return value of function we are currently declaring, aka latest declared function
-getRet :: Offset -> SymbolTable s -> ST s (Either ErrorMessage' SType)
+getRet :: Offset -> SymbolTable s -> ST s (Glc' SType)
 getRet o st = do
   fm <- S.getCtx st
   -- This error should never happen as our parser doesn't allow a return statement outside of a function body
   return $ maybe (Left $ createError o RetOut) getRet' fm
   where
-    getRet' :: Symbol -> Either ErrorMessage' SType
+    getRet' :: Symbol -> Glc' SType
     getRet' (Func _ t) = Right t
     getRet' _          = Left $ createError o NotFunc -- Also shouldn't happen and also can be Nothing, but once again, misleading
 
@@ -1216,7 +1216,7 @@ br prev cur
 typecheckP :: String -> IO ()
 typecheckP s = either putExit (const $ putSucc "OK") (typecheckGen s)
 
-typecheckGen :: String -> Either ErrorMessage C.Program
+typecheckGen :: String -> Glc C.Program
 typecheckGen code =
   either
     Left
@@ -1244,7 +1244,7 @@ symbol s =
 -- | String that goes through weeding
 -- Get either an error message from weeding or success/error message with string of symbol table
 -- Note this isn't an either because if the left side checks, we always want the string/partial symbol table even on error so we can print it out
-pTable :: String -> Either ErrorMessage (Maybe ErrorMessage, String)
+pTable :: String -> Glc (Maybe ErrorMessage, String)
 pTable code =
   fmap
     (\p ->

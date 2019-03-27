@@ -15,7 +15,7 @@ import           Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Maybe         as Maybe
 import           Parser
 
-checkPrettifyInvariance :: String -> Either ErrorMessage String
+checkPrettifyInvariance :: String -> Glc String
 checkPrettifyInvariance input = do
   ast1 <- parse @Program input
   let pretty1 = prettify ast1

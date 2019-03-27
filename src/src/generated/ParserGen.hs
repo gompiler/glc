@@ -36,7 +36,7 @@ module ParserGen ( putExit
 where
 import Scanner
 import Data
-import ErrorBundle
+import Base
 import System.Exit
 import System.IO
 
@@ -2113,10 +2113,10 @@ parseError (Token (AlexPn o l c) t) =
 {-# LINE 1 "templates/GenericTemplate.hs" #-}
 {-# LINE 1 "<built-in>" #-}
 {-# LINE 18 "<built-in>" #-}
-{-# LINE 1 "/Library/Frameworks/GHC.framework/Versions/8.6.3-x86_64/usr/lib/ghc-8.6.3/include/ghcversion.h" #-}
+{-# LINE 1 "/usr/local/Cellar/ghc/8.6.3/lib/ghc-8.6.3/include/ghcversion.h" #-}
 
 {-# LINE 19 "<built-in>" #-}
-{-# LINE 1 "/var/folders/j9/r3x1j4nj1hx7_wzx1wcvrp6w0000gn/T/ghc23412_0/ghc_2.h" #-}
+{-# LINE 1 "/var/folders/hd/dnzz34rj7891bl2b3r_rmgsc0000gn/T/ghc99700_0/ghc_2.h" #-}
 
 {-# LINE 20 "<built-in>" #-}
 {-# LINE 1 "templates/GenericTemplate.hs" #-}

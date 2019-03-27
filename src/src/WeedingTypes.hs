@@ -13,7 +13,7 @@ import           Weeding
 
 -- | Main weeding function
 -- Takes in input code, will pass through parser
-weedT :: String -> Either ErrorMessage Program
+weedT :: String -> Glc Program
 weedT code = do
   program <- weed code
   maybe
