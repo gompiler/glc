@@ -14,7 +14,7 @@ module TokenGen
 , runAlex'
 ) where
 import TokensBase
-import ErrorBundle (Offset(..), createError)
+import Base (Offset(..), createError)
 
 #if __GLASGOW_HASKELL__ >= 603
 #include "ghcconfig.h"

@@ -4,7 +4,7 @@
 module Data where
 
 import           Data.List.NonEmpty (NonEmpty (..))
-import           ErrorBundle
+import           Base
 
 -- note that I do not classify blank identifiers as a separate type
 -- because we can easily pattern match it already
