@@ -1,0 +1,131 @@
+% Created 2019-03-27 Wed 17:28
+% Intended LaTeX compiler: pdflatex
+\documentclass[11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usepackage[margin=0.9in]{geometry}
+\usepackage[fontsize=10.5pt]{scrextend}
+\author{Lore, J., Lougheed D., Wang A.}
+\date{\today}
+\title{Design Document for Milestone 3}
+\hypersetup{
+ pdfauthor={Lore, J., Lougheed D., Wang A.},
+ pdftitle={Design Document for Milestone 3},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 26.1 (Org mode 9.2.2)},
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+This document is for explaining the design decisions we had to make
+whilst implementing the components for milestone 3.  \newpage
+\section{{\bfseries\sffamily TODO} Language for Code Generation}
+\label{sec:org7a5fd80}
+We decided on targeting JVM bytecode for our compiler, through the Krakatau
+bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
+a more modern codebase (written in Python) and some additional features.
+
+TODO: TALK ABOUT ADDITIONAL FEATURES?
+
+The primary advantages of targeting JVM bytecode are: 1) portability, 2)
+execution speed, and 3) (surprisingly to us) its focus on stack
+operations as opposed to a more `straightforward' language, which aids in
+overcoming some of the common pain points of GoLite code generation:
+\begin{enumerate}
+\item The JVM has been ported to many common platforms, meaning code written in
+GoLite, when compiled with our compiler, will be able to run on any
+platform the JVM can run on.
+\item Although Java is often considered slow as opposed to ahead-of-time compiled
+languages such as C and C++ due to its garbage collection and non-native
+compiled code, most implementations of the JVM provide JIT compilation,
+By targeting JVM bytecode, we can take advantage of this, and our generated
+code will likely be faster than if we generated code in a higher-level
+language such as Python.
+\item TODO
+\end{enumerate}
+
+The main disadvantages of generating JVM bytecode are its low-level semantics
+and its comparatively slow speeds versus an ahead-of-time compiled language,
+despite it being faster than other, higher-level languages.
+TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
+\section{Semantics}
+\label{sec:org1766574}
+\subsection{Scoping Rules}
+\label{sec:org1499342}
+\subsubsection{{\bfseries\sffamily TODO} Go Semantics}
+\label{sec:org7bb293c}
+In \texttt{GoLite},
+\subsubsection{{\bfseries\sffamily TODO} Mapping Strategy}
+\label{sec:org3d801cb}
+\subsection{Switch Statements}
+\label{sec:orgee60911}
+\subsubsection{Go Semantics}
+\label{sec:org376b187}
+In \texttt{GoLite}, \texttt{switch} statements consist of an optional simple
+statement, an optional expression and a (potentially empty) list
+of case statements, where case statements are either a case with a
+non-empty list of expressions with a block statement to execute
+when matched or a default case with a block statement. This makes
+them structurally different when compared to Java, or \texttt{C} / \texttt{C++}:
+\begin{itemize}
+\item Simple statements aren't in many languages.
+\item Expressions usually aren't optional.
+\item Case statements contain a list of expressions, whereas many
+languages such as \texttt{Java} only allow a single constant expression.
+\end{itemize}
+The simple statement is executed before the case checking and
+after that the optional expression is compared with each case
+statement, evaluating and comparing expression lists from left to
+right. The first match enters that case's body, automatically
+breaking at the end of it. This makes cases significantly semantically different:
+\begin{itemize}
+\item Cases automatically break.
+\item Each \texttt{case} or \texttt{default} block defines its own scope for declarations.
+\item Case statement expressions do not need to be a constant expression.
+\end{itemize}
+
+\subsubsection{Mapping Strategy}
+\label{sec:orgc6623a6}
+For the structural differences:
+\begin{itemize}
+\item Simple statements can be the first statement in the new ``scope''.
+\item Any optional expression can be converted to the constant literal `true`.
+\item For a list of expressions that is of length greater than one, we
+can compare each element from the list one at a time, duping the
+element we need to compare for each comparison (as otherwise
+we'll lose it).
+\end{itemize}
+Semantically:
+\begin{itemize}
+\item To automatically break, for each case statement, we add a \texttt{goto}
+to a label at the end of the switch statement.
+\item Simulating new scopes is easy because of how our scoping works,
+the variable names will already be resolved to their correct local.
+\item The expressions not being constants does not matter too much for
+us, as we will compare each expression normally (we are
+simulating switch statements and aren't limited by the native
+switch statement of the language).
+\end{itemize}
+\subsection{{\bfseries\sffamily TODO} Assignments}
+\label{sec:org9e6377a}
+\subsubsection{{\bfseries\sffamily TODO} Go Semantics}
+\label{sec:org866d7d7}
+\subsubsection{{\bfseries\sffamily TODO} Mapping Strategy}
+\label{sec:orga91ab40}
+\section{{\bfseries\sffamily TODO} Currently Implemented}
+\label{sec:org2d00ec0}
+\end{document}

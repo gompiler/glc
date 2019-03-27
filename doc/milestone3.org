@@ -4,7 +4,7 @@
 #+LATEX_HEADER: \usepackage[fontsize=10.5pt]{scrextend}
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
-* Language for Code Generation
+* TODO Language for Code Generation
   We decided on targeting JVM bytecode for our compiler, through the Krakatau
   bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
   a more modern codebase (written in Python) and some additional features.
@@ -31,27 +31,49 @@ whilst implementing the components for milestone 3.  \newpage
   despite it being faster than other, higher-level languages.
   TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 * Semantics
+** Scoping Rules
+*** TODO Go Semantics
+    In ~GoLite~,
+*** TODO Mapping Strategy
 ** Switch Statements
 *** Go Semantics
-    In GoLite, ~switch~ statements work differently when compared to Java, or
-    C / C++, in a few important ways. Most noticably, ~case~ statements do not
-    automatically fall through, and each ~case~ or ~default~ block defines its
-    own scope for declarations. ~case~ statements also can contain a list of
-    expressions which will each be checked for equality. In Java, ~case~ values
-    must contain only a single constant expression.
+    In ~GoLite~, ~switch~ statements consist of an optional simple
+    statement, an optional expression and a (potentially empty) list
+    of case statements, where case statements are either a case with a
+    non-empty list of expressions with a block statement to execute
+    when matched or a default case with a block statement. This makes
+    them structurally different when compared to Java, or ~C~ / ~C++~:
+    - Simple statements aren't in many languages.
+    - Expressions usually aren't optional.
+    - Case statements contain a list of expressions, whereas many
+      languages such as ~Java~ only allow a single constant expression.
+    The simple statement is executed before the case checking and
+    after that the optional expression is compared with each case
+    statement, evaluating and comparing expression lists from left to
+    right. The first match enters that case's body, automatically
+    breaking at the end of it. This makes cases significantly semantically different:
+    - Cases automatically break.
+    - Each ~case~ or ~default~ block defines its own scope for declarations.
+    - Case statement expressions do not need to be a constant expression.
 
-    TODO
 *** Mapping Strategy
-    TODO
-** Assignments
-*** Go Semantics
-    TODO
-*** Mapping Strategy
-    TODO
-** Scoping Rules
-*** Go Semantics
-    TODO
-*** Mapping Strategy
-    TODO
-* Currently Implemented
-  TODO
+    For the structural differences:
+    - Simple statements can be the first statement in the new ``scope''.
+    - Any optional expression can be converted to the constant literal `true`.
+    - For a list of expressions that is of length greater than one, we
+      can compare each element from the list one at a time, duping the
+      element we need to compare for each comparison (as otherwise
+      we'll lose it).
+    Semantically:
+    - To automatically break, for each case statement, we add a ~goto~
+      to a label at the end of the switch statement.
+    - Simulating new scopes is easy because of how our scoping works,
+      the variable names will already be resolved to their correct local.
+    - The expressions not being constants does not matter too much for
+      us, as we will compare each expression normally (we are
+      simulating switch statements and aren't limited by the native
+      switch statement of the language).
+** TODO Assignments
+*** TODO Go Semantics
+*** TODO Mapping Strategy
+* TODO Currently Implemented
