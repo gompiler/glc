@@ -32,9 +32,42 @@ whilst implementing the components for milestone 3.  \newpage
   TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 * Semantics
 ** Scoping Rules
-*** TODO Go Semantics
-    In ~GoLite~,
-*** TODO Mapping Strategy
+*** Go Semantics
+    In ~GoLite~, new scopes are opened for block statements, ~for~
+    loops, ~if~ / ~else~ statements and function declarations (for the
+    parameters and the function body). A new scope separates
+    identifiers (which are associated to type maps, variables,
+    functions and the constants true/false) from the other scopes'
+    identifiers.
+
+    Whenever we refer to an identifier, it will reference the
+    identifier declared in the closest scope.
+
+    There is nothing very special about scoping in ~GoLite~, the main
+    notable thing is that something like ~var a = a~ will refer to ~a~
+    in a previous scope, not the current ~a~ that was just declared,
+    unlike certain languages like ~C~.
+*** Mapping Strategy
+    JVM bytecode, only has ``scoping'' for ~methods~, as they have
+    their own locals and stack. However, block statements and the
+    statements inside of them do not have any scopes (except of course
+    method calls), as we do not have any constructs like loops, if
+    statements or switch statements. In a higher level language, we
+    could just append the scope to each identifier to keep them all
+    unique (this would eliminate the need for separate scopes, as we
+    already typecheck the correct use of identifiers, but the target
+    language won't have to do extra work to tie break any
+    identifiers). In our case, we do a similar strategy. Recall that
+    in the typecheck phase we generate a new checked AST with
+    simplified information and assumptions. The identifiers in this
+    AST also change, where they are tuples that contain the original
+    identifier and the scope they were declared in. Thus, each scoped
+    identifier refers to a unique declaration of a scoped identifier.
+
+    For our intermediate representation, each scoped identifier will
+    be converted to an offset of the locals and since each scoped
+    identifier refers to a unique declaration, then the locals won't
+    refer to the wrong local.
 ** Switch Statements
 *** Go Semantics
     In ~GoLite~, ~switch~ statements consist of an optional simple

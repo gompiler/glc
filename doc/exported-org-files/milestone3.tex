@@ -1,4 +1,4 @@
-% Created 2019-03-27 Wed 17:28
+% Created 2019-03-27 Wed 18:16
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -34,7 +34,7 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 \section{{\bfseries\sffamily TODO} Language for Code Generation}
-\label{sec:org7a5fd80}
+\label{sec:orgf893359}
 We decided on targeting JVM bytecode for our compiler, through the Krakatau
 bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
 a more modern codebase (written in Python) and some additional features.
@@ -63,18 +63,51 @@ and its comparatively slow speeds versus an ahead-of-time compiled language,
 despite it being faster than other, higher-level languages.
 TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 \section{Semantics}
-\label{sec:org1766574}
+\label{sec:org53a8d16}
 \subsection{Scoping Rules}
-\label{sec:org1499342}
-\subsubsection{{\bfseries\sffamily TODO} Go Semantics}
-\label{sec:org7bb293c}
-In \texttt{GoLite},
-\subsubsection{{\bfseries\sffamily TODO} Mapping Strategy}
-\label{sec:org3d801cb}
-\subsection{Switch Statements}
-\label{sec:orgee60911}
+\label{sec:org5d9c8a6}
 \subsubsection{Go Semantics}
-\label{sec:org376b187}
+\label{sec:orgcee10e1}
+In \texttt{GoLite}, new scopes are opened for block statements, \texttt{for}
+loops, \texttt{if} / \texttt{else} statements and function declarations (for the
+parameters and the function body). A new scope separates
+identifiers (which are associated to type maps, variables,
+functions and the constants true/false) from the other scopes'
+identifiers.
+
+Whenever we refer to an identifier, it will reference the
+identifier declared in the closest scope.
+
+There is nothing very special about scoping in \texttt{GoLite}, the main
+notable thing is that something like \texttt{var a = a} will refer to \texttt{a}
+in a previous scope, not the current \texttt{a} that was just declared,
+unlike certain languages like \texttt{C}.
+\subsubsection{Mapping Strategy}
+\label{sec:org1e0b63b}
+JVM bytecode, only has ``scoping'' for \texttt{methods}, as they have
+their own locals and stack. However, block statements and the
+statements inside of them do not have any scopes (except of course
+method calls), as we do not have any constructs like loops, if
+statements or switch statements. In a higher level language, we
+could just append the scope to each identifier to keep them all
+unique (this would eliminate the need for separate scopes, as we
+already typecheck the correct use of identifiers, but the target
+language won't have to do extra work to tie break any
+identifiers). In our case, we do a similar strategy. Recall that
+in the typecheck phase we generate a new checked AST with
+simplified information and assumptions. The identifiers in this
+AST also change, where they are tuples that contain the original
+identifier and the scope they were declared in. Thus, each scoped
+identifier refers to a unique declaration of a scoped identifier.
+
+For our intermediate representation, each scoped identifier will
+be converted to an offset of the locals and since each scoped
+identifier refers to a unique declaration, then the locals won't
+refer to the wrong local.
+\subsection{Switch Statements}
+\label{sec:orga66951d}
+\subsubsection{Go Semantics}
+\label{sec:org8aaa8c1}
 In \texttt{GoLite}, \texttt{switch} statements consist of an optional simple
 statement, an optional expression and a (potentially empty) list
 of case statements, where case statements are either a case with a
@@ -99,7 +132,7 @@ breaking at the end of it. This makes cases significantly semantically different
 \end{itemize}
 
 \subsubsection{Mapping Strategy}
-\label{sec:orgc6623a6}
+\label{sec:org8383ab2}
 For the structural differences:
 \begin{itemize}
 \item Simple statements can be the first statement in the new ``scope''.
@@ -121,11 +154,11 @@ simulating switch statements and aren't limited by the native
 switch statement of the language).
 \end{itemize}
 \subsection{{\bfseries\sffamily TODO} Assignments}
-\label{sec:org9e6377a}
+\label{sec:orga8ba893}
 \subsubsection{{\bfseries\sffamily TODO} Go Semantics}
-\label{sec:org866d7d7}
+\label{sec:org840a1c2}
 \subsubsection{{\bfseries\sffamily TODO} Mapping Strategy}
-\label{sec:orga91ab40}
+\label{sec:orgb1d24f3}
 \section{{\bfseries\sffamily TODO} Currently Implemented}
-\label{sec:org2d00ec0}
+\label{sec:org0570f60}
 \end{document}

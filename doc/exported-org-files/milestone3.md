@@ -1,24 +1,24 @@
 
 # Table of Contents
 
-1.  [Language for Code Generation](#org19ca782)
-2.  [Semantics](#orgc3651f5)
-    1.  [Scoping Rules](#org4dd408b)
-        1.  [Go Semantics](#orgcce9bd2)
-        2.  [Mapping Strategy](#org9fb6577)
-    2.  [Switch Statements](#org157fd30)
-        1.  [Go Semantics](#orgd9685db)
-        2.  [Mapping Strategy](#orgcdb7236)
-    3.  [Assignments](#orgb88d6a4)
-        1.  [Go Semantics](#org64cdedb)
-        2.  [Mapping Strategy](#org030e982)
-3.  [Currently Implemented](#org93fe2f2)
+1.  [Language for Code Generation](#orgcd0a320)
+2.  [Semantics](#org63cb782)
+    1.  [Scoping Rules](#orga3c22e8)
+        1.  [Go Semantics](#orge364159)
+        2.  [Mapping Strategy](#org598fc92)
+    2.  [Switch Statements](#org6a7abcd)
+        1.  [Go Semantics](#org0a9375e)
+        2.  [Mapping Strategy](#orgec8a33c)
+    3.  [Assignments](#org68d7c23)
+        1.  [Go Semantics](#org10f65a1)
+        2.  [Mapping Strategy](#org7778270)
+3.  [Currently Implemented](#org75c8ce3)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 
 
-<a id="org19ca782"></a>
+<a id="orgcd0a320"></a>
 
 # TODO Language for Code Generation
 
@@ -50,34 +50,68 @@ despite it being faster than other, higher-level languages.
 TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 
 
-<a id="orgc3651f5"></a>
+<a id="org63cb782"></a>
 
 # Semantics
 
 
-<a id="org4dd408b"></a>
+<a id="orga3c22e8"></a>
 
 ## Scoping Rules
 
 
-<a id="orgcce9bd2"></a>
+<a id="orge364159"></a>
 
-### TODO Go Semantics
+### Go Semantics
 
-In `GoLite`,
+In `GoLite`, new scopes are opened for block statements, `for`
+loops, `if` / `else` statements and function declarations (for the
+parameters and the function body). A new scope separates
+identifiers (which are associated to type maps, variables,
+functions and the constants true/false) from the other scopes'
+identifiers.
+
+Whenever we refer to an identifier, it will reference the
+identifier declared in the closest scope.
+
+There is nothing very special about scoping in `GoLite`, the main
+notable thing is that something like `var a = a` will refer to `a`
+in a previous scope, not the current `a` that was just declared,
+unlike certain languages like `C`.
 
 
-<a id="org9fb6577"></a>
+<a id="org598fc92"></a>
 
-### TODO Mapping Strategy
+### Mapping Strategy
+
+JVM bytecode, only has \`\`scoping'' for `methods`, as they have
+their own locals and stack. However, block statements and the
+statements inside of them do not have any scopes (except of course
+method calls), as we do not have any constructs like loops, if
+statements or switch statements. In a higher level language, we
+could just append the scope to each identifier to keep them all
+unique (this would eliminate the need for separate scopes, as we
+already typecheck the correct use of identifiers, but the target
+language won't have to do extra work to tie break any
+identifiers). In our case, we do a similar strategy. Recall that
+in the typecheck phase we generate a new checked AST with
+simplified information and assumptions. The identifiers in this
+AST also change, where they are tuples that contain the original
+identifier and the scope they were declared in. Thus, each scoped
+identifier refers to a unique declaration of a scoped identifier.
+
+For our intermediate representation, each scoped identifier will
+be converted to an offset of the locals and since each scoped
+identifier refers to a unique declaration, then the locals won't
+refer to the wrong local.
 
 
-<a id="org157fd30"></a>
+<a id="org6a7abcd"></a>
 
 ## Switch Statements
 
 
-<a id="orgd9685db"></a>
+<a id="org0a9375e"></a>
 
 ### Go Semantics
 
@@ -104,7 +138,7 @@ breaking at the end of it. This makes cases significantly semantically different
 -   Case statement expressions do not need to be a constant expression.
 
 
-<a id="orgcdb7236"></a>
+<a id="orgec8a33c"></a>
 
 ### Mapping Strategy
 
@@ -129,21 +163,21 @@ Semantically:
     switch statement of the language).
 
 
-<a id="orgb88d6a4"></a>
+<a id="org68d7c23"></a>
 
 ## TODO Assignments
 
 
-<a id="org64cdedb"></a>
+<a id="org10f65a1"></a>
 
 ### TODO Go Semantics
 
 
-<a id="org030e982"></a>
+<a id="org7778270"></a>
 
 ### TODO Mapping Strategy
 
 
-<a id="org93fe2f2"></a>
+<a id="org75c8ce3"></a>
 
 # TODO Currently Implemented
