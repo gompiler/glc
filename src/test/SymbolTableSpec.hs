@@ -156,6 +156,7 @@ spec = do
     , "false = false"
     , "true = false"
     , "false = true"
+    , "type int2 int; int2(5)"
     ]
   expectTypecheckPass
     [ [text|

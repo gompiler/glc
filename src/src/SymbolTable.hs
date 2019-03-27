@@ -481,7 +481,13 @@ instance Symbolize SimpleStmt C.SimpleStmt where
                 scope <- S.insert st vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
                 return $ Right (True, mkSIdStr scope vname)
   recurse _ EmptyStmt = return $ Right C.EmptyStmt
-  recurse st (ExprStmt e) = fmap C.ExprStmt <$> recurse st e -- Verify that expr only uses things that are defined
+  recurse st (ExprStmt e@(Arguments _ (Var (Identifier _ vname)) _)) = do
+    res <- S.lookup st vname
+    case res of
+      Just (_, Func _ _) ->
+        fmap C.ExprStmt <$> recurse st e -- Verify that expr only uses things that are defined
+      _ -> return $ Left $ createError e ESNotFunc
+  recurse st (ExprStmt e) = fmap C.ExprStmt <$> recurse st e -- If the above case isn't matched, then we pass to here which will fail because func call isn't on an identifier
   recurse st (Increment _ e) = do
     et <- infer st e
     eaddr <- isAddr st e
@@ -998,6 +1004,7 @@ data TypeCheckError
   | NonLVal Expr
   | RetOut -- Return outside of function, should never happen
   | NotFunc -- Trying to get the return value of a symbol that isn't a function, shouldn't happen
+  | ESNotFunc -- ExprStmt isn't a function
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -1047,6 +1054,7 @@ instance ErrorEntry TypeCheckError where
       NonLVal e -> prettify e ++ " is not an lvalue and cannot be assigned to"
       RetOut -> "Return expression outside of function context"
       NotFunc -> "Trying to get return value of a symbol that isn't a function"
+      ESNotFunc -> "Expression statement must be a function call"
 
 -- | Wrap a result of recurse inside a new scope
 wrap :: SymbolTable s -> ST s (Glc' a) -> ST s (Glc' a)
