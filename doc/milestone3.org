@@ -12,8 +12,8 @@ whilst implementing the components for milestone 3.  \newpage
 ** Advantages
    The primary advantages of targeting JVM bytecode are:
    [[Portability][portability]], [[Execution Speed][execution speed]],
-   and (surprisingly to us) its [[Stack Based/Low Level][focus on stack
-   operations, as opposed to a more `straightforward' language]], which
+   and its [[Stack Based/Low Level][focus on stack
+   manipulation, as opposed to a more `straightforward' language]], which
    aids in overcoming some of the common pain points of GoLite code
    generation:
 *** Portability
@@ -26,11 +26,9 @@ whilst implementing the components for milestone 3.  \newpage
     compiled code, most implementations of the JVM provide JIT compilation.
     By targeting JVM bytecode, we can take advantage of this, and our generated
     code will likely be faster than if we generated code in a higher-level
-    language such as Python.
-
-    This JIT compilation and run-time optimization sometimes allow
-    the JVM to be faster than even ahead-of-time compiled programs, since
-    run-time information is available for optimization purposes.
+    language such as Python. Sometimes, the JVM can be faster than even
+    ahead-of-time compiled programs, since run-time information is available for
+    optimization purposes.
 *** Stack Based/Low Level
     The fact that JVM bytecode is fairly low level gives us lots of granular
     control for changing the behavior of constructs, especially when
@@ -41,13 +39,10 @@ whilst implementing the components for milestone 3.  \newpage
     `difficult to implement' surprisingly easy. In particular, swapping
     variables (e.g. ~a, b = b, a~) is fairly straightforward. The right-hand
     side must be evaluated before assignment, which can be done by pushing and
-    evaluating the right-hand side, left to right, onto the stack; this is
-    followed by popping each value in turn and loading them into the
-    corresponding locals. Compared to (for example) temporary variable
-    allocation, this is an extremely natural way to implement this construct.
-    The stack also makes it easier to account for other constructs, such as
-    function arguments and comparisons. A similarly low-level, register-based
-    language would require the use of many temporary registers.
+    evaluating all RHS terms, left to right, onto the stack; followed by popping
+    each value in turn and loading them into corresponding locals. Compared to
+    temporary variable or register allocation, this is a very natural way to
+    implement this construct.
 
 ** Disadvantages
    The main disadvantages of generating JVM bytecode are its low-level semantics
