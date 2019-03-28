@@ -150,42 +150,41 @@ whilst implementing the components for milestone 3.  \newpage
 ** Assignments
 *** Go Semantics
     In ~GoLite~, assignments are either an assignment operator with a
-    LHS expression and a RHS expression or just two non empty
-    expression lists of equal length. This makes them structurally
-    different (for the two non empty list case) from classic
-    assignments that either only allow single expressions whether that
-    be on both sides or only the RHS (assign many expressions to the
-    same value). However, this structural difference is a lot more
-    significant than it seems at first glance, because the assignments
-    are done in a ``simultaneous'' way, that is ~a, b = b, a~ will
-    effectively swap the values of ~a~ and ~b~, whereas if the
+    single LHS expression and a RHS expression, or two non-empty
+    expression lists (LHS and RHS) of equal length. This makes them structurally
+    different (for the two non-empty list case) from `classic'
+    assignments, which typically only allow one l-value.
+    This structural difference is a lot more significant than it seems
+    at first glance, because the assignments are done in a ``simultaneous''
+    way, that is ~a, b = b, a~ will swap the values of ~a~ and ~b~. If the
     assignments were done sequentially, ~a~ and ~b~ would be the
-    original value of ~b~ and wouldn't be swapped.
+    original value of ~b~ and wouldn't be swapped. The same goes for ~+=~ and
+    other assignment operators.
 *** Mapping Strategy
     There are two tricky things about assignments:
     - Assignment operators. We cannot just convert ~e += e2~ to ~e =
       e + e2~, where ~e~ is an expression, because ~e~ might contain a
       function call with side-effects, which we do not want to call
       twice (note that in some cases, the assignment operator has an
-      equivalent instruction, i.e. incrementing and decrementing using
-      ~iinc~, however we generalize in this discussion as most
+      equivalent bytecode instruction, i.e. incrementing and decrementing using
+      ~iinc~. However, we generalize in this discussion as most
       operators do not have an equivalent instruction to operate and
       assign at the same time). There are thus several cases for ~e~:
-      - ~e~ is just an identifier, then we can just convert ~e += e2~
+      - ~e~ is just an identifier. Then, we can just convert ~e += e2~
         to ~e = e + e2~, as there will be no side effects.
       - ~e~ is a selector. If ~e~ is an addressable selector, then it
         is not operating on the direct/anonymous return value of a
         function call and so re-evaluating ~e~ will not produce any
         side effects. Thus we can do ~e = e + e2~ again.
       - ~e~ is an index, say ~e3[e4]~. In this case, ~e3~ can be an
-        anonymous ~slice~ from a function return and ~e4~ can also be an
-        anonymous ~int~ from a function return. So in order to avoid
-        duplicate side effects, we resolve ~e3[e4]~ to some base
-        expression without function calls, storing the result on the
-        stack, then we operate on the stack, adding ~e2~ and then
+        anonymous ~slice~ from a function return, and ~e4~ could also be an
+        anonymous ~int~ from a function return. In order to avoid
+        duplicate side effects, we should resolve ~e3[e4]~, including any
+        function calls, to some base addressable expression, storing the
+        result on the stack. Then, we can operate on the stack, adding ~e2~ and
         assigning the result to whatever the stack value references.
-      - The other cases for ~e~ are not lvalues and shouldn't happen
-        in the checked AST.
+      - The other cases for ~e~ are not ~l-values~, and shouldn't happen
+        in the type-checked AST.
     - Assignment of multiple expressions. As mentioned earlier, we
       cannot do the assignments sequentially. Thus we evaluate the
       entire RHS, pushing each result onto the stack and then
