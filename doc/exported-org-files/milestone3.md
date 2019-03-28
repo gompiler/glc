@@ -1,29 +1,29 @@
 
 # Table of Contents
 
-1.  [Language for Code Generation](#org2c2d333)
-    1.  [Advantages](#orgf2d24f1)
-        1.  [Portability](#org057f6bb)
-        2.  [Execution Speed](#org80c8d0e)
-        3.  [Stack Based/Low Level](#org605f3ea)
-    2.  [Disadvantages](#org10167b8)
-2.  [Semantics](#org6ffc1ed)
-    1.  [Scoping Rules](#orgddae25d)
-        1.  [Go Semantics](#org4bf1094)
-        2.  [Mapping Strategy](#orged25f0e)
-    2.  [Switch Statements](#org598678d)
-        1.  [Go Semantics](#orgbc7b724)
-        2.  [Mapping Strategy](#org2d9cd08)
-    3.  [Assignments](#orgd5fa890)
-        1.  [Go Semantics](#orgd515a69)
-        2.  [Mapping Strategy](#org93f85c4)
-3.  [Currently Implemented](#orga74c5b1)
+1.  [Language for Code Generation](#orge9764e2)
+    1.  [Advantages](#orga078cac)
+        1.  [Portability](#orga8fef55)
+        2.  [Execution Speed](#org41505d9)
+        3.  [Stack Based/Low Level](#orge2b49d7)
+    2.  [Disadvantages](#org1fab51c)
+2.  [Semantics](#orgc5e899b)
+    1.  [Scoping Rules](#orgf1fdf9e)
+        1.  [Go Semantics](#org1c79a2d)
+        2.  [Mapping Strategy](#org8321afc)
+    2.  [Switch Statements](#org0aeaa7c)
+        1.  [Go Semantics](#org6736cd5)
+        2.  [Mapping Strategy](#org80c741b)
+    3.  [Assignments](#org2fd5576)
+        1.  [Go Semantics](#orgd2399d5)
+        2.  [Mapping Strategy](#orgbfaff21)
+3.  [Currently Implemented](#org05de90c)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 
 
-<a id="org2c2d333"></a>
+<a id="orge9764e2"></a>
 
 # TODO Language for Code Generation
 
@@ -33,19 +33,19 @@ a more modern codebase (written in Python) and some additional features.
 TODO: TALK ABOUT ADDITIONAL FEATURES?
 
 
-<a id="orgf2d24f1"></a>
+<a id="orga078cac"></a>
 
 ## Advantages
 
 The primary advantages of targeting JVM bytecode are:
-[portability](#org057f6bb), [execution speed](#org80c8d0e),
+[portability](#orga8fef55), [execution speed](#org41505d9),
 and (surprisingly to us) its [focus on stack
-operations as opposed to a more \`straightforward' language](#org605f3ea), which
+operations as opposed to a more \`straightforward' language](#orge2b49d7), which
 aids in overcoming some of the common pain points of GoLite code
 generation:
 
 
-<a id="org057f6bb"></a>
+<a id="orga8fef55"></a>
 
 ### Portability
 
@@ -54,7 +54,7 @@ GoLite, when compiled with our compiler, will be able to run on any
 platform the JVM can run on.
 
 
-<a id="org80c8d0e"></a>
+<a id="org41505d9"></a>
 
 ### Execution Speed
 
@@ -66,7 +66,7 @@ code will likely be faster than if we generated code in a higher-level
 language such as Python.
 
 
-<a id="org605f3ea"></a>
+<a id="orge2b49d7"></a>
 
 ### TODO Stack Based/Low Level
 
@@ -80,7 +80,7 @@ swapping and comparing, whereas a register based language would
 require the use of many temporary registers.
 
 
-<a id="org10167b8"></a>
+<a id="org1fab51c"></a>
 
 ## Disadvantages
 
@@ -90,17 +90,17 @@ despite it being faster than other, higher-level languages.
 TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 
 
-<a id="org6ffc1ed"></a>
+<a id="orgc5e899b"></a>
 
 # Semantics
 
 
-<a id="orgddae25d"></a>
+<a id="orgf1fdf9e"></a>
 
 ## Scoping Rules
 
 
-<a id="org4bf1094"></a>
+<a id="org1c79a2d"></a>
 
 ### Go Semantics
 
@@ -120,7 +120,7 @@ in a previous scope, not the current `a` that was just declared,
 unlike certain languages like `C`.
 
 
-<a id="orged25f0e"></a>
+<a id="org8321afc"></a>
 
 ### Mapping Strategy
 
@@ -146,12 +146,12 @@ identifier refers to a unique declaration, then the locals won't
 refer to the wrong local.
 
 
-<a id="org598678d"></a>
+<a id="org0aeaa7c"></a>
 
 ## Switch Statements
 
 
-<a id="orgbc7b724"></a>
+<a id="org6736cd5"></a>
 
 ### Go Semantics
 
@@ -178,7 +178,7 @@ breaking at the end of it. This makes cases significantly semantically different
 -   Case statement expressions do not need to be a constant expression.
 
 
-<a id="org2d9cd08"></a>
+<a id="org80c741b"></a>
 
 ### Mapping Strategy
 
@@ -203,12 +203,12 @@ Semantically:
     switch statement of the language).
 
 
-<a id="orgd5fa890"></a>
+<a id="org2fd5576"></a>
 
 ## Assignments
 
 
-<a id="orgd515a69"></a>
+<a id="orgd2399d5"></a>
 
 ### Go Semantics
 
@@ -226,7 +226,7 @@ assignments were done sequentially, `a` and `b` would be the
 original value of `b` and wouldn't be swapped.
 
 
-<a id="org93f85c4"></a>
+<a id="orgbfaff21"></a>
 
 ### Mapping Strategy
 
@@ -253,6 +253,8 @@ There are two tricky things about assignments:
         expression without function calls, storing the result on the
         stack, then we operate on the stack, adding `e2` and then
         assigning the result to whatever the stack value references.
+    -   The other cases for `e` are not lvalues and shouldn't happen
+        in the checked AST.
 -   Assignment of multiple expressions. As mentioned earlier, we
     cannot do the assignments sequentially. Thus we evaluate the
     entire RHS, pushing each result onto the stack and then
@@ -264,7 +266,7 @@ There are two tricky things about assignments:
     swapping/simulating simultaneous assignment.
 
 
-<a id="orga74c5b1"></a>
+<a id="org05de90c"></a>
 
 # TODO Currently Implemented
 

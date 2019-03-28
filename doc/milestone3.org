@@ -155,6 +155,8 @@ whilst implementing the components for milestone 3.  \newpage
         expression without function calls, storing the result on the
         stack, then we operate on the stack, adding ~e2~ and then
         assigning the result to whatever the stack value references.
+      - The other cases for ~e~ are not lvalues and shouldn't happen
+        in the checked AST.
     - Assignment of multiple expressions. As mentioned earlier, we
       cannot do the assignments sequentially. Thus we evaluate the
       entire RHS, pushing each result onto the stack and then
