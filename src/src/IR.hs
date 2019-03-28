@@ -13,7 +13,6 @@ import qualified SymbolTable        as S
 -- https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html
 -- https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
 -- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
-
 type LabelName = String
 
 data FieldAccess
@@ -221,7 +220,7 @@ printIR e =
     C.PRune    -> printLoad ++ toIR e ++ intPrint
     C.PBool    -> undefined -- TODO: PRINT true/false
     C.PString  -> printLoad ++ toIR e ++ stringPrint
-    wot        -> iri [Debug $ show wot] -- TODO
+    _          -> undefined -- TODO
   where
     printLoad :: [IRItem]
     printLoad = iri [GetStatic systemOut printStream]
@@ -258,7 +257,7 @@ instance IRRep C.SimpleStmt where
 
 instance IRRep C.Decl where
   toIR (C.VarDecl vds) = concatMap toIR vds
-  toIR _               = undefined -- TODO
+  toIR (C.TypeDef _)   = [] -- TODO: Type defs shouldn't exist at this phase...
 
 instance IRRep C.VarDecl' where
   toIR (C.VarDecl' _ t me) =
@@ -323,9 +322,15 @@ instance IRRep C.Expr where
           C.BitAnd    -> IAnd
           C.Add       -> undefined -- handled above
           C.BitClear  -> undefined -- handled above TODO
+  toIR C.Binary {} = undefined -- TODO
   toIR (C.Lit l) = toIR l
   toIR (C.Var t _) = iri [Load (astToIRType t) (-1)] -- TODO (also bool?)
-  toIR _ = undefined
+  toIR C.AppendExpr {} = undefined -- TODO
+  toIR C.LenExpr {} = undefined -- TODO
+  toIR C.CapExpr {} = undefined -- TODO
+  toIR C.Selector {} = undefined -- TODO
+  toIR C.Index {} = undefined -- TODO
+  toIR C.Arguments {} = undefined -- TODO
 
 instance IRRep C.Literal where
   toIR (C.IntLit i)    = iri [LDC (LDCInt i)]
