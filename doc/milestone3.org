@@ -211,12 +211,12 @@ whilst implementing the components for milestone 3.  \newpage
   from the AST, and enforce some degree of correctness using Haskell's type
   system. The IR is also stack-based, and to a large extent is functionally
   identical to JVM bytecode, modeled in Haskell. We represent classes and
-  methods as Haskell records. Method bodies are a list of what we call,
-  ~IRItem~s, which are either stack instructions or labels.
+  methods as Haskell records. Method bodies are a list of what we call
+  ~IRItems~, which are either stack instructions or labels.
 
   Available stack instructions, as of this milestone, include ~Add~ and other
   binary operations, ~Dup~, ~Load~ and ~Store~, ~InvokeVirtual/InvokeSpecial~,
-  some integer-specific operations, and ~Return~s. Instead of specifically
+  some integer-specific operations, and ~Return~. Instead of specifically
   representing equivalents of ~iadd/fadd~, ~iload/aload/...~, etc., we define
   an ~IRType~ data type which can either be a bytecode primitive (integer or
   float) or an object reference. In this way, the IR definition is kept short
