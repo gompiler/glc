@@ -12,7 +12,7 @@ whilst implementing the components for milestone 3.  \newpage
    The primary advantages of targeting JVM bytecode are:
    [[Portability][portability]], [[Execution Speed][execution speed]],
    and (surprisingly to us) its [[Stack Based/Low Level][focus on stack
-   operations as opposed to a more `straightforward' language]], which
+   operations, as opposed to a more `straightforward' language]], which
    aids in overcoming some of the common pain points of GoLite code
    generation:
 *** Portability
