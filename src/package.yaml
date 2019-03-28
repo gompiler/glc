@@ -33,6 +33,8 @@ dependencies:
 - QuickCheck
 - split
 - extra
+- bytestring
+- filepath
 
 library:
   source-dirs: [src, src/generated]

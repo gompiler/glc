@@ -8,14 +8,15 @@ import           Prettify            (checkPrettifyInvariance, prettify)
 import           Scanner             (putExit, putSucc, scanC, scanP)
 import           SymbolTable         (symbol, typecheckP)
 import           Weeding             (weed)
+import           Codegen             (codegen)
 
 main :: IO ()
 main = do
-  CI cmd inp <- Op.customExecParser (Op.prefs Op.showHelpOnEmpty) cmdParser
-  case cmd
+  cmdi@(CI cmd inp) <- Op.customExecParser (Op.prefs Op.showHelpOnEmpty) cmdParser
+  case cmdi
     -- Special case, match on file only
-        of
-    Codegen -> putStrLn "codegen not yet implemented"
+    of
+    CI Codegen (FileInp f) -> codegen f
     _ ->
       inpToIOStr inp >>=
       case cmd of
