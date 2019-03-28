@@ -1,4 +1,4 @@
-% Created 2019-03-27 Wed 23:49
+% Created 2019-03-27 Wed 23:51
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -35,92 +35,92 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 \section{JVM Bytecode for Code Generation}
-\label{sec:org4c9274e}
+\label{sec:org5b07bb9}
 We decided on targeting JVM bytecode for our compiler, through the
-\href{https://github.com/Storyyeller/Krakatau}{Krakatau}
-bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
-a more modern codebase (written in Python) and some additional features.
+\href{https://github.com/Storyyeller/Krakatau}{Krakatau} bytecode assembler. Krakatau bytecode syntax is derived
+from Jasmin, but with a more modern codebase (written in Python) and
+some additional features.
 \subsection{Advantages}
-\label{sec:org8876e1e}
-The primary advantages of targeting JVM bytecode are:
-\hyperref[sec:org655d03c]{portability}, \hyperref[sec:orga62cb68]{execution speed},
-and its \hyperref[sec:org22295d2]{focus on stack
-manipulation, as opposed to a higher level language}, which
-aids in overcoming some of the common pain points of GoLite code
-generation:
+\label{sec:org470b060}
+The primary advantages of targeting JVM bytecode are: \hyperref[sec:org8296e16]{portability}, \hyperref[sec:orgd33314c]{execution speed}, and its \hyperref[sec:orgec85c24]{focus on stack manipulation, as opposed to a
+higher level language}, which aids in overcoming some of the common
+pain points of GoLite code generation:
 \subsubsection{Portability}
-\label{sec:org655d03c}
-The JVM has been ported to many common platforms, meaning code written in
-GoLite, when compiled with our compiler, will be able to run on any
-platform the JVM can run on.
+\label{sec:org8296e16}
+The JVM has been ported to many common platforms, meaning code
+written in GoLite, when compiled with our compiler, will be able
+to run on any platform the JVM can run on.
 \subsubsection{Execution Speed}
-\label{sec:orga62cb68}
-Although Java is often considered slow as opposed to ahead-of-time compiled
-languages such as C and C++ due to its garbage collection and non-native
-compiled code, most implementations of the JVM provide JIT compilation.
-By targeting JVM bytecode, we can take advantage of this, and our generated
-code will likely be faster than if we generated code in an interpreted
-language such as Python. Sometimes, the JVM can be faster than even
-ahead-of-time compiled programs, since run-time information is available for
+\label{sec:orgd33314c}
+Although Java is often considered slow as opposed to ahead-of-time
+compiled languages such as C and C++ due to its garbage collection
+and non-native compiled code, most implementations of the JVM
+provide JIT compilation.  By targeting JVM bytecode, we can take
+advantage of this, and our generated code will likely be faster
+than if we generated code in an interpreted language such as
+Python. Sometimes, the JVM can be faster than even ahead-of-time
+compiled programs, since run-time information is available for
 optimization purposes.
 \subsubsection{Stack Based/Low Level}
-\label{sec:org22295d2}
-The fact that JVM bytecode is fairly low level gives us lots of granular
-control for changing the behavior of constructs, especially when
-dealing with odd \texttt{GoLite} / \texttt{GoLang} behavior that doesn't
-map perfectly to more common programming languages.
+\label{sec:orgec85c24}
+The fact that JVM bytecode is fairly low level gives us lots of
+granular control for changing the behavior of constructs,
+especially when dealing with odd \texttt{GoLite} / \texttt{GoLang} behavior that
+doesn't map perfectly to more common programming languages.
 
-Operating on a stack makes some of the operations mentioned in class as
-`difficult to implement' surprisingly easy. In particular, swapping
-variables (e.g. \texttt{a, b = b, a}) is fairly straightforward. The right-hand
-side must be evaluated before assignment, which can be done by pushing and
-evaluating all RHS terms, left to right, onto the stack; followed by popping
-each value in turn and loading them into corresponding locals. Compared to
-temporary variable or register allocation, this is a very natural way to
-implement this construct.
+Operating on a stack makes some of the operations mentioned in
+class as `difficult to implement' surprisingly easy. In
+particular, swapping variables (e.g. \texttt{a, b = b, a}) is fairly
+straightforward. The right-hand side must be evaluated before
+assignment, which can be done by pushing and evaluating all RHS
+terms, left to right, onto the stack; followed by popping each
+value in turn and loading them into corresponding locals. Compared
+to temporary variable or register allocation, this is a very
+natural way to implement this construct.
 
 \subsection{Disadvantages}
-\label{sec:orgf219382}
-The main disadvantages of generating JVM bytecode are its low-level semantics
-and its (in general) slightly slow speeds versus an ahead-of-time compiled
-language.
+\label{sec:orgbcf9cdb}
+The main disadvantages of generating JVM bytecode are its low-level
+semantics and its (in general) slightly slow speeds versus an
+ahead-of-time compiled language.
 
-The low level of JVM bytecode is particularly frustrating to deal with when
-it comes to types that are not representable by an integer or floating point
-number and are thus classes which must be instantiated; in the JVM, this
-includes strings and \textasciitilde{}struct\textasciitilde{}s. This means that operations such as
-comparisons and string concatenations go from being a few bytecode
-instructions to signficantly longer patterns.
+The low level of JVM bytecode is particularly frustrating to deal
+with when it comes to types that are not representable by an
+integer or floating point number and are thus classes which must be
+instantiated; in the JVM, this includes strings and \textasciitilde{}struct\textasciitilde{}s. This
+means that operations such as comparisons and string concatenations
+go from being a few bytecode instructions to signficantly longer
+patterns.
 \section{Semantics}
-\label{sec:org39fa905}
+\label{sec:orgfaf28f5}
 \subsection{Scoping Rules}
-\label{sec:org0e25dc4}
+\label{sec:org3ebc203}
 \subsubsection{Go Semantics}
-\label{sec:org031a643}
+\label{sec:orgfd626c6}
 In \texttt{GoLite}, new scopes are opened for block statements, \texttt{for}
 loops, \texttt{if} / \texttt{else} statements and function declarations (for the
 parameters and the function body). A new scope separates
 identifiers (which are associated with type maps, variables,
-functions and the constants \texttt{true} and \texttt{false}) from the other scopes'
-identifiers. Whenever we refer to an identifier, it references the
-identifier declared in the closest scope.
+functions and the constants \texttt{true} and \texttt{false}) from the other
+scopes' identifiers. Whenever we refer to an identifier, it
+references the identifier declared in the closest scope.
 
 There is nothing very special about scoping in \texttt{GoLite}. The main
 notable thing is that something like \texttt{var a = a} will refer to \texttt{a}
 in a previous scope, not the current \texttt{a} that was just declared,
-unlike languages like \texttt{C}.
-On the other hand, recursive types such as \texttt{type b b} fail as expected,
-and do not reference a type from higher scopes.
+unlike languages like \texttt{C}.  On the other hand, recursive types
+such as \texttt{type b b} fail as expected, and do not reference a type
+from higher scopes.
 \subsubsection{Mapping Strategy}
-\label{sec:orgfd3a48c}
+\label{sec:org9b58fa9}
 JVM bytecode only has ``scoping'' for \texttt{methods}, as they have
-their own locals and stack. Block statements do not exist per se, and
-statements except called method bodies are scope-less. In higher
-level languages, we could just append the scope depth to all
-identifier names to keep them unique, also eliminating the
-need for separate scopes, as we already typecheck the correct use of
-identifiers. In our case, we have scoped identifiers in our newly
-generated typechecked AST which we convert to offsets (for
+their own locals and stack. Block statements do not exist per se,
+and statements except called method bodies are scope-less. In
+higher level languages, we could just append the scope depth to
+all identifier names to keep them unique, also eliminating the
+need for separate scopes, as we already typecheck the correct use
+of identifiers. In our case, we have scoped identifiers in our
+newly generated typechecked AST which we convert to offsets (for
 locals).
 
 These offsets can be used in our intermediate representation,
@@ -130,16 +130,17 @@ given the same offset, and we can optimize our stack limit by
 reusing offsets when two variables can never occur at the same
 time due to branching.
 \subsection{Switch Statements}
-\label{sec:orgd4cbf42}
+\label{sec:orgc2029ba}
 \subsubsection{Go Semantics}
-\label{sec:org468a8cf}
+\label{sec:org5f28246}
 In \texttt{GoLite}, \texttt{switch} statements consist of an optional simple
-statement, an optional expression and a list
-of case statements. Case statements are either a case with a
-non-empty list of expressions, or a default case with no additional expression.
-Each case statement also contains a block statement, containing code to execute
-upon match. This makes
-them structurally different when compared to Java or \texttt{C} / \texttt{C++}, where:
+statement, an optional expression and a list of case
+statements. Case statements are either a case with a non-empty
+list of expressions, or a default case with no additional
+expression.  Each case statement also contains a block statement,
+containing code to execute upon match. This makes them
+structurally different when compared to Java or \texttt{C} / \texttt{C++},
+where:
 \begin{itemize}[noitemsep]
 \item Simple statements don't exist.
 \item Expressions aren't optional.
@@ -149,8 +150,8 @@ The simple statement is executed before the \texttt{case} checking.
 After that, the optional expression is compared with each \texttt{case}
 statement, evaluating and comparing expression lists from left to
 right. The first match enters that case's body, automatically
-breaking at the end of it. This makes cases significantly different
-semantically:
+breaking at the end of it. This makes cases significantly
+different semantically:
 \begin{itemize}[noitemsep]
 \item Cases automatically break.
 \item Each \texttt{case} or \texttt{default} block defines its own scope for declarations.
@@ -158,20 +159,20 @@ semantically:
 \end{itemize}
 
 \subsubsection{Mapping Strategy}
-\label{sec:orgf287ca0}
+\label{sec:orgb129eb0}
 For the structural differences:
 \begin{itemize}[noitemsep]
 \item Simple statements can be modeled and executed as the first statement in
 the new ``scope''.
 \item Missing expressions can be converted to the constant literal `true`.
 \item For a list of expressions that is of length greater than one, we
-can compare each element from the list one at a time, duplicating the
-value we're comparing to before each comparison (as otherwise
-we'll lose it during the stack operation). In other terms, the value we
-compare to during each \texttt{case} block is stored on the stack until the
-\texttt{switch} statement is done.
-\end{itemize}
+can compare each element from the list one at a time,
+duplicating the value we're comparing to before each comparison
+(as otherwise we'll lose it during the stack operation). In
+other terms, the value we compare to during each \texttt{case} block is
+stored on the stack until the \texttt{switch} statement is done.
 Semantically:
+\end{itemize}
 \begin{itemize}[noitemsep]
 \item After \texttt{case} expression comparisons, we will either jump to the case body
 or keep going to the next \texttt{case} comparison or \texttt{default} block.
@@ -180,39 +181,41 @@ to a label at the end of the switch statement.
 \item \texttt{default} statement jumps should be placed after all jumps to case bodies
 as the fall-through case, when no other jumps are followed.
 \item Simulating new scopes is easy because of how our scoping works;
-the variable names will already be resolved to their correct local's
-index.
+the variable names will already be resolved to their correct
+local's index.
 \item Expressions in \texttt{case} blocks not being constants does not matter too much
 for us, as we will compare each expression normally (we are
-simulating switch statements using \texttt{goto} and comparisons, and aren't
-limited by any language-native \texttt{switch} statement definitions).
+simulating switch statements using \texttt{goto} and comparisons, and
+aren't limited by any language-native \texttt{switch} statement
+definitions).
 \end{itemize}
 \subsection{Assignments}
-\label{sec:orge8ef9fe}
+\label{sec:orgac321ff}
 \subsubsection{Go Semantics}
-\label{sec:org179454b}
+\label{sec:orgefa07e9}
 In \texttt{GoLite}, assignments are either an assignment operator with a
 single LHS expression and a RHS expression, or two non-empty
-expression lists (LHS and RHS) of equal length. This makes them structurally
-different (for the two non-empty list case) from `classic'
-assignments, which typically only allow one l-value.
+expression lists (LHS and RHS) of equal length. This makes them
+structurally different (for the two non-empty list case) from
+`classic' assignments, which typically only allow one l-value.
 This structural difference is a lot more significant than it seems
-at first glance, because the assignments are done in a ``simultaneous''
-way, that is \texttt{a, b = b, a} will swap the values of \texttt{a} and \texttt{b}. If the
-assignments were done sequentially, \texttt{a} and \texttt{b} would be the
-original value of \texttt{b} and wouldn't be swapped.
+at first glance, because the assignments are done in a
+``simultaneous'' way, that is \texttt{a, b = b, a} will swap the values
+of \texttt{a} and \texttt{b}. If the assignments were done sequentially, \texttt{a} and
+\texttt{b} would be the original value of \texttt{b} and wouldn't be swapped.
 \subsubsection{Mapping Strategy}
-\label{sec:org7687810}
+\label{sec:org3effa06}
 There are two tricky things about assignments:
 \begin{itemize}[noitemsep]
 \item Assignment operators. We cannot just convert \texttt{e += e2} to \texttt{e =
       e + e2}, where \texttt{e} is an expression, because \texttt{e} might contain a
 function call with side-effects, which we do not want to call
 twice (note that in some cases, the assignment operator has an
-equivalent bytecode instruction, i.e. incrementing and decrementing using
-\texttt{iinc}. However, we generalize in this discussion as most
-operators do not have an equivalent instruction to operate and
-assign at the same time). There are thus several cases for \texttt{e}:
+equivalent bytecode instruction, i.e. incrementing and
+decrementing using \texttt{iinc}. However, we generalize in this
+discussion as most operators do not have an equivalent
+instruction to operate and assign at the same time). There are
+thus several cases for \texttt{e}:
 \end{itemize}
 \begin{itemize}[noitemsep]
 \item \texttt{e} is just an identifier. Then, we can just convert \texttt{e += e2}
@@ -222,51 +225,55 @@ is not operating on the direct/anonymous return value of a
 function call and so re-evaluating \texttt{e} will not produce any
 side effects. Thus we can do \texttt{e = e + e2} again.
 \item \texttt{e} is an index, say \texttt{e3[e4]}. In this case, \texttt{e3} can be an
-anonymous \texttt{slice} from a function return, and \texttt{e4} could also be an
-anonymous \texttt{int} from a function return. In order to avoid
-duplicate side effects, we should resolve \texttt{e3[e4]}, including any
-function calls, to some base addressable expression, storing the
-result on the stack. Then, we can operate on the stack, adding \texttt{e2} and
-assigning the result to whatever the stack value references.
+anonymous \texttt{slice} from a function return, and \texttt{e4} could also
+be an anonymous \texttt{int} from a function return. In order to
+avoid duplicate side effects, we should resolve \texttt{e3[e4]},
+including any function calls, to some base addressable
+expression, storing the result on the stack. Then, we can
+operate on the stack, adding \texttt{e2} and assigning the result to
+whatever the stack value references.
 \item The other cases for \texttt{e} are not \texttt{l-values}, and shouldn't happen
 in the type-checked AST.
 \end{itemize}
 \begin{itemize}
 \item Assignment of multiple expressions. As mentioned earlier, we
-cannot do the assignments sequentially. Thus, we should evaluate the
-entire RHS, pushing each result onto the stack and then
+cannot do the assignments sequentially. Thus, we should evaluate
+the entire RHS, pushing each result onto the stack and then
 assigning each stack element one by one to their respective LHS
-expression l-value. This way, \texttt{a, b = b, a} will not overwrite or
-interfere with any values used on the RHS. This is one of the advantages
-of using a stack-based language, as values on the stack implicitly act
-like temporary variables, so we don't need to allocate other temporary
-resources for simultaneous assignment.
+expression l-value. This way, \texttt{a, b = b, a} will not overwrite
+or interfere with any values used on the RHS. This is one of the
+advantages of using a stack-based language, as values on the
+stack implicitly act like temporary variables, so we don't need
+to allocate other temporary resources for simultaneous
+assignment.
 \end{itemize}
 \section{Currently Implemented: Intermediate Representation}
-\label{sec:org4708923}
+\label{sec:org9d7348b}
 The main feature that was worked on during this milestone was the
 creation of our intermediate representation, and the conversion of
 the typechecked AST to said IR.
 
-We decided on creating an IR for bytecode in order to make conversion easier
-from the AST, and enforce some degree of correctness using Haskell's type
-system. The IR is also stack-based, and to a large extent is functionally
-identical to JVM bytecode, modeled in Haskell. We represent classes and
-methods as Haskell records. Method bodies are a list of what we call
-\texttt{IRItems}, which are either stack instructions or labels.
+We decided on creating an IR for bytecode in order to make
+conversion easier from the AST, and enforce some degree of
+correctness using Haskell's type system. The IR is also stack-based,
+and to a large extent is functionally identical to JVM bytecode,
+modeled in Haskell. We represent classes and methods as Haskell
+records. Method bodies are a list of what we call \texttt{IRItems}, which
+are either stack instructions or labels.
 
-Available stack instructions, as of this milestone, include \texttt{Add} and other
-binary operations, \texttt{Dup}, \texttt{Load} and \texttt{Store}, \texttt{InvokeVirtual/InvokeSpecial},
-some integer-specific operations, and \texttt{Return}. Instead of specifically
-representing equivalents of \texttt{iadd/fadd}, \texttt{iload/aload/...}, etc., we define
-an \texttt{IRType} data type which can either be a bytecode primitive (integer or
-float) or an object reference. In this way, the IR definition is kept short
-and similar instructions can be combined into a single Haskell constructor
-model. Other Haskell types are used to model method/class specifiers,
-Jasmin-style parameter and return types, and loadable values (ints, floats,
-and strings).
+Available stack instructions, as of this milestone, include \texttt{Add}
+and other binary operations, \texttt{Dup}, \texttt{Load} and \texttt{Store},
+\texttt{InvokeVirtual/InvokeSpecial}, some integer-specific operations, and
+\texttt{Return}. Instead of specifically representing equivalents of
+\texttt{iadd/fadd}, \texttt{iload/aload/...}, etc., we define an \texttt{IRType} data
+type which can either be a bytecode primitive (integer or float) or
+an object reference. In this way, the IR definition is kept short
+and similar instructions can be combined into a single Haskell
+constructor model. Other Haskell types are used to model
+method/class specifiers, Jasmin-style parameter and return types,
+and loadable values (ints, floats, and strings).
 
-Eventually, our goal is to then convert this IR into Krakatau bytecode syntax,
-which should be very straightforward given that the IR is so close to bytecode
-already.
+Eventually, our goal is to then convert this IR into Krakatau
+bytecode syntax, which should be very straightforward given that the
+IR is so close to bytecode already.
 \end{document}
