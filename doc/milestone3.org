@@ -8,28 +8,40 @@ whilst implementing the components for milestone 3.  \newpage
   We decided on targeting JVM bytecode for our compiler, through the Krakatau
   bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
   a more modern codebase (written in Python) and some additional features.
-
   TODO: TALK ABOUT ADDITIONAL FEATURES?
+** Advantages
+   The primary advantages of targeting JVM bytecode are:
+   [[Portability][portability]], [[Execution Speed][execution speed]],
+   and (surprisingly to us) its [[Stack Based/Low Level][focus on stack
+   operations as opposed to a more `straightforward' language]], which
+   aids in overcoming some of the common pain points of GoLite code
+   generation:
+*** Portability
+    The JVM has been ported to many common platforms, meaning code written in
+    GoLite, when compiled with our compiler, will be able to run on any
+    platform the JVM can run on.
+*** Execution Speed
+    Although Java is often considered slow as opposed to ahead-of-time compiled
+    languages such as C and C++ due to its garbage collection and non-native
+    compiled code, most implementations of the JVM provide JIT compilation.
+    By targeting JVM bytecode, we can take advantage of this, and our generated
+    code will likely be faster than if we generated code in a higher-level
+    language such as Python.
+*** TODO Stack Based/Low Level
+    The fact that JVM bytecode is low level gives us lots of granular
+    control to change the behavior of constructs, especially when
+    dealing with weird ~GoLite~ / ~GoLang~ behavior that doesn't
+    really comply with the more common programming languages. The fact
+    that it is a stack based language is even more beneficial, since
+    it makes it easy to account for things like function arguments,
+    swapping and comparing, whereas a register based language would
+    require the use of many temporary registers.
 
-  The primary advantages of targeting JVM bytecode are: 1) portability, 2)
-  execution speed, and 3) (surprisingly to us) its focus on stack
-  operations as opposed to a more `straightforward' language, which aids in
-  overcoming some of the common pain points of GoLite code generation:
-  1. The JVM has been ported to many common platforms, meaning code written in
-     GoLite, when compiled with our compiler, will be able to run on any
-     platform the JVM can run on.
-  2. Although Java is often considered slow as opposed to ahead-of-time compiled
-     languages such as C and C++ due to its garbage collection and non-native
-     compiled code, most implementations of the JVM provide JIT compilation,
-     By targeting JVM bytecode, we can take advantage of this, and our generated
-     code will likely be faster than if we generated code in a higher-level
-     language such as Python.
-  3. TODO
-
-  The main disadvantages of generating JVM bytecode are its low-level semantics
-  and its comparatively slow speeds versus an ahead-of-time compiled language,
-  despite it being faster than other, higher-level languages.
-  TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
+** Disadvantages
+   The main disadvantages of generating JVM bytecode are its low-level semantics
+   and its potentially slow speeds versus an ahead-of-time compiled language,
+   despite it being faster than other, higher-level languages.
+   TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 * Semantics
 ** Scoping Rules
 *** Go Semantics

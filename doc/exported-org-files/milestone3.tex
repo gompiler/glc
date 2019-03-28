@@ -1,4 +1,4 @@
-% Created 2019-03-27 Wed 20:16
+% Created 2019-03-27 Wed 20:32
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -34,40 +34,55 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 \section{{\bfseries\sffamily TODO} Language for Code Generation}
-\label{sec:org9bf0159}
+\label{sec:org82e2e9b}
 We decided on targeting JVM bytecode for our compiler, through the Krakatau
 bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
 a more modern codebase (written in Python) and some additional features.
-
 TODO: TALK ABOUT ADDITIONAL FEATURES?
-
-The primary advantages of targeting JVM bytecode are: 1) portability, 2)
-execution speed, and 3) (surprisingly to us) its focus on stack
-operations as opposed to a more `straightforward' language, which aids in
-overcoming some of the common pain points of GoLite code generation:
-\begin{enumerate}
-\item The JVM has been ported to many common platforms, meaning code written in
+\subsection{Advantages}
+\label{sec:org29954db}
+The primary advantages of targeting JVM bytecode are:
+\hyperref[sec:orgdd32e26]{portability}, \hyperref[sec:org39fc4e8]{execution speed},
+and (surprisingly to us) its \hyperref[sec:orgd4312e7]{focus on stack
+operations as opposed to a more `straightforward' language}, which
+aids in overcoming some of the common pain points of GoLite code
+generation:
+\subsubsection{Portability}
+\label{sec:orgdd32e26}
+The JVM has been ported to many common platforms, meaning code written in
 GoLite, when compiled with our compiler, will be able to run on any
 platform the JVM can run on.
-\item Although Java is often considered slow as opposed to ahead-of-time compiled
+\subsubsection{Execution Speed}
+\label{sec:org39fc4e8}
+Although Java is often considered slow as opposed to ahead-of-time compiled
 languages such as C and C++ due to its garbage collection and non-native
-compiled code, most implementations of the JVM provide JIT compilation,
+compiled code, most implementations of the JVM provide JIT compilation.
 By targeting JVM bytecode, we can take advantage of this, and our generated
 code will likely be faster than if we generated code in a higher-level
 language such as Python.
-\item TODO
-\end{enumerate}
+\subsubsection{{\bfseries\sffamily TODO} Stack Based/Low Level}
+\label{sec:orgd4312e7}
+The fact that JVM bytecode is low level gives us lots of granular
+control to change the behavior of constructs, especially when
+dealing with weird \texttt{GoLite} / \texttt{GoLang} behavior that doesn't
+really comply with the more common programming languages. The fact
+that it is a stack based language is even more beneficial, since
+it makes it easy to account for things like function arguments,
+swapping and comparing, whereas a register based language would
+require the use of many temporary registers.
 
+\subsection{Disadvantages}
+\label{sec:orgfedb6a0}
 The main disadvantages of generating JVM bytecode are its low-level semantics
-and its comparatively slow speeds versus an ahead-of-time compiled language,
+and its potentially slow speeds versus an ahead-of-time compiled language,
 despite it being faster than other, higher-level languages.
 TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 \section{Semantics}
-\label{sec:org536aaee}
+\label{sec:orgefc63b6}
 \subsection{Scoping Rules}
-\label{sec:org84aec94}
+\label{sec:org05ae47b}
 \subsubsection{Go Semantics}
-\label{sec:orga3f36b0}
+\label{sec:orga6887c7}
 In \texttt{GoLite}, new scopes are opened for block statements, \texttt{for}
 loops, \texttt{if} / \texttt{else} statements and function declarations (for the
 parameters and the function body). A new scope separates
@@ -83,7 +98,7 @@ notable thing is that something like \texttt{var a = a} will refer to \texttt{a}
 in a previous scope, not the current \texttt{a} that was just declared,
 unlike certain languages like \texttt{C}.
 \subsubsection{Mapping Strategy}
-\label{sec:orgefbc543}
+\label{sec:org4b2da8c}
 JVM bytecode, only has ``scoping'' for \texttt{methods}, as they have
 their own locals and stack. However, block statements and the
 statements inside of them do not have any scopes (except of course
@@ -105,9 +120,9 @@ be converted to an offset of the locals and since each scoped
 identifier refers to a unique declaration, then the locals won't
 refer to the wrong local.
 \subsection{Switch Statements}
-\label{sec:orgc260707}
+\label{sec:orgb1a4b2a}
 \subsubsection{Go Semantics}
-\label{sec:org878df65}
+\label{sec:orga55da9a}
 In \texttt{GoLite}, \texttt{switch} statements consist of an optional simple
 statement, an optional expression and a (potentially empty) list
 of case statements, where case statements are either a case with a
@@ -132,7 +147,7 @@ breaking at the end of it. This makes cases significantly semantically different
 \end{itemize}
 
 \subsubsection{Mapping Strategy}
-\label{sec:orgbaf6904}
+\label{sec:org7e31ad0}
 For the structural differences:
 \begin{itemize}
 \item Simple statements can be the first statement in the new ``scope''.
@@ -154,9 +169,9 @@ simulating switch statements and aren't limited by the native
 switch statement of the language).
 \end{itemize}
 \subsection{Assignments}
-\label{sec:org484fc11}
+\label{sec:org734ffab}
 \subsubsection{Go Semantics}
-\label{sec:org87ddb6b}
+\label{sec:orga295c91}
 In \texttt{GoLite}, assignments are either an assignment operator with a
 LHS expression and a RHS expression or just two non empty
 expression lists of equal length. This makes them structurally
@@ -170,7 +185,7 @@ effectively swap the values of \texttt{a} and \texttt{b}, whereas if the
 assignments were done sequentially, \texttt{a} and \texttt{b} would be the
 original value of \texttt{b} and wouldn't be swapped.
 \subsubsection{Mapping Strategy}
-\label{sec:org3f93310}
+\label{sec:org5ebc4b3}
 There are two tricky things about assignments:
 \begin{itemize}
 \item Assignment operators. We cannot just convert \texttt{e += e2} to \texttt{e =
@@ -207,7 +222,7 @@ variables, so we don't need to simulate temporary variables for
 swapping/simulating simultaneous assignment.
 \end{itemize}
 \section{{\bfseries\sffamily TODO} Currently Implemented}
-\label{sec:org4ed9cbd}
+\label{sec:org210ef85}
 The main feature that was worked on during this milestone was the
 creation of our intermediate representation and the conversion of
 the typechecked AST to said IR.

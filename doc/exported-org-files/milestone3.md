@@ -1,66 +1,106 @@
 
 # Table of Contents
 
-1.  [Language for Code Generation](#org0eca889)
-2.  [Semantics](#orga633942)
-    1.  [Scoping Rules](#org182acb7)
-        1.  [Go Semantics](#org0b4fec9)
-        2.  [Mapping Strategy](#org9b3f3ac)
-    2.  [Switch Statements](#org41b42ac)
-        1.  [Go Semantics](#org7125f69)
-        2.  [Mapping Strategy](#org733e9ae)
-    3.  [Assignments](#org6c7026b)
-        1.  [Go Semantics](#org225b6d8)
-        2.  [Mapping Strategy](#org0028aeb)
-3.  [Currently Implemented](#orgf1e39a3)
+1.  [Language for Code Generation](#org2c2d333)
+    1.  [Advantages](#orgf2d24f1)
+        1.  [Portability](#org057f6bb)
+        2.  [Execution Speed](#org80c8d0e)
+        3.  [Stack Based/Low Level](#org605f3ea)
+    2.  [Disadvantages](#org10167b8)
+2.  [Semantics](#org6ffc1ed)
+    1.  [Scoping Rules](#orgddae25d)
+        1.  [Go Semantics](#org4bf1094)
+        2.  [Mapping Strategy](#orged25f0e)
+    2.  [Switch Statements](#org598678d)
+        1.  [Go Semantics](#orgbc7b724)
+        2.  [Mapping Strategy](#org2d9cd08)
+    3.  [Assignments](#orgd5fa890)
+        1.  [Go Semantics](#orgd515a69)
+        2.  [Mapping Strategy](#org93f85c4)
+3.  [Currently Implemented](#orga74c5b1)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 
 
-<a id="org0eca889"></a>
+<a id="org2c2d333"></a>
 
 # TODO Language for Code Generation
 
 We decided on targeting JVM bytecode for our compiler, through the Krakatau
 bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
 a more modern codebase (written in Python) and some additional features.
-
 TODO: TALK ABOUT ADDITIONAL FEATURES?
 
-The primary advantages of targeting JVM bytecode are: 1) portability, 2)
-execution speed, and 3) (surprisingly to us) its focus on stack
-operations as opposed to a more \`straightforward' language, which aids in
-overcoming some of the common pain points of GoLite code generation:
 
-1.  The JVM has been ported to many common platforms, meaning code written in
-    GoLite, when compiled with our compiler, will be able to run on any
-    platform the JVM can run on.
-2.  Although Java is often considered slow as opposed to ahead-of-time compiled
-    languages such as C and C++ due to its garbage collection and non-native
-    compiled code, most implementations of the JVM provide JIT compilation,
-    By targeting JVM bytecode, we can take advantage of this, and our generated
-    code will likely be faster than if we generated code in a higher-level
-    language such as Python.
-3.  TODO
+<a id="orgf2d24f1"></a>
+
+## Advantages
+
+The primary advantages of targeting JVM bytecode are:
+[portability](#org057f6bb), [execution speed](#org80c8d0e),
+and (surprisingly to us) its [focus on stack
+operations as opposed to a more \`straightforward' language](#org605f3ea), which
+aids in overcoming some of the common pain points of GoLite code
+generation:
+
+
+<a id="org057f6bb"></a>
+
+### Portability
+
+The JVM has been ported to many common platforms, meaning code written in
+GoLite, when compiled with our compiler, will be able to run on any
+platform the JVM can run on.
+
+
+<a id="org80c8d0e"></a>
+
+### Execution Speed
+
+Although Java is often considered slow as opposed to ahead-of-time compiled
+languages such as C and C++ due to its garbage collection and non-native
+compiled code, most implementations of the JVM provide JIT compilation.
+By targeting JVM bytecode, we can take advantage of this, and our generated
+code will likely be faster than if we generated code in a higher-level
+language such as Python.
+
+
+<a id="org605f3ea"></a>
+
+### TODO Stack Based/Low Level
+
+The fact that JVM bytecode is low level gives us lots of granular
+control to change the behavior of constructs, especially when
+dealing with weird `GoLite` / `GoLang` behavior that doesn't
+really comply with the more common programming languages. The fact
+that it is a stack based language is even more beneficial, since
+it makes it easy to account for things like function arguments,
+swapping and comparing, whereas a register based language would
+require the use of many temporary registers.
+
+
+<a id="org10167b8"></a>
+
+## Disadvantages
 
 The main disadvantages of generating JVM bytecode are its low-level semantics
-and its comparatively slow speeds versus an ahead-of-time compiled language,
+and its potentially slow speeds versus an ahead-of-time compiled language,
 despite it being faster than other, higher-level languages.
 TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 
 
-<a id="orga633942"></a>
+<a id="org6ffc1ed"></a>
 
 # Semantics
 
 
-<a id="org182acb7"></a>
+<a id="orgddae25d"></a>
 
 ## Scoping Rules
 
 
-<a id="org0b4fec9"></a>
+<a id="org4bf1094"></a>
 
 ### Go Semantics
 
@@ -80,7 +120,7 @@ in a previous scope, not the current `a` that was just declared,
 unlike certain languages like `C`.
 
 
-<a id="org9b3f3ac"></a>
+<a id="orged25f0e"></a>
 
 ### Mapping Strategy
 
@@ -106,12 +146,12 @@ identifier refers to a unique declaration, then the locals won't
 refer to the wrong local.
 
 
-<a id="org41b42ac"></a>
+<a id="org598678d"></a>
 
 ## Switch Statements
 
 
-<a id="org7125f69"></a>
+<a id="orgbc7b724"></a>
 
 ### Go Semantics
 
@@ -138,7 +178,7 @@ breaking at the end of it. This makes cases significantly semantically different
 -   Case statement expressions do not need to be a constant expression.
 
 
-<a id="org733e9ae"></a>
+<a id="org2d9cd08"></a>
 
 ### Mapping Strategy
 
@@ -163,12 +203,12 @@ Semantically:
     switch statement of the language).
 
 
-<a id="org6c7026b"></a>
+<a id="orgd5fa890"></a>
 
 ## Assignments
 
 
-<a id="org225b6d8"></a>
+<a id="orgd515a69"></a>
 
 ### Go Semantics
 
@@ -186,7 +226,7 @@ assignments were done sequentially, `a` and `b` would be the
 original value of `b` and wouldn't be swapped.
 
 
-<a id="org0028aeb"></a>
+<a id="org93f85c4"></a>
 
 ### Mapping Strategy
 
@@ -224,7 +264,7 @@ There are two tricky things about assignments:
     swapping/simulating simultaneous assignment.
 
 
-<a id="orgf1e39a3"></a>
+<a id="orga74c5b1"></a>
 
 # TODO Currently Implemented
 
