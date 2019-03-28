@@ -14,7 +14,7 @@ whilst implementing the components for milestone 3.  \newpage
    The primary advantages of targeting JVM bytecode are:
    [[Portability][portability]], [[Execution Speed][execution speed]],
    and its [[Stack Based/Low Level][focus on stack
-   manipulation, as opposed to a more `straightforward' language]], which
+   manipulation, as opposed to a higher level language]], which
    aids in overcoming some of the common pain points of GoLite code
    generation:
 *** Portability
@@ -26,7 +26,7 @@ whilst implementing the components for milestone 3.  \newpage
     languages such as C and C++ due to its garbage collection and non-native
     compiled code, most implementations of the JVM provide JIT compilation.
     By targeting JVM bytecode, we can take advantage of this, and our generated
-    code will likely be faster than if we generated code in a higher-level
+    code will likely be faster than if we generated code in an interpreted
     language such as Python. Sometimes, the JVM can be faster than even
     ahead-of-time compiled programs, since run-time information is available for
     optimization purposes.
@@ -76,32 +76,28 @@ whilst implementing the components for milestone 3.  \newpage
 *** Mapping Strategy
     JVM bytecode only has ``scoping'' for ~methods~, as they have
     their own locals and stack. Block statements do not exist per se, and
-    statements except called method bodies are scope-less. We also do not
-    have constructs like loops, if statements or switch statements.
-    In a higher level language, we could just append the scope depth to all
-    identifier names to keep them unique. Renaming would also eliminate the
+    statements except called method bodies are scope-less. In higher
+    level languages, we could just append the scope depth to all
+    identifier names to keep them unique, also eliminating the
     need for separate scopes, as we already typecheck the correct use of
-    identifiers. In our case, we use a similar strategy.
-    In the typecheck phase, we generate a new checked AST with
-    simplified information and assumptions, as typechecking has already
-    occurred. The identifiers in this AST will also be changed to tuples that
-    contain the original identifier and the scope they were declared in. Thus,
-    each scoped identifier thus refers to a unique declaration.
+    identifiers. In our case, we have scoped identifiers in our newly
+    generated typechecked AST which we convert to offsets (for
+    locals).
 
-    Given that our target language is JVM bytecode, our intermediate
-    representation will assign a unique index to each variable,
-    with a one index-to-one or more scoped identifier mapping.
-    Variables with the same scoped identifier will be given the same offset,
-    and we can optimize our stack limit by reusing offsets when two variables
-    can never occur at the same time due to branching.
+    These offsets can be used in our intermediate representation,
+    where the offsets are unique for each variable
+    declaration. Variables with the same scoped identifier will be
+    given the same offset, and we can optimize our stack limit by
+    reusing offsets when two variables can never occur at the same
+    time due to branching.
 ** Switch Statements
 *** Go Semantics
     In ~GoLite~, ~switch~ statements consist of an optional simple
-    statement, an optional expression and a (potentially empty) list
+    statement, an optional expression and a list
     of case statements. Case statements are either a case with a
     non-empty list of expressions, or a default case with no additional expression.
     Each case statement also contains a block statement, containing code to execute
-    upon a match. This makes
+    upon match. This makes
     them structurally different when compared to Java or ~C~ / ~C++~, where:
     #+ATTR_LATEX: :options [noitemsep]
     - Simple statements don't exist.
@@ -156,8 +152,7 @@ whilst implementing the components for milestone 3.  \newpage
     at first glance, because the assignments are done in a ``simultaneous''
     way, that is ~a, b = b, a~ will swap the values of ~a~ and ~b~. If the
     assignments were done sequentially, ~a~ and ~b~ would be the
-    original value of ~b~ and wouldn't be swapped. The same goes for ~+=~ and
-    other assignment operators.
+    original value of ~b~ and wouldn't be swapped.
 *** Mapping Strategy
     There are two tricky things about assignments:
     #+ATTR_LATEX: :options [noitemsep]

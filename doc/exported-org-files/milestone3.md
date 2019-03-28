@@ -1,29 +1,29 @@
 
 # Table of Contents
 
-1.  [JVM Bytecode for Code Generation](#org50ad8f6)
-    1.  [Advantages](#orgb7b95c8)
-        1.  [Portability](#org49cd991)
-        2.  [Execution Speed](#org6fef986)
-        3.  [Stack Based/Low Level](#orgcd1a316)
-    2.  [Disadvantages](#orgb6d9216)
-2.  [Semantics](#org44231cc)
-    1.  [Scoping Rules](#org8cf77df)
-        1.  [Go Semantics](#orgcffe21c)
-        2.  [Mapping Strategy](#org9c31902)
-    2.  [Switch Statements](#orgfa8bc57)
-        1.  [Go Semantics](#orgce2af00)
-        2.  [Mapping Strategy](#orgd1294e6)
-    3.  [Assignments](#orgb3b8695)
-        1.  [Go Semantics](#orgc2fc14f)
-        2.  [Mapping Strategy](#org3d76eb6)
-3.  [Currently Implemented: Intermediate Representation](#org3c4dacd)
+1.  [JVM Bytecode for Code Generation](#org26dab3c)
+    1.  [Advantages](#org7279baa)
+        1.  [Portability](#org59cef73)
+        2.  [Execution Speed](#org789112c)
+        3.  [Stack Based/Low Level](#org20fc2a4)
+    2.  [Disadvantages](#org2ccda11)
+2.  [Semantics](#orgcf89681)
+    1.  [Scoping Rules](#orgefa8b1c)
+        1.  [Go Semantics](#org938b78f)
+        2.  [Mapping Strategy](#org7d3385a)
+    2.  [Switch Statements](#org538b1ec)
+        1.  [Go Semantics](#org6e39aa2)
+        2.  [Mapping Strategy](#orga24a415)
+    3.  [Assignments](#org03a11a7)
+        1.  [Go Semantics](#org31e9d5d)
+        2.  [Mapping Strategy](#orgccf8c70)
+3.  [Currently Implemented: Intermediate Representation](#org50a5acd)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 
 
-<a id="org50ad8f6"></a>
+<a id="org26dab3c"></a>
 
 # JVM Bytecode for Code Generation
 
@@ -33,19 +33,19 @@ bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
 a more modern codebase (written in Python) and some additional features.
 
 
-<a id="orgb7b95c8"></a>
+<a id="org7279baa"></a>
 
 ## Advantages
 
 The primary advantages of targeting JVM bytecode are:
-[portability](#org49cd991), [execution speed](#org6fef986),
-and (surprisingly to us) its [focus on stack
-operations, as opposed to a more \`straightforward' language](#orgcd1a316), which
+[portability](#org59cef73), [execution speed](#org789112c),
+and its [focus on stack
+manipulation, as opposed to a higher level language](#org20fc2a4), which
 aids in overcoming some of the common pain points of GoLite code
 generation:
 
 
-<a id="org49cd991"></a>
+<a id="org59cef73"></a>
 
 ### Portability
 
@@ -54,7 +54,7 @@ GoLite, when compiled with our compiler, will be able to run on any
 platform the JVM can run on.
 
 
-<a id="org6fef986"></a>
+<a id="org789112c"></a>
 
 ### Execution Speed
 
@@ -62,15 +62,13 @@ Although Java is often considered slow as opposed to ahead-of-time compiled
 languages such as C and C++ due to its garbage collection and non-native
 compiled code, most implementations of the JVM provide JIT compilation.
 By targeting JVM bytecode, we can take advantage of this, and our generated
-code will likely be faster than if we generated code in a higher-level
-language such as Python.
-
-This JIT compilation and run-time optimization sometimes allow
-the JVM to be faster than even ahead-of-time compiled programs, since
-run-time information is available for optimization purposes.
+code will likely be faster than if we generated code in an interpreted
+language such as Python. Sometimes, the JVM can be faster than even
+ahead-of-time compiled programs, since run-time information is available for
+optimization purposes.
 
 
-<a id="orgcd1a316"></a>
+<a id="org20fc2a4"></a>
 
 ### Stack Based/Low Level
 
@@ -83,16 +81,13 @@ Operating on a stack makes some of the operations mentioned in class as
 \`difficult to implement' surprisingly easy. In particular, swapping
 variables (e.g. `a, b = b, a`) is fairly straightforward. The right-hand
 side must be evaluated before assignment, which can be done by pushing and
-evaluating the right-hand side, left to right, onto the stack; this is
-followed by popping each value in turn and loading them into the
-corresponding locals. Compared to (for example) temporary variable
-allocation, this is an extremely natural way to implement this construct.
-The stack also makes it easier to account for other constructs, such as
-function arguments and comparisons. A similarly low-level, register-based
-language would require the use of many temporary registers.
+evaluating all RHS terms, left to right, onto the stack; followed by popping
+each value in turn and loading them into corresponding locals. Compared to
+temporary variable or register allocation, this is a very natural way to
+implement this construct.
 
 
-<a id="orgb6d9216"></a>
+<a id="org2ccda11"></a>
 
 ## Disadvantages
 
@@ -108,80 +103,73 @@ comparisons and string concatenations go from being a few bytecode
 instructions to signficantly longer patterns.
 
 
-<a id="org44231cc"></a>
+<a id="orgcf89681"></a>
 
 # Semantics
 
 
-<a id="org8cf77df"></a>
+<a id="orgefa8b1c"></a>
 
 ## Scoping Rules
 
 
-<a id="orgcffe21c"></a>
+<a id="org938b78f"></a>
 
 ### Go Semantics
 
 In `GoLite`, new scopes are opened for block statements, `for`
 loops, `if` / `else` statements and function declarations (for the
 parameters and the function body). A new scope separates
-identifiers (which are associated to type maps, variables,
-functions and the constants true/false) from the other scopes'
-identifiers.
-
-Whenever we refer to an identifier, it will reference the
+identifiers (which are associated with type maps, variables,
+functions and the constants `true` and `false`) from the other scopes'
+identifiers. Whenever we refer to an identifier, it references the
 identifier declared in the closest scope.
 
-There is nothing very special about scoping in `GoLite`, the main
+There is nothing very special about scoping in `GoLite`. The main
 notable thing is that something like `var a = a` will refer to `a`
 in a previous scope, not the current `a` that was just declared,
-unlike certain languages like `C`.
+unlike languages like `C`.
 On the other hand, recursive types such as `type b b` fail as expected,
-do not reference a type from higher scopes.
+and do not reference a type from higher scopes.
 
 
-<a id="org9c31902"></a>
+<a id="org7d3385a"></a>
 
 ### Mapping Strategy
 
-JVM bytecode, only has \`\`scoping'' for `methods`, as they have
-their own locals and stack. However, block statements and the
-statements inside of them do not have any scopes (except of course
-method calls), as we do not have any constructs like loops, if
-statements or switch statements. In a higher level language, we
-could just append the scope to each identifier to keep them all
-unique; renaming would also eliminate the need for separate scopes,
-as we already typecheck the correct use of identifiers, and no further
-conflicts will arise. In our case, we use a similar strategy. Recall that
-in the typecheck phase we generate a new checked AST with
-simplified information and assumptions. The identifiers in this
-AST also change, where they are tuples that contain the original
-identifier and the scope they were declared in. Thus, each scoped
-identifier refers to a unique declaration of a scoped identifier.
+JVM bytecode only has \`\`scoping'' for `methods`, as they have
+their own locals and stack. Block statements do not exist per se, and
+statements except called method bodies are scope-less. In higher
+level languages, we could just append the scope depth to all
+identifier names to keep them unique, also eliminating the
+need for separate scopes, as we already typecheck the correct use of
+identifiers. In our case, we have scoped identifiers in our newly
+generated typechecked AST which we convert to offsets (for
+locals).
 
-Given that our target language is JVM bytecode, our intermediate
-representation will instead provide a unique index to each variable,
-such that it remains one to one with the original scoped identifier key.
-Variables with the same scoped identifier will be given the same offset,
-and we will optimize our stack limit by reusing offsets when two variables
-can never occur at the same time, due to branching.
+These offsets can be used in our intermediate representation,
+where the offsets are unique for each variable
+declaration. Variables with the same scoped identifier will be
+given the same offset, and we can optimize our stack limit by
+reusing offsets when two variables can never occur at the same
+time due to branching.
 
 
-<a id="orgfa8bc57"></a>
+<a id="org538b1ec"></a>
 
 ## Switch Statements
 
 
-<a id="orgce2af00"></a>
+<a id="org6e39aa2"></a>
 
 ### Go Semantics
 
 In `GoLite`, `switch` statements consist of an optional simple
-statement, an optional expression and a (potentially empty) list
+statement, an optional expression and a list
 of case statements. Case statements are either a case with a
 non-empty list of expressions, or a default case with no additional expression.
 Each case statement also contains a block statement, containing code to execute
-upon a match. This makes
+upon match. This makes
 them structurally different when compared to Java or `C` / `C++`, where:
 
 -   Simple statements don't exist.
@@ -200,7 +188,7 @@ semantically:
 -   Case statement expressions do not need to be a constant expression.
 
 
-<a id="orgd1294e6"></a>
+<a id="orga24a415"></a>
 
 ### Mapping Strategy
 
@@ -233,12 +221,12 @@ Semantically:
     limited by any language-native `switch` statement definitions).
 
 
-<a id="orgb3b8695"></a>
+<a id="org03a11a7"></a>
 
 ## Assignments
 
 
-<a id="orgc2fc14f"></a>
+<a id="org31e9d5d"></a>
 
 ### Go Semantics
 
@@ -251,11 +239,10 @@ This structural difference is a lot more significant than it seems
 at first glance, because the assignments are done in a \`\`simultaneous''
 way, that is `a, b = b, a` will swap the values of `a` and `b`. If the
 assignments were done sequentially, `a` and `b` would be the
-original value of `b` and wouldn't be swapped. The same goes for `+=` and
-other assignment operators.
+original value of `b` and wouldn't be swapped.
 
 
-<a id="org3d76eb6"></a>
+<a id="orgccf8c70"></a>
 
 ### Mapping Strategy
 
@@ -297,7 +284,7 @@ There are two tricky things about assignments:
     resources for simultaneous assignment.
 
 
-<a id="org3c4dacd"></a>
+<a id="org50a5acd"></a>
 
 # Currently Implemented: Intermediate Representation
 
