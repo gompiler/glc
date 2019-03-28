@@ -1,7 +1,4 @@
 module IR
-  ( genIR
-  , displayIR
-  )
 where
 
 import qualified CheckedData        as C
