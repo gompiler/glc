@@ -186,14 +186,14 @@ whilst implementing the components for milestone 3.  \newpage
       - The other cases for ~e~ are not ~l-values~, and shouldn't happen
         in the type-checked AST.
     - Assignment of multiple expressions. As mentioned earlier, we
-      cannot do the assignments sequentially. Thus we evaluate the
+      cannot do the assignments sequentially. Thus, we should evaluate the
       entire RHS, pushing each result onto the stack and then
       assigning each stack element one by one to their respective LHS
-      expression. This way ~a, b = b, a~ will not overwrite the values
-      used on the RHS. This is one of the advantages of using a stack
-      based language, as the stack implicitly acts like temporary
-      variables, so we don't need to simulate temporary variables for
-      swapping/simulating simultaneous assignment.
+      expression l-value. This way, ~a, b = b, a~ will not overwrite or
+      interfere with any values used on the RHS. This is one of the advantages
+      of using a stack-based language, as values on the stack implicitly act
+      like temporary variables, so we don't need to allocate other temporary
+      resources for simultaneous assignment.
 * Currently Implemented: Intermediate Representation
   The main feature that was worked on during this milestone was the
   creation of our intermediate representation, and the conversion of
