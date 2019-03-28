@@ -2,6 +2,7 @@
 #+AUTHOR: Lore, J., Lougheed D., Wang A.
 #+LATEX_HEADER: \usepackage[margin=0.9in]{geometry}
 #+LATEX_HEADER: \usepackage[fontsize=10.5pt]{scrextend}
+#+LATEX_HEADER: \usepackage{enumitem}
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 * JVM Bytecode for Code Generation
@@ -102,6 +103,7 @@ whilst implementing the components for milestone 3.  \newpage
     Each case statement also contains a block statement, containing code to execute
     upon a match. This makes
     them structurally different when compared to Java or ~C~ / ~C++~, where:
+    #+ATTR_LATEX: :options [noitemsep]
     - Simple statements don't exist.
     - Expressions aren't optional.
     - Case statements don't match on a list of expressions.
@@ -111,12 +113,14 @@ whilst implementing the components for milestone 3.  \newpage
     right. The first match enters that case's body, automatically
     breaking at the end of it. This makes cases significantly different
     semantically:
+    #+ATTR_LATEX: :options [noitemsep]
     - Cases automatically break.
     - Each ~case~ or ~default~ block defines its own scope for declarations.
     - Case statement expressions do not need to be a constant expression.
 
 *** Mapping Strategy
     For the structural differences:
+    #+ATTR_LATEX: :options [noitemsep]
     - Simple statements can be modeled and executed as the first statement in
       the new ``scope''.
     - Missing expressions can be converted to the constant literal `true`.
@@ -127,6 +131,7 @@ whilst implementing the components for milestone 3.  \newpage
       compare to during each ~case~ block is stored on the stack until the
       ~switch~ statement is done.
     Semantically:
+    #+ATTR_LATEX: :options [noitemsep]
     - After ~case~ expression comparisons, we will either jump to the case body
       or keep going to the next ~case~ comparison or ~default~ block.
     - To automatically break, for each case statement, we add a ~goto~
@@ -155,6 +160,7 @@ whilst implementing the components for milestone 3.  \newpage
     other assignment operators.
 *** Mapping Strategy
     There are two tricky things about assignments:
+    #+ATTR_LATEX: :options [noitemsep]
     - Assignment operators. We cannot just convert ~e += e2~ to ~e =
       e + e2~, where ~e~ is an expression, because ~e~ might contain a
       function call with side-effects, which we do not want to call
@@ -163,6 +169,7 @@ whilst implementing the components for milestone 3.  \newpage
       ~iinc~. However, we generalize in this discussion as most
       operators do not have an equivalent instruction to operate and
       assign at the same time). There are thus several cases for ~e~:
+    #+ATTR_LATEX: :options [noitemsep]
       - ~e~ is just an identifier. Then, we can just convert ~e += e2~
         to ~e = e + e2~, as there will be no side effects.
       - ~e~ is a selector. If ~e~ is an addressable selector, then it
