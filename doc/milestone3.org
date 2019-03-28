@@ -4,12 +4,10 @@
 #+LATEX_HEADER: \usepackage[fontsize=10.5pt]{scrextend}
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
-* TODO Language for Code Generation
+* JVM Bytecode for Code Generation
   We decided on targeting JVM bytecode for our compiler, through the Krakatau
   bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
   a more modern codebase (written in Python) and some additional features.
-
-  TODO: TALK ABOUT ADDITIONAL FEATURES?
 
   The primary advantages of targeting JVM bytecode are: 1) portability, 2)
   execution speed, and 3) (surprisingly to us) its focus on stack
@@ -24,7 +22,15 @@ whilst implementing the components for milestone 3.  \newpage
      By targeting JVM bytecode, we can take advantage of this, and our generated
      code will likely be faster than if we generated code in a higher-level
      language such as Python.
-  3. TODO
+  3. Operating on a stack makes some of the operations mentioned in class as
+     difficult to implement surprisingly easy, despite JVM bytecode being a
+     fairly low-level language in some respects. In particular, swapping
+     variables (e.g. ~a, b = b, a~) is fairly straightforward. The right-hand
+     side must be evaluated before assignment, which can be done by pushing and
+     evaluating the right-hand side, left to right, onto the stack; this is
+     followed by popping each value in turn and loading them into the
+     corresponding locals.
+     Additionally, TODO ANOTHER EXAMPLE.
 
   The main disadvantages of generating JVM bytecode are its low-level semantics
   and its comparatively slow speeds versus an ahead-of-time compiled language,
