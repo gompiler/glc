@@ -1,6 +1,14 @@
 {-# LANGUAGE RankNTypes #-}
 
-module ResourceContext where
+module ResourceContext
+  ( ResourceContext
+  , new
+  , enterScope
+  , exitScope
+  , getStructType
+  , getVarIndex
+  , getAllStructs
+  ) where
 
 import           Base
 import qualified CheckedData             as C
@@ -10,6 +18,7 @@ import           Control.Monad.ST
 import           Data.Either             (partitionEithers)
 
 import qualified Data.HashTable.ST.Basic as HT
+
 --import           Data.Foldable           (asum)
 import           Data.Hashable
 
@@ -22,10 +31,13 @@ import           ResourceData
 newtype ResourceContext s =
   ResourceContext (STRef s (ResourceContext_ s))
 
+-- | Context required to generate the resource AST
+-- While we only need to store a counter,
+-- this makes it easier to fetch the ordered struct list
 data ResourceContext_ s = RC
   { allStructs :: [StructType]
-  , varScopes  :: [ResourceScope s]
   , structMap  :: StructTable s
+  , varScopes  :: [ResourceScope s]
   }
 
 data ResourceScope s =
@@ -43,19 +55,17 @@ instance Hashable VarKey where
 type VarTable s = HT.HashTable s VarKey VarIndex
 
 newtype StructKey =
-  StructKey StructType
+  StructKey [C.FieldDecl]
   deriving (Show, Eq)
 
 instance Hashable StructKey where
-  hashWithSalt salt (StructKey (Struct (C.Ident ident) fields)) =
-    hashWithSalt salt ident * 13 +
-    -- Hash each field and multiple by prime number
+  hashWithSalt salt (StructKey fields) =
     foldl (\a b -> a * 3 + b) 0 (map hashField fields)
     where
-      hashField :: FieldDecl -> Int
-      hashField (FieldDecl (C.Ident i) _) = hashWithSalt salt i
+      hashField :: C.FieldDecl -> Int
+      hashField (C.FieldDecl (C.Ident i) _) = hashWithSalt salt i
 
-type StructTable s = HT.HashTable s StructType C.Ident
+type StructTable s = HT.HashTable s StructKey StructType
 
 {-# INLINE newRef #-}
 newRef :: ResourceContext_ s -> ST s (ResourceContext s)
@@ -90,18 +100,6 @@ exitScope st = do
   let (_:vars) = varScopes rc
   writeRef st $ rc {varScopes = vars}
 
--- Writes the provided var data to the first scope
-setVarIndex :: ResourceContext s -> VarKey -> VarIndex -> ST s ()
-setVarIndex st key value = do
-  rc <- readRef st
-  let (v:vars) = varScopes rc
-  v' <- setVarIndex' v
-  writeRef st $ rc {varScopes = v' : vars}
-  where
-    setVarIndex' :: ResourceScope s -> ST s (ResourceScope s)
-    setVarIndex' (RS varTable size) =
-      HT.insert varTable key value $> RS varTable (size + 1)
-
 getVarIndex :: forall s. ResourceContext s -> C.ScopedIdent -> ST s VarIndex
 getVarIndex st si = do
   let key = VarKey si
@@ -110,11 +108,44 @@ getVarIndex st si = do
   let (counts, indices) = partitionEithers candidates
   if null indices
     -- Not found; add the new var index and return it
-    then let index = (VarIndex $ sum counts + 1)
-          in setVarIndex st key index $> index
-    else return $ head indices
+    then let value = (VarIndex $ sum counts + 1)
+             (v:vars) = varScopes rc
+          in do v' <- setVarIndex' v key value
+                writeRef st $! rc {varScopes = v' : vars} -- Replace current scope
+                return value
+    else return $! head indices
   where
+    setVarIndex' ::
+         ResourceScope s -> VarKey -> VarIndex -> ST s (ResourceScope s)
+    setVarIndex' (RS varTable size) key value =
+      HT.insert varTable key value $> RS varTable (size + 1)
     getVarIndex' :: VarKey -> ResourceScope s -> ST s (Either Int VarIndex)
     getVarIndex' key (RS varTable size) = do
       index <- HT.lookup varTable key
-      return $ index <?> size
+      return $! index <?> size
+
+getStructType :: forall s. ResourceContext s -> [C.FieldDecl] -> ST s StructType
+getStructType st fields = do
+  let key = StructKey fields
+  rc <- readRef st
+  let m = structMap rc
+  candidate <- HT.lookup m key
+  case candidate of
+    Just structType -> return structType
+    Nothing
+      -- Create the new StructType, save it in the hashmap,
+      -- and update our struct list
+     -> do
+      let name = structName $ length (allStructs rc) + 1
+          value = Struct name fields
+          allStructs' = value : allStructs rc
+      _ <- HT.insert m key value
+      writeRef st $! rc {allStructs = allStructs'}
+      return $! value
+  where
+    structName :: Int -> C.Ident
+    structName i = C.Ident $ "GlcStruct" ++ show i
+
+-- Returns a list of unique structs, ordered by creation
+getAllStructs :: ResourceContext s -> ST s [StructType]
+getAllStructs st = reverse . allStructs <$> readRef st

@@ -1,6 +1,7 @@
 module ResourceData where
 
-import           CheckedData        (Ident)
+import           CheckedData        (AssignOp, BinaryOp, FieldDecl,
+                                     Ident, Literal, UnaryOp)
 import           Data.List.NonEmpty (NonEmpty (..))
 
 -- Represents the stack index within a method
@@ -192,63 +193,6 @@ data Expr
               [Expr]
   deriving (Show, Eq)
 
--- | See https://golang.org/ref/spec#Literal
-data Literal
-  = IntLit Int
-  | FloatLit Float
-  | RuneLit Char
-  | StringLit String
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#binary_op
--- & See https://golang.org/ref/spec#rel_op
-data BinaryOp
-  = Or -- ||
-  | And -- &&
-  | Arithm ArithmOp
-  | EQ -- ==
-  | NEQ -- !=
-  | LT -- <
-  | LEQ -- <=
-  | GT -- >
-  | GEQ -- >=
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#add_op
--- & See https://golang.org/ref/spec#mul_op
--- We make no distinction between addop and mulop
--- As they are separated in the specs purely to show the order of operations
-data ArithmOp
-  --- Add Ops
-  = Add -- +
-  | Subtract -- -
-  | BitOr -- |
-  | BitXor -- ^
-  --- Mul Ops
-  | Multiply -- *
-  | Divide -- /
-  | Remainder -- %
-  | ShiftL -- <<
-  | ShiftR -- >>
-  | BitAnd -- &
-  | BitClear -- &^
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#unary_op
--- Golite only supports the four ops below
-data UnaryOp
-  = Pos -- +
-  | Neg -- -
-  | Not -- !
-  | BitComplement -- ^
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#assign_op
--- Symbol is the arithm op followed by '='
-newtype AssignOp =
-  AssignOp (Maybe ArithmOp)
-  deriving (Show, Eq)
-
 data Type
   -- | See https://golang.org/ref/spec#Array_types
   -- Note that golite only supports int literal sizes
@@ -268,12 +212,4 @@ data Type
 data StructType =
   Struct Ident
          [FieldDecl]
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#FieldDecl
--- Golite does not support embedded fields
--- Note that these fields aren't scope related
-data FieldDecl =
-  FieldDecl Ident
-            Type
   deriving (Show, Eq)
