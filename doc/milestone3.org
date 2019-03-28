@@ -61,41 +61,38 @@ whilst implementing the components for milestone 3.  \newpage
     In ~GoLite~, new scopes are opened for block statements, ~for~
     loops, ~if~ / ~else~ statements and function declarations (for the
     parameters and the function body). A new scope separates
-    identifiers (which are associated to type maps, variables,
-    functions and the constants true/false) from the other scopes'
-    identifiers.
-
-    Whenever we refer to an identifier, it will reference the
+    identifiers (which are associated with type maps, variables,
+    functions and the constants ~true~ and ~false~) from the other scopes'
+    identifiers. Whenever we refer to an identifier, it references the
     identifier declared in the closest scope.
 
-    There is nothing very special about scoping in ~GoLite~, the main
+    There is nothing very special about scoping in ~GoLite~. The main
     notable thing is that something like ~var a = a~ will refer to ~a~
     in a previous scope, not the current ~a~ that was just declared,
-    unlike certain languages like ~C~.
+    unlike languages like ~C~.
     On the other hand, recursive types such as ~type b b~ fail as expected,
-    do not reference a type from higher scopes.
+    and do not reference a type from higher scopes.
 *** Mapping Strategy
-    JVM bytecode, only has ``scoping'' for ~methods~, as they have
-    their own locals and stack. However, block statements and the
-    statements inside of them do not have any scopes (except of course
-    method calls), as we do not have any constructs like loops, if
-    statements or switch statements. In a higher level language, we
-    could just append the scope to each identifier to keep them all
-    unique; renaming would also eliminate the need for separate scopes,
-    as we already typecheck the correct use of identifiers, and no further.
-    conflicts will arise. In our case, we use a similar strategy. Recall that
-    in the typecheck phase we generate a new checked AST with
-    simplified information and assumptions. The identifiers in this
-    AST also change, where they are tuples that contain the original
-    identifier and the scope they were declared in. Thus, each scoped
-    identifier refers to a unique declaration of a scoped identifier.
+    JVM bytecode only has ``scoping'' for ~methods~, as they have
+    their own locals and stack. Block statements do not exist per se, and
+    statements except called method bodies are scope-less. We also do not
+    have constructs like loops, if statements or switch statements.
+    In a higher level language, we could just append the scope depth to all
+    identifier names to keep them unique. Renaming would also eliminate the
+    need for separate scopes, as we already typecheck the correct use of
+    identifiers. In our case, we use a similar strategy.
+    In the typecheck phase, we generate a new checked AST with
+    simplified information and assumptions, as typechecking has already
+    occurred. The identifiers in this AST will also be changed to tuples that
+    contain the original identifier and the scope they were declared in. Thus,
+    each scoped identifier thus refers to a unique declaration.
 
     Given that our target language is JVM bytecode, our intermediate
-    representation will instead provide a unique index to each variable,
-    such that it remains one to one with the original scoped identifier key.
+    representation will assign a unique index to each variable,
+    with a one index-to-one or more scoped identifier mapping.
     Variables with the same scoped identifier will be given the same offset,
-    and we will optimize our stack limit by reusing offsets when two variables
-    can never occur at the same time, due to branching.
+    and we can optimize our stack limit by reusing offsets when two variables
+    can never occur at the same time due to branching.
 ** Switch Statements
 *** Go Semantics
     In ~GoLite~, ~switch~ statements consist of an optional simple
