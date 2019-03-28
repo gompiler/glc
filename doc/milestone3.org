@@ -186,7 +186,29 @@ whilst implementing the components for milestone 3.  \newpage
       based language, as the stack implicitly acts like temporary
       variables, so we don't need to simulate temporary variables for
       swapping/simulating simultaneous assignment.
-* TODO Currently Implemented
+* Currently Implemented: Intermediate Representation
   The main feature that was worked on during this milestone was the
-  creation of our intermediate representation and the conversion of
+  creation of our intermediate representation, and the conversion of
   the typechecked AST to said IR.
+
+  We decided on creating an IR for bytecode in order to make conversion easier
+  from the AST, and enforce some degree of correctness using Haskell's type
+  system. The IR is also stack-based, and to a large extent is functionally
+  identical to JVM bytecode, modeled in Haskell. We represent classes and
+  methods as Haskell records. Method bodies are a list of what we call,
+  ~IRItem~s, which are either stack instructions or labels.
+
+  Available stack instructions, as of this milestone, include ~Add~ and other
+  binary operations, ~Dup~, ~Load~ and ~Store~, ~InvokeVirtual/InvokeSpecial~,
+  some integer-specific operations, and ~Return~s. Instead of specifically
+  representing equivalents of ~iadd/fadd~, ~iload/aload/...~, etc., we define
+  an ~IRType~ data type which can either be a bytecode primitive (integer or
+  float) or an object reference. In this way, the IR definition is kept short
+  and similar instructions can be combined into a single Haskell constructor
+  model. Other Haskell types are used to model method/class specifiers,
+  Jasmin-style parameter and return types, and loadable values (ints, floats,
+  and strings).
+
+  Eventually, our goal is to then convert this IR into Krakatau bytecode syntax,
+  which should be very straightforward given that the IR is so close to bytecode
+  already.
