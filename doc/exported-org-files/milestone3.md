@@ -1,24 +1,24 @@
 
 # Table of Contents
 
-1.  [Language for Code Generation](#orgcd0a320)
-2.  [Semantics](#org63cb782)
-    1.  [Scoping Rules](#orga3c22e8)
-        1.  [Go Semantics](#orge364159)
-        2.  [Mapping Strategy](#org598fc92)
-    2.  [Switch Statements](#org6a7abcd)
-        1.  [Go Semantics](#org0a9375e)
-        2.  [Mapping Strategy](#orgec8a33c)
-    3.  [Assignments](#org68d7c23)
-        1.  [Go Semantics](#org10f65a1)
-        2.  [Mapping Strategy](#org7778270)
-3.  [Currently Implemented](#org75c8ce3)
+1.  [Language for Code Generation](#org0eca889)
+2.  [Semantics](#orga633942)
+    1.  [Scoping Rules](#org182acb7)
+        1.  [Go Semantics](#org0b4fec9)
+        2.  [Mapping Strategy](#org9b3f3ac)
+    2.  [Switch Statements](#org41b42ac)
+        1.  [Go Semantics](#org7125f69)
+        2.  [Mapping Strategy](#org733e9ae)
+    3.  [Assignments](#org6c7026b)
+        1.  [Go Semantics](#org225b6d8)
+        2.  [Mapping Strategy](#org0028aeb)
+3.  [Currently Implemented](#orgf1e39a3)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 
 
-<a id="orgcd0a320"></a>
+<a id="org0eca889"></a>
 
 # TODO Language for Code Generation
 
@@ -50,17 +50,17 @@ despite it being faster than other, higher-level languages.
 TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 
 
-<a id="org63cb782"></a>
+<a id="orga633942"></a>
 
 # Semantics
 
 
-<a id="orga3c22e8"></a>
+<a id="org182acb7"></a>
 
 ## Scoping Rules
 
 
-<a id="orge364159"></a>
+<a id="org0b4fec9"></a>
 
 ### Go Semantics
 
@@ -80,7 +80,7 @@ in a previous scope, not the current `a` that was just declared,
 unlike certain languages like `C`.
 
 
-<a id="org598fc92"></a>
+<a id="org9b3f3ac"></a>
 
 ### Mapping Strategy
 
@@ -106,12 +106,12 @@ identifier refers to a unique declaration, then the locals won't
 refer to the wrong local.
 
 
-<a id="org6a7abcd"></a>
+<a id="org41b42ac"></a>
 
 ## Switch Statements
 
 
-<a id="org0a9375e"></a>
+<a id="org7125f69"></a>
 
 ### Go Semantics
 
@@ -138,7 +138,7 @@ breaking at the end of it. This makes cases significantly semantically different
 -   Case statement expressions do not need to be a constant expression.
 
 
-<a id="orgec8a33c"></a>
+<a id="org733e9ae"></a>
 
 ### Mapping Strategy
 
@@ -163,21 +163,71 @@ Semantically:
     switch statement of the language).
 
 
-<a id="org68d7c23"></a>
+<a id="org6c7026b"></a>
 
-## TODO Assignments
-
-
-<a id="org10f65a1"></a>
-
-### TODO Go Semantics
+## Assignments
 
 
-<a id="org7778270"></a>
+<a id="org225b6d8"></a>
 
-### TODO Mapping Strategy
+### Go Semantics
+
+In `GoLite`, assignments are either an assignment operator with a
+LHS expression and a RHS expression or just two non empty
+expression lists of equal length. This makes them structurally
+different (for the two non empty list case) from classic
+assignments that either only allow single expressions whether that
+be on both sides or only the RHS (assign many expressions to the
+same value). However, this structural difference is a lot more
+significant than it seems at first glance, because the assignments
+are done in a \`\`simultaneous'' way, that is `a, b = b, a` will
+effectively swap the values of `a` and `b`, whereas if the
+assignments were done sequentially, `a` and `b` would be the
+original value of `b` and wouldn't be swapped.
 
 
-<a id="org75c8ce3"></a>
+<a id="org0028aeb"></a>
+
+### Mapping Strategy
+
+There are two tricky things about assignments:
+
+-   Assignment operators. We cannot just convert `e += e2` to `e =
+          e + e2`, where `e` is an expression, because `e` might contain a
+    function call with side-effects, which we do not want to call
+    twice (note that in some cases, the assignment operator has an
+    equivalent instruction, i.e. incrementing and decrementing using
+    `iinc`, however we generalize in this discussion as most
+    operators do not have an equivalent instruction to operate and
+    assign at the same time). There are thus several cases for `e`:
+    -   `e` is just an identifier, then we can just convert `e += e2`
+        to `e = e + e2`, as there will be no side effects.
+    -   `e` is a selector. If `e` is an addressable selector, then it
+        is not operating on the direct/anonymous return value of a
+        function call and so re-evaluating `e` will not produce any
+        side effects. Thus we can do `e = e + e2` again.
+    -   `e` is an index, say `e3[e4]`. In this case, `e3` can be an
+        anonymous `slice` from a function return and `e4` can also be an
+        anonymous `int` from a function return. So in order to avoid
+        duplicate side effects, we resolve `e3[e4]` to some base
+        expression without function calls, storing the result on the
+        stack, then we operate on the stack, adding `e2` and then
+        assigning the result to whatever the stack value references.
+-   Assignment of multiple expressions. As mentioned earlier, we
+    cannot do the assignments sequentially. Thus we evaluate the
+    entire RHS, pushing each result onto the stack and then
+    assigning each stack element one by one to their respective LHS
+    expression. This way `a, b = b, a` will not overwrite the values
+    used on the RHS. This is one of the advantages of using a stack
+    based language, as the stack implicitly acts like temporary
+    variables, so we don't need to simulate temporary variables for
+    swapping/simulating simultaneous assignment.
+
+
+<a id="orgf1e39a3"></a>
 
 # TODO Currently Implemented
+
+The main feature that was worked on during this milestone was the
+creation of our intermediate representation and the conversion of
+the typechecked AST to said IR.
