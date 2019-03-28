@@ -88,7 +88,7 @@ whilst implementing the components for milestone 3.  \newpage
     statements or switch statements. In a higher level language, we
     could just append the scope to each identifier to keep them all
     unique; renaming would also eliminate the need for separate scopes,
-    as we already typecheck the correct use of identifiers, and no further.
+    as we already typecheck the correct use of identifiers, and no further
     conflicts will arise. In our case, we use a similar strategy. Recall that
     in the typecheck phase we generate a new checked AST with
     simplified information and assumptions. The identifiers in this

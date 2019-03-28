@@ -1,4 +1,4 @@
-% Created 2019-03-27 Wed 23:18
+% Created 2019-03-27 Wed 23:23
 % Intended LaTeX compiler: pdflatex
 \documentclass[11pt]{article}
 \usepackage[utf8]{inputenc}
@@ -35,26 +35,26 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 \section{JVM Bytecode for Code Generation}
-\label{sec:orgc2daaec}
+\label{sec:org33f9c5e}
 We decided on targeting JVM bytecode for our compiler, through the
 \href{https://github.com/Storyyeller/Krakatau}{Krakatau}
 bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
 a more modern codebase (written in Python) and some additional features.
 \subsection{Advantages}
-\label{sec:org6449abb}
+\label{sec:org117685c}
 The primary advantages of targeting JVM bytecode are:
-\hyperref[sec:org7cff5fc]{portability}, \hyperref[sec:orgd3b7f36]{execution speed},
-and (surprisingly to us) its \hyperref[sec:org4cbab86]{focus on stack
+\hyperref[sec:orgcbf8cfe]{portability}, \hyperref[sec:org7a71ad3]{execution speed},
+and (surprisingly to us) its \hyperref[sec:org3b8ffc9]{focus on stack
 operations, as opposed to a more `straightforward' language}, which
 aids in overcoming some of the common pain points of GoLite code
 generation:
 \subsubsection{Portability}
-\label{sec:org7cff5fc}
+\label{sec:orgcbf8cfe}
 The JVM has been ported to many common platforms, meaning code written in
 GoLite, when compiled with our compiler, will be able to run on any
 platform the JVM can run on.
 \subsubsection{Execution Speed}
-\label{sec:orgd3b7f36}
+\label{sec:org7a71ad3}
 Although Java is often considered slow as opposed to ahead-of-time compiled
 languages such as C and C++ due to its garbage collection and non-native
 compiled code, most implementations of the JVM provide JIT compilation.
@@ -66,7 +66,7 @@ This JIT compilation and run-time optimization sometimes allow
 the JVM to be faster than even ahead-of-time compiled programs, since
 run-time information is available for optimization purposes.
 \subsubsection{Stack Based/Low Level}
-\label{sec:org4cbab86}
+\label{sec:org3b8ffc9}
 The fact that JVM bytecode is fairly low level gives us lots of granular
 control for changing the behavior of constructs, especially when
 dealing with odd \texttt{GoLite} / \texttt{GoLang} behavior that doesn't
@@ -85,7 +85,7 @@ function arguments and comparisons. A similarly low-level, register-based
 language would require the use of many temporary registers.
 
 \subsection{Disadvantages}
-\label{sec:org2fe95ff}
+\label{sec:org49e3c3b}
 The main disadvantages of generating JVM bytecode are its low-level semantics
 and its (in general) slightly slow speeds versus an ahead-of-time compiled
 language.
@@ -97,11 +97,11 @@ includes strings and \textasciitilde{}struct\textasciitilde{}s. This means that 
 comparisons and string concatenations go from being a few bytecode
 instructions to signficantly longer patterns.
 \section{Semantics}
-\label{sec:org6cf3c86}
+\label{sec:org79dd5d7}
 \subsection{Scoping Rules}
-\label{sec:org7aa6ebe}
+\label{sec:org069a3e1}
 \subsubsection{Go Semantics}
-\label{sec:orgf8cf82b}
+\label{sec:org3187054}
 In \texttt{GoLite}, new scopes are opened for block statements, \texttt{for}
 loops, \texttt{if} / \texttt{else} statements and function declarations (for the
 parameters and the function body). A new scope separates
@@ -119,7 +119,7 @@ unlike certain languages like \texttt{C}.
 On the other hand, recursive types such as \texttt{type b b} fail as expected,
 do not reference a type from higher scopes.
 \subsubsection{Mapping Strategy}
-\label{sec:orge137b79}
+\label{sec:org29b0448}
 JVM bytecode, only has ``scoping'' for \texttt{methods}, as they have
 their own locals and stack. However, block statements and the
 statements inside of them do not have any scopes (except of course
@@ -127,7 +127,7 @@ method calls), as we do not have any constructs like loops, if
 statements or switch statements. In a higher level language, we
 could just append the scope to each identifier to keep them all
 unique; renaming would also eliminate the need for separate scopes,
-as we already typecheck the correct use of identifiers, and no further.
+as we already typecheck the correct use of identifiers, and no further
 conflicts will arise. In our case, we use a similar strategy. Recall that
 in the typecheck phase we generate a new checked AST with
 simplified information and assumptions. The identifiers in this
@@ -142,9 +142,9 @@ Variables with the same scoped identifier will be given the same offset,
 and we will optimize our stack limit by reusing offsets when two variables
 can never occur at the same time, due to branching.
 \subsection{Switch Statements}
-\label{sec:orge8e4d90}
+\label{sec:org6ef8b5d}
 \subsubsection{Go Semantics}
-\label{sec:orgc959d88}
+\label{sec:org7f2ae3b}
 In \texttt{GoLite}, \texttt{switch} statements consist of an optional simple
 statement, an optional expression and a (potentially empty) list
 of case statements. Case statements are either a case with a
@@ -170,7 +170,7 @@ semantically:
 \end{itemize}
 
 \subsubsection{Mapping Strategy}
-\label{sec:org063df13}
+\label{sec:orgfc4a7d4}
 For the structural differences:
 \begin{itemize}[noitemsep]
 \item Simple statements can be modeled and executed as the first statement in
@@ -200,9 +200,9 @@ simulating switch statements using \texttt{goto} and comparisons, and aren't
 limited by any language-native \texttt{switch} statement definitions).
 \end{itemize}
 \subsection{Assignments}
-\label{sec:org6c54d21}
+\label{sec:org8a9c192}
 \subsubsection{Go Semantics}
-\label{sec:orgb465ec5}
+\label{sec:orgfc5243a}
 In \texttt{GoLite}, assignments are either an assignment operator with a
 single LHS expression and a RHS expression, or two non-empty
 expression lists (LHS and RHS) of equal length. This makes them structurally
@@ -215,7 +215,7 @@ assignments were done sequentially, \texttt{a} and \texttt{b} would be the
 original value of \texttt{b} and wouldn't be swapped. The same goes for \texttt{+=} and
 other assignment operators.
 \subsubsection{Mapping Strategy}
-\label{sec:org486b55f}
+\label{sec:orgc754a25}
 There are two tricky things about assignments:
 \begin{itemize}[noitemsep]
 \item Assignment operators. We cannot just convert \texttt{e += e2} to \texttt{e =
@@ -256,7 +256,7 @@ like temporary variables, so we don't need to allocate other temporary
 resources for simultaneous assignment.
 \end{itemize}
 \section{Currently Implemented: Intermediate Representation}
-\label{sec:org67a14b2}
+\label{sec:org1d0b611}
 The main feature that was worked on during this milestone was the
 creation of our intermediate representation, and the conversion of
 the typechecked AST to said IR.
@@ -265,13 +265,13 @@ We decided on creating an IR for bytecode in order to make conversion easier
 from the AST, and enforce some degree of correctness using Haskell's type
 system. The IR is also stack-based, and to a large extent is functionally
 identical to JVM bytecode, modeled in Haskell. We represent classes and
-methods as Haskell records. Method bodies are a list of what we call,
-\textasciitilde{}IRItem\textasciitilde{}s, which are either stack instructions or labels.
+methods as Haskell records. Method bodies are a list of what we call
+\texttt{IRItems}, which are either stack instructions or labels.
 
 Available stack instructions, as of this milestone, include \texttt{Add} and other
 binary operations, \texttt{Dup}, \texttt{Load} and \texttt{Store}, \texttt{InvokeVirtual/InvokeSpecial},
-some integer-specific operations, and \texttt{Return\textasciitilde{}s. Instead of specifically
-  representing equivalents of \textasciitilde{}iadd/fadd}, \texttt{iload/aload/...}, etc., we define
+some integer-specific operations, and \texttt{Return}. Instead of specifically
+representing equivalents of \texttt{iadd/fadd}, \texttt{iload/aload/...}, etc., we define
 an \texttt{IRType} data type which can either be a bytecode primitive (integer or
 float) or an object reference. In this way, the IR definition is kept short
 and similar instructions can be combined into a single Haskell constructor

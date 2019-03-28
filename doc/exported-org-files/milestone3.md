@@ -1,29 +1,29 @@
 
 # Table of Contents
 
-1.  [JVM Bytecode for Code Generation](#org75b5790)
-    1.  [Advantages](#orgaed7636)
-        1.  [Portability](#org8542da5)
-        2.  [Execution Speed](#org3fca57b)
-        3.  [Stack Based/Low Level](#org3354b7f)
-    2.  [Disadvantages](#orgb5d1839)
-2.  [Semantics](#org9ce108f)
-    1.  [Scoping Rules](#orgc0bdd45)
-        1.  [Go Semantics](#org7176f1f)
-        2.  [Mapping Strategy](#org51af1c8)
-    2.  [Switch Statements](#orgf15a55b)
-        1.  [Go Semantics](#orgda101de)
-        2.  [Mapping Strategy](#orgcd356c2)
-    3.  [Assignments](#org44506d9)
-        1.  [Go Semantics](#org5ce9a6a)
-        2.  [Mapping Strategy](#orgbd0773f)
-3.  [Currently Implemented: Intermediate Representation](#orga030300)
+1.  [JVM Bytecode for Code Generation](#org50ad8f6)
+    1.  [Advantages](#orgb7b95c8)
+        1.  [Portability](#org49cd991)
+        2.  [Execution Speed](#org6fef986)
+        3.  [Stack Based/Low Level](#orgcd1a316)
+    2.  [Disadvantages](#orgb6d9216)
+2.  [Semantics](#org44231cc)
+    1.  [Scoping Rules](#org8cf77df)
+        1.  [Go Semantics](#orgcffe21c)
+        2.  [Mapping Strategy](#org9c31902)
+    2.  [Switch Statements](#orgfa8bc57)
+        1.  [Go Semantics](#orgce2af00)
+        2.  [Mapping Strategy](#orgd1294e6)
+    3.  [Assignments](#orgb3b8695)
+        1.  [Go Semantics](#orgc2fc14f)
+        2.  [Mapping Strategy](#org3d76eb6)
+3.  [Currently Implemented: Intermediate Representation](#org3c4dacd)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 
 
-<a id="org75b5790"></a>
+<a id="org50ad8f6"></a>
 
 # JVM Bytecode for Code Generation
 
@@ -33,19 +33,19 @@ bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
 a more modern codebase (written in Python) and some additional features.
 
 
-<a id="orgaed7636"></a>
+<a id="orgb7b95c8"></a>
 
 ## Advantages
 
 The primary advantages of targeting JVM bytecode are:
-[portability](#org8542da5), [execution speed](#org3fca57b),
+[portability](#org49cd991), [execution speed](#org6fef986),
 and (surprisingly to us) its [focus on stack
-operations, as opposed to a more \`straightforward' language](#org3354b7f), which
+operations, as opposed to a more \`straightforward' language](#orgcd1a316), which
 aids in overcoming some of the common pain points of GoLite code
 generation:
 
 
-<a id="org8542da5"></a>
+<a id="org49cd991"></a>
 
 ### Portability
 
@@ -54,7 +54,7 @@ GoLite, when compiled with our compiler, will be able to run on any
 platform the JVM can run on.
 
 
-<a id="org3fca57b"></a>
+<a id="org6fef986"></a>
 
 ### Execution Speed
 
@@ -70,7 +70,7 @@ the JVM to be faster than even ahead-of-time compiled programs, since
 run-time information is available for optimization purposes.
 
 
-<a id="org3354b7f"></a>
+<a id="orgcd1a316"></a>
 
 ### Stack Based/Low Level
 
@@ -92,7 +92,7 @@ function arguments and comparisons. A similarly low-level, register-based
 language would require the use of many temporary registers.
 
 
-<a id="orgb5d1839"></a>
+<a id="orgb6d9216"></a>
 
 ## Disadvantages
 
@@ -108,17 +108,17 @@ comparisons and string concatenations go from being a few bytecode
 instructions to signficantly longer patterns.
 
 
-<a id="org9ce108f"></a>
+<a id="org44231cc"></a>
 
 # Semantics
 
 
-<a id="orgc0bdd45"></a>
+<a id="org8cf77df"></a>
 
 ## Scoping Rules
 
 
-<a id="org7176f1f"></a>
+<a id="orgcffe21c"></a>
 
 ### Go Semantics
 
@@ -140,7 +140,7 @@ On the other hand, recursive types such as `type b b` fail as expected,
 do not reference a type from higher scopes.
 
 
-<a id="org51af1c8"></a>
+<a id="org9c31902"></a>
 
 ### Mapping Strategy
 
@@ -151,7 +151,7 @@ method calls), as we do not have any constructs like loops, if
 statements or switch statements. In a higher level language, we
 could just append the scope to each identifier to keep them all
 unique; renaming would also eliminate the need for separate scopes,
-as we already typecheck the correct use of identifiers, and no further.
+as we already typecheck the correct use of identifiers, and no further
 conflicts will arise. In our case, we use a similar strategy. Recall that
 in the typecheck phase we generate a new checked AST with
 simplified information and assumptions. The identifiers in this
@@ -167,12 +167,12 @@ and we will optimize our stack limit by reusing offsets when two variables
 can never occur at the same time, due to branching.
 
 
-<a id="orgf15a55b"></a>
+<a id="orgfa8bc57"></a>
 
 ## Switch Statements
 
 
-<a id="orgda101de"></a>
+<a id="orgce2af00"></a>
 
 ### Go Semantics
 
@@ -200,7 +200,7 @@ semantically:
 -   Case statement expressions do not need to be a constant expression.
 
 
-<a id="orgcd356c2"></a>
+<a id="orgd1294e6"></a>
 
 ### Mapping Strategy
 
@@ -233,12 +233,12 @@ Semantically:
     limited by any language-native `switch` statement definitions).
 
 
-<a id="org44506d9"></a>
+<a id="orgb3b8695"></a>
 
 ## Assignments
 
 
-<a id="org5ce9a6a"></a>
+<a id="orgc2fc14f"></a>
 
 ### Go Semantics
 
@@ -255,7 +255,7 @@ original value of `b` and wouldn't be swapped. The same goes for `+=` and
 other assignment operators.
 
 
-<a id="orgbd0773f"></a>
+<a id="org3d76eb6"></a>
 
 ### Mapping Strategy
 
@@ -297,7 +297,7 @@ There are two tricky things about assignments:
     resources for simultaneous assignment.
 
 
-<a id="orga030300"></a>
+<a id="org3c4dacd"></a>
 
 # Currently Implemented: Intermediate Representation
 
@@ -309,13 +309,13 @@ We decided on creating an IR for bytecode in order to make conversion easier
 from the AST, and enforce some degree of correctness using Haskell's type
 system. The IR is also stack-based, and to a large extent is functionally
 identical to JVM bytecode, modeled in Haskell. We represent classes and
-methods as Haskell records. Method bodies are a list of what we call,
-~IRItem~s, which are either stack instructions or labels.
+methods as Haskell records. Method bodies are a list of what we call
+`IRItems`, which are either stack instructions or labels.
 
 Available stack instructions, as of this milestone, include `Add` and other
 binary operations, `Dup`, `Load` and `Store`, `InvokeVirtual/InvokeSpecial`,
-some integer-specific operations, and `Return~s. Instead of specifically
-  representing equivalents of ~iadd/fadd`, `iload/aload/...`, etc., we define
+some integer-specific operations, and `Return`. Instead of specifically
+representing equivalents of `iadd/fadd`, `iload/aload/...`, etc., we define
 an `IRType` data type which can either be a bytecode primitive (integer or
 float) or an object reference. In this way, the IR definition is kept short
 and similar instructions can be combined into a single Haskell constructor
