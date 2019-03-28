@@ -1,6 +1,6 @@
 module ResourceData where
 
-import           CheckedData        (AssignOp, BinaryOp, FieldDecl,
+import           CheckedData        (AssignOp, BinaryOp,
                                      Ident, Literal, UnaryOp)
 import           Data.List.NonEmpty (NonEmpty (..))
 
@@ -207,9 +207,26 @@ data Type
   | PBool
   | PRune
   | PString
+  -- | Base types allow for cycles
+  -- For instance,
+  -- type a []a
+  -- and
+  -- type b struct { cycle b; }
+  -- are all valid in golite
+  -- While we can represent it with an infinite data structure,
+  -- It makes modification more difficult
+  | Cycle
   deriving (Show, Eq)
 
 data StructType =
   Struct Ident
          [FieldDecl]
+  deriving (Show, Eq)
+
+-- | See https://golang.org/ref/spec#FieldDecl
+-- Golite does not support embedded fields
+-- Note that these fields aren't scope related
+data FieldDecl =
+  FieldDecl Ident
+            Type
   deriving (Show, Eq)

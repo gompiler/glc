@@ -1120,7 +1120,7 @@ toBase PRune = C.PRune
 toBase PString = C.PString
 -- TODO remove error
 toBase Void = error "Void cannot be converted to CheckedData base type"
-toBase Infer = error "Infer cannot be converted to CheckedData base type"
+toBase Infer = C.Cycle
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: SymbolTable s -> Expr -> ST s (Either ErrorMessage' Bool)

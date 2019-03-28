@@ -302,6 +302,15 @@ data Type
   | PBool
   | PRune
   | PString
+  -- | Base types allow for cycles
+  -- For instance,
+  -- type a []a
+  -- and
+  -- type b struct { cycle b; }
+  -- are all valid in golite
+  -- While we can represent it with an infinite data structure,
+  -- It makes modification more difficult
+  | Cycle
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl

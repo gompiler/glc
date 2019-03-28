@@ -137,7 +137,7 @@ getVarIndex st si = do
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type
 -- But in different orders are technically the same
-getStructType :: forall s. ResourceContext s -> [C.FieldDecl] -> ST s StructType
+getStructType :: forall s. ResourceContext s -> [FieldDecl] -> ST s StructType
 getStructType st fields = do
   let key = StructKey fields
   rc <- readRef st
