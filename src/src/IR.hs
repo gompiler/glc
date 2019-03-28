@@ -1,6 +1,11 @@
-module IR where
+module IR
+  ( genIR
+  , displayIR
+  )
+where
 
 import qualified CheckedData        as C
+import           Base               (Glc)
 import           Data.Char          (ord)
 import           Data.List          (intercalate)
 import qualified Data.List.NonEmpty as NE (map)
@@ -138,7 +143,10 @@ jString :: ClassRef
 jString = ClassRef "java/lang/String"
 
 displayIR :: String -> IO ()
-displayIR code = either putExit (putSucc . show . toClass) (S.typecheckGen code)
+displayIR code = either putExit (putSucc . show) (genIR code)
+
+genIR :: String -> Glc Class
+genIR code = toClass <$> S.typecheckGen code
 
 toClass :: C.Program -> Class
 toClass (C.Program _ tls) =
