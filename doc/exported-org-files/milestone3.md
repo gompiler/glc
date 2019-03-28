@@ -1,66 +1,106 @@
 
 # Table of Contents
 
-1.  [Language for Code Generation](#orgcd0a320)
-2.  [Semantics](#org63cb782)
-    1.  [Scoping Rules](#orga3c22e8)
-        1.  [Go Semantics](#orge364159)
-        2.  [Mapping Strategy](#org598fc92)
-    2.  [Switch Statements](#org6a7abcd)
-        1.  [Go Semantics](#org0a9375e)
-        2.  [Mapping Strategy](#orgec8a33c)
-    3.  [Assignments](#org68d7c23)
-        1.  [Go Semantics](#org10f65a1)
-        2.  [Mapping Strategy](#org7778270)
-3.  [Currently Implemented](#org75c8ce3)
+1.  [Language for Code Generation](#orge9764e2)
+    1.  [Advantages](#orga078cac)
+        1.  [Portability](#orga8fef55)
+        2.  [Execution Speed](#org41505d9)
+        3.  [Stack Based/Low Level](#orge2b49d7)
+    2.  [Disadvantages](#org1fab51c)
+2.  [Semantics](#orgc5e899b)
+    1.  [Scoping Rules](#orgf1fdf9e)
+        1.  [Go Semantics](#org1c79a2d)
+        2.  [Mapping Strategy](#org8321afc)
+    2.  [Switch Statements](#org0aeaa7c)
+        1.  [Go Semantics](#org6736cd5)
+        2.  [Mapping Strategy](#org80c741b)
+    3.  [Assignments](#org2fd5576)
+        1.  [Go Semantics](#orgd2399d5)
+        2.  [Mapping Strategy](#orgbfaff21)
+3.  [Currently Implemented](#org05de90c)
 
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 
 
-<a id="orgcd0a320"></a>
+<a id="orge9764e2"></a>
 
 # TODO Language for Code Generation
 
 We decided on targeting JVM bytecode for our compiler, through the Krakatau
 bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
 a more modern codebase (written in Python) and some additional features.
-
 TODO: TALK ABOUT ADDITIONAL FEATURES?
 
-The primary advantages of targeting JVM bytecode are: 1) portability, 2)
-execution speed, and 3) (surprisingly to us) its focus on stack
-operations as opposed to a more \`straightforward' language, which aids in
-overcoming some of the common pain points of GoLite code generation:
 
-1.  The JVM has been ported to many common platforms, meaning code written in
-    GoLite, when compiled with our compiler, will be able to run on any
-    platform the JVM can run on.
-2.  Although Java is often considered slow as opposed to ahead-of-time compiled
-    languages such as C and C++ due to its garbage collection and non-native
-    compiled code, most implementations of the JVM provide JIT compilation,
-    By targeting JVM bytecode, we can take advantage of this, and our generated
-    code will likely be faster than if we generated code in a higher-level
-    language such as Python.
-3.  TODO
+<a id="orga078cac"></a>
+
+## Advantages
+
+The primary advantages of targeting JVM bytecode are:
+[portability](#orga8fef55), [execution speed](#org41505d9),
+and (surprisingly to us) its [focus on stack
+operations as opposed to a more \`straightforward' language](#orge2b49d7), which
+aids in overcoming some of the common pain points of GoLite code
+generation:
+
+
+<a id="orga8fef55"></a>
+
+### Portability
+
+The JVM has been ported to many common platforms, meaning code written in
+GoLite, when compiled with our compiler, will be able to run on any
+platform the JVM can run on.
+
+
+<a id="org41505d9"></a>
+
+### Execution Speed
+
+Although Java is often considered slow as opposed to ahead-of-time compiled
+languages such as C and C++ due to its garbage collection and non-native
+compiled code, most implementations of the JVM provide JIT compilation.
+By targeting JVM bytecode, we can take advantage of this, and our generated
+code will likely be faster than if we generated code in a higher-level
+language such as Python.
+
+
+<a id="orge2b49d7"></a>
+
+### TODO Stack Based/Low Level
+
+The fact that JVM bytecode is low level gives us lots of granular
+control to change the behavior of constructs, especially when
+dealing with weird `GoLite` / `GoLang` behavior that doesn't
+really comply with the more common programming languages. The fact
+that it is a stack based language is even more beneficial, since
+it makes it easy to account for things like function arguments,
+swapping and comparing, whereas a register based language would
+require the use of many temporary registers.
+
+
+<a id="org1fab51c"></a>
+
+## Disadvantages
 
 The main disadvantages of generating JVM bytecode are its low-level semantics
-and its comparatively slow speeds versus an ahead-of-time compiled language,
+and its potentially slow speeds versus an ahead-of-time compiled language,
 despite it being faster than other, higher-level languages.
 TODO: EXAMPLE OF LOW LEVEL DIFFICULTIES
 
 
-<a id="org63cb782"></a>
+<a id="orgc5e899b"></a>
 
 # Semantics
 
 
-<a id="orga3c22e8"></a>
+<a id="orgf1fdf9e"></a>
 
 ## Scoping Rules
 
 
-<a id="orge364159"></a>
+<a id="org1c79a2d"></a>
 
 ### Go Semantics
 
@@ -80,7 +120,7 @@ in a previous scope, not the current `a` that was just declared,
 unlike certain languages like `C`.
 
 
-<a id="org598fc92"></a>
+<a id="org8321afc"></a>
 
 ### Mapping Strategy
 
@@ -106,12 +146,12 @@ identifier refers to a unique declaration, then the locals won't
 refer to the wrong local.
 
 
-<a id="org6a7abcd"></a>
+<a id="org0aeaa7c"></a>
 
 ## Switch Statements
 
 
-<a id="org0a9375e"></a>
+<a id="org6736cd5"></a>
 
 ### Go Semantics
 
@@ -138,7 +178,7 @@ breaking at the end of it. This makes cases significantly semantically different
 -   Case statement expressions do not need to be a constant expression.
 
 
-<a id="orgec8a33c"></a>
+<a id="org80c741b"></a>
 
 ### Mapping Strategy
 
@@ -163,21 +203,73 @@ Semantically:
     switch statement of the language).
 
 
-<a id="org68d7c23"></a>
+<a id="org2fd5576"></a>
 
-## TODO Assignments
-
-
-<a id="org10f65a1"></a>
-
-### TODO Go Semantics
+## Assignments
 
 
-<a id="org7778270"></a>
+<a id="orgd2399d5"></a>
 
-### TODO Mapping Strategy
+### Go Semantics
+
+In `GoLite`, assignments are either an assignment operator with a
+LHS expression and a RHS expression or just two non empty
+expression lists of equal length. This makes them structurally
+different (for the two non empty list case) from classic
+assignments that either only allow single expressions whether that
+be on both sides or only the RHS (assign many expressions to the
+same value). However, this structural difference is a lot more
+significant than it seems at first glance, because the assignments
+are done in a \`\`simultaneous'' way, that is `a, b = b, a` will
+effectively swap the values of `a` and `b`, whereas if the
+assignments were done sequentially, `a` and `b` would be the
+original value of `b` and wouldn't be swapped.
 
 
-<a id="org75c8ce3"></a>
+<a id="orgbfaff21"></a>
+
+### Mapping Strategy
+
+There are two tricky things about assignments:
+
+-   Assignment operators. We cannot just convert `e += e2` to `e =
+          e + e2`, where `e` is an expression, because `e` might contain a
+    function call with side-effects, which we do not want to call
+    twice (note that in some cases, the assignment operator has an
+    equivalent instruction, i.e. incrementing and decrementing using
+    `iinc`, however we generalize in this discussion as most
+    operators do not have an equivalent instruction to operate and
+    assign at the same time). There are thus several cases for `e`:
+    -   `e` is just an identifier, then we can just convert `e += e2`
+        to `e = e + e2`, as there will be no side effects.
+    -   `e` is a selector. If `e` is an addressable selector, then it
+        is not operating on the direct/anonymous return value of a
+        function call and so re-evaluating `e` will not produce any
+        side effects. Thus we can do `e = e + e2` again.
+    -   `e` is an index, say `e3[e4]`. In this case, `e3` can be an
+        anonymous `slice` from a function return and `e4` can also be an
+        anonymous `int` from a function return. So in order to avoid
+        duplicate side effects, we resolve `e3[e4]` to some base
+        expression without function calls, storing the result on the
+        stack, then we operate on the stack, adding `e2` and then
+        assigning the result to whatever the stack value references.
+    -   The other cases for `e` are not lvalues and shouldn't happen
+        in the checked AST.
+-   Assignment of multiple expressions. As mentioned earlier, we
+    cannot do the assignments sequentially. Thus we evaluate the
+    entire RHS, pushing each result onto the stack and then
+    assigning each stack element one by one to their respective LHS
+    expression. This way `a, b = b, a` will not overwrite the values
+    used on the RHS. This is one of the advantages of using a stack
+    based language, as the stack implicitly acts like temporary
+    variables, so we don't need to simulate temporary variables for
+    swapping/simulating simultaneous assignment.
+
+
+<a id="org05de90c"></a>
 
 # TODO Currently Implemented
+
+The main feature that was worked on during this milestone was the
+creation of our intermediate representation and the conversion of
+the typechecked AST to said IR.
