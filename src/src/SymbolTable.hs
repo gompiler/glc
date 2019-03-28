@@ -108,6 +108,7 @@ class Typify a
       -- Given root type and current subtype, recursively resolve all instances of
       -- `TypeMap rootIdent Infer` to `rootType`
     where
+      -- TODO remove? We can keep the cycle as a Cycle constructor
       resolveType :: SType -> SType -> SType
       resolveType rootType (Array i stype) =
         Array i $ resolveType rootType stype
