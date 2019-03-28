@@ -207,7 +207,11 @@ instance IRRep C.Stmt where
   toIR (C.Println el) =
     intercalate (printIR (C.Lit $ C.StringLit " ")) (map printIR el) ++
     printIR (C.Lit $ C.StringLit "\n") -- TODO
-  toIR _ = undefined
+  toIR (C.Return me) =
+    maybe
+      (iri [Return Nothing])
+      (\e -> toIR e ++ iri [Return $ Just (exprIRType e)])
+      me
 
 printIR :: C.Expr -> [IRItem]
 printIR e =
