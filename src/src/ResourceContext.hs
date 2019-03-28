@@ -87,6 +87,7 @@ new = do
 newScope :: ST s (ResourceScope s)
 newScope = undefined
 
+-- | Create a new scope level
 enterScope :: ResourceContext s -> ST s ()
 enterScope st = do
   rc <- readRef st
@@ -94,12 +95,18 @@ enterScope st = do
   let vars = scope : varScopes rc
   writeRef st $ rc {varScopes = vars}
 
+-- | Exit current scope level
+-- This allows us to reuse offsets for all variables created in the current scope
+-- Note that there's no catch if we attempt to exit the global scope
 exitScope :: ResourceContext s -> ST s ()
 exitScope st = do
   rc <- readRef st
   let (_:vars) = varScopes rc
   writeRef st $ rc {varScopes = vars}
 
+-- | Get the index of the provided scope ident
+-- If it already exists, output will be existing index
+-- Otherwise, we will output 1 greater than the biggest index to date
 getVarIndex :: forall s. ResourceContext s -> C.ScopedIdent -> ST s VarIndex
 getVarIndex st si = do
   let key = VarKey si
@@ -124,6 +131,9 @@ getVarIndex st si = do
       index <- HT.lookup varTable key
       return $! index <?> size
 
+-- | Gets the associated struct type from a list of fields
+-- Note that field order matters, though two structs with the same keys and type
+-- But in different orders are technically the same
 getStructType :: forall s. ResourceContext s -> [C.FieldDecl] -> ST s StructType
 getStructType st fields = do
   let key = StructKey fields
@@ -146,6 +156,6 @@ getStructType st fields = do
     structName :: Int -> C.Ident
     structName i = C.Ident $ "GlcStruct" ++ show i
 
--- Returns a list of unique structs, ordered by creation
+-- | Returns a list of unique structs, ordered by creation
 getAllStructs :: ResourceContext s -> ST s [StructType]
 getAllStructs st = reverse . allStructs <$> readRef st
