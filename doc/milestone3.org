@@ -112,32 +112,41 @@ whilst implementing the components for milestone 3.  \newpage
     - Simple statements don't exist.
     - Expressions aren't optional.
     - Case statements don't match on a list of expressions.
-    The simple statement is executed before the case checking and
-    after that the optional expression is compared with each case
+    The simple statement is executed before the ~case~ checking.
+    After that, the optional expression is compared with each ~case~
     statement, evaluating and comparing expression lists from left to
     right. The first match enters that case's body, automatically
-    breaking at the end of it. This makes cases significantly semantically different:
+    breaking at the end of it. This makes cases significantly different
+    semantically:
     - Cases automatically break.
     - Each ~case~ or ~default~ block defines its own scope for declarations.
     - Case statement expressions do not need to be a constant expression.
 
 *** Mapping Strategy
     For the structural differences:
-    - Simple statements can be the first statement in the new ``scope''.
-    - Any optional expression can be converted to the constant literal `true`.
+    - Simple statements can be modeled and executed as the first statement in
+      the new ``scope''.
+    - Missing expressions can be converted to the constant literal `true`.
     - For a list of expressions that is of length greater than one, we
-      can compare each element from the list one at a time, duping the
-      element we need to compare for each comparison (as otherwise
-      we'll lose it).
+      can compare each element from the list one at a time, duplicating the
+      value we're comparing to before each comparison (as otherwise
+      we'll lose it during the stack operation). In other terms, the value we
+      compare to during each ~case~ block is stored on the stack until the
+      ~switch~ statement is done.
     Semantically:
+    - After ~case~ expression comparisons, we will either jump to the case body
+      or keep going to the next ~case~ comparison or ~default~ block.
     - To automatically break, for each case statement, we add a ~goto~
       to a label at the end of the switch statement.
-    - Simulating new scopes is easy because of how our scoping works,
-      the variable names will already be resolved to their correct local.
-    - The expressions not being constants does not matter too much for
-      us, as we will compare each expression normally (we are
-      simulating switch statements and aren't limited by the native
-      switch statement of the language).
+    - ~default~ statement jumps should be placed after all jumps to case bodies
+      as the fall-through case, when no other jumps are followed.
+    - Simulating new scopes is easy because of how our scoping works;
+      the variable names will already be resolved to their correct local's
+      index.
+    - Expressions in ~case~ blocks not being constants does not matter too much
+      for us, as we will compare each expression normally (we are
+      simulating switch statements using ~goto~ and comparisons, and aren't
+      limited by any language-native ~switch~ statement definitions).
 ** Assignments
 *** Go Semantics
     In ~GoLite~, assignments are either an assignment operator with a
