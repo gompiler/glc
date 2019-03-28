@@ -5,7 +5,8 @@
 This document is for explaining the design decisions we had to make
 whilst implementing the components for milestone 3.  \newpage
 * JVM Bytecode for Code Generation
-  We decided on targeting JVM bytecode for our compiler, through the Krakatau
+  We decided on targeting JVM bytecode for our compiler, through the
+  [[https://github.com/Storyyeller/Krakatau][Krakatau]]
   bytecode assembler. Krakatau bytecode syntax is derived from Jasmin, but with
   a more modern codebase (written in Python) and some additional features.
 ** Advantages
