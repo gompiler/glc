@@ -84,8 +84,11 @@ new = do
   structMap' <- HT.new
   newRef $ RC {allStructs = [], varScopes = [], structMap = structMap'}
 
+-- | Create a new resource scope
 newScope :: ST s (ResourceScope s)
-newScope = undefined
+newScope = do
+  m <- HT.new
+  return $ RS m 0
 
 -- | Create a new scope level
 enterScope :: ResourceContext s -> ST s ()
