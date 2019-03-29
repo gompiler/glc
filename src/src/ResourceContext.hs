@@ -139,7 +139,7 @@ getVarIndex st si = do
 -- But in different orders are technically the same
 getStructType :: forall s. ResourceContext s -> [FieldDecl] -> ST s StructType
 getStructType st fields = do
-  let key = StructKey fields
+  let key = StructKey undefined -- fields
   rc <- readRef st
   let m = structMap rc
   candidate <- HT.lookup m key
