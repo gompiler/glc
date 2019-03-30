@@ -167,9 +167,7 @@ instance Typify Type where
           (AlreadyDecl "Field ")
           (concat <$$> (sequence <$> mapM checkField fdl))
       checkField :: FieldDecl -> ST s (Glc' [Field])
-      checkField (FieldDecl idl (_, t)) = do
-        ft <- fieldType' t
-        return $ toField idl <$> ft
+      checkField (FieldDecl idl (_, t)) = toField idl <$$> fieldType' t
       -- | Checks first for cyclic type, then defaults to the generic type resolver
       fieldType' :: Type -> ST s (Glc' SType)
       fieldType' t =
@@ -272,8 +270,7 @@ instance Symbolize FuncDecl T.FuncDecl
               -- TODO don't use toType here; resolve only type def types
            =
             let (pl, sil) = unzip l
-             in do returnTypeEither <- retType
-                   return $ (\ret -> ((pl, ret), sil)) <$> returnTypeEither
+             in (\ret -> ((pl, ret), sil)) <$$> retType
           insertFunc ::
                (([Param], CType), [SymbolInfo]) -> ST s (Glc' T.FuncDecl)
           insertFunc (ftup, sil) =
@@ -317,9 +314,8 @@ instance Symbolize FuncDecl T.FuncDecl
       getAllIdents = concatMap (\(ParameterDecl nidl _) -> toList nidl) pdl
       checkParams :: [ParameterDecl] -> ST s (Glc' [(Param, SymbolInfo)])
       checkParams pdl' =
-        checkDup st getAllIdents DuplicateParam $ do
-          pl <- mapM checkParam pdl'
-          return $ concat <$> sequence pl
+        checkDup st getAllIdents DuplicateParam $
+        concat <$$> (sequence <$> mapM checkParam pdl')
       checkParam :: ParameterDecl -> ST s (Glc' [(Param, SymbolInfo)])
       checkParam (ParameterDecl idl (_, t')) = do
         et <- toType st Nothing t' -- Remove ST
@@ -711,9 +707,7 @@ instance Symbolize Decl T.Decl where
   recurse st (TypeDef tdl) = fmap T.TypeDef <$> recurse st tdl
 
 instance Symbolize [VarDecl'] [T.VarDecl'] where
-  recurse st vdl = do
-    el <- mapM (recurse st) vdl
-    return $ concat <$> sequence el
+  recurse st vdl = concat <$$> (sequence <$> mapM (recurse st) vdl)
 
 instance Symbolize VarDecl' [T.VarDecl'] where
   recurse :: forall s. SymbolTable s -> VarDecl' -> ST s (Glc' [T.VarDecl'])
