@@ -405,48 +405,48 @@ spec = do
                 }
                |]
     , [text|
-              type s1 struct{
+      type s1 struct{
 	      a bool
 	      a2 int
-              }
+      }
 
-              type s2 struct{
+      type s2 struct{
 	      a int
 	      a2 s1
-              }
+      }
 
-              type (
+      type (
 	      g int
 	      s3 struct{
               a g
-	      }
+        }
 	      _ int
 	      _a int
 	      _a_ _a
 	      __ _a_
-              )
+      )
 
-              func __j() int{
+      func __j() int{
 	      a, _ := 6, 3
 	      // _ = 3
 	      return 9
-              }
+      }
 
-              func retInt() int{
+      func retInt() int{
 	      return 5
-              }
+      }
 
-              func retBool(a int) bool{
+      func retBool(a int) bool{
 	      return true
-              }
+      }
 
-              func main() {
+      func main() {
 	      type false bool
 	      var b int = 5
 
 	      for {
-              type int float64
-              var ssss int = int(63.0)
+          type int float64
+          var ssss int = int(63.0)
 	      }
 
 	      type int2 int
@@ -459,42 +459,49 @@ spec = do
 	      var intVar int2 = int2(5)
 	      var intVar2 int3 = int3(5)
 	      if true {
-              // intVar2 = int3(5)
+          // intVar2 = int3(5)
 	      }
 
-              }
+      }
 
-              func weird() int{
+      func weird() int{
 	      if (true){
-              // type int float64
-              var g int = int(6)
-              return g
+          // type int float64
+          var g int = int(6)
+          return g
 	      }else{
-              // type int float64
-              var g int = int(5)
-              return g
+          // type int float64
+          var g int = int(5)
+          return g
 	      }
-              }
-              type int3 int
-              type int bool
+      }
+      type int3 int
+      type int bool
 
-              func bbool() int{
+      func bbool() int{
 	      return int(true)
-              }
-              func sl(g []int3) []int3{
+      }
+      func sl(g []int3) []int3{
 	      // _ = 7
 	      var _ = 7
 	      g = append(g, int3(5))
 	      return g
-              }
+      }
 
-              func wut(){
+      func wut(){
 	      var z []int3
 	      _ = sl(z)
-              }
+      }
 
-              var _ = 5
-              |]
+      var _ = 5
+      |]
+    , [text|
+      func test() int {
+        type a []int
+        var b []a
+        return len(b[0])
+      }
+      |]
 --    , [text|
 --      |]
 --    , [text|
@@ -593,13 +600,13 @@ spec = do
       }
       |]
     , [text|
-     // Init must be a function at the top level
-     type init int
-     |]
+      // Init must be a function at the top level
+      type init int
+      |]
     , [text|
-     // Main must be a function at the top level
-     type main int
-     |]
+      // Main must be a function at the top level
+      type main int
+      |]
     , [text|
       // Main can only be declared once
       func main() {
@@ -645,70 +652,68 @@ spec = do
       }
       |]
     , [text|
-    type a struct {b int;}
-    func f() a {
-        var r a
-        return r
-    }
-    func main(){ f().b++
-    }
-     |]
+      type a struct {b int;}
+      func f() a {
+          var r a
+          return r
+      }
+      func main(){ f().b++
+      }
+      |]
     , [text|
-    type a struct {b int;}
-    func f() a {
-        var r a
-        return r
-    }
-    func main(){
-        // Not addressable because it's a function return
-        f().b--
-    }
-     |]
+      type a struct {b int;}
+      func f() a {
+          var r a
+          return r
+      }
+      func main(){
+          // Not addressable because it's a function return
+          f().b--
+      }
+      |]
     , [text|
-    type a struct {b int;}
-    func f() a {
-        var r a
-        return r
-    }
-    func main(){
-        var g a;
-        // Func return not addressable
-        f() = g;
-    }
-     |]
+      type a struct {b int;}
+      func f() a {
+          var r a
+          return r
+      }
+      func main(){
+          var g a;
+          // Func return not addressable
+          f() = g;
+      }
+      |]
     , [text|
-    type a struct {b int;}
-    func f() a {
-        var r a
-        return r
-    }
-    func main(){
-        // Func return not addressable
-        f().b = 3;
-    }
-     |]
+      type a struct {b int;}
+      func f() a {
+          var r a
+          return r
+      }
+      func main(){
+          // Func return not addressable
+          f().b = 3;
+      }
+      |]
     , [text|
-    func f() [5]int {
-        var r [5]int
-        return r
-    }
-    func main(){
-        // Func return (not slice) not addressable
-        f()[3] = 3;
-    }
-     |]
+      func f() [5]int {
+          var r [5]int
+          return r
+      }
+      func main(){
+          // Func return (not slice) not addressable
+          f()[3] = 3;
+      }
+      |]
     , [text|
-    func f() [5]int {
-        var r [5]int
-        return r
-    }
-    func main(){
-        // Func return (not slice) not addressable
-        f()[3]++;
-    }
-     |]
---    , [text|
---      |]
+      func f() [5]int {
+          var r [5]int
+          return r
+      }
+      func main(){
+          // Func return (not slice) not addressable
+          f()[3]++;
+      }
+      |]
 --    , [text|
 --      |]
 --    , [text|

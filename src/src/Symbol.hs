@@ -5,7 +5,6 @@ import qualified CheckedData      as T (Ident (..), Scope (..),
                                         ScopedIdent (..))
 import           Control.Monad.ST
 import           Data             (Identifier (..))
-import           Data.Functor       (($>))
 import           Data.List        (intercalate)
 import qualified SymbolTableCore  as S
 
@@ -46,6 +45,7 @@ data SType
   | PBool
   | PRune
   | PString
+--  | Cycle SType
   | Infer -- Infer the type at typechecking, not at symbol table generation
   | Void -- For the type of Arguments when calling a void function (which is permissible for ExprStmts)
   deriving (Eq)
@@ -55,8 +55,7 @@ instance Show Symbol where
     case s of
       Func pl t ->
         " [function] = (" ++
-        intercalate "," (map (\(_, t') -> show t') pl) ++
-        ") -> " ++ show t
+        intercalate "," (map (\(_, t') -> show t') pl) ++ ") -> " ++ show t
       Variable t' -> " [variable] = " ++ show t'
       SType t' -> " [type] = " ++ showDef t'
       _ -> ""
@@ -87,11 +86,7 @@ instance Show SType where
       Void -> "void"
 
 -- | Resolve type of an Identifier
-resolve ::
-     Identifier
-  -> SymbolTable s
-  -> ErrorMessage'
-  -> ST s (Glc' SType)
+resolve :: Identifier -> SymbolTable s -> ErrorMessage' -> ST s (Glc' SType)
 resolve ident@(Identifier _ idv) st notDeclError = do
   res <- S.lookup st idv
   sres <- maybe (S.disableMessages st $> Left notDeclError) (return . Right) res
@@ -110,8 +105,10 @@ resolve ident@(Identifier _ idv) st notDeclError = do
         "string"  -> Right PString
         _         -> Left $ createError ident NotBase -- This shouldn't happen, don't insert any other base types
     resolve' ConstantBool _ _ = Right PBool
-    resolve' (Variable _) _ _ = Left $ createError ident $ NotTypeMap "variable "
-    resolve' (SType t') scope ident' = Right $ TypeMap (mkSIdStr scope ident') t'
+    resolve' (Variable _) _ _ =
+      Left $ createError ident $ NotTypeMap "variable "
+    resolve' (SType t') scope ident' =
+      Right $ TypeMap (mkSIdStr scope ident') t'
     resolve' (Func _ _) _ _ = Left $ createError ident $ NotTypeMap "function "
 
 data ResolveError
@@ -120,7 +117,9 @@ data ResolveError
   deriving (Show, Eq)
 
 instance ErrorEntry ResolveError where
-  errorMessage (NotTypeMap s) = "Identifier resolves to a " ++ s ++ " which is not a type map and so we cannot resolve its type"
+  errorMessage (NotTypeMap s) =
+    "Identifier resolves to a " ++
+    s ++ " which is not a type map and so we cannot resolve its type"
   errorMessage NotBase = "Undefined base type, cannot resolve to a base type"
 
 -- | Take Symbol table scope and string to make ScopedIdent, add dummy offset

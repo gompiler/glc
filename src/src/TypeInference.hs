@@ -400,6 +400,18 @@ isComparable styp =
     TypeMap _ styp' -> isComparable styp'
     Struct fdl      -> all (isComparable . snd) fdl
     _               -> True
+  where
+    -- | Checks that all type elements are comparable
+
+    possiblyComparable :: SType -> Bool
+    possiblyComparable stype =
+      case stype of
+          Slice _         -> False
+          Array _ atyp    -> isComparable atyp
+          TypeMap _ styp' -> isComparable styp'
+          Struct fdl      -> all (isComparable . snd) fdl
+          _               -> True
+
 
 -- | Resolves a defined type to a base type, WITHOUT nested types (arrays, etc)
 resolveSType :: SType -> SType
