@@ -165,8 +165,7 @@ instance Typify Type where
           st
           getAllIdents
           (AlreadyDecl "Field ")
-          (do fields <- mapM checkField fdl
-              return $ concat <$> sequence fields)
+          (concat <$$> (sequence <$> mapM checkField fdl))
       checkField :: FieldDecl -> ST s (Glc' [Field])
       checkField (FieldDecl idl (_, t)) = do
         ft <- fieldType' t
@@ -178,7 +177,7 @@ instance Typify Type where
                 -- Cycles only permitted on matching root sident with a non struct root type
               of
           (Just _, False) -> return $ Right Infer -- TODO
-          _                    -> toType' st root t brec
+          _               -> toType' st root t brec
       toField :: Identifiers -> SType -> [Field]
       toField idl t = map (\(Identifier _ vname) -> (vname, t)) (toList idl)
       isTypeStruct :: Type -> Bool
