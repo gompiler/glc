@@ -26,13 +26,12 @@ instance Converter C.Type Type where
       C.ArrayType i t -> ArrayType i <$> convert rc t
       C.SliceType t -> SliceType <$> convert rc t
       C.StructType fields ->
-        StructType <$> (RC.getStructType rc =<< mapM (convert rc) fields)
+        StructType <$> (RC.getStructName rc =<< mapM (convert rc) fields)
       C.PInt -> return PInt
       C.PFloat64 -> return PFloat64
       C.PBool -> return PBool
       C.PRune -> return PRune
       C.PString -> return PString
-      C.Cycle -> return Cycle
 
 instance Converter C.FieldDecl FieldDecl where
   convert rc (C.FieldDecl ident t) = FieldDecl ident <$> convert rc t

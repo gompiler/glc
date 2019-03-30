@@ -5,7 +5,7 @@ module ResourceContext
   , new
   , enterScope
   , exitScope
-  , getStructType
+  , getStructName
   , getVarIndex
   , getAllStructs
   ) where
@@ -55,15 +55,15 @@ instance Hashable VarKey where
 type VarTable s = HT.HashTable s VarKey VarIndex
 
 newtype StructKey =
-  StructKey [C.FieldDecl]
+  StructKey [FieldDecl]
   deriving (Show, Eq)
 
 instance Hashable StructKey where
   hashWithSalt salt (StructKey fields) =
     foldl (\a b -> a * 3 + b) 0 (map hashField fields)
     where
-      hashField :: C.FieldDecl -> Int
-      hashField (C.FieldDecl (C.Ident i) _) = hashWithSalt salt i
+      hashField :: FieldDecl -> Int
+      hashField (FieldDecl (C.Ident i) _) = hashWithSalt salt i
 
 type StructTable s = HT.HashTable s StructKey StructType
 
@@ -137,14 +137,14 @@ getVarIndex st si = do
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type
 -- But in different orders are technically the same
-getStructType :: forall s. ResourceContext s -> [FieldDecl] -> ST s StructType
-getStructType st fields = do
-  let key = StructKey undefined -- fields
+getStructName :: forall s. ResourceContext s -> [FieldDecl] -> ST s C.Ident
+getStructName st fields = do
+  let key = StructKey fields
   rc <- readRef st
   let m = structMap rc
   candidate <- HT.lookup m key
   case candidate of
-    Just structType -> return structType
+    Just (Struct name _) -> return name
     Nothing
       -- Create the new StructType, save it in the hashmap,
       -- and update our struct list
@@ -154,7 +154,7 @@ getStructType st fields = do
           allStructs' = value : allStructs rc
       _ <- HT.insert m key value
       writeRef st $! rc {allStructs = allStructs'}
-      return $! value
+      return $! name
   where
     structName :: Int -> C.Ident
     structName i = C.Ident $ "GlcStruct" ++ show i

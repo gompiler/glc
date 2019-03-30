@@ -201,7 +201,7 @@ data Type
   -- | See https://golang.org/ref/spec#Slice_types
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
-  | StructType StructType
+  | StructType Ident
   | PInt
   | PFloat64
   | PBool

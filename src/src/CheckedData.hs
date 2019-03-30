@@ -310,7 +310,8 @@ data Type
   -- are all valid in golite
   -- While we can represent it with an infinite data structure,
   -- It makes modification more difficult
-  | Cycle
+  -- TODO check if we actually want to support this
+  -- | Cycle
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl
