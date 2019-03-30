@@ -103,30 +103,31 @@ class Typify a
     eitherSType <- toType' st (Just rootIdent, t) t False
     return $ do
       stype <- eitherSType
-      let stype' = resolveType stype' stype
+      let stype' = stype
+--      let stype' = resolveType stype' stype
       return stype'
       -- Given root type and current subtype, recursively resolve all instances of
       -- `TypeMap rootIdent Infer` to `rootType`
     where
       -- TODO remove? We can keep the cycle as a Cycle constructor
-      resolveType :: SType -> SType -> SType
-      resolveType rootType (Array i stype) =
-        Array i $ resolveType rootType stype
-      -- Only slices allow for recursive types
-      resolveType rootType stype@(Slice (TypeMap ident Infer)) =
-        if ident == rootIdent
-          then Slice rootType
-          else stype
-      resolveType rootType (Slice stype) = Slice $ resolveType rootType stype
-      resolveType rootType (Struct fields) =
-        Struct $ map (resolveField rootType) fields
-      resolveType rootType (TypeMap ident stype) =
-        if ident == rootIdent && stype == Infer
-          then TypeMap ident rootType
-          else TypeMap ident $ resolveType rootType stype
-      resolveType _ stype = stype
-      resolveField :: SType -> Field -> Field
-      resolveField rootType (ident, stype) = (ident, resolveType rootType stype)
+--      resolveType :: SType -> SType -> SType
+--      resolveType rootType (Array i stype) =
+--        Array i $ resolveType rootType stype
+--      -- Only slices allow for recursive types
+--      resolveType rootType stype@(Slice (TypeMap ident Infer)) =
+--        if ident == rootIdent
+--          then Slice rootType
+--          else stype
+--      resolveType rootType (Slice stype) = Slice $ resolveType rootType stype
+--      resolveType rootType (Struct fields) =
+--        Struct $ map (resolveField rootType) fields
+--      resolveType rootType (TypeMap ident stype) =
+--        if ident == rootIdent && stype == Infer
+--          then TypeMap ident rootType
+--          else TypeMap ident $ resolveType rootType stype
+--      resolveType _ stype = stype
+--      resolveField :: SType -> Field -> Field
+--      resolveField rootType (ident, stype) = (ident, resolveType rootType stype)
   -- | Underlying type resolver.
   -- If SIdent is not Nothing, it represents the top most identity.
   -- If cyclic types are allowed, then it should be used to create a typemap with infer

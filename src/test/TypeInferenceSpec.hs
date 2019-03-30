@@ -33,11 +33,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
         _ <- SymTab.add st "int_5_arr_2" (Variable (Array 5 PInt))
         _ <- SymTab.add st "int_3_arr" (Variable (Array 3 PInt))
         _ <- SymTab.add st "int_slice" (Variable (Slice PInt))
-        _ <-
-          SymTab.add
-            st
-            "fi_func"
-            (Func [("a", PFloat64), ("b", PInt)] PInt)
+        _ <- SymTab.add st "fi_func" (Func [("a", PFloat64), ("b", PInt)] PInt)
         -- type int_t int
         -- var it_var int_t
         _ <- SymTab.add st "int_t" (SType PInt)
@@ -82,7 +78,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
             st
             "sr_var"
             (Variable $ TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
-        _ <- SymTab.add st "struct_slice" (SType $ (Struct [("a", Slice PInt)]))
+        _ <- SymTab.add st "struct_slice" (SType (Struct [("a", Slice PInt)]))
         _ <- SymTab.add st "arr_slice" (SType $ Array 5 (Slice PInt))
         either (Left . errgen) Right <$> infer st e
 
@@ -240,7 +236,7 @@ spec
     -- Nested casts
     , ("string(rune(5 + int(5.0)) + 'c' + rune(float64('a') + 2.0))", PString)
     -- Custom type casts
-    , ("int_t(7)", TypeMap (mkSIdStr' 1 "int_t") (PInt))
+    , ("int_t(7)", TypeMap (mkSIdStr' 1 "int_t") PInt)
     ]
   expectFail
     "casting"
