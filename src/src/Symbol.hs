@@ -1,9 +1,13 @@
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module Symbol where
 
 import           Base
 import qualified CheckedData      as T (Ident (..), Scope (..),
                                         ScopedIdent (..))
 import           Control.Monad.ST
+import qualified Cyclic           as C
 import           Data             (Identifier (..))
 import           Data.List        (intercalate)
 import qualified SymbolTableCore  as S
@@ -12,9 +16,9 @@ import qualified SymbolTableCore  as S
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
 type SIdent = T.ScopedIdent
 
-type Param = (String, SType)
+type Param = (String, CType)
 
-type Field = (String, SType)
+type Field = (String, CType)
 
 -- | SymbolInfo: symbol name, corresponding symbol, scope depth
 type SymbolInfo = (String, Symbol, S.Scope)
@@ -28,10 +32,18 @@ data Symbol
   -- In Golite, the only constants we have are booleans
   | ConstantBool
   | Func [Param]
-         SType
-  | Variable SType
-  | SType SType -- Declared types
+         CType
+  | Variable CType
+  | SType CType -- Declared types
   deriving (Eq)
+
+-- Wrapper stype with both the root instance and the current instance.
+-- All cycles should redirect back to the root
+type CType = C.CyclicContainer SType
+
+instance C.Cyclic SType where
+  isRoot Infer = True
+  isRoot _     = False
 
 data SType
   = Array Int
@@ -45,11 +57,11 @@ data SType
   | PBool
   | PRune
   | PString
---  | Cycle SType
   | Infer -- Infer the type at typechecking, not at symbol table generation
   | Void -- For the type of Arguments when calling a void function (which is permissible for ExprStmts)
   deriving (Eq)
 
+--  | Cycle SType
 instance Show Symbol where
   show s =
     case s of
@@ -57,7 +69,7 @@ instance Show Symbol where
         " [function] = (" ++
         intercalate "," (map (\(_, t') -> show t') pl) ++ ") -> " ++ show t
       Variable t' -> " [variable] = " ++ show t'
-      SType t' -> " [type] = " ++ showDef t'
+      SType t' -> " [type] = " ++ showDef (C.get t')
       _ -> ""
       -- | Fully resolve SType as a string, alternative to show when you want to show the complete mapping
     where
@@ -86,7 +98,7 @@ instance Show SType where
       Void -> "void"
 
 -- | Resolve type of an Identifier
-resolve :: Identifier -> SymbolTable s -> ErrorMessage' -> ST s (Glc' SType)
+resolve :: Identifier -> SymbolTable s -> ErrorMessage' -> ST s (Glc' CType)
 resolve ident@(Identifier _ idv) st notDeclError = do
   res <- S.lookup st idv
   sres <- maybe (S.disableMessages st $> Left notDeclError) (return . Right) res
@@ -95,20 +107,20 @@ resolve ident@(Identifier _ idv) st notDeclError = do
     resolve' t scope idv
     -- | Resolve symbol to type
   where
-    resolve' :: Symbol -> S.Scope -> String -> Either ErrorMessage' SType
+    resolve' :: Symbol -> S.Scope -> String -> Glc' CType
     resolve' Base _ ident' =
       case ident' of
-        "int"     -> Right PInt
-        "float64" -> Right PFloat64
-        "bool"    -> Right PBool
-        "rune"    -> Right PRune
-        "string"  -> Right PString
+        "int"     -> Right $ C.new PInt
+        "float64" -> Right $ C.new PFloat64
+        "bool"    -> Right $ C.new PBool
+        "rune"    -> Right $ C.new PRune
+        "string"  -> Right $ C.new PString
         _         -> Left $ createError ident NotBase -- This shouldn't happen, don't insert any other base types
-    resolve' ConstantBool _ _ = Right PBool
+    resolve' ConstantBool _ _ = Right $ C.new PBool
     resolve' (Variable _) _ _ =
       Left $ createError ident $ NotTypeMap "variable "
     resolve' (SType t') scope ident' =
-      Right $ TypeMap (mkSIdStr scope ident') t'
+      Right $ C.map (TypeMap (mkSIdStr scope ident')) t'
     resolve' (Func _ _) _ _ = Left $ createError ident $ NotTypeMap "function "
 
 data ResolveError
