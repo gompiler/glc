@@ -377,7 +377,6 @@ isNumeric = flip elem [PInt, PFloat64, PRune] . resolveSType
 isAddable :: SType -> Bool
 isAddable = isOrdered
 
--- isComparable: many many things...
 isOrdered :: SType -> Bool
 isOrdered = flip elem [PInt, PFloat64, PRune, PString] . resolveSType
 
@@ -391,29 +390,20 @@ isBoolean = (==) PBool . resolveSType
 isIntegerLike :: SType -> Bool
 isIntegerLike = flip elem [PInt, PRune] . resolveSType
 
--- | Checks if a type is comparable at all (arrays still need length checks).
+-- | Checks that all type elements are comparable
+-- TODO arrays still need length checks?
+-- Note that we now resolve all typemap cases to their respective base types
 isComparable :: SType -> Bool
-isComparable styp =
-  case styp of
+isComparable stype =
+  case stype of
     Slice _         -> False
     Array _ atyp    -> isComparable atyp
     TypeMap _ styp' -> isComparable styp'
     Struct fdl      -> all (isComparable . snd) fdl
     _               -> True
-  where
-    -- | Checks that all type elements are comparable
 
-    possiblyComparable :: SType -> Bool
-    possiblyComparable stype =
-      case stype of
-          Slice _         -> False
-          Array _ atyp    -> isComparable atyp
-          TypeMap _ styp' -> isComparable styp'
-          Struct fdl      -> all (isComparable . snd) fdl
-          _               -> True
-
-
--- | Resolves a defined type to a base type, WITHOUT nested types (arrays, etc)
+-- | Resolves a defined type to a base type, WITHOUT nested types
+-- In other words, resolved types within arrays and structs are not converted
 resolveSType :: SType -> SType
 resolveSType (TypeMap _ st) = resolveSType st
 resolveSType t              = t -- Other types
