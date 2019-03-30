@@ -44,13 +44,13 @@ type CType = C.CyclicContainer SType
 instance C.Cyclic SType where
   isRoot Infer = True
   isRoot _     = False
-  hasRoot Infer = True
-  hasRoot (Array _ t) = C.hasRoot t
-  hasRoot (Slice t) = C.hasRoot t
+  hasRoot Infer           = True
+  hasRoot (Array _ t)     = C.hasRoot t
+  hasRoot (Slice t)       = C.hasRoot t
   hasRoot (Struct fields) = any (C.hasRoot . snd) fields
-  hasRoot (TypeMap _ t) = C.hasRoot t
-  hasRoot _ = False
-
+  -- Note that an infer within another typemap is no longer the same
+  -- root as the current cycle. We therefore also mark it as false
+  hasRoot _               = False
 
 data SType
   = Array Int
@@ -58,7 +58,7 @@ data SType
   | Slice SType
   | Struct [Field] -- List of fields
   | TypeMap SIdent
-            SType
+            CType
   | PInt
   | PFloat64
   | PBool
@@ -84,7 +84,7 @@ instance Show Symbol where
       showDef t =
         case t of
           TypeMap (T.ScopedIdent _ (T.Ident name)) t' ->
-            name ++ " -> " ++ showDef t'
+            name ++ " -> " ++ showDef (C.get t')
           _ -> show t
 
 instance Show SType where
@@ -105,7 +105,7 @@ instance Show SType where
       Void -> "void"
 
 -- | Resolve type of an Identifier
-resolve :: Identifier -> SymbolTable s -> ErrorMessage' -> ST s (Glc' CType)
+resolve :: Identifier -> SymbolTable s -> ErrorMessage' -> ST s (Glc' SType)
 resolve ident@(Identifier _ idv) st notDeclError = do
   res <- S.lookup st idv
   sres <- maybe (S.disableMessages st $> Left notDeclError) (return . Right) res
@@ -114,20 +114,20 @@ resolve ident@(Identifier _ idv) st notDeclError = do
     resolve' t scope idv
     -- | Resolve symbol to type
   where
-    resolve' :: Symbol -> S.Scope -> String -> Glc' CType
+    resolve' :: Symbol -> S.Scope -> String -> Glc' SType
     resolve' Base _ ident' =
       case ident' of
-        "int"     -> Right $ C.new PInt
-        "float64" -> Right $ C.new PFloat64
-        "bool"    -> Right $ C.new PBool
-        "rune"    -> Right $ C.new PRune
-        "string"  -> Right $ C.new PString
+        "int"     -> Right PInt
+        "float64" -> Right PFloat64
+        "bool"    -> Right PBool
+        "rune"    -> Right PRune
+        "string"  -> Right PString
         _         -> Left $ createError ident NotBase -- This shouldn't happen, don't insert any other base types
-    resolve' ConstantBool _ _ = Right $ C.new PBool
+    resolve' ConstantBool _ _ = Right PBool
     resolve' (Variable _) _ _ =
       Left $ createError ident $ NotTypeMap "variable "
     resolve' (SType t') scope ident' =
-      Right $ C.map (TypeMap (mkSIdStr scope ident')) t'
+      Right $ TypeMap (mkSIdStr scope ident') t'
     resolve' (Func _ _) _ _ = Left $ createError ident $ NotTypeMap "function "
 
 data ResolveError

@@ -5,6 +5,7 @@ module Cyclic
   , Cyclic(..)
   , new
   , get
+  , mapContainer
   , getRoot
   , set
   , map
@@ -45,6 +46,11 @@ set (CyclicContainer root _) = CyclicContainer root
 
 map :: (a -> a) -> CyclicContainer a -> CyclicContainer a
 map action c = set c $ action $ get c
+
+mapContainer ::
+     (Cyclic a, Cyclic b) => (a -> b) -> CyclicContainer a -> CyclicContainer b
+mapContainer action (CyclicContainer root current) =
+  CyclicContainer (action root) (action current)
 
 class Cyclic a where
   isRoot :: a -> Bool

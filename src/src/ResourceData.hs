@@ -216,6 +216,7 @@ data Type
   -- While we can represent it with an infinite data structure,
   -- It makes modification more difficult
   | Cycle
+  | TypeMap -- TODO
   deriving (Show, Eq)
 
 data StructType =

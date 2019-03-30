@@ -6,6 +6,7 @@ module TypeInferenceSpec
 
 import           Base             (Stringable (..), expectBase, toString)
 import           Control.Monad.ST
+import qualified Cyclic           as C
 import           Data             (Expr)
 import           ErrorBundle
 import           Parser           (parse)
@@ -14,36 +15,44 @@ import qualified SymbolTable      as SymTab (add, new)
 import           Test.Hspec
 import           TypeInference    (infer)
 
-parseAndInferNoST :: String -> Either ErrorMessage SType
+parseAndInferNoST :: String -> Either ErrorMessage CType
 parseAndInferNoST expStr = either Left runExpr parseResult
   where
     errgen e = e expStr `withPrefix` "typinf error"
     parseResult :: Either ErrorMessage Expr
     parseResult = parse expStr
-    runExpr :: Expr -> Either ErrorMessage SType
+    runExpr :: Expr -> Either ErrorMessage CType
     runExpr e =
       runST $ do
         st <- SymTab.new
-        _ <- SymTab.add st "bool_var" (Variable PBool)
-        _ <- SymTab.add st "int_var" (Variable PInt)
-        _ <- SymTab.add st "float_var" (Variable PFloat64)
-        _ <- SymTab.add st "rune_var" (Variable PRune)
-        _ <- SymTab.add st "string_var" (Variable PString)
-        _ <- SymTab.add st "int_5_arr" (Variable (Array 5 PInt))
-        _ <- SymTab.add st "int_5_arr_2" (Variable (Array 5 PInt))
-        _ <- SymTab.add st "int_3_arr" (Variable (Array 3 PInt))
-        _ <- SymTab.add st "int_slice" (Variable (Slice PInt))
-        _ <- SymTab.add st "fi_func" (Func [("a", PFloat64), ("b", PInt)] PInt)
+        _ <- SymTab.add st "bool_var" (Variable $ C.new PBool)
+        _ <- SymTab.add st "int_var" (Variable $ C.new PInt)
+        _ <- SymTab.add st "float_var" (Variable $ C.new PFloat64)
+        _ <- SymTab.add st "rune_var" (Variable $ C.new PRune)
+        _ <- SymTab.add st "string_var" (Variable $ C.new PString)
+        _ <- SymTab.add st "int_5_arr" (Variable $ C.new (Array 5 PInt))
+        _ <- SymTab.add st "int_5_arr_2" (Variable $ C.new (Array 5 PInt))
+        _ <- SymTab.add st "int_3_arr" (Variable $ C.new (Array 3 PInt))
+        _ <- SymTab.add st "int_slice" (Variable $ C.new (Slice PInt))
+        _ <-
+          SymTab.add
+            st
+            "fi_func"
+            (Func [("a", C.new PFloat64), ("b", C.new PInt)] $ C.new PInt)
         -- type int_t int
         -- var it_var int_t
-        _ <- SymTab.add st "int_t" (SType PInt)
+        _ <- SymTab.add st "int_t" (SType $ C.new PInt)
         _ <-
-          SymTab.add st "it_var" (Variable $ TypeMap (mkSIdStr' 1 "int_t") PInt)
+          SymTab.add
+            st
+            "it_var"
+            (Variable $ C.new $ TypeMap (mkSIdStr' 1 "int_t") $ C.new PInt)
         _ <-
           SymTab.add
             st
             "int_t_slice"
-            (Variable (Slice $ TypeMap (mkSIdStr' 1 "int_t") PInt))
+            (Variable
+               (C.new $ Slice $ TypeMap (mkSIdStr' 1 "int_t") $ C.new PInt))
         -- type struct_type struct {a int; b int;}
         -- var st_var struct_type
         -- _ <- SymTab.app
@@ -51,35 +60,42 @@ parseAndInferNoST expStr = either Left runExpr parseResult
           SymTab.add
             st
             "struct_type"
-            (SType $ Struct [("a", PInt), ("b", PString)])
+            (SType $ C.new $ Struct [("a", PInt), ("b", PString)])
         _ <-
           SymTab.add
             st
             "st_var"
             (Variable $
+             C.new $
              TypeMap
                (mkSIdStr' 2 "struct_type")
-               (Struct [("a", PInt), ("b", PString)]))
+               (C.new $ Struct [("a", PInt), ("b", PString)]))
         -- type as_type [5]string
         -- var as_var as_type
-        _ <- SymTab.add st "a5s" (Variable $ Array 5 PString)
-        _ <- SymTab.add st "as_type" (SType $ Array 5 PString)
-        _ <- SymTab.add st "b_type" (SType PBool)
+        _ <- SymTab.add st "a5s" (Variable $ C.new $ Array 5 PString)
+        _ <- SymTab.add st "as_type" (SType $ C.new $ Array 5 PString)
+        _ <- SymTab.add st "b_type" (SType $ C.new PBool)
         _ <-
           SymTab.add
             st
             "as_var"
-            (Variable $ TypeMap (mkSIdStr' 1 "as_type") (Array 5 PString))
+            (Variable $
+             C.new $ TypeMap (mkSIdStr' 1 "as_type") (C.new $ Array 5 PString))
         -- type sr_type []rune
         -- var sr_var sr_type
-        _ <- SymTab.add st "sr_type" (SType $ Slice PRune)
+        _ <- SymTab.add st "sr_type" (SType $ C.new $ Slice PRune)
         _ <-
           SymTab.add
             st
             "sr_var"
-            (Variable $ TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
-        _ <- SymTab.add st "struct_slice" (SType (Struct [("a", Slice PInt)]))
-        _ <- SymTab.add st "arr_slice" (SType $ Array 5 (Slice PInt))
+            (Variable $
+             C.new $ TypeMap (mkSIdStr' 1 "sr_type") (C.new $ Slice PRune))
+        _ <-
+          SymTab.add
+            st
+            "struct_slice"
+            (SType (C.new $ Struct [("a", Slice PInt)]))
+        _ <- SymTab.add st "arr_slice" (SType $ C.new $ Array 5 (Slice PInt))
         either (Left . errgen) Right <$> infer st e
 
 expectPass :: Stringable s => String -> [(s, SType)] -> SpecWith ()
@@ -93,7 +109,7 @@ expectPass tag =
            "Expected typeinf success on:\n\n" ++
            toString s ++ "\n\nbut failed with\n\n" ++ show err
          Right rtyp ->
-           if etyp == rtyp
+           if C.new etyp == rtyp
              then return ()
              else expectationFailure $
                   "Expected typeinf success on:\n\n" ++
@@ -236,7 +252,7 @@ spec
     -- Nested casts
     , ("string(rune(5 + int(5.0)) + 'c' + rune(float64('a') + 2.0))", PString)
     -- Custom type casts
-    , ("int_t(7)", TypeMap (mkSIdStr' 1 "int_t") PInt)
+    , ("int_t(7)", TypeMap (mkSIdStr' 1 "int_t") $ C.new PInt)
     ]
   expectFail
     "casting"
@@ -291,18 +307,20 @@ spec
     , ("st_var.b", PString)
     , ("as_var[0]", PString)
     , ("as_var[it_var]", PString)
-    , ("append(sr_var, '5')", TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+    , ( "append(sr_var, '5')"
+      , TypeMap (mkSIdStr' 1 "sr_type") $ C.new (Slice PRune))
     , ( "append(sr_var, rune(it_var))"
-      , TypeMap (mkSIdStr' 1 "sr_type") (Slice PRune))
+      , TypeMap (mkSIdStr' 1 "sr_type") $ C.new (Slice PRune))
     -- Unary ops
-    , ("+int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
-    , ("-int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
-    , ("^int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
+    , ("+int_t(5)", TypeMap (mkSIdStr' 1 "int_t") $ C.new PInt)
+    , ("-int_t(5)", TypeMap (mkSIdStr' 1 "int_t") $ C.new PInt)
+    , ("^int_t(5)", TypeMap (mkSIdStr' 1 "int_t") $ C.new PInt)
     -- Binary ops
-    , ("int_t(5) + int_t(5)", TypeMap (mkSIdStr' 1 "int_t") PInt)
+    , ("int_t(5) + int_t(5)", TypeMap (mkSIdStr' 1 "int_t") $ C.new PInt)
     , ("int_t(5) == int_t(5)", PBool)
     , ("int_t(5) >= int_t(5)", PBool)
-    , ("b_type(true) || b_type(true)", TypeMap (mkSIdStr' 1 "b_type") PBool)
+    , ( "b_type(true) || b_type(true)"
+      , TypeMap (mkSIdStr' 1 "b_type") $ C.new PBool)
     ]
   expectFail
     "custom"

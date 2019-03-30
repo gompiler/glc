@@ -8,6 +8,7 @@ module TypeInference
   , isComparable
   , isPrim
   , resolveSType
+  , resolveCType
   ) where
 
 import           Base
@@ -318,15 +319,15 @@ infer st ae@(Arguments _ expr args) = do
           Just (_, Base) -> do
             ft <- fn
             case ts of
-              [ct] -> tryCast ft ct
+              [ct] -> tryCast (C.new ft) ct -- TODO move new?
               _    -> Left $ createError ae $ CastArguments (length ts)
           Just (S.Scope scp, SType ft) ->
             case ts of
               [ct] ->
                 tryCast
-                  (C.map
-                     (TypeMap $ T.ScopedIdent (T.Scope scp) (T.Ident vname))
-                     ft)
+                  -- TODO check
+                  (C.new
+                     (TypeMap (T.ScopedIdent (T.Scope scp) (T.Ident vname)) ft))
                   ct -- Left $ createError ae $ ExprNotDecl (show ft) ident
               _ -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId vname -- non-function identifier
@@ -420,7 +421,7 @@ isComparable ctype = isComparable' $ C.get ctype
       case stype of
         Slice _         -> False
         Array _ atyp    -> isComparable' atyp
-        TypeMap _ styp' -> isComparable' styp'
+        TypeMap _ ctype' -> isComparable ctype'
         Struct fdl      -> all (isComparable' . snd) fdl
         Infer           -> rootComparable
         _               -> True
@@ -428,7 +429,7 @@ isComparable ctype = isComparable' $ C.get ctype
 -- | Resolves a defined type to a base type, WITHOUT nested types
 -- In other words, resolved types within arrays and structs are not converted
 resolveSType :: SType -> SType
-resolveSType (TypeMap _ st) = resolveSType st
+resolveSType (TypeMap _ st) = resolveSType $ C.get st
 resolveSType t              = t -- Other types
 
 resolveCType :: CType -> CType

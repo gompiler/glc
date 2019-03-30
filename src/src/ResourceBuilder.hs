@@ -32,6 +32,8 @@ instance Converter C.Type Type where
       C.PBool -> return PBool
       C.PRune -> return PRune
       C.PString -> return PString
+      C.Cycle -> return Cycle
+      C.TypeMap _ -> return TypeMap
 
 instance Converter C.FieldDecl FieldDecl where
   convert rc (C.FieldDecl ident t) = FieldDecl ident <$> convert rc t

@@ -1,6 +1,7 @@
 module CheckedData where
 
 import           Data.List.NonEmpty (NonEmpty (..))
+import qualified Cyclic as C
 
 data ScopedIdent =
   ScopedIdent Scope
@@ -48,14 +49,14 @@ data Decl
 -- where the expression type is not necessarily the same as the declared one
 data VarDecl' =
   VarDecl' ScopedIdent
-           Type
+           CType
            (Maybe Expr) -- Can declare a variable without an expression
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#TypeDef
 data TypeDef'
   = TypeDef' ScopedIdent
-             Type
+             CType
   -- For mappings that aren't structs, we resolve them to their base types so we don't need to define them anymore
   | NoDef
   deriving (Show, Eq)
@@ -82,7 +83,7 @@ data FuncDecl =
 -- At this stage, we can map each individual identifier to its expected type
 data ParameterDecl =
   ParameterDecl ScopedIdent
-                Type
+                CType
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Parameters
@@ -96,7 +97,7 @@ newtype Parameters =
 -- No result type needed
 data Signature =
   Signature Parameters
-            (Maybe Type)
+            (Maybe CType)
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -184,21 +185,21 @@ data ForClause =
 -- Note that we don't care about parentheses here;
 -- We can infer them from the AST
 data Expr
-  = Unary Type
+  = Unary CType
           UnaryOp
           Expr
-  | Binary Type
+  | Binary CType
            BinaryOp
            Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var Type ScopedIdent
+  | Var CType ScopedIdent
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
-  | AppendExpr Type
+  | AppendExpr CType
                Expr
                Expr
   -- | Golite spec
@@ -211,17 +212,17 @@ data Expr
   | CapExpr Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
-  | Selector Type
+  | Selector CType
              Expr
              Ident
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
-  | Index Type
+  | Index CType
           Expr
           Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
-  | Arguments Type
+  | Arguments CType
               Expr
               [Expr]
   deriving (Show, Eq)
@@ -283,6 +284,22 @@ newtype AssignOp =
   AssignOp (Maybe ArithmOp)
   deriving (Show, Eq)
 
+type CType = C.CyclicContainer Type
+
+instance C.Cyclic Type where
+  isRoot Cycle = True
+  isRoot _     = False
+  hasRoot Cycle           = True
+  hasRoot (ArrayType _ t)     = C.hasRoot t
+  hasRoot (SliceType t)       = C.hasRoot t
+  hasRoot (StructType fields) = any hasRoot' fields
+    where
+          hasRoot' :: FieldDecl -> Bool
+          hasRoot' (FieldDecl _ t) = C.hasRoot t
+  -- Note that an infer within another typemap is no longer the same
+  -- root as the current cycle. We therefore also mark it as false
+  hasRoot _               = False
+
 -- | Type with scope value
 -- Used for caching inferrable types
 -- type InferredType = (Scope, Type)
@@ -311,7 +328,8 @@ data Type
   -- While we can represent it with an infinite data structure,
   -- It makes modification more difficult
   -- TODO check if we actually want to support this
-  -- | Cycle
+   | Cycle
+   | TypeMap CType
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl

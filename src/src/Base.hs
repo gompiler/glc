@@ -6,12 +6,14 @@ module Base
   , (<?>)
   , (<&>)
   , ($>)
+  , (<$$>)
   ) where
 
-import           Data.Functor (($>), (<&>))
+import           Data.Functor     (($>), (<&>))
 
-import qualified Data.Maybe   as Maybe
+import qualified Data.Maybe       as Maybe
 
+import           Control.Monad.ST (ST)
 import           ErrorBundle
 
 type Glc a = Either ErrorMessage a
@@ -24,3 +26,8 @@ infixl 4 <?>
 
 (<?>) :: Maybe b -> a -> Either a b
 val <?> m = Maybe.maybe (Left m) Right val
+
+infixl 4 <$$>
+
+(<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
+h <$$> m = fmap h <$> m
