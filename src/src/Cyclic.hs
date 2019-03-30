@@ -1,38 +1,51 @@
+{-# LANGUAGE GADTs #-}
+
 module Cyclic
   ( CyclicContainer
   , Cyclic(..)
   , new
   , get
+  , getRoot
   , set
   , map
   ) where
 
 import           Prelude hiding (map)
 
-data CyclicContainer a =
-  CyclicContainer a
-                  a
+data CyclicContainer a where
+  CyclicContainer :: Cyclic a => a -> a -> CyclicContainer a
 
-instance Eq a => Eq (CyclicContainer a) where
-  (CyclicContainer r1 c1) == (CyclicContainer r2 c2) = r1 == r2 && c1 == c2
+instance Eq a => Eq (CyclicContainer a)
+  -- | Compares current item, and compares root if a cycle is found
+                                                                    where
+  (CyclicContainer r1 c1) == (CyclicContainer r2 c2) =
+    c1 == c2 && (not (hasRoot c1) || r1 == r2)
 
 instance Show a => Show (CyclicContainer a) where
-  show (CyclicContainer _ c) = show c
+  show (CyclicContainer root current) =
+    show $
+    if isRoot current
+      then root
+      else current
 
 new :: Cyclic a => a -> CyclicContainer a
 new root = CyclicContainer root root
 
-get :: Cyclic a => CyclicContainer a -> a
+get :: CyclicContainer a -> a
 get (CyclicContainer root current) =
   if isRoot current
     then root
     else current
 
-set :: Cyclic a => CyclicContainer a -> a -> CyclicContainer a
+getRoot :: CyclicContainer a -> a
+getRoot (CyclicContainer root _) = root
+
+set :: CyclicContainer a -> a -> CyclicContainer a
 set (CyclicContainer root _) = CyclicContainer root
 
-map :: Cyclic a => (a -> a) -> CyclicContainer a -> CyclicContainer a
+map :: (a -> a) -> CyclicContainer a -> CyclicContainer a
 map action c = set c $ action $ get c
 
 class Cyclic a where
   isRoot :: a -> Bool
+  hasRoot :: a -> Bool

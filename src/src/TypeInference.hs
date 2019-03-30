@@ -14,44 +14,45 @@ import           Base
 import qualified CheckedData        as T (Ident (..), Scope (..),
                                           ScopedIdent (..))
 import           Control.Monad.ST
+import qualified Cyclic             as C
 import           Data
 import           Data.List          (intercalate)
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
 import qualified Data.List.NonEmpty as NE (head, map, nub)
-import           Symbol             (SType (..), Symbol (..), SymbolTable,
-                                     resolve)
+import           Symbol             (CType, SType (..), Symbol (..),
+                                     SymbolTable, resolve)
 import qualified SymbolTableCore    as S
 
 data ExpressionTypeError
   = BadUnaryOp String
-               (NonEmpty SType)
+               (NonEmpty CType)
   | BadBinaryOp String
-                (NonEmpty SType)
-  | AppendMismatch SType
-                   SType
-  | BadAppend SType
-              SType
-  | BadLen SType
-  | BadCap SType
-  | NonStruct SType
+                (NonEmpty CType)
+  | AppendMismatch CType
+                   CType
+  | BadAppend CType
+              CType
+  | BadLen CType
+  | BadCap CType
+  | NonStruct CType
   | NoField String
   | BadIndex String
-             SType
-  | NonIndexable SType
+             CType
+  | NonIndexable CType
   | NonFunctionCall
   | NonFunctionId String
-  | ArgumentMismatch [SType]
-                     [SType]
-  | CompareMismatch SType
-                    SType
-  | IncompatibleCast SType
-                     SType
+  | ArgumentMismatch [CType]
+                     [CType]
+  | CompareMismatch CType
+                    CType
+  | IncompatibleCast CType
+                     CType
   | CastArguments Int
   | ExprNotDecl String
                 Identifier
   | ExprVoidFunc Identifier
   | NotVar Identifier
-  | ExpectBaseType SType
+  | ExpectBaseType CType
   deriving (Show, Eq)
 
 instance ErrorEntry ExpressionTypeError where
@@ -92,7 +93,7 @@ instance ErrorEntry ExpressionTypeError where
         "Cast expects base type; non-base type " ++ show styp ++ " provided"
 
 -- | Main type inference function
-infer :: forall s. SymbolTable s -> Expr -> ST s (Glc' SType)
+infer :: forall s. SymbolTable s -> Expr -> ST s (Glc' CType)
 -- | Infers the types of '+' unary operator expressions
 infer st e@(Unary _ Pos inner) =
   inferConstraint
@@ -153,8 +154,10 @@ infer st e@(Binary _ op i1 i2) =
     innerList = fromList [i1, i2]
     -- Does not always just return bool! May return a defined type which
     -- resolves to bool instead.
+    andOrConstraint :: Expr -> NonEmpty Expr -> ST s (Glc' CType)
     andOrConstraint =
       inferConstraint st isBoolean NE.head (BadBinaryOp "boolean")
+    comparableConstraint :: Expr -> NonEmpty Expr -> ST s (Glc' CType)
     comparableConstraint _ _ -- Special ugly case
      = do
       ei1 <- infer st i1
@@ -163,10 +166,10 @@ infer st e@(Binary _ op i1 i2) =
         t1 <- ei1
         t2 <- ei2
         if t1 == t2 && isComparable t1
-          then Right PBool
+          then Right $ C.new PBool
           else Left $ createError e $ CompareMismatch t1 t2
     orderConstraint =
-      inferConstraint st isOrdered (const PBool) (BadBinaryOp "ordered")
+      inferConstraint st isOrdered (const $ C.new PBool) (BadBinaryOp "ordered")
     addConstraint =
       inferConstraint
         st
@@ -174,7 +177,7 @@ infer st e@(Binary _ op i1 i2) =
         NE.head
         (\ts ->
            BadBinaryOp
-             (case NE.head ts of
+             (case C.get $ NE.head ts of
                 PString -> "string"
                 _       -> "numeric")
              ts)
@@ -186,6 +189,7 @@ infer st e@(Binary _ op i1 i2) =
 infer _ (Lit l) =
   return $
   Right $
+  C.new $
   case l of
     IntLit {}    -> PInt
     FloatLit {}  -> PFloat64
@@ -194,7 +198,7 @@ infer _ (Lit l) =
 -- | Resolve variables to the type their identifier points to in the scope
 infer st (Var ident@(Identifier _ vname)) = resolveVar
   where
-    resolveVar :: ST s (Glc' SType)
+    resolveVar :: ST s (Glc' CType)
     resolveVar = do
       res <- S.lookup st vname
       case res of
@@ -205,7 +209,7 @@ infer st (Var ident@(Identifier _ vname)) = resolveVar
           return $
           case sym of
             Variable t'  -> Right t'
-            ConstantBool -> Right PBool -- Constants can only be booleans
+            ConstantBool -> Right $ C.new PBool -- Constants can only be booleans
             _            -> Left $ createError ident (NotVar ident)
 -- | Infer types of append expressions
 -- An append expression append(e1, e2) is well-typed if:
@@ -219,12 +223,16 @@ infer st ae@(AppendExpr _ e1 e2) = do
     -- TODO: MORE CASES FOR NICER ERRORS?
           of
       (Right st1, Right t2) ->
-        case resolveSType st1 of
-          Slice t1 ->
-            if t1 == t2
-              then Right st1
-              else Left $ createError ae $ AppendMismatch t1 t2
-          _ -> Left $ createError ae $ BadAppend st1 t2
+        let ct1 = resolveCType st1
+         in case C.get ct1 of
+              Slice t
+                -- Rewrap subtype with root cycle
+               ->
+                let t1 = C.set ct1 t
+                 in if t1 == t2
+                      then Right st1
+                      else Left $ createError ae $ AppendMismatch t1 t2
+              _ -> Left $ createError ae $ BadAppend st1 t2
         -- Left $ createError ae $ BadAppend t1 t2
       (Left em, _) -> Left em
       (_, Left em) -> Left em
@@ -235,7 +243,7 @@ infer st le@(LenExpr _ expr) =
   inferConstraint
     st
     isLenCompatible
-    (const PInt)
+    (const $ C.new PInt)
     (BadLen . NE.head)
     le
     (fromList [expr])
@@ -246,7 +254,7 @@ infer st ce@(CapExpr _ expr) =
   inferConstraint
     st
     isCapCompatible
-    (const PInt)
+    (const $ C.new PInt)
     (BadCap . NE.head)
     ce
     (fromList [expr])
@@ -256,15 +264,17 @@ infer st ce@(CapExpr _ expr) =
 -- * S resolves to a struct type that has a field named id.
 infer st se@(Selector _ expr (Identifier _ ident)) = do
   eitherSele <- infer st expr
-  return $ eitherSele >>= (infer' . resolveSType)
+  return $ eitherSele >>= (infer' . resolveCType)
   -- TODO: Look into resolveSType / alternates for this
   where
-    infer' :: SType -> Glc' SType
-    infer' (Struct fdl) =
-      case filter (\(fid, _) -> fid == ident) fdl of
-        [(_, sft)] -> Right sft
-        _          -> Left $ createError se $ NoField ident
-    infer' t = Left $ createError se $ NonStruct t
+    infer' :: CType -> Glc' CType
+    infer' t =
+      case C.get t of
+        Struct fdl ->
+          case filter (\(fid, _) -> fid == ident) fdl of
+            [(_, sft)] -> Right $ C.set t sft
+            _          -> Left $ createError se $ NoField ident
+        _ -> Left $ createError se $ NonStruct t
 -- | Infer types of index expressions
 -- Indexing into a slice or an array (expr[index]) is well-typed if:
 -- * expr is well-typed and resolves to []T or [N]T;
@@ -276,15 +286,15 @@ infer st ie@(Index _ e1 e2) = do
   return $ do
     t1 <- e1e
     t2 <- e2e
-    case resolveSType t1 of
-      Slice t   -> indexable t t2 "slice"
-      Array _ t -> indexable t t2 "array"
-      t         -> Left $ createError ie $ NonIndexable t
+    case C.get $ resolveCType t1 of
+      Slice t   -> indexable (C.set t1 t) t2 "slice"
+      Array _ t -> indexable (C.set t1 t) t2 "array"
+      t         -> Left $ createError ie $ NonIndexable $ C.set t1 t
      -- | Checks that second type is an int before returning type or error
   where
-    indexable :: SType -> SType -> String -> Glc' SType
+    indexable :: CType -> CType -> String -> Glc' CType
     indexable t t' errTag =
-      case resolveSType t' of
+      case C.get $ resolveCType t' of
         PInt -> Right t
         _    -> Left $ createError ie $ BadIndex errTag t'
 -- | Infer types of arguments (function call / typecast) expressions
@@ -314,7 +324,9 @@ infer st ae@(Arguments _ expr args) = do
             case ts of
               [ct] ->
                 tryCast
-                  (TypeMap (T.ScopedIdent (T.Scope scp) (T.Ident vname)) ft)
+                  (C.map
+                     (TypeMap $ T.ScopedIdent (T.Scope scp) (T.Ident vname))
+                     ft)
                   ct -- Left $ createError ae $ ExprNotDecl (show ft) ident
               _ -> Left $ createError ae $ CastArguments (length ts)
           Just _ -> Left $ createError ae $ NonFunctionId vname -- non-function identifier
@@ -322,31 +334,31 @@ infer st ae@(Arguments _ expr args) = do
     (_, Right _) -> return $ Left $ createError ae NonFunctionCall -- trying to call non-function
     (_, Left err) -> return $ Left err
   where
-    tryCast :: SType -> SType -> Glc' SType
+    tryCast :: CType -> CType -> Glc' CType
     tryCast ft ct =
       case (isPrim rct, isPrim rft) of
         (True, True) ->
           if rct == rft ||
              (isNumeric rct && isNumeric rft) ||
-             (rft == PString && isIntegerLike rct)
+             (C.get rft == PString && isIntegerLike rct)
             then Right ft
             else Left $ createError ae $ IncompatibleCast ft ct
         (False, _) -> Left $ createError ae $ ExpectBaseType rct
         (True, False) -> Left $ createError ae $ ExpectBaseType rft
       where
-        rct :: SType
-        rct = resolveSType ct
-        rft :: SType
-        rft = resolveSType ft
+        rct :: CType
+        rct = resolveCType ct
+        rft :: CType
+        rft = resolveCType ft
 
 inferConstraint ::
      SymbolTable s -- st
-  -> (SType -> Bool) -- isCorrect
-  -> (NonEmpty SType -> SType) -- resultSType
-  -> (NonEmpty SType -> ExpressionTypeError) -- makeError
+  -> (CType -> Bool) -- isCorrect
+  -> (NonEmpty CType -> CType) -- resultSType
+  -> (NonEmpty CType -> ExpressionTypeError) -- makeError
   -> Expr -- parentExpr
   -> NonEmpty Expr -- childs
-  -> ST s (Glc' SType)
+  -> ST s (Glc' CType)
 inferConstraint st isCorrect resultSType makeError parentExpr inners = do
   eitherTs <- sequence <$> mapM (infer st) inners
   return $ do
@@ -356,54 +368,68 @@ inferConstraint st isCorrect resultSType makeError parentExpr inners = do
       then Right $ resultSType ts
       else Left $ createError parentExpr (makeError ts)
 
-isLenCompatible :: SType -> Bool
+isLenCompatible :: CType -> Bool
 isLenCompatible t =
-  case resolveSType t of
+  case resolveSType $ C.get t of
     PString  -> True
     Array {} -> True
     Slice {} -> True
     _        -> False
 
-isCapCompatible :: SType -> Bool
+isCapCompatible :: CType -> Bool
 isCapCompatible t =
-  case resolveSType t of
+  case resolveSType $ C.get t of
     Array {} -> True
     Slice {} -> True
     _        -> False
 
-isNumeric :: SType -> Bool
-isNumeric = flip elem [PInt, PFloat64, PRune] . resolveSType
+check :: [SType] -> CType -> Bool
+check candidates t = resolveSType (C.get t) `elem` candidates
 
-isAddable :: SType -> Bool
+isNumeric :: CType -> Bool
+isNumeric = check [PInt, PFloat64, PRune]
+
+isAddable :: CType -> Bool
 isAddable = isOrdered
 
-isOrdered :: SType -> Bool
-isOrdered = flip elem [PInt, PFloat64, PRune, PString] . resolveSType
+isOrdered :: CType -> Bool
+isOrdered = check [PInt, PFloat64, PRune, PString]
 
-isPrim :: SType -> Bool
-isPrim = flip elem [PInt, PFloat64, PBool, PRune, PString] . resolveSType
+isPrim :: CType -> Bool
+isPrim = check [PInt, PFloat64, PBool, PRune, PString]
 
 -- | Check if a type resolves to a boolean
-isBoolean :: SType -> Bool
-isBoolean = (==) PBool . resolveSType
+isBoolean :: CType -> Bool
+isBoolean = (==) PBool . resolveSType . C.get
 
-isIntegerLike :: SType -> Bool
-isIntegerLike = flip elem [PInt, PRune] . resolveSType
+isIntegerLike :: CType -> Bool
+isIntegerLike = check [PInt, PRune]
 
 -- | Checks that all type elements are comparable
 -- TODO arrays still need length checks?
 -- Note that we now resolve all typemap cases to their respective base types
-isComparable :: SType -> Bool
-isComparable stype =
-  case stype of
-    Slice _         -> False
-    Array _ atyp    -> isComparable atyp
-    TypeMap _ styp' -> isComparable styp'
-    Struct fdl      -> all (isComparable . snd) fdl
-    _               -> True
+isComparable :: CType -> Bool
+isComparable ctype = isComparable' $ C.get ctype
+    -- | Lazily check once if root is comparable
+  where
+    rootComparable = isComparable' $ C.getRoot ctype
+    -- | Traverse stype to check that all subfields are comparable
+    -- If infer is reached, check the root
+    isComparable' :: SType -> Bool
+    isComparable' stype =
+      case stype of
+        Slice _         -> False
+        Array _ atyp    -> isComparable' atyp
+        TypeMap _ styp' -> isComparable' styp'
+        Struct fdl      -> all (isComparable' . snd) fdl
+        Infer           -> rootComparable
+        _               -> True
 
 -- | Resolves a defined type to a base type, WITHOUT nested types
 -- In other words, resolved types within arrays and structs are not converted
 resolveSType :: SType -> SType
 resolveSType (TypeMap _ st) = resolveSType st
 resolveSType t              = t -- Other types
+
+resolveCType :: CType -> CType
+resolveCType = C.map resolveSType

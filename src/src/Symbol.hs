@@ -18,7 +18,7 @@ type SIdent = T.ScopedIdent
 
 type Param = (String, CType)
 
-type Field = (String, CType)
+type Field = (String, SType)
 
 -- | SymbolInfo: symbol name, corresponding symbol, scope depth
 type SymbolInfo = (String, Symbol, S.Scope)
@@ -44,6 +44,13 @@ type CType = C.CyclicContainer SType
 instance C.Cyclic SType where
   isRoot Infer = True
   isRoot _     = False
+  hasRoot Infer = True
+  hasRoot (Array _ t) = C.hasRoot t
+  hasRoot (Slice t) = C.hasRoot t
+  hasRoot (Struct fields) = any (C.hasRoot . snd) fields
+  hasRoot (TypeMap _ t) = C.hasRoot t
+  hasRoot _ = False
+
 
 data SType
   = Array Int
