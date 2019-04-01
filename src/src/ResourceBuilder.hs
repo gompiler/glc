@@ -77,3 +77,31 @@ instance Converter T.Expr Expr where
       ct = convert rc
       ce :: T.Expr -> ST s Expr
       ce = convert rc
+
+instance Converter T.SimpleStmt SimpleStmt where
+  convert :: forall s. RC.ResourceContext s -> T.SimpleStmt -> ST s SimpleStmt
+  convert rc stmt =
+    case stmt of
+      T.EmptyStmt          -> return EmptyStmt
+      T.ExprStmt e         -> ExprStmt <$> ce e
+      T.Increment e        -> Increment <$> ce e
+      T.Decrement e        -> Decrement <$> ce e
+      T.Assign op exprs    -> Assign op <$> mapM convertAssign exprs
+      T.ShortDeclare decls -> ShortDeclare <$> mapM convertShortDecl decls
+    where
+      convertAssign :: (T.Expr, T.Expr) -> ST s (Expr, Expr)
+      convertAssign (e1, e2) = liftM2 (,) (ce e1) (ce e2)
+      convertShortDecl :: (T.ScopedIdent, T.Expr) -> ST s (VarIndex, Expr)
+      convertShortDecl (i, e) = liftM2 (,) (RC.getVarIndex rc i) (ce e)
+      ce :: T.Expr -> ST s Expr
+      ce = convert rc
+--instance Converter T.Stmt Stmt where
+--  convert :: forall s. RC.ResourceContext s -> T.Stmt -> ST s Stmt
+--  convert rc stmt =
+--    case stmt of
+--      T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
+--    where
+--      cs :: T.Stmt -> ST s Stmt
+--      cs = convert rc
+--      ce :: T.Expr -> ST s Expr
+--      ce = convert rc
