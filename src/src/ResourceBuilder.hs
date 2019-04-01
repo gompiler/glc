@@ -96,7 +96,9 @@ instance Converter T.SimpleStmt SimpleStmt where
       ce :: T.Expr -> ST s Expr
       ce = convert rc
 
-instance Converter T.Stmt Stmt where
+instance Converter T.Stmt Stmt
+  -- | TODO check if block stmt should become a scoped block (for temp gen)
+                                                                            where
   convert :: forall s. RC.ResourceContext s -> T.Stmt -> ST s Stmt
   convert rc stmt =
     case stmt of
@@ -105,11 +107,11 @@ instance Converter T.Stmt Stmt where
       T.If (s, e) s1 s2 -> liftM3 If (liftM2 (,) (css s) (ce e)) (cs s1) (cs s2)
       T.Switch s e cases -> undefined
       T.For clause s -> undefined
-      -- TODO add label tags?
+        -- TODO add label tags?
       T.Break -> return Break
       T.Continue -> return Continue
-      -- TODO collect structs, convert vars
-      T.Declare decl -> undefined
+        -- TODO ensure blockstmt doesn't end up adding scopes for this case
+      T.Declare decl -> BlockStmt . fmap Declare <$> convert rc decl
       T.Print exprs -> Print <$> mapM ce exprs
       T.Println exprs -> Println <$> mapM ce exprs
       T.Return e -> Return <$> maybe (return Nothing) (Just <$$> ce) e
@@ -120,6 +122,10 @@ instance Converter T.Stmt Stmt where
       cs = convert rc
       ce :: T.Expr -> ST s Expr
       ce = convert rc
+      convertForClause :: T.ForClause -> ST s ForClause
+      convertForClause (T.ForClause pre e post) =
+        -- TODO add constant bool for default
+        liftM3 ForClause (css pre) (maybe (pure undefined) ce e) (css post)
 
 instance Converter T.Decl [VarDecl] where
   convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [VarDecl]

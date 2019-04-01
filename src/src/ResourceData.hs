@@ -27,6 +27,7 @@ data Program = Program
 -- This is necessary for cases like var a float = 5,
 -- where the expression type is not necessarily the same as the declared one
 data VarDecl =
+
   VarDecl VarIndex
           Type
           (Maybe Expr) -- TODO If no explicit expr, assign default?
@@ -147,7 +148,7 @@ data SwitchCase =
 -- Golite does not support range statement
 data ForClause =
   ForClause SimpleStmt
-            (Maybe Expr)
+            Expr
             SimpleStmt
   deriving (Show, Eq)
 
