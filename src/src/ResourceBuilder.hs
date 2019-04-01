@@ -9,7 +9,7 @@ module ResourceBuilder
   ( convertProgram
   ) where
 
---import           Base
+import           Base
 import qualified CheckedData      as T
 import           Control.Monad    (liftM2, liftM3, liftM4)
 import           Control.Monad.ST
@@ -95,13 +95,28 @@ instance Converter T.SimpleStmt SimpleStmt where
       convertShortDecl (i, e) = liftM2 (,) (RC.getVarIndex rc i) (ce e)
       ce :: T.Expr -> ST s Expr
       ce = convert rc
---instance Converter T.Stmt Stmt where
---  convert :: forall s. RC.ResourceContext s -> T.Stmt -> ST s Stmt
---  convert rc stmt =
---    case stmt of
---      T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
---    where
---      cs :: T.Stmt -> ST s Stmt
---      cs = convert rc
---      ce :: T.Expr -> ST s Expr
---      ce = convert rc
+
+instance Converter T.Stmt Stmt where
+  convert :: forall s. RC.ResourceContext s -> T.Stmt -> ST s Stmt
+  convert rc stmt =
+    case stmt of
+      T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
+      T.SimpleStmt s -> SimpleStmt <$> css s
+      T.If (s, e) s1 s2 -> liftM3 If (liftM2 (,) (css s) (ce e)) (cs s1) (cs s2)
+      T.Switch s e cases -> undefined
+      T.For clause s -> undefined
+      -- TODO add label tags?
+      T.Break -> return Break
+      T.Continue -> return Continue
+      -- TODO collect structs, convert vars
+      T.Declare decl -> undefined
+      T.Print exprs -> Print <$> mapM ce exprs
+      T.Println exprs -> Println <$> mapM ce exprs
+      T.Return e -> Return <$> maybe (return Nothing) (Just <$$> ce) e
+    where
+      css :: T.SimpleStmt -> ST s SimpleStmt
+      css = convert rc
+      cs :: T.Stmt -> ST s Stmt
+      cs = convert rc
+      ce :: T.Expr -> ST s Expr
+      ce = convert rc
