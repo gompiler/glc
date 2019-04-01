@@ -138,9 +138,9 @@ data Stmt
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
-data SwitchCase
-  = Case (NonEmpty Expr)
-         Stmt
+data SwitchCase =
+  Case (NonEmpty Expr)
+       Stmt
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#For_statements
@@ -157,19 +157,23 @@ data ForClause =
 -- Note that we don't care about parentheses here;
 -- We can infer them from the AST
 data Expr
-  = Unary UnaryOp
+  = Unary Type
+          UnaryOp
           Expr
-  | Binary BinaryOp
+  | Binary Type
+           BinaryOp
            Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var VarIndex
+  | Var Type
+        VarIndex
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
-  | AppendExpr Expr
+  | AppendExpr Type
+               Expr
                Expr
   -- | Golite spec
   -- See https://golang.org/ref/spec#Length_and_capacity
@@ -181,15 +185,18 @@ data Expr
   | CapExpr Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
-  | Selector Expr
+  | Selector Type
+             Expr
              Ident
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
-  | Index Expr
+  | Index Type
+          Expr
           Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
-  | Arguments Expr
+  | Arguments Type
+              Expr
               [Expr]
   deriving (Show, Eq)
 
