@@ -10,11 +10,9 @@ module Prettify
   ) where
 
 import           Base
-import qualified CheckedData        as C
 import           Data
 import           Data.List          (intercalate, null)
 import           Data.List.NonEmpty (NonEmpty (..), toList)
-import qualified Data.List.NonEmpty as NE (map, unzip)
 import qualified Data.Maybe         as Maybe
 import           Parser
 
@@ -198,9 +196,9 @@ instance Prettify (NonEmpty Expr) where
   prettify' = prettify''
 
 instance Prettify Expr where
-  prettify (Unary _ o' e) = "(" ++ prettify o' ++ prettify e ++ ")"
-  prettify (Binary _ o' e1 e2) =
-    "(" ++ prettify e1 ++ " " ++ prettify o' ++ " " ++ prettify e2 ++ ")"
+  prettify (Unary _ o e) = "(" ++ prettify o ++ prettify e ++ ")"
+  prettify (Binary _ o e1 e2) =
+    "(" ++ prettify e1 ++ " " ++ prettify o ++ " " ++ prettify e2 ++ ")"
   prettify (Lit l) = prettify l
   prettify (Var i) = prettify i
   prettify (AppendExpr _ e1 e2) =
@@ -226,7 +224,7 @@ instance Prettify Literal where
 instance Prettify BinaryOp where
   prettify Or          = "||"
   prettify And         = "&&"
-  prettify (Arithm o') = prettify o'
+  prettify (Arithm o) = prettify o
   prettify Data.EQ     = "=="
   prettify NEQ         = "!="
   prettify Data.LT     = "<"
@@ -278,172 +276,3 @@ instance Prettify Type where
 --  prettify s@StructType {} = intercalate "; " $ prettify' s
 instance Prettify FieldDecl where
   prettify' (FieldDecl idents t) = [prettify idents] `skipNewLine` prettify' t
-
-instance Prettify C.Program where
-  prettify' p = prettify' (toOrig p :: Program)
-
-class ConvertAST a b where
-  toOrig :: a -> b
-
-o :: Offset
-o = Offset 0
-
--- | Scoped identifier to identifier with offset
-si2ident :: C.ScopedIdent -> Identifier
-si2ident (C.ScopedIdent _ (C.Ident vname)) = Identifier o vname
-
--- | Scoped identifier to non empty idents with offsets
-si2idents :: C.ScopedIdent -> Identifiers
-si2idents si = (si2ident si) :| []
-
-instance ConvertAST C.Program Program where
-  toOrig (C.Program (C.Ident vname) tl) =
-    Program (Identifier o vname) (map toOrig tl)
-
-instance ConvertAST C.TopDecl TopDecl where
-  toOrig (C.TopDecl d)      = TopDecl (toOrig d)
-  toOrig (C.TopFuncDecl fd) = TopFuncDecl (toOrig fd)
-
-instance ConvertAST C.Decl Decl where
-  toOrig (C.VarDecl vdl) = VarDecl (map toOrig vdl)
-  toOrig (C.TypeDef tdl) = TypeDef (Maybe.mapMaybe toOrig tdl)
-
-instance ConvertAST C.VarDecl' VarDecl' where
-  toOrig (C.VarDecl' si t (Just e)) =
-    VarDecl' (si2idents si) (Left (toOrig t, [toOrig e]))
-  toOrig (C.VarDecl' si t Nothing) =
-    VarDecl' (si2idents si) (Left (toOrig t, []))
-
-instance ConvertAST C.TypeDef' (Maybe TypeDef') where
-  toOrig (C.TypeDef' si t) = Just $ TypeDef' (si2ident si) (toOrig t)
-  toOrig C.NoDef           = Nothing
-
-instance ConvertAST C.FuncDecl FuncDecl where
-  toOrig (C.FuncDecl si sig fb) =
-    FuncDecl (si2ident si) (toOrig sig) (toOrig fb)
-
-instance ConvertAST C.ParameterDecl ParameterDecl where
-  toOrig (C.ParameterDecl si t) = ParameterDecl (si2idents si) (toOrig t)
-
-instance ConvertAST C.Parameters Parameters where
-  toOrig (C.Parameters pdl) = Parameters (map toOrig pdl)
-
-instance ConvertAST C.Signature Signature where
-  toOrig (C.Signature params (Just t)) =
-    Signature (toOrig params) (Just (toOrig t))
-  toOrig (C.Signature params Nothing) = Signature (toOrig params) Nothing
-
-instance ConvertAST C.SimpleStmt SimpleStmt where
-  toOrig C.EmptyStmt = EmptyStmt
-  toOrig (C.ExprStmt e) = ExprStmt (toOrig e)
-  toOrig (C.Increment e) = Increment o (toOrig e)
-  toOrig (C.Decrement e) = Decrement o (toOrig e)
-  toOrig (C.Assign op eltup) =
-    let (nel1, nel2) = NE.unzip eltup
-     in Assign o (toOrig op) (NE.map toOrig nel1) (NE.map toOrig nel2)
-  toOrig (C.ShortDeclare ideltup) =
-    let (nsil, nel) = NE.unzip ideltup
-     in ShortDeclare (NE.map si2ident nsil) (NE.map toOrig nel)
-
-instance ConvertAST C.Stmt Stmt where
-  toOrig (C.BlockStmt sl) = BlockStmt (map toOrig sl)
-  toOrig (C.SimpleStmt ss) = SimpleStmt (toOrig ss)
-  toOrig (C.If (ss, e) s1 s2) = If (toOrig ss, toOrig e) (toOrig s1) (toOrig s2)
-  toOrig (C.Switch ss (Just e) scl) =
-    Switch (toOrig ss) (Just (toOrig e)) (map toOrig scl)
-  toOrig (C.Switch ss Nothing scl) = Switch (toOrig ss) Nothing (map toOrig scl)
-  toOrig (C.For fcl s) = For (toOrig fcl) (toOrig s)
-  toOrig C.Break = Break o
-  toOrig C.Continue = Continue o
-  toOrig (C.Declare d) = Declare (toOrig d)
-  toOrig (C.Print el) = Print (map toOrig el)
-  toOrig (C.Println el) = Println (map toOrig el)
-  toOrig (C.Return (Just e)) = Return o (Just (toOrig e))
-  toOrig (C.Return Nothing) = Return o Nothing
-
-instance ConvertAST C.SwitchCase SwitchCase where
-  toOrig (C.Case nle s) = Case o (NE.map toOrig nle) (toOrig s)
-  toOrig (C.Default s)  = Default o (toOrig s)
-
-instance ConvertAST C.ForClause ForClause where
-  toOrig (C.ForClause ss1 (Just e) ss2) =
-    ForClause (toOrig ss1) (Just (toOrig e)) (toOrig ss2)
-  toOrig (C.ForClause ss1 Nothing ss2) =
-    ForClause (toOrig ss1) Nothing (toOrig ss2)
-
-instance ConvertAST C.Expr Expr where
-  toOrig (C.Unary _ op e) = Unary o (toOrig op) (toOrig e)
-  toOrig (C.Binary _ op e1 e2) = Binary o (toOrig op) (toOrig e1) (toOrig e2)
-  toOrig (C.Lit lit) = Lit (toOrig lit)
-  toOrig (C.Var _ si) = Var (si2ident si)
-  toOrig (C.AppendExpr _ e1 e2) = AppendExpr o (toOrig e1) (toOrig e2)
-  toOrig (C.LenExpr e) = LenExpr o (toOrig e)
-  toOrig (C.CapExpr e) = CapExpr o (toOrig e)
-  toOrig (C.Selector _ e (C.Ident vname)) =
-    Selector o (toOrig e) (Identifier o vname)
-  toOrig (C.Index _ e1 e2) = Index o (toOrig e1) (toOrig e2)
-  toOrig (C.Arguments _ e el) = Arguments o (toOrig e) (map toOrig el)
-
-instance ConvertAST C.Literal Literal where
-  toOrig (C.IntLit i)    = IntLit o Decimal (show i)
-  toOrig (C.FloatLit f)  = FloatLit o (show f)
-  toOrig (C.RuneLit c)   = RuneLit o (show c)
-  toOrig (C.StringLit s) = StringLit o Interpreted s
-
-instance ConvertAST C.BinaryOp BinaryOp where
-  toOrig op =
-    case op of
-      C.Or         -> Or
-      C.And        -> And
-      C.Arithm aop -> Arithm (toOrig aop)
-      C.EQ         -> Data.EQ
-      C.NEQ        -> NEQ
-      C.LT         -> Data.LT
-      C.LEQ        -> LEQ
-      C.GT         -> Data.GT
-      C.GEQ        -> GEQ
-
-instance ConvertAST C.ArithmOp ArithmOp where
-  toOrig op =
-    case op of
-      C.Add       -> Add
-      C.Subtract  -> Subtract
-      C.BitOr     -> BitOr
-      C.BitXor    -> BitXor
-      C.Multiply  -> Multiply
-      C.Divide    -> Divide
-      C.Remainder -> Remainder
-      C.ShiftL    -> ShiftL
-      C.ShiftR    -> ShiftR
-      C.BitAnd    -> BitAnd
-      C.BitClear  -> BitClear
-
-instance ConvertAST C.UnaryOp UnaryOp where
-  toOrig op =
-    case op of
-      C.Pos           -> Pos
-      C.Neg           -> Neg
-      C.Not           -> Not
-      C.BitComplement -> BitComplement
-
-instance ConvertAST C.AssignOp AssignOp where
-  toOrig (C.AssignOp (Just op)) = AssignOp (Just (toOrig op))
-  toOrig (C.AssignOp Nothing)   = AssignOp Nothing
-
-instance ConvertAST C.Type Type' where
-  toOrig t = (o, toOrig t)
-
-instance ConvertAST C.Type Type where
-  toOrig (C.ArrayType i t) =
-    ArrayType (Lit (IntLit o Decimal (show i))) (toOrig t)
-  toOrig (C.SliceType t) = SliceType (toOrig t)
-  toOrig (C.StructType fdl) = StructType (map toOrig fdl)
-  toOrig C.PInt = Type (Identifier o "int")
-  toOrig C.PFloat64 = Type (Identifier o "float64")
-  toOrig C.PBool = Type (Identifier o "bool")
-  toOrig C.PRune = Type (Identifier o "rune")
-  toOrig C.PString = Type (Identifier o "string")
-
-instance ConvertAST C.FieldDecl FieldDecl where
-  toOrig (C.FieldDecl (C.Ident vname) t) =
-    FieldDecl (Identifier o vname :| []) (toOrig t)
