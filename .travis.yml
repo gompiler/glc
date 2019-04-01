@@ -2,6 +2,9 @@ language: generic
 cache:
   directories:
   - "$HOME/.stack"
+branches:
+    except:
+        - test-programs
 addons:
   apt:
     packages:
