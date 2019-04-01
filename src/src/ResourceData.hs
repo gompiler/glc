@@ -1,7 +1,7 @@
 module ResourceData where
 
-import           CheckedData        (AssignOp, BinaryOp,
-                                     Ident, Literal, UnaryOp)
+import           CheckedData        (AssignOp, BinaryOp, Ident, Literal,
+                                     UnaryOp)
 import           Data.List.NonEmpty (NonEmpty (..))
 
 -- Represents the stack index within a method
@@ -201,22 +201,12 @@ data Type
   -- | See https://golang.org/ref/spec#Slice_types
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
-  | StructType Ident
   | PInt
   | PFloat64
   | PBool
   | PRune
   | PString
-  -- | Base types allow for cycles
-  -- For instance,
-  -- type a []a
-  -- and
-  -- type b struct { cycle b; }
-  -- are all valid in golite
-  -- While we can represent it with an infinite data structure,
-  -- It makes modification more difficult
-  | Cycle
-  | TypeMap -- TODO
+  | StructType Ident
   deriving (Show, Eq)
 
 data StructType =

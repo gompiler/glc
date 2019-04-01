@@ -119,6 +119,7 @@ spec = do
     , "type float64 int"
     , "type x struct {a []x;}"
     , "type a []struct {x a;}"
+    , "type a []a"
     -- Assignment ops
     , "var a int; a += 2;"
     , "var a rune; a -= 'a'"

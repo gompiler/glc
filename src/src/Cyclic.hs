@@ -9,6 +9,7 @@ module Cyclic
   , getRoot
   , set
   , map
+  , getActual
   ) where
 
 import           Prelude hiding (map)
@@ -32,18 +33,26 @@ instance Show a => Show (CyclicContainer a) where
 new :: Cyclic a => a -> CyclicContainer a
 new root = CyclicContainer root root
 
+-- | Gets the current value, or the root if it's a cycle
 get :: CyclicContainer a -> a
 get (CyclicContainer root current) =
   if isRoot current
     then root
     else current
 
+-- | Gets the root value
 getRoot :: CyclicContainer a -> a
 getRoot (CyclicContainer root _) = root
 
+-- | Gets the current value without any conversion
+getActual :: CyclicContainer a -> a
+getActual (CyclicContainer _ current) = current
+
+-- | Sets current value
 set :: CyclicContainer a -> a -> CyclicContainer a
 set (CyclicContainer root _) = CyclicContainer root
 
+-- | Map current value, retaining root
 map :: (a -> a) -> CyclicContainer a -> CyclicContainer a
 map action c = set c $ action $ get c
 
