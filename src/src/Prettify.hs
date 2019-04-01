@@ -306,7 +306,7 @@ instance ConvertAST C.TopDecl TopDecl where
 
 instance ConvertAST C.Decl Decl where
   toOrig (C.VarDecl vdl) = VarDecl (map toOrig vdl)
-  toOrig (C.TypeDef tdl) = TypeDef (mapMaybe toOrig tdl)
+  toOrig (C.TypeDef tdl) = TypeDef (Maybe.mapMaybe toOrig tdl)
 
 instance ConvertAST C.VarDecl' VarDecl' where
   toOrig (C.VarDecl' si t (Just e)) =
