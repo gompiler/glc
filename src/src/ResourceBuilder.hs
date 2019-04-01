@@ -120,3 +120,20 @@ instance Converter T.Stmt Stmt where
       cs = convert rc
       ce :: T.Expr -> ST s Expr
       ce = convert rc
+
+instance Converter T.Decl [VarDecl] where
+  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [VarDecl]
+  convert rc decl =
+    case decl of
+      T.VarDecl decls -> mapM convertVarDecl decls
+      T.TypeDef decls -> mapM_ convertTypeDecl decls $> []
+    where
+      convertVarDecl :: T.VarDecl' -> ST s VarDecl
+      convertVarDecl (T.VarDecl' i t expr) =
+        liftM3
+          VarDecl
+          (RC.getVarIndex rc i)
+          (convert rc t)
+          (maybe (return Nothing) (Just <$$> convert rc) expr)
+      convertTypeDecl :: T.TypeDef' -> ST s ()
+      convertTypeDecl _ = return ()

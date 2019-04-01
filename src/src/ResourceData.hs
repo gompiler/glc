@@ -29,7 +29,7 @@ data Program = Program
 data VarDecl =
   VarDecl VarIndex
           Type
-          Expr -- If no explicit expr, assign default
+          (Maybe Expr) -- TODO If no explicit expr, assign default?
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
