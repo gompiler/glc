@@ -110,12 +110,13 @@ data Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
   -- | See https://golang.org/ref/spec#ExprSwitchStmt
   -- Golite does not support type switches
-  -- Note that there should be at most one default
-  -- The next AST model can make that distinction
-  -- Note that
+  -- In this AST, we now separate the default case from the other switch cases
+  -- If none exists, we will simply provide an empty statement
+  -- The expression also defaults to True if none exists
   | Switch SimpleStmt
            Expr
            [SwitchCase]
+           Stmt
   -- | See https://golang.org/ref/spec#For_statements
   | For ForClause
         Stmt
@@ -140,7 +141,6 @@ data Stmt
 data SwitchCase
   = Case (NonEmpty Expr)
          Stmt
-  | Default Stmt
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#For_statements
