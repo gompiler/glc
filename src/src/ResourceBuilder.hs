@@ -13,6 +13,7 @@ import           Base
 import qualified CheckedData      as T
 import           Control.Monad.ST
 import qualified Cyclic           as C
+import           Data.Maybe       (catMaybes, fromMaybe, listToMaybe)
 import qualified ResourceContext  as RC
 import           ResourceData
 
@@ -104,7 +105,12 @@ instance Converter T.Stmt Stmt
       T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
       T.SimpleStmt s -> SimpleStmt <$> css s
       T.If (s, e) s1 s2 -> If <$> ((,) <$> css s <*> ce e) <*> cs s1 <*> cs s2
-      T.Switch s e cases -> undefined
+      T.Switch s e cases ->
+        Switch <$> css s <*> maybe (return undefined) ce e <*>
+        fmap catMaybes (mapM convertSwitchCase cases) <*>
+        fmap -- TODO add bool as default
+          (fromMaybe undefined . listToMaybe . catMaybes)
+          (mapM convertDefaultCase cases)
       T.For clause s -> For <$> convertForClause clause <*> cs s
         -- TODO add label tags?
       T.Break -> return Break
@@ -125,6 +131,13 @@ instance Converter T.Stmt Stmt
       convertForClause (T.ForClause pre e post)
         -- TODO add constant bool for default
        = ForClause <$> css pre <*> maybe (pure undefined) ce e <*> css post
+      convertSwitchCase :: T.SwitchCase -> ST s (Maybe SwitchCase)
+      convertSwitchCase (T.Case exprs s) =
+        Just <$> (Case <$> mapM ce exprs <*> cs s)
+      convertSwitchCase _ = return Nothing
+      convertDefaultCase :: T.SwitchCase -> ST s (Maybe Stmt)
+      convertDefaultCase (T.Default s) = Just <$> cs s
+      convertDefaultCase _                = return Nothing
 
 instance Converter T.Decl [VarDecl] where
   convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [VarDecl]
