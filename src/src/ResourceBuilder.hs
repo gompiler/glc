@@ -11,7 +11,6 @@ module ResourceBuilder
 
 import           Base
 import qualified CheckedData      as T
-import           Control.Monad    (liftM2, liftM3, liftM4)
 import           Control.Monad.ST
 import qualified Cyclic           as C
 import qualified ResourceContext  as RC
@@ -62,16 +61,16 @@ instance Converter T.Expr Expr where
   convert :: forall s. RC.ResourceContext s -> T.Expr -> ST s Expr
   convert rc expr =
     case expr of
-      T.Unary t op e        -> liftM3 Unary (ct t) (pure op) (ce e)
-      T.Binary t op e1 e2   -> liftM4 Binary (ct t) (pure op) (ce e1) (ce e2)
-      T.Lit lit             -> return $ Lit lit
-      T.Var t i             -> liftM2 Var (ct t) (RC.getVarIndex rc i)
-      T.AppendExpr t e1 e2  -> liftM3 AppendExpr (ct t) (ce e1) (ce e2)
-      T.LenExpr e           -> LenExpr <$> ce e
-      T.CapExpr e           -> CapExpr <$> ce e
-      T.Selector t e i      -> liftM3 Selector (ct t) (ce e) (pure i)
-      T.Index t e1 e2       -> liftM3 Index (ct t) (ce e1) (ce e2)
-      T.Arguments t e exprs -> liftM3 Arguments (ct t) (ce e) (mapM ce exprs)
+      T.Unary t op e -> Unary <$> ct t <*> pure op <*> ce e
+      T.Binary t op e1 e2 -> Binary <$> ct t <*> pure op <*> ce e1 <*> ce e2
+      T.Lit lit -> return $ Lit lit
+      T.Var t i -> Var <$> ct t <*> RC.getVarIndex rc i
+      T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
+      T.LenExpr e -> LenExpr <$> ce e
+      T.CapExpr e -> CapExpr <$> ce e
+      T.Selector t e i -> Selector <$> ct t <*> ce e <*> pure i
+      T.Index t e1 e2 -> Index <$> ct t <*> ce e1 <*> ce e2
+      T.Arguments t e exprs -> Arguments <$> ct t <*> ce e <*> mapM ce exprs
     where
       ct :: T.CType -> ST s Type
       ct = convert rc
@@ -90,9 +89,9 @@ instance Converter T.SimpleStmt SimpleStmt where
       T.ShortDeclare decls -> ShortDeclare <$> mapM convertShortDecl decls
     where
       convertAssign :: (T.Expr, T.Expr) -> ST s (Expr, Expr)
-      convertAssign (e1, e2) = liftM2 (,) (ce e1) (ce e2)
+      convertAssign (e1, e2) = (,) <$> ce e1 <*> ce e2
       convertShortDecl :: (T.ScopedIdent, T.Expr) -> ST s (VarIndex, Expr)
-      convertShortDecl (i, e) = liftM2 (,) (RC.getVarIndex rc i) (ce e)
+      convertShortDecl (i, e) = (,) <$> RC.getVarIndex rc i <*> ce e
       ce :: T.Expr -> ST s Expr
       ce = convert rc
 
@@ -104,9 +103,9 @@ instance Converter T.Stmt Stmt
     case stmt of
       T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
       T.SimpleStmt s -> SimpleStmt <$> css s
-      T.If (s, e) s1 s2 -> liftM3 If (liftM2 (,) (css s) (ce e)) (cs s1) (cs s2)
+      T.If (s, e) s1 s2 -> If <$> ((,) <$> css s <*> ce e) <*> cs s1 <*> cs s2
       T.Switch s e cases -> undefined
-      T.For clause s -> undefined
+      T.For clause s -> For <$> convertForClause clause <*> cs s
         -- TODO add label tags?
       T.Break -> return Break
       T.Continue -> return Continue
@@ -123,9 +122,9 @@ instance Converter T.Stmt Stmt
       ce :: T.Expr -> ST s Expr
       ce = convert rc
       convertForClause :: T.ForClause -> ST s ForClause
-      convertForClause (T.ForClause pre e post) =
+      convertForClause (T.ForClause pre e post)
         -- TODO add constant bool for default
-        liftM3 ForClause (css pre) (maybe (pure undefined) ce e) (css post)
+       = ForClause <$> css pre <*> maybe (pure undefined) ce e <*> css post
 
 instance Converter T.Decl [VarDecl] where
   convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [VarDecl]
@@ -136,10 +135,7 @@ instance Converter T.Decl [VarDecl] where
     where
       convertVarDecl :: T.VarDecl' -> ST s VarDecl
       convertVarDecl (T.VarDecl' i t expr) =
-        liftM3
-          VarDecl
-          (RC.getVarIndex rc i)
-          (convert rc t)
-          (maybe (return Nothing) (Just <$$> convert rc) expr)
+        VarDecl <$> RC.getVarIndex rc i <*> convert rc t <*>
+        maybe (return Nothing) (Just <$$> convert rc) expr
       convertTypeDecl :: T.TypeDef' -> ST s ()
       convertTypeDecl _ = return ()
