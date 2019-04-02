@@ -106,7 +106,7 @@ instance ConvertAST ForClause D.ForClause where
 instance ConvertAST Expr D.Expr where
   toOrig (Unary _ op e) = D.Unary o (toOrig op) (toOrig e)
   toOrig (Binary _ op e1 e2) = D.Binary o (toOrig op) (toOrig e1) (toOrig e2)
-  toOrig (Lit lit) = D.Lit (toOrig lit)
+  toOrig (Lit lit) = either D.Lit id (toOrig lit)
   toOrig (Var _ si) = D.Var (si2ident si)
   toOrig (AppendExpr _ e1 e2) = D.AppendExpr o (toOrig e1) (toOrig e2)
   toOrig (LenExpr e) = D.LenExpr o (toOrig e)
@@ -114,13 +114,15 @@ instance ConvertAST Expr D.Expr where
   toOrig (Selector _ e (Ident vname)) =
     D.Selector o (toOrig e) (D.Identifier o vname)
   toOrig (Index _ e1 e2) = D.Index o (toOrig e1) (toOrig e2)
-  toOrig (Arguments _ e el) = D.Arguments o (toOrig e) (map toOrig el)
+  toOrig (Arguments _ (Ident vname) el) = D.Arguments o (D.Var (D.Identifier o vname)) (map toOrig el)
 
-instance ConvertAST Literal D.Literal where
-  toOrig (IntLit i)    = D.IntLit o D.Decimal (show i)
-  toOrig (FloatLit f)  = D.FloatLit o (show f)
-  toOrig (RuneLit c)   = D.RuneLit o (show c)
-  toOrig (StringLit s) = D.StringLit o D.Interpreted s
+instance ConvertAST Literal (Either D.Literal D.Expr) where
+  toOrig (IntLit i)    = Left $ D.IntLit o D.Decimal (show i)
+  toOrig (FloatLit f)  = Left $ D.FloatLit o (show f)
+  toOrig (RuneLit c)   = Left $ D.RuneLit o (show c)
+  toOrig (StringLit s) = Left $ D.StringLit o D.Interpreted s
+  toOrig (BoolLit True) = Right $ D.Var (D.Identifier o "true")
+  toOrig (BoolLit False) = Right $ D.Var (D.Identifier o "false")
 
 instance ConvertAST BinaryOp D.BinaryOp where
   toOrig op =
