@@ -14,6 +14,7 @@ import           Base
 import qualified CheckedData      as T
 import           Control.Monad.ST
 import qualified Cyclic           as C
+import           Data.Either      (partitionEithers)
 import           Data.Maybe       (catMaybes, fromMaybe, listToMaybe)
 import qualified ResourceContext  as RC
 import           ResourceData
@@ -28,10 +29,19 @@ class Converter a b where
   convert :: forall s. RC.ResourceContext s -> a -> ST s b
 
 instance Converter T.Program Program where
-  convert = undefined
+  convert rc T.Program {T.package, T.topLevels} = do
+    topLevels' <- mapM (convert rc) topLevels
+    let (vars, funcs) = partitionEithers topLevels'
+    structs <- RC.getAllStructs rc
+    return $
+      Program
+        { package = package
+        , structs = structs
+        , topVars = concat vars
+        , functions = funcs
+        }
 
---  convert rc T.Program {T.package, T.topLevels} = do
---    return $ Program {package = package}
+--  convert = undefined
 instance Converter T.TopDecl (Either [VarDecl] FuncDecl) where
   convert rc topDecl =
     case topDecl of
