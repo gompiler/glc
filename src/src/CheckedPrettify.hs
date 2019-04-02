@@ -1,7 +1,9 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module CheckedPrettify where
+module CheckedPrettify
+  ( Prettify(..)
+  ) where
 
 import           Base               (Offset (..))
 import           CheckedData
