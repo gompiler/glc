@@ -952,7 +952,7 @@ instance Symbolize Expr C.Expr where
       (\t -> return $ (\e1' -> C.Index (toBase t) e1' <$> ee2') =<< ee1')
       et'
   recurse st ec@(Arguments _ e el) = do
-    ect' <- infer st ec
+    ect' <- infer' st ec -- This is infer' because it is allowed to be a Void call
     ee' <- recurse st e
     eel' <- mapM (recurse st) el
     either
