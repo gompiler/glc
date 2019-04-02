@@ -232,7 +232,7 @@ data Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   | Arguments Type
-              Expr
+              Ident
               [Expr]
   deriving (Show, Eq)
 

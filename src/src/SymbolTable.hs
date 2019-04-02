@@ -956,15 +956,12 @@ instance Symbolize Expr C.Expr where
       (return . Left)
       (\t -> return $ (\e1' -> C.Index (toBase t) e1' <$> ee2') =<< ee1')
       et'
-  recurse st ec@(Arguments _ e el) = do
+  recurse st ec@(Arguments _ (Var (Identifier _ vname)) el) = do
     ect' <- infer st ec
-    ee' <- recurse st e
     eel' <- mapM (recurse st) el
-    either
-      (return . Left)
-      (\t ->
-         return $ (\e' -> C.Arguments (toBase t) e' <$> sequence eel') =<< ee')
-      ect'
+    return $ (\el' t' -> C.Arguments (toBase t') (C.Ident vname) el') <$> sequence eel' <*> ect'
+  recurse _ (Arguments _ e _) = do
+    return $ Left $ createError e ESNotIdent
 
 intTypeToInt :: Literal -> Maybe Int
 intTypeToInt (IntLit _ t s) =
@@ -1017,6 +1014,7 @@ data TypeCheckError
   | RetOut -- Return outside of function, should never happen
   | NotFunc -- Trying to get the return value of a symbol that isn't a function, shouldn't happen
   | ESNotFunc -- ExprStmt isn't a function
+  | ESNotIdent
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -1067,6 +1065,7 @@ instance ErrorEntry TypeCheckError where
       RetOut -> "Return expression outside of function context"
       NotFunc -> "Trying to get return value of a symbol that isn't a function"
       ESNotFunc -> "Expression statement must be a function call"
+      ESNotIdent -> "Expression statement expression is not a variable/function name"
 
 -- | Wrap a result of recurse inside a new scope
 wrap :: SymbolTable s -> ST s (Glc' a) -> ST s (Glc' a)
