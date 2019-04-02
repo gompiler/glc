@@ -122,15 +122,15 @@ instance Converter T.Expr Expr where
   convert :: forall s. RC.ResourceContext s -> T.Expr -> ST s Expr
   convert rc expr =
     case expr of
-      T.Unary t op e -> Unary <$> ct t <*> pure op <*> ce e
-      T.Binary t op e1 e2 -> Binary <$> ct t <*> pure op <*> ce e1 <*> ce e2
-      T.Lit lit -> return $ Lit lit
-      T.Var t i -> Var <$> ct t <*> RC.getVarIndex rc i
-      T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
-      T.LenExpr e -> LenExpr <$> ce e
-      T.CapExpr e -> CapExpr <$> ce e
-      T.Selector t e i -> Selector <$> ct t <*> ce e <*> pure i
-      T.Index t e1 e2 -> Index <$> ct t <*> ce e1 <*> ce e2
+      T.Unary t op e        -> Unary <$> ct t <*-> op <*> ce e
+      T.Binary t op e1 e2   -> Binary <$> ct t <*-> op <*> ce e1 <*> ce e2
+      T.Lit lit             -> return $ Lit lit
+      T.Var t i             -> Var <$> ct t <*> RC.getVarIndex rc i
+      T.AppendExpr t e1 e2  -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
+      T.LenExpr e           -> LenExpr <$> ce e
+      T.CapExpr e           -> CapExpr <$> ce e
+      T.Selector t e i      -> Selector <$> ct t <*> ce e <*-> i
+      T.Index t e1 e2       -> Index <$> ct t <*> ce e1 <*> ce e2
       T.Arguments t e exprs -> Arguments <$> ct t <*> ce e <*> mapM ce exprs
     where
       ct :: T.CType -> ST s Type
