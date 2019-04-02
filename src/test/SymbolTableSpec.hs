@@ -314,6 +314,7 @@ spec = do
     , "func a ()int { for a:=0;; {};}"
     , "func a ()int { for a:=0;;a++ {};}"
     , "func a ()int { var a = 3; for ;;a=0 {};}"
+    , "func a () {}; func main () { a(); }"
     ]
   expectTypecheckPassNoMain
     [ [text|
@@ -529,6 +530,12 @@ spec = do
     , "type a struct {a int; a int;}"
     , "type a struct {a,b,a int; c int;}"
     , "func a(b int, b int){}"
+    , "func a(){}; func main(){ a := a(); }"
+    , "func a(){}; func main(){ b := a(); }"
+    , "func a(){}; func main(){ var b = a(); }"
+    , "func a(){}; func main(){ if a() {}; }"
+    , "func a(){}; func main(){ switch a() {}; }"
+    , "func a(){}; func main(){ for a() {}; }"
     -- , "var a int; type b a;"
     ]
   expectTypecheckFailNoMain

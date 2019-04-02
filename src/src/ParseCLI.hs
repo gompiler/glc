@@ -24,6 +24,7 @@ data Cmd
   | Symbol
   | Typecheck
   | Codegen
+  | PrettyTypecheck
 
 -- | CmdI: Cmd + Inp
 data CmdI =
@@ -87,6 +88,12 @@ prettyInvarParser =
     (CI PrettyInvar <$> parseSource)
     (progDesc "Checks that the prettifier and parsers are invariant.")
 
+prettyTypecheckP :: ParserInfo CmdI
+prettyTypecheckP =
+  info
+    (CI PrettyTypecheck <$> parseSource)
+    briefDesc
+
 symbolParser :: ParserInfo CmdI
 symbolParser =
   info
@@ -126,7 +133,8 @@ cmdParser =
      hsubparser
        (commandGroup "MODE ((-f|--file-path FILEPATH))" <>
         command "codegen" codegenParser) <|>
-     hsubparser (internal <> command "prettyinvar" prettyInvarParser) <**>
+     hsubparser (internal <> command "prettyinvar" prettyInvarParser
+                 <> command "prettyt" prettyTypecheckP) <**>
      helper)
     (fullDesc <>
      progDesc "Compiler for goLite" <> header "glc - a compiler for goLite")
