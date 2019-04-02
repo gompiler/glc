@@ -11,10 +11,16 @@ newtype VarIndex =
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
+-- Note the following changes:
+-- * We collect all possible structs and provide a list of unique struct types
+-- * We collect all init operations and put them in one section
+-- * We separate var declarations and function declarations
+-- To create a working program, data should be loaded in this order
 data Program = Program
   { package   :: Ident
   , structs   :: [StructType]
   , topVars   :: [VarDecl]
+  , init :: [Stmt]
   , functions :: [FuncDecl]
   } deriving (Show, Eq)
 

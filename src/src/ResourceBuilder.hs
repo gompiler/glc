@@ -22,8 +22,8 @@ import           Base
 import qualified CheckedData      as T
 import           Control.Monad.ST
 import qualified Cyclic           as C
-import           Data.Either      (partitionEithers)
 import           Data.Maybe       (catMaybes, fromMaybe, listToMaybe)
+import           Prelude          hiding (init)
 import qualified ResourceContext  as RC
 import           ResourceData
 
@@ -39,21 +39,31 @@ class Converter a b where
 instance Converter T.Program Program where
   convert rc T.Program {T.package, T.topLevels} = do
     topLevels' <- mapM (convert rc) topLevels
-    let (vars, funcs) = partitionEithers topLevels'
     structs <- RC.getAllStructs rc
     return $
       Program
         { package = package
         , structs = structs
-        , topVars = concat vars
-        , functions = funcs
+        , topVars = concat [vars | TopVar vars <- topLevels']
+        , init = [stmt | TopInit stmt <- topLevels']
+        , functions = [func | TopFunc func <- topLevels']
         }
 
-instance Converter T.TopDecl (Either [VarDecl] FuncDecl) where
+data TopLevel
+  = TopVar [VarDecl]
+  | TopFunc FuncDecl
+  | TopInit Stmt
+
+instance Converter T.TopDecl TopLevel where
   convert rc topDecl =
     case topDecl of
-      T.TopDecl decl     -> Left <$> convert rc decl
-      T.TopFuncDecl decl -> Right <$> convert rc decl
+      T.TopDecl decl     -> TopVar <$> convert rc decl
+      T.TopFuncDecl decl -> funcDecl <$> convert rc decl
+    where
+      funcDecl :: FuncDecl -> TopLevel
+      funcDecl (FuncDecl (T.Ident "init") (Signature (Parameters []) Nothing) body) =
+        TopInit body
+      funcDecl d = TopFunc d
 
 instance Converter T.FuncDecl FuncDecl where
   convert rc (T.FuncDecl (T.ScopedIdent _ i) sig body) =
