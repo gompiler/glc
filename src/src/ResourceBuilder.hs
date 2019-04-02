@@ -6,6 +6,14 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 
+-- | Builder module to convert from
+-- CheckedData to ResourceData
+-- We do the following:
+-- * Clean up ast structure
+-- * Extract all structs, and give them unique names
+-- * Convert types so structs get class names rather than fields
+-- * Convert scoped idents to an offset value (for JVM bytecode)
+-- * Add defaults for for loop condition and switch expr (both True by default)
 module ResourceBuilder
   ( convertProgram
   ) where
@@ -41,7 +49,6 @@ instance Converter T.Program Program where
         , functions = funcs
         }
 
---  convert = undefined
 instance Converter T.TopDecl (Either [VarDecl] FuncDecl) where
   convert rc topDecl =
     case topDecl of
