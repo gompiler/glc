@@ -29,9 +29,9 @@ class Converter a b where
 
 instance Converter T.Program Program where
   convert = undefined
+
 --  convert rc T.Program {T.package, T.topLevels} = do
 --    return $ Program {package = package}
-
 instance Converter T.TopDecl (Either [VarDecl] FuncDecl) where
   convert rc topDecl =
     case topDecl of
@@ -147,15 +147,26 @@ instance Converter T.Stmt Stmt
     case stmt of
       T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
       T.SimpleStmt s -> SimpleStmt <$> css s
-      T.If (s, e) s1 s2 -> If <$> ((,) <$> css s <*> ce e) <*> cs s1 <*> cs s2
+      T.If (s, e) s1 s2 ->
+        wrap $ do
+          s' <- css s
+          e' <- ce e
+          s1' <- wrap $ cs s1
+          s2' <- wrap $ cs s2
+          return $ If (s', e') s1' s2'
       T.Switch s e cases ->
         Switch <$> css s <*> maybe (return undefined) ce e <*>
         fmap catMaybes (mapM convertSwitchCase cases) <*>
         fmap -- TODO add bool as default
           (fromMaybe undefined . listToMaybe . catMaybes)
           (mapM convertDefaultCase cases)
-      T.For clause s -> For <$> convertForClause clause <*> cs s
-        -- TODO add label tags?
+      T.For clause s ->
+        wrap $ do
+          clause' <- convertForClause clause
+          s' <- wrap $ cs s
+          -- TODO add label tags?
+          -- TODO check that clause scope is correct (post in same scope)
+          return $ For clause' s'
       T.Break -> return Break
       T.Continue -> return Continue
         -- TODO ensure blockstmt doesn't end up adding scopes for this case
@@ -164,6 +175,7 @@ instance Converter T.Stmt Stmt
       T.Println exprs -> Println <$> mapM ce exprs
       T.Return e -> Return <$> maybe (return Nothing) (Just <$$> ce) e
     where
+      wrap = RC.wrap rc
       css :: T.SimpleStmt -> ST s SimpleStmt
       css = convert rc
       cs :: T.Stmt -> ST s Stmt
@@ -176,8 +188,11 @@ instance Converter T.Stmt Stmt
        = ForClause <$> css pre <*> maybe (pure undefined) ce e <*> css post
       convertSwitchCase :: T.SwitchCase -> ST s (Maybe SwitchCase)
       convertSwitchCase (T.Case exprs s) =
-        Just <$> (Case <$> mapM ce exprs <*> cs s)
+        wrap $ do
+          exprs' <- mapM ce exprs
+          s' <- wrap $ cs s
+          return $ Just $ Case exprs' s'
       convertSwitchCase _ = return Nothing
       convertDefaultCase :: T.SwitchCase -> ST s (Maybe Stmt)
-      convertDefaultCase (T.Default s) = Just <$> cs s
+      convertDefaultCase (T.Default s) = Just <$> wrap (cs s)
       convertDefaultCase _             = return Nothing
