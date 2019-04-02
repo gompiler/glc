@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
@@ -28,6 +29,48 @@ class Converter a b where
 
 instance Converter T.Program Program where
   convert = undefined
+--  convert rc T.Program {T.package, T.topLevels} = do
+--    return $ Program {package = package}
+
+instance Converter T.TopDecl (Either [VarDecl] FuncDecl) where
+  convert rc topDecl =
+    case topDecl of
+      T.TopDecl decl     -> Left <$> convert rc decl
+      T.TopFuncDecl decl -> Right <$> convert rc decl
+
+instance Converter T.FuncDecl FuncDecl where
+  convert rc (T.FuncDecl (T.ScopedIdent _ i) sig body) =
+    RC.wrap rc $ do
+      sig' <- convert rc sig
+      RC.wrap rc $ do
+        body' <- convert rc body
+        return $ FuncDecl i sig' body'
+
+instance Converter T.Signature Signature where
+  convert rc (T.Signature params retType) =
+    Signature <$> convert rc params <*>
+    maybe (return Nothing) (Just <$$> convert rc) retType
+
+instance Converter T.ParameterDecl ParameterDecl where
+  convert rc (T.ParameterDecl i t) =
+    ParameterDecl <$> RC.getVarIndex rc i <*> convert rc t
+
+instance Converter T.Parameters Parameters where
+  convert rc (T.Parameters params) = Parameters <$> mapM (convert rc) params
+
+instance Converter T.Decl [VarDecl] where
+  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [VarDecl]
+  convert rc decl =
+    case decl of
+      T.VarDecl decls -> mapM convertVarDecl decls
+      T.TypeDef decls -> mapM_ convertTypeDecl decls $> []
+    where
+      convertVarDecl :: T.VarDecl' -> ST s VarDecl
+      convertVarDecl (T.VarDecl' i t expr) =
+        VarDecl <$> RC.getVarIndex rc i <*> convert rc t <*>
+        maybe (return Nothing) (Just <$$> convert rc) expr
+      convertTypeDecl :: T.TypeDef' -> ST s ()
+      convertTypeDecl _ = return ()
 
 instance Converter T.CType Type where
   convert :: forall s. RC.ResourceContext s -> T.CType -> ST s Type
@@ -137,18 +180,4 @@ instance Converter T.Stmt Stmt
       convertSwitchCase _ = return Nothing
       convertDefaultCase :: T.SwitchCase -> ST s (Maybe Stmt)
       convertDefaultCase (T.Default s) = Just <$> cs s
-      convertDefaultCase _                = return Nothing
-
-instance Converter T.Decl [VarDecl] where
-  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [VarDecl]
-  convert rc decl =
-    case decl of
-      T.VarDecl decls -> mapM convertVarDecl decls
-      T.TypeDef decls -> mapM_ convertTypeDecl decls $> []
-    where
-      convertVarDecl :: T.VarDecl' -> ST s VarDecl
-      convertVarDecl (T.VarDecl' i t expr) =
-        VarDecl <$> RC.getVarIndex rc i <*> convert rc t <*>
-        maybe (return Nothing) (Just <$$> convert rc) expr
-      convertTypeDecl :: T.TypeDef' -> ST s ()
-      convertTypeDecl _ = return ()
+      convertDefaultCase _             = return Nothing

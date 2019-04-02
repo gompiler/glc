@@ -3,8 +3,7 @@
 module ResourceContext
   ( ResourceContext
   , new
-  , enterScope
-  , exitScope
+  , wrap
   , getStructName
   , getVarIndex
   , getAllStructs
@@ -90,13 +89,20 @@ newScope = do
   m <- HT.new
   return $ RS m 0
 
+wrap :: ResourceContext s -> ST s a -> ST s a
+wrap rc action = do
+  enterScope rc
+  a <- action
+  exitScope rc
+  return a
+
 -- | Create a new scope level
 enterScope :: ResourceContext s -> ST s ()
 enterScope st = do
   rc <- readRef st
   scope <- newScope
   let vars = scope : varScopes rc
-  writeRef st $ rc {varScopes = vars}
+  writeRef st $! rc {varScopes = vars}
 
 -- | Exit current scope level
 -- This allows us to reuse offsets for all variables created in the current scope
@@ -105,7 +111,7 @@ exitScope :: ResourceContext s -> ST s ()
 exitScope st = do
   rc <- readRef st
   let (_:vars) = varScopes rc
-  writeRef st $ rc {varScopes = vars}
+  writeRef st $! rc {varScopes = vars}
 
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
