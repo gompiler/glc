@@ -921,10 +921,10 @@ instance Symbolize Expr C.Expr where
             case vname of
               "true"  -> Right $ C.Lit $ C.BoolLit True
               "false" -> Right $ C.Lit $ C.BoolLit False
-              _       -> Left $ createError o "Invalid constant bool value"
+              _       -> Left $ createError o InvalidCBool
           Variable stype -> Right $ C.Var (toBase stype) (mkSIdStr scope vname)
           _ ->
-            Left $ createError o "Cannot get type of non-const/var identifier"
+            Left $ createError o NotAVar
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
@@ -1015,6 +1015,8 @@ data TypeCheckError
   | NotFunc -- Trying to get the return value of a symbol that isn't a function, shouldn't happen
   | ESNotFunc -- ExprStmt isn't a function
   | ESNotIdent
+  | InvalidCBool
+  | NotAVar
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -1066,6 +1068,8 @@ instance ErrorEntry TypeCheckError where
       NotFunc -> "Trying to get return value of a symbol that isn't a function"
       ESNotFunc -> "Expression statement must be a function call"
       ESNotIdent -> "Expression statement expression is not a variable/function name"
+      InvalidCBool -> "Invalid constant bool value"
+      NotAVar -> "Cannot get type of non-const/var identifier"
 
 -- | Wrap a result of recurse inside a new scope
 wrap :: SymbolTable s -> ST s (Glc' a) -> ST s (Glc' a)
