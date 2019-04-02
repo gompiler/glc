@@ -266,15 +266,15 @@ infer' st ce@(CapExpr _ expr) =
 -- * S resolves to a struct type that has a field named id.
 infer' st se@(Selector _ expr (Identifier _ ident)) = do
   eitherSele <- infer st expr
-  return $ eitherSele >>= (infer2 . resolveSType)
+  return $ eitherSele >>= (inferSType . resolveSType)
   -- TODO: Look into resolveSType / alternates for this
   where
-    infer2 :: SType -> Glc' SType
-    infer2 (Struct fdl) =
+    inferSType :: SType -> Glc' SType
+    inferSType (Struct fdl) =
       case filter (\(fid, _) -> fid == ident) fdl of
         [(_, sft)] -> Right sft
         _          -> Left $ createError se $ NoField ident
-    infer2 t = Left $ createError se $ NonStruct t
+    inferSType t = Left $ createError se $ NonStruct t
 -- | Infer types of index expressions
 -- Indexing into a slice or an array (expr[index]) is well-typed if:
 -- * expr is well-typed and resolves to []T or [N]T;
