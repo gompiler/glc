@@ -297,8 +297,7 @@ instance Symbolize FuncDecl C.FuncDecl
              in do returnTypeEither <- retType
                    return $ (\ret -> ((pl, ret), sil)) <$> returnTypeEither
           insertFunc ::
-               (([Param], SType), [SymbolInfo])
-            -> ST s (Glc' C.FuncDecl)
+               (([Param], SType), [SymbolInfo]) -> ST s (Glc' C.FuncDecl)
           insertFunc (ftup, sil) =
             let f = funcSym ftup
              in do scope <- S.insert st vname f
@@ -339,10 +338,10 @@ instance Symbolize FuncDecl C.FuncDecl
       getAllIdents :: [Identifier]
       getAllIdents = concatMap (\(ParameterDecl nidl _) -> toList nidl) pdl
       checkParams :: [ParameterDecl] -> ST s (Glc' [(Param, SymbolInfo)])
-      checkParams pdl' = checkDup st getAllIdents DuplicateParam $
-                         do
-                           pl <- mapM checkParam pdl'
-                           return $ concat <$> sequence pl
+      checkParams pdl' =
+        checkDup st getAllIdents DuplicateParam $ do
+          pl <- mapM checkParam pdl'
+          return $ concat <$> sequence pl
       checkParam :: ParameterDecl -> ST s (Glc' [(Param, SymbolInfo)])
       checkParam (ParameterDecl idl (_, t')) = do
         et <- toType st Nothing t' -- Remove ST
@@ -906,20 +905,26 @@ instance Symbolize Expr C.Expr where
               _    -> error "Invalid escape character in rune lit" -- Should never happen because scanner guarantees these escape characters
           c -> c
       StringLit _ _ s -> Right $ C.Lit $ C.StringLit s -- TODO: Resolve separate types of strings
-  recurse st (Var ident@(Identifier _ vname)) -- Should be defined, otherwise we're trying to use undefined variable
+  recurse st (Var ident@(Identifier o vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname
     maybe
       (S.disableMessages st $>
        (Left $ createError ident (NotDecl "Variable " ident)))
-      (\(scope, sym) ->
-         return $ Right $ C.Var (toValType sym) (mkSIdStr scope vname))
+      (return . toVal)
       msi
     where
-      toValType :: Symbol -> C.Type
-      toValType ConstantBool = C.PBool
-      toValType (Variable stype) = toBase stype
-      toValType _ = error "Cannot get type of non-const/var identifier"
+      toVal :: (S.Scope, Symbol) -> Glc' C.Expr
+      toVal (scope, sym) =
+        case sym of
+          ConstantBool ->
+            case vname of
+              "true"  -> Right $ C.Lit $ C.BoolLit True
+              "false" -> Right $ C.Lit $ C.BoolLit False
+              _       -> Left $ createError o "Invalid constant bool value"
+          Variable stype -> Right $ C.Var (toBase stype) (mkSIdStr scope vname)
+          _ ->
+            Left $ createError o "Cannot get type of non-const/var identifier"
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
@@ -1072,11 +1077,7 @@ wrap st stres = do
   return res
 
 -- | Wrap but add a function context
-wrap' ::
-     SymbolTable s
-  -> Symbol
-  -> ST s (Glc' a)
-  -> ST s (Glc' a)
+wrap' :: SymbolTable s -> Symbol -> ST s (Glc' a) -> ST s (Glc' a)
 wrap' st sym stres = do
   S.enterScopeCtx st sym
   res <- stres
@@ -1133,11 +1134,12 @@ isAddr st e =
         Just (_, ConstantBool) -> return $ Right False
         Just _ -> return $ Right True
     Selector _ e' _ -> isAddr st e' -- Check if expr on LHS is addressable, e.g. function return is not addressable
-    Index _ e' _ -> do
+    Index _ e' _
       -- Indices are only addressable if the underlying expression is
       -- addressable (is var) or if the expression is a slice, any
       -- slice can be assigned to but arrays returned by functions
       -- (without being assigned to a variable), cannot
+     -> do
       et' <- infer st e'
       eaddr <- isAddr st e'
       return $

@@ -239,6 +239,7 @@ data Expr
 -- | See https://golang.org/ref/spec#Literal
 data Literal
   = IntLit Int
+  | BoolLit Bool
   | FloatLit Float
   | RuneLit Char
   | StringLit String
