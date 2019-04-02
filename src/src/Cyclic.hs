@@ -1,5 +1,14 @@
 {-# LANGUAGE GADTs #-}
 
+-- | Allows cyclic data to be stored without cyclic structures
+-- The data must contain some key to represent a cycle.
+-- We then store both the root structure as well as the current structure.
+-- When the current structure is the cycle, we return the root structure instead.
+-- Modification of the current structure simply involves map or set,
+-- where we return the original root structure.
+-- Eq and Show are both implemented with this in mind.
+-- For instance, eq will compare the current structure, and only compare the root
+-- if a cycle is detected
 module Cyclic
   ( CyclicContainer
   , Cyclic(..)
@@ -30,6 +39,8 @@ instance Show a => Show (CyclicContainer a) where
       then root
       else current
 
+-- | Create a new container, where the provided data
+-- is both the current structure and root structure
 new :: Cyclic a => a -> CyclicContainer a
 new root = CyclicContainer root root
 
@@ -56,6 +67,7 @@ set (CyclicContainer root _) = CyclicContainer root
 map :: (a -> a) -> CyclicContainer a -> CyclicContainer a
 map action c = set c $ action $ get c
 
+-- | Map against both root and current
 mapContainer ::
      (Cyclic a, Cyclic b) => (a -> b) -> CyclicContainer a -> CyclicContainer b
 mapContainer action (CyclicContainer root current) =
