@@ -309,12 +309,13 @@ instance Symbolize FuncDecl C.FuncDecl
                          recurseSl scope)
             where
               recurseSl :: S.Scope -> ST s (Glc' C.FuncDecl)
-              recurseSl scope' =
-                fmap
-                  (C.FuncDecl (mkSIdStr scope' vname) (func2sig scope' ftup) .
-                   C.BlockStmt) .
-                sequence <$>
-                mapM (recurse st) sl
+              recurseSl scope' = do
+                esl' <- mapM (recurse st) sl
+                return $ createFuncD <$> func2sig scope' ftup <*> sequence esl'
+                where
+                  createFuncD :: C.Signature -> [C.Stmt] -> C.FuncDecl
+                  createFuncD sig' sl' =
+                    C.FuncDecl (mkSIdStr scope' vname) sig' (C.BlockStmt sl')
       -- Adds the init function to message list
       addInit :: ST s (Glc' C.FuncDecl)
       addInit =
@@ -366,16 +367,18 @@ instance Symbolize FuncDecl C.FuncDecl
         if notdef
           then return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
-      p2pd :: S.Scope -> Param -> C.ParameterDecl
-      p2pd scope (s, t') = C.ParameterDecl (mkSIdStr scope s) (toBase t')
-      func2sig :: S.Scope -> ([Param], SType) -> C.Signature
+      p2pd :: S.Scope -> Param -> Glc' C.ParameterDecl
+      p2pd scope (s, t') =
+        C.ParameterDecl (mkSIdStr scope s) <$> toBase (Var ident) t'
+      -- The argument to toBase above isn't really the right "expression", it should be the original parameter with its offset, but that will require rewriting most of this logic to pass that over
+      func2sig :: S.Scope -> ([Param], SType) -> Glc' C.Signature
       func2sig scope (pl, t') =
-        C.Signature
-          (C.Parameters (map (p2pd scope) pl))
-          (case t' of
-             Void -> Nothing
-             _    -> Just (toBase t'))
-      -- TODO use more specific type to avoid errors
+        (\pl2 ->
+           case t' of
+             Void -> Right $ C.Signature (C.Parameters pl2) Nothing
+             _ ->
+               C.Signature (C.Parameters pl2) . Just <$> toBase (Var ident) t') =<<
+        sequence (map (p2pd scope) pl)
   recurse st (FuncDecl idents sig stmt) =
     recurse st (FuncDecl idents sig (BlockStmt [stmt]))
 
@@ -776,7 +779,8 @@ instance Symbolize VarDecl' [C.VarDecl'] where
         scope <- S.scopeLevel st
         maybe
           (return $
-           Right $ C.VarDecl' (mkSIdStr scope vname) (toBase t2) Nothing)
+           (\t' -> C.VarDecl' (mkSIdStr scope vname) t' Nothing) <$>
+           toBase (Var ident) t2)
           (\e -> do
              et' <- infer st e
              either
@@ -784,15 +788,15 @@ instance Symbolize VarDecl' [C.VarDecl'] where
                (\t' ->
                   if t2 == t'
                     then (do ee' <- recurse st e
-                             return $
-                               fmap
-                                 (C.VarDecl' (mkSIdStr scope vname) (toBase t2) .
-                                  Just)
-                                 ee')
+                             return $ createVarD scope <$> toBase e t' <*> ee')
                     else return $
                          Left $ createError e (TypeMismatch2 ident t' t2))
                et')
           me
+        where
+          createVarD :: S.Scope -> C.Type -> C.Expr -> C.VarDecl'
+          createVarD scope t' e' =
+            C.VarDecl' (mkSIdStr scope vname) t' (Just e')
       checkDeclI :: [Identifier] -> [Expr] -> ST s (Glc' [C.VarDecl'])
       checkDeclI idl el' = do
         edl <- mapM (\(i, ex) -> checkDecI ex i) (zip idl el')
@@ -805,9 +809,12 @@ instance Symbolize VarDecl' [C.VarDecl'] where
           (\t' -> do
              scope <- S.insert st vname (Variable t') -- Update type of variable
              ee' <- recurse st e
-             return $
-               fmap (C.VarDecl' (mkSIdStr scope vname) (toBase t') . Just) ee')
+             return $ createVarD scope <$> toBase e t' <*> ee')
           et'
+        where
+          createVarD :: S.Scope -> C.Type -> C.Expr -> C.VarDecl'
+          createVarD scope t' e' =
+            C.VarDecl' (mkSIdStr scope vname) t' (Just e')
 
 instance Symbolize [TypeDef'] [C.TypeDef'] where
   recurse st vdl = do
@@ -825,9 +832,10 @@ instance Symbolize TypeDef' C.TypeDef' where
          me <- checkId st (SType t') "Type " ident
          maybe
            (case t' -- Ignore all types except for structs, as structs will be the only types we will have to define
+               -- Here we wrap the ident in a var just to pass offset to toBase in case of error
                   of
-              Struct _ -> return $ Right $ C.TypeDef' sident (toBase t')
-              _        -> return $ Right C.NoDef)
+              Struct _ -> return $ C.TypeDef' sident <$> toBase (Var ident) t'
+              _ -> return $ Right C.NoDef)
            (return . Left)
            me)
       et
@@ -835,10 +843,8 @@ instance Symbolize TypeDef' C.TypeDef' where
 instance Symbolize Expr C.Expr where
   recurse st eu@(Unary _ op e) = do
     et' <- infer st eu -- Use typecheck from type inference
-    either
-      (return . Left)
-      (\t -> fmap (C.Unary (toBase t) (convOp op)) <$> recurse st e)
-      et'
+    ee' <- recurse st e
+    return $ createUn <$> ee' <*> (toBase eu =<< et')
     where
       convOp :: UnaryOp -> C.UnaryOp
       convOp op' =
@@ -847,16 +853,13 @@ instance Symbolize Expr C.Expr where
           Neg           -> C.Neg
           Not           -> C.Not
           BitComplement -> C.BitComplement
+      createUn :: C.Expr -> C.Type -> C.Expr
+      createUn e' t' = C.Unary t' (convOp op) e'
   recurse st e@(Binary _ op e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
     ee2' <- recurse st e2
-    either
-      (return . Left)
-      (\t ->
-         return $
-         (\e1' -> C.Binary (toBase t) (convOp op) e1' <$> ee2') =<< ee1')
-      et'
+    return $ createBin <$> ee1' <*> ee2' <*> (toBase e =<< et')
     where
       convOp :: BinaryOp -> C.BinaryOp
       convOp op' =
@@ -870,6 +873,8 @@ instance Symbolize Expr C.Expr where
           LEQ        -> C.LEQ
           Data.GT    -> C.GT
           GEQ        -> C.GEQ
+      createBin :: C.Expr -> C.Expr -> C.Type -> C.Expr
+      createBin e1' e2' t' = C.Binary t' (convOp op) e1' e2'
   recurse _ (Lit lit) =
     return $
     case lit of
@@ -905,7 +910,7 @@ instance Symbolize Expr C.Expr where
               _    -> error "Invalid escape character in rune lit" -- Should never happen because scanner guarantees these escape characters
           c -> c
       StringLit _ _ s -> Right $ C.Lit $ C.StringLit s -- TODO: Resolve separate types of strings
-  recurse st (Var ident@(Identifier o vname)) -- Should be defined, otherwise we're trying to use undefined variable
+  recurse st e@(Var ident@(Identifier o vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname
     maybe
@@ -922,17 +927,18 @@ instance Symbolize Expr C.Expr where
               "true"  -> Right $ C.Lit $ C.BoolLit True
               "false" -> Right $ C.Lit $ C.BoolLit False
               _       -> Left $ createError o "Invalid constant bool value"
-          Variable stype -> Right $ C.Var (toBase stype) (mkSIdStr scope vname)
+          Variable stype ->
+            (\t' -> C.Var t' (mkSIdStr scope vname)) <$> toBase e stype
           _ ->
             Left $ createError o "Cannot get type of non-const/var identifier"
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
     ee2' <- recurse st e2
-    either
-      (return . Left)
-      (\t -> return $ (\e1' -> C.AppendExpr (toBase t) e1' <$> ee2') =<< ee1')
-      et'
+    return $ createAppend <$> ee1' <*> ee2' <*> (toBase e1 =<< et')
+    where
+      createAppend :: C.Expr -> C.Expr -> C.Type -> C.Expr
+      createAppend e1' e2' t' = C.AppendExpr t' e1' e2'
   recurse st ec@(LenExpr _ e) = do
     ect' <- infer st ec
     ee' <- recurse st e
@@ -944,24 +950,26 @@ instance Symbolize Expr C.Expr where
   recurse st ec@(Selector _ e (Identifier _ vname)) = do
     ect' <- infer st ec
     ee' <- recurse st e
-    either
-      (return . Left)
-      (\t -> return $ (\e' -> C.Selector (toBase t) e' (C.Ident vname)) <$> ee')
-      ect'
+    return $ createSel <$> ee' <*> (toBase e =<< ect')
+    where
+      createSel :: C.Expr -> C.Type -> C.Expr
+      createSel e' t' = C.Selector t' e' (C.Ident vname)
   recurse st e@(Index _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
     ee2' <- recurse st e2
-    either
-      (return . Left)
-      (\t -> return $ (\e1' -> C.Index (toBase t) e1' <$> ee2') =<< ee1')
-      et'
-  recurse st ec@(Arguments _ (Var (Identifier _ vname)) el) = do
+    return $ createIndex <$> ee1' <*> ee2' <*> (toBase e2 =<< et')
+    where
+      createIndex :: C.Expr -> C.Expr -> C.Type -> C.Expr
+      createIndex e1' e2' t' = C.Index t' e1' e2'
+  recurse st ec@(Arguments _ e@(Var (Identifier _ vname)) el) = do
     ect' <- infer st ec
     eel' <- mapM (recurse st) el
-    return $ (\el' t' -> C.Arguments (toBase t') (C.Ident vname) el') <$> sequence eel' <*> ect'
-  recurse _ (Arguments _ e _) = do
-    return $ Left $ createError e ESNotIdent
+    return $ createArgs <$> sequence eel' <*> (toBase e =<< ect')
+    where
+      createArgs :: [C.Expr] -> C.Type -> C.Expr
+      createArgs el' t' = C.Arguments t' (C.Ident vname) el'
+  recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
 
 intTypeToInt :: Literal -> Maybe Int
 intTypeToInt (IntLit _ t s) =
@@ -1015,6 +1023,8 @@ data TypeCheckError
   | NotFunc -- Trying to get the return value of a symbol that isn't a function, shouldn't happen
   | ESNotFunc -- ExprStmt isn't a function
   | ESNotIdent
+  | BaseVoid
+  | BaseInfer
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -1065,7 +1075,10 @@ instance ErrorEntry TypeCheckError where
       RetOut -> "Return expression outside of function context"
       NotFunc -> "Trying to get return value of a symbol that isn't a function"
       ESNotFunc -> "Expression statement must be a function call"
-      ESNotIdent -> "Expression statement expression is not a variable/function name"
+      ESNotIdent ->
+        "Expression statement expression is not a variable/function name"
+      BaseVoid -> "Void cannot be converted to base type"
+      BaseInfer -> "Infer cannot be converted to base type"
 
 -- | Wrap a result of recurse inside a new scope
 wrap :: SymbolTable s -> ST s (Glc' a) -> ST s (Glc' a)
@@ -1105,22 +1118,22 @@ checkDup st l err stres =
     Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
 
 -- | Convert SType to base type, aka Type from CheckedData
-toBase :: SType -> C.Type
-toBase (Array i t) = C.ArrayType i (toBase t)
-toBase (Slice t) = C.SliceType (toBase t)
-toBase (Struct fls) = C.StructType (map f2fd fls)
+toBase :: Expr -> SType -> Glc' C.Type
+toBase e (Array i t) = C.ArrayType i <$> toBase e t
+toBase e (Slice t) = C.SliceType <$> toBase e t
+toBase e (Struct fls) = C.StructType <$> sequence (map f2fd fls)
   where
-    f2fd :: Field -> C.FieldDecl
-    f2fd (s, t) = C.FieldDecl (C.Ident s) (toBase t)
-toBase (TypeMap _ t) = toBase t
-toBase PInt = C.PInt
-toBase PFloat64 = C.PFloat64
-toBase PBool = C.PBool
-toBase PRune = C.PRune
-toBase PString = C.PString
+    f2fd :: Field -> Glc' C.FieldDecl
+    f2fd (s, t) = C.FieldDecl (C.Ident s) <$> toBase e t
+toBase e (TypeMap _ t) = toBase e t
+toBase _ PInt = Right C.PInt
+toBase _ PFloat64 = Right C.PFloat64
+toBase _ PBool = Right C.PBool
+toBase _ PRune = Right C.PRune
+toBase _ PString = Right C.PString
 -- TODO remove error
-toBase Void = error "Void cannot be converted to CheckedData base type"
-toBase Infer = error "Infer cannot be converted to CheckedData base type"
+toBase e Void = Left $ createError e BaseVoid
+toBase e Infer = Left $ createError e BaseInfer
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: SymbolTable s -> Expr -> ST s (Glc' Bool)
