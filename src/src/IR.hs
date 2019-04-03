@@ -55,7 +55,7 @@ data Method = Method
   , body        :: [IRItem]
   } deriving (Show)
 
-data ClassRef =
+newtype ClassRef =
   ClassRef String
   deriving (Show)
 
@@ -69,7 +69,9 @@ data MethodRef =
             String
             [JType]
             JType
-  deriving (Show)
+
+instance Show MethodRef where
+  show (MethodRef (ClassRef cn) mn tl t) = "Method " ++ cn ++ " " ++ mn ++ " (" ++ concat (map show tl) ++ ")" ++ show t
 
 data JType
   = JClass ClassRef -- Lwhatever;
@@ -77,7 +79,13 @@ data JType
   | JFloat -- F
   | JBool -- Z
   | JVoid -- V
-  deriving (Show)
+
+instance Show JType where
+  show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
+  show JInt = "I"
+  show JFloat = "F"
+  show JBool = "Z"
+  show JVoid = "V"
 
 data IRItem
   = IRInst Instruction
