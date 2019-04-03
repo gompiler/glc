@@ -1081,7 +1081,7 @@ toBase = C.mapContainer toBase'
     toBase' PString = T.PString
     -- TODO remove error
     toBase' Void = error "Void cannot be converted to CheckedData base type"
-    toBase' Infer = error "Infer cannot be converted to CheckedData base type"
+    toBase' Infer = T.Cycle
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: SymbolTable s -> Expr -> ST s (Glc' Bool)
