@@ -74,7 +74,7 @@ readRef (SyT ref) = readSTRef ref
 new :: ST s (SymbolTable s v l c)
 new = do
   ht <- HT.new
-  newRef $ SymbolTable (fromList [(Scope 1, ht, Nothing)]) [] False
+  newRef $! SymbolTable (fromList [(Scope 1, ht, Nothing)]) [] False
 
 -- | Inserts a key value pair at the upper most scope and return scope level
 insert :: SymbolTable s v l c -> String -> v -> ST s Scope
@@ -89,6 +89,7 @@ lookup st !k = do
   SymbolTable scopes _ _ <- readRef st
   asum <$> mapM (lookup' k) (toList scopes)
 
+-- | Look up in provided scope
 lookup' :: String -> SymbolScope s v c -> ST s (Maybe (Scope, v))
 lookup' !k (scope, ht, _) = do
   v <- HT.lookup ht k
