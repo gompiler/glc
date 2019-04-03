@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE TypeApplications      #-}
 
 module Prettify
   ( Prettify(..)
@@ -8,22 +8,25 @@ module Prettify
   , tabSize
   ) where
 
+import           Base
 import           Data
 import           Data.List          (intercalate, null)
 import           Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Maybe         as Maybe
-import           ErrorBundle
 import           Parser
 
-checkPrettifyInvariance :: String -> Either ErrorMessage String
+checkPrettifyInvariance :: String -> Glc String
 checkPrettifyInvariance input = do
   ast1 <- parse @Program input
   let pretty1 = prettify ast1
   ast2 <- parse @Program input
   let pretty2 = prettify ast2
   case (ast1 == ast2, pretty1 == pretty2) of
-    (False, _) -> Left $ createError' $ "AST mismatch:\n\n" ++ show ast1 ++ "\n\n" ++ show ast2
-    (_, False) -> Left $ createError' $ "Prettify mismatch" ++ pretty1 ++ "\n\n" ++ pretty2
+    (False, _) ->
+      Left $
+      createError' $ "AST mismatch:\n\n" ++ show ast1 ++ "\n\n" ++ show ast2
+    (_, False) ->
+      Left $ createError' $ "Prettify mismatch" ++ pretty1 ++ "\n\n" ++ pretty2
     _ -> Right pretty2
 
 tabSize :: Int
@@ -218,15 +221,15 @@ instance Prettify Literal where
   prettify' = prettify''
 
 instance Prettify BinaryOp where
-  prettify Or         = "||"
-  prettify And        = "&&"
+  prettify Or          = "||"
+  prettify And         = "&&"
   prettify (Arithm o) = prettify o
-  prettify Data.EQ    = "=="
-  prettify NEQ        = "!="
-  prettify Data.LT    = "<"
-  prettify LEQ        = "<="
-  prettify Data.GT    = ">"
-  prettify GEQ        = ">="
+  prettify Data.EQ     = "=="
+  prettify NEQ         = "!="
+  prettify Data.LT     = "<"
+  prettify LEQ         = "<="
+  prettify Data.GT     = ">"
+  prettify GEQ         = ">="
   prettify' = prettify''
 
 instance Prettify ArithmOp where

@@ -223,13 +223,14 @@ data Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
   | Arguments CType
-              Expr
+              Ident
               [Expr]
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Literal
 data Literal
   = IntLit Int
+  | BoolLit Bool
   | FloatLit Float
   | RuneLit Char
   | StringLit String

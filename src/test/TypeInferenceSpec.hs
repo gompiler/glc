@@ -4,22 +4,22 @@ module TypeInferenceSpec
   ( spec
   ) where
 
-import           Base             (Stringable (..), expectBase, toString)
+import           Base
 import           Control.Monad.ST
 import qualified Cyclic           as C
 import           Data             (Expr)
-import           ErrorBundle
 import           Parser           (parse)
 import           Symbol
 import qualified SymbolTable      as SymTab (add, new)
 import           Test.Hspec
+import           TestBase         (Stringable (..), expectBase, toString)
 import           TypeInference    (infer)
 
-parseAndInferNoST :: String -> Either ErrorMessage CType
+parseAndInferNoST :: String -> Glc CType
 parseAndInferNoST expStr = either Left runExpr parseResult
   where
     errgen e = e expStr `withPrefix` "typinf error"
-    parseResult :: Either ErrorMessage Expr
+    parseResult :: Glc Expr
     parseResult = parse expStr
     runExpr :: Expr -> Either ErrorMessage CType
     runExpr e =

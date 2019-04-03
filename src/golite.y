@@ -34,7 +34,7 @@
 where
 import Scanner
 import Data
-import ErrorBundle
+import Base
 import System.Exit
 import System.IO
 

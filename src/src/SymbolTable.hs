@@ -266,6 +266,7 @@ instance Symbolize FuncDecl T.FuncDecl
           createFunc ::
                [(Param, SymbolInfo)]
             -> ST s (Glc' (([Param], CType), [SymbolInfo]))
+
           createFunc l
               -- TODO don't use toType here; resolve only type def types
            =
@@ -876,20 +877,26 @@ instance Symbolize Expr T.Expr where
               _    -> error "Invalid escape character in rune lit" -- Should never happen because scanner guarantees these escape characters
           c -> c
       StringLit _ _ s -> Right $ T.Lit $ T.StringLit s -- TODO: Resolve separate types of strings
-  recurse st (Var ident@(Identifier _ vname)) -- Should be defined, otherwise we're trying to use undefined variable
+  recurse st (Var ident@(Identifier o vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname
     maybe
       (S.disableMessages st $>
        (Left $ createError ident (NotDecl "Variable " ident)))
-      (\(scope, sym) ->
-         return $ Right $ T.Var (toValType sym) (mkSIdStr scope vname))
+      (return . toVal)
       msi
     where
-      toValType :: Symbol -> T.CType
-      toValType ConstantBool = C.new T.PBool
-      toValType (Variable stype) = toBase stype
-      toValType _ = error "Cannot get type of non-const/var identifier"
+      toVal :: (S.Scope, Symbol) -> Glc' T.Expr
+      toVal (scope, sym) =
+        case sym of
+          ConstantBool ->
+            case vname of
+              "true"  -> Right $ T.Lit $ T.BoolLit True
+              "false" -> Right $ T.Lit $ T.BoolLit False
+              _       -> Left $ createError o InvalidCBool
+          Variable stype -> Right $ T.Var (toBase stype) (mkSIdStr scope vname)
+          _ ->
+            Left $ createError o NotAVar
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
@@ -921,15 +928,12 @@ instance Symbolize Expr T.Expr where
       (return . Left)
       (\t -> return $ (\e1' -> T.Index (toBase t) e1' <$> ee2') =<< ee1')
       et'
-  recurse st ec@(Arguments _ e el) = do
-    ect' <- infer st ec
-    ee' <- recurse st e
+  recurse st ec@(Arguments _ (Var (Identifier _ vname)) el) = do
+    ect' <- infer' st ec -- This is infer' because it is allowed to be a Void call
     eel' <- mapM (recurse st) el
-    either
-      (return . Left)
-      (\t ->
-         return $ (\e' -> T.Arguments (toBase t) e' <$> sequence eel') =<< ee')
-      ect'
+    return $ (\el' t' -> T.Arguments (toBase t') (T.Ident vname) el') <$> sequence eel' <*> ect'
+  recurse _ (Arguments _ e _) = do
+    return $ Left $ createError e ESNotIdent
 
 intTypeToInt :: Literal -> Maybe Int
 intTypeToInt (IntLit _ t s) =
@@ -982,6 +986,9 @@ data TypeCheckError
   | RetOut -- Return outside of function, should never happen
   | NotFunc -- Trying to get the return value of a symbol that isn't a function, shouldn't happen
   | ESNotFunc -- ExprStmt isn't a function
+  | ESNotIdent
+  | InvalidCBool
+  | NotAVar
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -1032,6 +1039,9 @@ instance ErrorEntry TypeCheckError where
       RetOut -> "Return expression outside of function context"
       NotFunc -> "Trying to get return value of a symbol that isn't a function"
       ESNotFunc -> "Expression statement must be a function call"
+      ESNotIdent -> "Expression statement expression is not a variable/function name"
+      InvalidCBool -> "Invalid constant bool value"
+      NotAVar -> "Cannot get type of non-const/var identifier"
 
 -- | Wrap a result of recurse inside a new scope
 wrap :: SymbolTable s -> ST s (Glc' a) -> ST s (Glc' a)

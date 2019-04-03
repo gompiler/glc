@@ -4,16 +4,16 @@ module WeedingTypes
   ( weedT
   ) where
 
+import           Base
 import           Control.Applicative
 import           Data
 import           Data.Foldable       (asum)
 import           Data.List.NonEmpty  (toList)
-import           ErrorBundle
 import           Weeding
 
 -- | Main weeding function
 -- Takes in input code, will pass through parser
-weedT :: String -> Either ErrorMessage Program
+weedT :: String -> Glc Program
 weedT code = do
   program <- weed code
   maybe
@@ -60,7 +60,7 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
     lastIsReturn (Return _ _) = Nothing -- Just $ createError o LastReturn
     lastIsReturn _ = Just $ createError fd LastReturn
     getSwitchCaseStmt :: SwitchCase -> Stmt
-    getSwitchCaseStmt (Case _ _ stmt) = stmt
+    getSwitchCaseStmt (Case _ _ stmt)  = stmt
     getSwitchCaseStmt (Default _ stmt) = stmt
     checkForBreak :: Stmt -> Maybe ErrorMessage'
     checkForBreak (BlockStmt stmts) = asum $ map checkForBreak stmts
@@ -69,7 +69,7 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
     checkForBreak _ = Nothing -- fors/switches start their own break 'scope'
     checkForDefault :: SwitchCase -> Bool
     checkForDefault (Default _ _) = True
-    checkForDefault _ = False
+    checkForDefault _             = False
 
 initReturnVerify :: PureConstraint Program
 initReturnVerify program = asum errors
@@ -98,10 +98,8 @@ initMainFunctionVerify program = asum errors
     errors :: [Maybe ErrorMessage']
     errors = map initFunctionConstraint (topLevels program)
     initFunctionConstraint :: TopDecl -> Maybe ErrorMessage'
-    initFunctionConstraint (TopDecl (VarDecl vdl))  =
-      asum (map vdConstraint vdl)
-    initFunctionConstraint (TopDecl (TypeDef tdl)) =
-      asum (map tdConstraint tdl)
+    initFunctionConstraint (TopDecl (VarDecl vdl)) = asum (map vdConstraint vdl)
+    initFunctionConstraint (TopDecl (TypeDef tdl)) = asum (map tdConstraint tdl)
     initFunctionConstraint _ = Nothing -- Function declarations are fine
     vdConstraint :: VarDecl' -> Maybe ErrorMessage'
     vdConstraint (VarDecl' idents _) = asum (map iToE (toList idents))

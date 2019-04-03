@@ -4,6 +4,7 @@
 module TypeInference
   ( ExpressionTypeError
   , infer
+  , infer'
   , isNumeric
   , isComparable
   , isPrim
@@ -93,10 +94,19 @@ instance ErrorEntry ExpressionTypeError where
       ExpectBaseType styp ->
         "Cast expects base type; non-base type " ++ show styp ++ " provided"
 
+-- | infer' wrapper that returns error if return is Void
+
+infer :: SymbolTable s -> Expr -> ST s (Glc' CType)
+infer st e = do
+  et <- infer' st e
+  return $ (\t -> case C.get t of
+             Void -> Left $ createError e "Inferred type cannot be void"
+             _ -> Right t) =<< et
+
 -- | Main type inference function
-infer :: forall s. SymbolTable s -> Expr -> ST s (Glc' CType)
+infer' :: forall s. SymbolTable s -> Expr -> ST s (Glc' CType)
 -- | Infers the types of '+' unary operator expressions
-infer st e@(Unary _ Pos inner) =
+infer' st e@(Unary _ Pos inner) =
   inferConstraint
     st
     isNumeric
@@ -105,7 +115,7 @@ infer st e@(Unary _ Pos inner) =
     e
     (fromList [inner])
 -- | Infers the types of '-' unary operator expressions
-infer st e@(Unary _ Neg inner) =
+infer' st e@(Unary _ Neg inner) =
   inferConstraint
     st
     isNumeric
@@ -114,7 +124,7 @@ infer st e@(Unary _ Neg inner) =
     e
     (fromList [inner])
 -- | Infers the types of '!' unary operator expressions
-infer st e@(Unary _ Not inner) =
+infer' st e@(Unary _ Not inner) =
   inferConstraint
     st
     isBoolean
@@ -123,7 +133,7 @@ infer st e@(Unary _ Not inner) =
     e
     (fromList [inner])
 -- | Infers the types of '^' unary operator expressions
-infer st e@(Unary _ BitComplement inner) =
+infer' st e@(Unary _ BitComplement inner) =
   inferConstraint
     st
     isIntegerLike
@@ -132,7 +142,7 @@ infer st e@(Unary _ BitComplement inner) =
     e
     (fromList [inner])
 -- | Infer types of binary expressions
-infer st e@(Binary _ op i1 i2) =
+infer' st e@(Binary _ op i1 i2) =
   (case op of
      And             -> andOrConstraint
      Or              -> andOrConstraint
@@ -187,7 +197,7 @@ infer st e@(Binary _ op i1 i2) =
     arithIntConstraint =
       inferConstraint st isIntegerLike NE.head (BadBinaryOp "integer-like")
 -- | "Infer" the types of base literals
-infer _ (Lit l) =
+infer' _ (Lit l) =
   return $
   Right $
   C.new $
@@ -197,7 +207,7 @@ infer _ (Lit l) =
     RuneLit {}   -> PRune
     StringLit {} -> PString
 -- | Resolve variables to the type their identifier points to in the scope
-infer st (Var ident@(Identifier _ vname)) = resolveVar
+infer' st (Var ident@(Identifier _ vname)) = resolveVar
   where
     resolveVar :: ST s (Glc' CType)
     resolveVar = do
@@ -216,7 +226,7 @@ infer st (Var ident@(Identifier _ vname)) = resolveVar
 -- An append expression append(e1, e2) is well-typed if:
 -- * e1 is well-typed, has type S and S resolves to a []T;
 -- * e2 is well-typed and has type T.
-infer st ae@(AppendExpr _ e1 e2) = do
+infer' st ae@(AppendExpr _ e1 e2) = do
   sle <- infer st e1 -- Infer type of slice (e1)
   exe <- infer st e2 -- Infer type of value to append (e2)
   return $
@@ -240,7 +250,7 @@ infer st ae@(AppendExpr _ e1 e2) = do
 -- | Infer types of len expressions
 -- A len expression len(expr) is well-typed if expr is well-typed, has
 -- type S and S resolves to string, []T or [N]T. The result has type int.
-infer st le@(LenExpr _ expr) =
+infer' st le@(LenExpr _ expr) =
   inferConstraint
     st
     isLenCompatible
@@ -251,7 +261,7 @@ infer st le@(LenExpr _ expr) =
 -- | Infer types of cap expressions
 -- A cap expression cap(expr) is well-typed if expr is well-typed, has
 -- type S and S resolves to []T or [N]T. The result has type int.
-infer st ce@(CapExpr _ expr) =
+infer' st ce@(CapExpr _ expr) =
   inferConstraint
     st
     isCapCompatible
@@ -263,13 +273,13 @@ infer st ce@(CapExpr _ expr) =
 -- Selecting a field in a struct (expr.id) is well-typed if:
 -- * expr is well-typed and has type S;
 -- * S resolves to a struct type that has a field named id.
-infer st se@(Selector _ expr (Identifier _ ident)) = do
+infer' st se@(Selector _ expr (Identifier _ ident)) = do
   eitherSele <- infer st expr
-  return $ eitherSele >>= (infer' . resolveCType)
+  return $ eitherSele >>= (inferCType . resolveCType)
   -- TODO: Look into resolveSType / alternates for this
   where
-    infer' :: CType -> Glc' CType
-    infer' t =
+    inferCType :: CType -> Glc' CType
+    inferCType t =
       case C.get t of
         Struct fdl ->
           case filter (\(fid, _) -> fid == ident) fdl of
@@ -281,7 +291,7 @@ infer st se@(Selector _ expr (Identifier _ ident)) = do
 -- * expr is well-typed and resolves to []T or [N]T;
 -- * index is well-typed and resolves to int.
 -- The result of the indexing expression is T.
-infer st ie@(Index _ e1 e2) = do
+infer' st ie@(Index _ e1 e2) = do
   e1e <- infer st e1
   e2e <- infer st e2
   return $ do
@@ -303,7 +313,7 @@ infer st ie@(Index _ e1 e2) = do
 -- * arg1, arg2, . . . , argk are well-typed and have types T1, T2, . . . , Tk respectively;
 -- * expr is well-typed and has function type (T1 * T2 * ... * Tk) -> Tr.
 -- The type of a function call is Tr.
-infer st ae@(Arguments _ expr args) = do
+infer' st ae@(Arguments _ expr args) = do
   as <- mapM (infer st) args -- Moves ST out
   case (expr, sequence as) of
     (Var ident@(Identifier _ vname), Right ts) -> do

@@ -7,7 +7,7 @@ module PrettifySpec
   ( spec
   ) where
 
-import           Base
+import           TestBase
 import           Data
 import           Prettify (tabS)
 

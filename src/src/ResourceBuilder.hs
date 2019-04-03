@@ -141,7 +141,7 @@ instance Converter T.Expr Expr where
       T.CapExpr e           -> CapExpr <$> ce e
       T.Selector t e i      -> Selector <$> ct t <*> ce e <*-> i
       T.Index t e1 e2       -> Index <$> ct t <*> ce e1 <*> ce e2
-      T.Arguments t e exprs -> Arguments <$> ct t <*> ce e <*> mapM ce exprs
+      T.Arguments t i exprs -> Arguments <$> ct t <*-> i <*> mapM ce exprs
     where
       ct :: T.CType -> ST s Type
       ct = convert rc
@@ -184,6 +184,10 @@ instance Converter T.Stmt Stmt
       T.Switch s e cases ->
         Switch <$> css s <*> maybe (return undefined) ce e <*>
         fmap catMaybes (mapM convertSwitchCase cases) <*>
+        -- Note that we find a list of all defaults
+        -- and only use the first one
+        -- It is guaranteed in the weeding phase that we have at most one default,
+        -- even if it isn't reflected structurally
         fmap -- TODO add bool as default
           (fromMaybe undefined . listToMaybe . catMaybes)
           (mapM convertDefaultCase cases)

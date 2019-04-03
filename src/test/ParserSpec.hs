@@ -6,7 +6,7 @@ module ParserSpec
   ( spec
   ) where
 
-import           Base
+import           TestBase
 import           Data               as D
 import           Data.List.NonEmpty (fromList)
 import           Data.List.Split    (splitOn)
