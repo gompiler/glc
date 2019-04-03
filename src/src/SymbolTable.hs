@@ -1121,7 +1121,7 @@ checkDup st l err stres =
 toBase :: Expr -> SType -> Glc' C.Type
 toBase e (Array i t) = C.ArrayType i <$> toBase e t
 toBase e (Slice t) = C.SliceType <$> toBase e t
-toBase e (Struct fls) = C.StructType <$> sequence (map f2fd fls)
+toBase e (Struct fls) = C.StructType <$> mapM f2fd fls
   where
     f2fd :: Field -> Glc' C.FieldDecl
     f2fd (s, t) = C.FieldDecl (C.Ident s) <$> toBase e t
