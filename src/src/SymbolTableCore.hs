@@ -12,9 +12,8 @@ module SymbolTableCore
   , insert
   , lookup
   , lookupCurrent
-  , enterScope
-  , enterScopeCtx
-  , exitScope
+  , wrap
+  , wrap'
   , currentScope
   , scopeLevel
   , topScope
@@ -122,6 +121,22 @@ exitScope :: SymbolTable s v l c -> ST s ()
 exitScope st = do
   SymbolTable (_ :| scopes) list msgStatus <- readRef st
   writeRef st $! SymbolTable (fromList scopes) list msgStatus
+
+-- | Enter scope before and exit scope after action
+wrap :: SymbolTable s v l c -> ST s o -> ST s o
+wrap st action = do
+  enterScope st
+  res <- action
+  exitScope st
+  return res
+
+-- | Same as wrap, but add a function context
+wrap' :: SymbolTable s v l c -> c -> ST s o -> ST s o
+wrap' st context action = do
+  enterScopeCtx st context
+  res <- action
+  exitScope st
+  return res
 
 -- | Retrieve current scope level
 scopeLevel :: SymbolTable s v l c -> ST s Scope

@@ -201,7 +201,7 @@ instance Typify Type where
 instance Symbolize Program T.Program where
   recurse st (Program (Identifier _ pkg) tdl)
     -- Recurse on the top level declarations of a program in a new scope
-   = wrap st $ fmap (T.Program (T.Ident pkg)) <$> recurse st tdl
+   = S.wrap st $ fmap (T.Program (T.Ident pkg)) <$> recurse st tdl
 
 instance Symbolize TopDecl T.TopDecl
   -- Recurse on declarations
@@ -244,7 +244,7 @@ instance Symbolize FuncDecl T.FuncDecl
           then do
             me <- dummyFunc
             maybe
-              (do epl <- wrap st $ checkParams pdl -- Dummy scope to check params
+              (do epl <- S.wrap st $ checkParams pdl -- Dummy scope to check params
                 -- Glc' Symbol, want to get the corresponding
                 -- Func symbol using our resolved params (if no errors in param
                 -- declaration) and the type of the return of the signature, t,
@@ -278,7 +278,7 @@ instance Symbolize FuncDecl T.FuncDecl
             let f = funcSym ftup
              in do scope <- S.insert st vname f
                    _ <- S.addMessage st (vname, f, scope)
-                   wrap'
+                   S.wrap'
                      st
                      f
                      (do mapM_ (\(k, sym, _) -> add st k sym) sil
@@ -573,10 +573,10 @@ aopConv op =
 instance Symbolize Stmt T.Stmt where
   recurse :: forall s. SymbolTable s -> Stmt -> ST s (Glc' T.Stmt)
   recurse st (BlockStmt sl) =
-    wrap st $ fmap T.BlockStmt . sequence <$> mapM (recurse st) sl
+    S.wrap st $ fmap T.BlockStmt . sequence <$> mapM (recurse st) sl
   recurse st (SimpleStmt s) = fmap T.SimpleStmt <$> recurse st s
   recurse st (If (ss, e) s1 s2) =
-    wrap st $ do
+    S.wrap st $ do
       ess' <- recurse st ss
       et <- infer st e
       either
@@ -595,7 +595,7 @@ instance Symbolize Stmt T.Stmt where
              else return $ Left $ createError e (CondBool e t))
         et
   recurse st (Switch ss me scs) =
-    wrap st $ do
+    S.wrap st $ do
       ess' <- recurse st ss
       maybe
         (do escs' <- sequence <$> mapM (recurse' $ C.new PBool) scs
@@ -636,7 +636,7 @@ instance Symbolize Stmt T.Stmt where
                else return $ Left $ createError e (NotComp t2 t))
           et
   recurse st (For (ForClause ss1 me ss2) s) =
-    wrap st $ do
+    S.wrap st $ do
       ess1' <- recurse st ss1
       ess2' <- recurse st ss2
       es' <- recurse st s
@@ -1042,22 +1042,6 @@ instance ErrorEntry TypeCheckError where
       ESNotIdent -> "Expression statement expression is not a variable/function name"
       InvalidCBool -> "Invalid constant bool value"
       NotAVar -> "Cannot get type of non-const/var identifier"
-
--- | Wrap a result of recurse inside a new scope
-wrap :: SymbolTable s -> ST s (Glc' a) -> ST s (Glc' a)
-wrap st stres = do
-  S.enterScope st
-  res <- stres
-  S.exitScope st
-  return res
-
--- | Wrap but add a function context
-wrap' :: SymbolTable s -> Symbol -> ST s (Glc' a) -> ST s (Glc' a)
-wrap' st sym stres = do
-  S.enterScopeCtx st sym
-  res <- stres
-  S.exitScope st
-  return res
 
 -- | Get the first duplicate in a list, for checking if fields of a struct are all unique
 getFirstDuplicate :: Eq a => [a] -> Maybe a
