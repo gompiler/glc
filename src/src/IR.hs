@@ -25,7 +25,15 @@ data FieldAccess
   | FFinal
   | FVolatile
   | FTransient
-  deriving (Show)
+
+instance Show FieldAccess where
+  show FPublic = "public"
+  show FPrivate = "private"
+  show FProtected = "protected"
+  show FStatic = "static"
+  show FFinal = "final"
+  show FVolatile = "volatile"
+  show FTransient = "transient"
 
 data Field = Field
   { access     :: FieldAccess
