@@ -174,7 +174,7 @@ instance Typify Type where
         case (getMatchingSIdent rootSIdent t, isTypeStruct rootType)
                 -- Cycles only permitted on matching root sident with a non struct root type
               of
-          (Just _, False) -> return $ Right Infer -- TODO
+          (Just _, False) -> return $ Right Infer -- TODO verify; getMatchinSIdent can also return bool now
           _               -> toType' st root t brec
       toField :: Identifiers -> SType -> [Field]
       toField idl t = map (\(Identifier _ vname) -> (vname, t)) (toList idl)
