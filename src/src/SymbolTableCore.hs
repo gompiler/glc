@@ -88,19 +88,16 @@ insert st k v = do
 lookup :: SymbolTable s v l c -> String -> ST s (Maybe (Scope, v))
 lookup st !k = do
   SymbolTable scopes _ _ <- readRef st
-  asum <$> mapM lookup' (toList scopes)
-  where
-    lookup' :: SymbolScope s v c -> ST s (Maybe (Scope, v))
-    lookup' (scope, ht, _) = do
-      v <- HT.lookup ht k
-      return $! fmap (scope, ) v
+  asum <$> mapM (lookup' k) (toList scopes)
+
+lookup' :: String -> SymbolScope s v c -> ST s (Maybe (Scope, v))
+lookup' !k (scope, ht, _) = do
+  v <- HT.lookup ht k
+  return $! fmap (scope, ) v
 
 -- | Look up provided key at current scope only
 lookupCurrent :: SymbolTable s v l c -> String -> ST s (Maybe (Scope, v))
-lookupCurrent st !k = do
-  (scope, ht, _) <- currentScope st
-  v <- HT.lookup ht k
-  return $! fmap (scope, ) v
+lookupCurrent st !k = lookup' k =<< currentScope st
 
 -- | Create new scope
 enterScope :: SymbolTable s v l c -> ST s ()
