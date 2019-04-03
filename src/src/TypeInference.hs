@@ -95,13 +95,15 @@ instance ErrorEntry ExpressionTypeError where
         "Cast expects base type; non-base type " ++ show styp ++ " provided"
 
 -- | infer' wrapper that returns error if return is Void
-
 infer :: SymbolTable s -> Expr -> ST s (Glc' CType)
 infer st e = do
   et <- infer' st e
-  return $ (\t -> case C.get t of
-             Void -> Left $ createError e "Inferred type cannot be void"
-             _ -> Right t) =<< et
+  return $
+    (\t ->
+       case C.get t of
+         Void -> Left $ createError e "Inferred type cannot be void"
+         _    -> Right t) =<<
+    et
 
 -- | Main type inference function
 infer' :: forall s. SymbolTable s -> Expr -> ST s (Glc' CType)
@@ -371,7 +373,7 @@ inferConstraint ::
   -> NonEmpty Expr -- childs
   -> ST s (Glc' CType)
 inferConstraint st isCorrect resultSType makeError parentExpr inners = do
-  eitherTs <- sequence <$> mapM (infer st) inners
+  eitherTs <- mapS (infer st) inners
   return $ do
     ts <- eitherTs
      -- all the same and one of the valid types:
@@ -429,12 +431,12 @@ isComparable ctype = isComparable' $ C.get ctype
     isComparable' :: SType -> Bool
     isComparable' stype =
       case stype of
-        Slice _         -> False
-        Array _ atyp    -> isComparable' atyp
+        Slice _          -> False
+        Array _ atyp     -> isComparable' atyp
         TypeMap _ ctype' -> isComparable ctype'
-        Struct fdl      -> all (isComparable' . snd) fdl
-        Infer           -> rootComparable
-        _               -> True
+        Struct fdl       -> all (isComparable' . snd) fdl
+        Infer            -> rootComparable
+        _                -> True
 
 -- | Resolves a defined type to a base type, WITHOUT nested types
 -- In other words, resolved types within arrays and structs are not converted

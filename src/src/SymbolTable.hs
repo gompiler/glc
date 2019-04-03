@@ -165,7 +165,7 @@ instance Typify Type where
           st
           getAllIdents
           (AlreadyDecl "Field ")
-          (concat <$$> (sequence <$> mapM checkField fdl))
+          (concat <$$> mapS checkField fdl)
       checkField :: FieldDecl -> ST s (Glc' [Field])
       checkField (FieldDecl idl (_, t)) = toField idl <$$> fieldType' t
       -- | Checks first for cyclic type, then defaults to the generic type resolver
@@ -266,7 +266,6 @@ instance Symbolize FuncDecl T.FuncDecl
           createFunc ::
                [(Param, SymbolInfo)]
             -> ST s (Glc' (([Param], CType), [SymbolInfo]))
-
           createFunc l
               -- TODO don't use toType here; resolve only type def types
            =
@@ -306,17 +305,16 @@ instance Symbolize FuncDecl T.FuncDecl
         where
           recurseBody :: S.Scope -> ST s (Glc' T.FuncDecl)
           recurseBody scope' =
-            fmap
-              (T.FuncDecl
-                 (mkSIdStr scope' vname)
-                 (T.Signature (T.Parameters []) Nothing)) <$>
+            T.FuncDecl
+              (mkSIdStr scope' vname)
+              (T.Signature (T.Parameters []) Nothing) <$$>
             recurse st body
       getAllIdents :: [Identifier]
       getAllIdents = concatMap (\(ParameterDecl nidl _) -> toList nidl) pdl
       checkParams :: [ParameterDecl] -> ST s (Glc' [(Param, SymbolInfo)])
       checkParams pdl' =
         checkDup st getAllIdents DuplicateParam $
-        concat <$$> (sequence <$> mapM checkParam pdl')
+        concat <$$> mapS checkParam pdl'
       checkParam :: ParameterDecl -> ST s (Glc' [(Param, SymbolInfo)])
       checkParam (ParameterDecl idl (_, t')) = do
         et <- toType st Nothing t' -- Remove ST
@@ -333,7 +331,7 @@ instance Symbolize FuncDecl T.FuncDecl
       checkIds' :: CType -> Identifiers -> ST s (Glc' [(Param, SymbolInfo)])
       checkIds' t' idl = do
         scope <- S.scopeLevel st
-        sequence <$> mapM (checkId' scope t') (toList idl)
+        mapS (checkId' scope t') (toList idl)
       checkId' ::
            S.Scope -> CType -> Identifier -> ST s (Glc' (Param, SymbolInfo))
       checkId' scope t' ident'@(Identifier _ idv) = do
@@ -386,7 +384,7 @@ instance Symbolize SimpleStmt T.SimpleStmt where
     ets <- mapM (infer st) el' -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
     either
       (return . Left)
-      (const $ fmap T.ShortDeclare <$> checkDecl)
+      (const $ T.ShortDeclare <$$> checkDecl)
       (sequence ets)
     where
       idl' = toList idl
@@ -456,9 +454,9 @@ instance Symbolize SimpleStmt T.SimpleStmt where
     res <- S.lookup st vname
     case res of
       Just (_, Func _ _) ->
-        fmap T.ExprStmt <$> recurse st e -- Verify that expr only uses things that are defined
+        T.ExprStmt <$$> recurse st e -- Verify that expr only uses things that are defined
       _ -> return $ Left $ createError e ESNotFunc
-  recurse st (ExprStmt e) = fmap T.ExprStmt <$> recurse st e -- If the above case isn't matched, then we pass to here which will fail because func call isn't on an identifier
+  recurse st (ExprStmt e) = T.ExprStmt <$$> recurse st e -- If the above case isn't matched, then we pass to here which will fail because func call isn't on an identifier
   recurse st (Increment _ e) = do
     et <- infer st e
     eaddr <- isAddr st e
@@ -572,9 +570,8 @@ aopConv op =
 
 instance Symbolize Stmt T.Stmt where
   recurse :: forall s. SymbolTable s -> Stmt -> ST s (Glc' T.Stmt)
-  recurse st (BlockStmt sl) =
-    S.wrap st $ fmap T.BlockStmt . sequence <$> mapM (recurse st) sl
-  recurse st (SimpleStmt s) = fmap T.SimpleStmt <$> recurse st s
+  recurse st (BlockStmt sl) = S.wrap st $ T.BlockStmt <$$> mapS (recurse st) sl
+  recurse st (SimpleStmt s) = T.SimpleStmt <$$> recurse st s
   recurse st (If (ss, e) s1 s2) =
     S.wrap st $ do
       ess' <- recurse st ss
@@ -598,7 +595,7 @@ instance Symbolize Stmt T.Stmt where
     S.wrap st $ do
       ess' <- recurse st ss
       maybe
-        (do escs' <- sequence <$> mapM (recurse' $ C.new PBool) scs
+        (do escs' <- mapS (recurse' $ C.new PBool) scs
             return $ (\ss' -> T.Switch ss' Nothing <$> escs') =<< ess')
         (\e -> do
            t <- infer st e
@@ -608,7 +605,7 @@ instance Symbolize Stmt T.Stmt where
              (\t' ->
                 if isComparable t'
                   then do
-                    escs' <- sequence <$> mapM (recurse' t') scs
+                    escs' <- mapS (recurse' t') scs
                     return $
                       (\ss' ->
                          (\scs' -> (\e' -> T.Switch ss' (Just e') scs') <$> ee') =<<
@@ -620,10 +617,10 @@ instance Symbolize Stmt T.Stmt where
     where
       recurse' :: CType -> SwitchCase -> ST s (Glc' T.SwitchCase)
       recurse' t (Case _ nEl s) = do
-        eel <- sequence <$> mapM (isType t) (toList nEl)
+        eel <- mapS (isType t) (toList nEl)
         es' <- recurse st s
         return $ (\el -> T.Case (fromList el) <$> es') =<< eel
-      recurse' _ (Default _ s) = fmap T.Default <$> recurse st s
+      recurse' _ (Default _ s) = T.Default <$$> recurse st s
           -- Also return new expr after check
       isType :: CType -> Expr -> ST s (Glc' T.Expr)
       isType t e = do
@@ -664,9 +661,9 @@ instance Symbolize Stmt T.Stmt where
         me
   recurse _ (Break _) = return $ Right T.Break
   recurse _ (Continue _) = return $ Right T.Continue
-  recurse st (Declare d) = fmap T.Declare <$> recurse st d
-  recurse st (Print el) = fmap T.Print . sequence <$> mapM (recBaseE st) el
-  recurse st (Println el) = fmap T.Println . sequence <$> mapM (recBaseE st) el
+  recurse st (Declare d) = T.Declare <$$> recurse st d
+  recurse st (Print el) = T.Print <$$> mapS (recBaseE st) el
+  recurse st (Println el) = T.Println <$$> mapS (recBaseE st) el
   recurse st (Return o (Just e)) = do
     et <- getRet o st
     et' <- infer st e
@@ -704,11 +701,11 @@ recBaseE st e = do
     et
 
 instance Symbolize Decl T.Decl where
-  recurse st (VarDecl vdl) = fmap T.VarDecl <$> recurse st vdl
-  recurse st (TypeDef tdl) = fmap T.TypeDef <$> recurse st tdl
+  recurse st (VarDecl vdl) = T.VarDecl <$$> recurse st vdl
+  recurse st (TypeDef tdl) = T.TypeDef <$$> recurse st tdl
 
 instance Symbolize [VarDecl'] [T.VarDecl'] where
-  recurse st vdl = concat <$$> (sequence <$> mapM (recurse st) vdl)
+  recurse st vdl = concat <$$> mapS (recurse st) vdl
 
 instance Symbolize VarDecl' [T.VarDecl'] where
   recurse :: forall s. SymbolTable s -> VarDecl' -> ST s (Glc' [T.VarDecl'])
@@ -757,10 +754,9 @@ instance Symbolize VarDecl' [T.VarDecl'] where
                   if t2 == t'
                     then (do ee' <- recurse st e
                              return $
-                               fmap
-                                 (T.VarDecl' (mkSIdStr scope vname) (toBase t2) .
-                                  Just)
-                                 ee')
+                               T.VarDecl' (mkSIdStr scope vname) (toBase t2) .
+                               Just <$>
+                               ee')
                     else return $
                          Left $ createError e (TypeMismatch2 ident t' t2))
                et')
@@ -809,7 +805,7 @@ instance Symbolize Expr T.Expr where
     et' <- infer st eu -- Use typecheck from type inference
     either
       (return . Left)
-      (\t -> fmap (T.Unary (toBase t) (convOp op)) <$> recurse st e)
+      (\t -> T.Unary (toBase t) (convOp op) <$$> recurse st e)
       et'
     where
       convOp :: UnaryOp -> T.UnaryOp
@@ -895,8 +891,7 @@ instance Symbolize Expr T.Expr where
               "false" -> Right $ T.Lit $ T.BoolLit False
               _       -> Left $ createError o InvalidCBool
           Variable stype -> Right $ T.Var (toBase stype) (mkSIdStr scope vname)
-          _ ->
-            Left $ createError o NotAVar
+          _ -> Left $ createError o NotAVar
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
@@ -931,7 +926,9 @@ instance Symbolize Expr T.Expr where
   recurse st ec@(Arguments _ (Var (Identifier _ vname)) el) = do
     ect' <- infer' st ec -- This is infer' because it is allowed to be a Void call
     eel' <- mapM (recurse st) el
-    return $ (\el' t' -> T.Arguments (toBase t') (T.Ident vname) el') <$> sequence eel' <*> ect'
+    return $
+      (\el' t' -> T.Arguments (toBase t') (T.Ident vname) el') <$> sequence eel' <*>
+      ect'
   recurse _ (Arguments _ e _) = do
     return $ Left $ createError e ESNotIdent
 
@@ -1039,7 +1036,8 @@ instance ErrorEntry TypeCheckError where
       RetOut -> "Return expression outside of function context"
       NotFunc -> "Trying to get return value of a symbol that isn't a function"
       ESNotFunc -> "Expression statement must be a function call"
-      ESNotIdent -> "Expression statement expression is not a variable/function name"
+      ESNotIdent ->
+        "Expression statement expression is not a variable/function name"
       InvalidCBool -> "Invalid constant bool value"
       NotAVar -> "Cannot get type of non-const/var identifier"
 
@@ -1210,12 +1208,11 @@ symbol s =
 -- Note this isn't an either because if the left side checks, we always want the string/partial symbol table even on error so we can print it out
 pTable :: String -> Glc (Maybe ErrorMessage, String)
 pTable code =
-  fmap
-    (\p ->
-       let (me, syml) = pTable' p
-        in ( me >>= (\e -> Just $ e code `withPrefix` "Symbol table error at ")
-           , syml))
-    (weedT code)
+  (\p ->
+     let (me, syml) = pTable' p
+      in ( me >>= (\e -> Just $ e code `withPrefix` "Symbol table error at ")
+         , syml)) <$>
+  (weedT code)
 
 pTable' :: Program -> (Maybe ErrorMessage', String)
 pTable' p =
