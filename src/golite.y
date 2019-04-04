@@ -392,16 +392,16 @@ getInnerString t = case t of
   Token _ (TIdent val) -> val
 
 -- Main parse function
-parse :: String -> Either ErrorMessage Program
+parse :: String -> Glc Program
 parse s = either (Left . errODef s) Right (runAlex s hparse)
 
 -- Parse function that takes in any parser
-parsef :: Alex a -> String -> Either ErrorMessage a
+parsef :: Alex a -> String -> Glc a
 parsef f s = either (Left . errODef s) Right (runAlex' s f)
 -- runAlex' does not insert newline at end if needed
 
 -- parsef but insert newline if needed at end just like main parse function
-parsefNL :: Alex a -> String -> Either ErrorMessage a
+parsefNL :: Alex a -> String -> Glc a
 parsefNL f s = either (Left . errODef s) Right (runAlex s f)
 
 -- Extract posn only
