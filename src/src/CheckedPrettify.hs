@@ -48,8 +48,7 @@ instance ConvertAST VarDecl' D.VarDecl' where
     D.VarDecl' (si2idents si) (Left (toOrig t, []))
 
 instance ConvertAST TypeDef' (Maybe D.TypeDef') where
-  toOrig (TypeDef' si t) = Just $ D.TypeDef' (si2ident si) (toOrig t)
-  toOrig NoDef           = Nothing
+  toOrig NoDef = Nothing
 
 instance ConvertAST FuncDecl D.FuncDecl where
   toOrig (FuncDecl si sig fb) =
@@ -114,7 +113,7 @@ instance ConvertAST Expr D.Expr where
   toOrig (AppendExpr _ e1 e2) = D.AppendExpr o (toOrig e1) (toOrig e2)
   toOrig (LenExpr e) = D.LenExpr o (toOrig e)
   toOrig (CapExpr e) = D.CapExpr o (toOrig e)
-  toOrig (Selector _ e (Ident vname)) =
+  toOrig (Selector _ _ e (Ident vname)) =
     D.Selector o (toOrig e) (D.Identifier o vname)
   toOrig (Index _ e1 e2) = D.Index o (toOrig e1) (toOrig e2)
   toOrig (Arguments _ (Ident vname) el) =
@@ -124,7 +123,7 @@ instance ConvertAST Literal (Either D.Literal D.Expr) where
   toOrig (IntLit i)      = Left $ D.IntLit o D.Decimal (show i)
   toOrig (FloatLit f)    = Left $ D.FloatLit o (show f)
   toOrig (RuneLit c)     = Left $ D.RuneLit o (show c)
-  toOrig (StringLit s)   = Left $ D.StringLit o D.Interpreted s
+  toOrig (StringLit s)   = Left $ D.StringLit o D.Interpreted $ "\"" ++ s ++ "\""
   toOrig (BoolLit True)  = Right $ D.Var (D.Identifier o "true")
   toOrig (BoolLit False) = Right $ D.Var (D.Identifier o "false")
 

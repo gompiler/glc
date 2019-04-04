@@ -23,6 +23,7 @@ data Cmd
   | PrettyInvar
   | Symbol
   | Typecheck
+  | IR
   | Codegen
   | PrettyTypecheck
 
@@ -111,6 +112,14 @@ typecheckParser =
      progDesc "Outputs OK if input type is correct, or an error message." <>
      header "typecheck - typechecks a source file")
 
+irParser :: ParserInfo CmdI
+irParser =
+  info
+    (CI IR <$> parseSource)
+    (fullDesc <>
+     progDesc "Outputs IR if input type is correct, or an error message." <>
+     header "ir - shows low-level IR for a source file")
+
 codegenParser :: ParserInfo CmdI
 codegenParser =
   info
@@ -134,7 +143,8 @@ cmdParser =
        (commandGroup "MODE ((-f|--file-path FILEPATH))" <>
         command "codegen" codegenParser) <|>
      hsubparser (internal <> command "prettyinvar" prettyInvarParser
-                 <> command "prettyt" prettyTypecheckP) <**>
+                 <> command "prettyt" prettyTypecheckP
+                 <> command "ir" irParser) <**>
      helper)
     (fullDesc <>
      progDesc "Compiler for goLite" <> header "glc - a compiler for goLite")

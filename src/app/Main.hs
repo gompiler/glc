@@ -1,6 +1,7 @@
 module Main where
 
 import           Base
+import           IRConv                  (displayIR)
 import qualified Options.Applicative as Op
 import           ParseCLI
 import           Prettify            (checkPrettifyInvariance, prettify)
@@ -27,6 +28,7 @@ main = do
           either putExit (const $ putSucc "OK") . checkPrettifyInvariance
         Symbol -> symbol
         Typecheck -> typecheckP
+        IR -> displayIR
         PrettyTypecheck -> either putExit (putStrLn . CheckedPrettify.prettify) . typecheckGen
         Codegen ->
           const $ putExit $ createError' "codegen called without filename" -- This should never happen because of case above
