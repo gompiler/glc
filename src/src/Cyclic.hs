@@ -89,7 +89,11 @@ mapEither action (CyclicContainer root current) =
     (_, Left err)                 -> Left err
     (Right root', Right current') -> Right $ CyclicContainer root' current'
 
-fmapContainer :: (Cyclic a, Monad m) => (a -> m a) -> CyclicContainer a -> m (CyclicContainer a)
+fmapContainer ::
+     (Cyclic a, Monad m)
+  => (a -> m a)
+  -> CyclicContainer a
+  -> m (CyclicContainer a)
 fmapContainer action (CyclicContainer root current) =
   CyclicContainer <$> action root <*> action current
 
@@ -100,3 +104,7 @@ flipC (CyclicContainer mRoot mCurrent) = CyclicContainer <$> mRoot <*> mCurrent
 class Cyclic a where
   isRoot :: a -> Bool
   hasRoot :: a -> Bool
+
+instance Cyclic a => Cyclic (CyclicContainer a) where
+  isRoot = isRoot . get
+  hasRoot = hasRoot . get

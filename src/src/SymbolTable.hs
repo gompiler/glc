@@ -829,7 +829,7 @@ instance Symbolize Expr T.Expr where
     et' <- infer st e
     ee1' <- recurse st e1
     ee2' <- recurse st e2
-    return $ T.Binary <$> (toBase <$> et') <*-> convOp op <*> ee1' <*> ee2'
+    return $ T.Binary <$> (toBase e =<< et') <*-> convOp op <*> ee1' <*> ee2'
     where
       convOp :: BinaryOp -> T.BinaryOp
       convOp op' =
@@ -933,10 +933,7 @@ instance Symbolize Expr T.Expr where
   recurse st ec@(Arguments _ e@(Var (Identifier _ vname)) el) = do
     ect' <- infer st ec
     eel' <- mapM (recurse st) el
-    return $ createArgs <$> sequence eel' <*> (toBase e =<< ect')
-    where
-      createArgs :: [T.Expr] -> T.CType -> T.Expr
-      createArgs el' t' = T.Arguments t' (T.Ident vname) el'
+    return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> sequence eel'
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
 
 intTypeToInt :: Literal -> Maybe Int
