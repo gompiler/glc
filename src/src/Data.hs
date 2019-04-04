@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Data where
 

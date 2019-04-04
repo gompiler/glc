@@ -5,11 +5,11 @@ module TokensBase where
 -- Based off Alex monad wrapper
 import           Control.Applicative as App (Applicative (..))
 
+import           Base
 import           Control.Monad       ((>=>))
 import qualified Data.Bits
 import           Data.Char           (ord)
 import           Data.Word           (Word8)
-import           Base
 
 alex_tab_size :: Int
 alex_tab_size = 8
@@ -127,7 +127,11 @@ newtype Alex a = Alex
   }
 
 instance Functor Alex where
-  fmap = fmap
+  fmap f a =
+    Alex $ \s ->
+      case unAlex a s of
+        Left msg       -> Left msg
+        Right (s', a') -> Right (s', f a')
 
 instance Applicative Alex where
   pure a = Alex $ \s -> Right (s, a)
