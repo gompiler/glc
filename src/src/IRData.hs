@@ -17,6 +17,7 @@ data FieldAccess
   | FFinal
   | FVolatile
   | FTransient
+  deriving (Eq)
 
 instance Show FieldAccess where
   show FPublic    = "public"
@@ -32,40 +33,40 @@ data Field = Field
   , fname      :: String
   , descriptor :: String
   -- , value :: LDCType TODO?
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 data Class = Class
   { cname   :: String
   , fields  :: [Field]
   , methods :: [Method]
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 data Method = Method
   { mname       :: String
   , stackLimit  :: Int
   , localsLimit :: Int
   , body        :: [IRItem]
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 newtype ClassRef =
   ClassRef String
-  deriving (Show)
+  deriving (Show, Eq)
 
 data FieldRef =
   FieldRef ClassRef
            String
-  deriving (Show)
+  deriving (Show, Eq)
 
 data MethodRef =
   MethodRef ClassRef
             String
             [JType]
             JType
+  deriving (Eq)
 
 instance Show MethodRef where
   show (MethodRef (ClassRef cn) mn tl t) =
-    "Method " ++
-    cn ++ " " ++ mn ++ " (" ++ concat (map show tl) ++ ")" ++ show t
+    "Method " ++ cn ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
 
 data JType
   = JClass ClassRef -- Lwhatever;
@@ -73,6 +74,7 @@ data JType
   | JFloat -- F
   | JBool -- Z
   | JVoid -- V
+  deriving (Eq)
 
 instance Show JType where
   show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
@@ -84,23 +86,23 @@ instance Show JType where
 data IRItem
   = IRInst Instruction
   | IRLabel LabelName
-  deriving (Show)
+  deriving (Show, Eq)
 
 data IRPrimitive
   = IRInt -- Integers, booleans, runes
   | IRFloat -- Float64s
-  deriving (Show)
+  deriving (Show, Eq)
 
 data IRType
   = Prim IRPrimitive -- Integer, boolean, rune, float64
   | Object -- String, array, struct, slice
-  deriving (Show)
+  deriving (Show, Eq)
 
 data LDCType
   = LDCInt Int -- Integers, booleans, runes
   | LDCFloat Float -- Float64s
   | LDCString String -- Strings
-  deriving (Show)
+  deriving (Show, Eq)
 
 data Instruction
   = Load IRType
@@ -134,7 +136,7 @@ data Instruction
   | InvokeSpecial MethodRef -- method spec
   | InvokeVirtual MethodRef -- method spec
   | Debug String -- TODO: remove
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- Predefined Java language constructs to use in code generation
 systemOut :: FieldRef
