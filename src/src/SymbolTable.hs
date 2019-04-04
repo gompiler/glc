@@ -927,10 +927,16 @@ instance Symbolize Expr T.Expr where
     where
       createIndex :: T.Expr -> T.Expr -> T.CType -> T.Expr
       createIndex e1' e2' t' = T.Index t' e1' e2'
-  recurse st ec@(Arguments _ e@(Var (Identifier _ vname)) el) = do
+  recurse st ec@(Arguments _ e@(Var idt@(Identifier _ vname)) el) = do
+    mr <- S.lookup st vname
     ect' <- infer st ec
-    eel' <- mapM (recurse st) el
-    return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> sequence eel'
+    eel' <- sequence <$> mapM (recurse st) el
+    case mr of
+      Nothing -> return $ Left $ createError e (NotDecl "Function " idt)
+      -- Remove casts as we resolve things to base types
+      -- The use of head here is okay because if ec is inferred without error, then el is one expression
+      Just (_, SType _) -> either (return . Left) (const $ return $ head <$> eel') ect'
+      _ -> return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> eel'
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
 
 intTypeToInt :: Literal -> Maybe Int
