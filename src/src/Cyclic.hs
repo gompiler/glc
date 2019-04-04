@@ -1,4 +1,6 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs        #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE RankNTypes   #-}
 
 -- | Allows cyclic data to be stored without cyclic structures
 -- The data must contain some key to represent a cycle.
@@ -16,6 +18,7 @@ module Cyclic
   , get
   , mapContainer
   , getRoot
+  , mapEither
   , set
   , map
   , getActual
@@ -72,6 +75,19 @@ mapContainer ::
      (Cyclic a, Cyclic b) => (a -> b) -> CyclicContainer a -> CyclicContainer b
 mapContainer action (CyclicContainer root current) =
   CyclicContainer (action root) (action current)
+
+-- | Map container with an Either output
+-- Result is Left if any part of the cyclic container is Left
+mapEither ::
+     (Cyclic a, Cyclic b)
+  => (a -> Either e b)
+  -> CyclicContainer a
+  -> Either e (CyclicContainer b)
+mapEither action (CyclicContainer root current) =
+  case (action root, action current) of
+    (Left err, _)                 -> Left err
+    (_, Left err)                 -> Left err
+    (Right root', Right current') -> Right $ CyclicContainer root' current'
 
 class Cyclic a where
   isRoot :: a -> Bool
