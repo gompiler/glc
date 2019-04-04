@@ -54,6 +54,7 @@ data VarDecl' =
   deriving (Show, Eq)
 
 -- | Placeholder, no typedefs
+-- This is here since generating this new AST at typecheck is a one to one map
 data TypeDef' =
   NoDef
   deriving (Show, Eq)

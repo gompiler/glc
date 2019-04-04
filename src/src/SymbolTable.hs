@@ -875,18 +875,14 @@ instance Symbolize Expr T.Expr where
               _    -> error "Invalid escape character in rune lit" -- Should never happen because scanner guarantees these escape characters
           c -> c
       StringLit _ Interpreted s -> Right $ T.Lit $ T.StringLit (stripQuotes s)
+      StringLit _ Raw s -> Right $ T.Lit $ T.StringLit $ esc (stripQuotes s)
         where
-          stripQuotes :: String -> String
-          stripQuotes s'@(_:t) = let n = length s' in
-                                   if n >= 2 then
-                                     (take (n - 2) t) -- Take everything except last char, i.e. quote
-                                   else t
-          stripQuotes s' = s'
-      StringLit _ Raw s -> Right $ T.Lit $ T.StringLit $ escBackslash (filter (/='`') s)
-        where
-          escBackslash :: String -> String
-          escBackslash s' = concat (map (\c -> if c == '\\' then "\\\\"
-                                         else [c]) s')
+          -- Escape all things that need to be escaped so that we can
+          -- transform a raw string to an interpreted string
+          esc :: String -> String
+          esc s' = concat (map (\c -> if c == '\\' then "\\\\"
+                                      else if c == '"' then "\\\""
+                                           else [c]) s')
   recurse st e@(Var ident@(Identifier o vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname
@@ -948,9 +944,17 @@ instance Symbolize Expr T.Expr where
       Nothing -> return $ Left $ createError e (NotDecl "Function " idt)
       -- Remove casts as we resolve things to base types
       -- The use of head here is okay because if ec is inferred without error, then el is one expression
+      -- See TypeInference.infer' Arguments case
       Just (_, SType _) -> either (return . Left) (const $ return $ head <$> eel') ect'
       _ -> return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> eel'
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
+
+-- | Strip first and last character of a string
+stripQuotes :: String -> String
+stripQuotes s = if length s < 2 then
+                  error "String has no quotes"
+                else
+                  tail $ init s
 
 intTypeToInt :: Literal -> Maybe Int
 intTypeToInt (IntLit _ t s) =
