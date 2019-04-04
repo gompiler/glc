@@ -4,8 +4,8 @@ import           Base
 import qualified CheckedData      as T (Ident (..), Scope (..),
                                         ScopedIdent (..))
 import           Control.Monad.ST
+import qualified Cyclic           as C
 import           Data             (Identifier (..))
-import           Data.Functor       (($>))
 import           Data.List        (intercalate)
 import qualified SymbolTableCore  as S
 
@@ -13,7 +13,7 @@ import qualified SymbolTableCore  as S
 -- we largely base ourselves off types in the AST, however we do not need offsets for the symbol table
 type SIdent = T.ScopedIdent
 
-type Param = (String, SType)
+type Param = (String, CType)
 
 type Field = (String, SType)
 
@@ -29,10 +29,25 @@ data Symbol
   -- In Golite, the only constants we have are booleans
   | ConstantBool
   | Func [Param]
-         SType
-  | Variable SType
-  | SType SType -- Declared types
+         CType
+  | Variable CType
+  | SType CType -- Declared types
   deriving (Eq)
+
+-- Wrapper stype with both the root instance and the current instance.
+-- All cycles should redirect back to the root
+type CType = C.CyclicContainer SType
+
+instance C.Cyclic SType where
+  isRoot Infer = True
+  isRoot _     = False
+  hasRoot Infer           = True
+  hasRoot (Array _ t)     = C.hasRoot t
+  hasRoot (Slice t)       = C.hasRoot t
+  hasRoot (Struct fields) = any (C.hasRoot . snd) fields
+  -- Note that an infer within another typemap is no longer the same
+  -- root as the current cycle. We therefore also mark it as false
+  hasRoot _               = False
 
 data SType
   = Array Int
@@ -40,7 +55,7 @@ data SType
   | Slice SType
   | Struct [Field] -- List of fields
   | TypeMap SIdent
-            SType
+            CType
   | PInt
   | PFloat64
   | PBool
@@ -50,15 +65,15 @@ data SType
   | Void -- For the type of Arguments when calling a void function (which is permissible for ExprStmts)
   deriving (Eq)
 
+--  | Cycle SType
 instance Show Symbol where
   show s =
     case s of
       Func pl t ->
         " [function] = (" ++
-        intercalate "," (map (\(_, t') -> show t') pl) ++
-        ") -> " ++ show t
+        intercalate "," (map (\(_, t') -> show t') pl) ++ ") -> " ++ show t
       Variable t' -> " [variable] = " ++ show t'
-      SType t' -> " [type] = " ++ showDef t'
+      SType t' -> " [type] = " ++ showDef (C.get t')
       _ -> ""
       -- | Fully resolve SType as a string, alternative to show when you want to show the complete mapping
     where
@@ -66,7 +81,7 @@ instance Show Symbol where
       showDef t =
         case t of
           TypeMap (T.ScopedIdent _ (T.Ident name)) t' ->
-            name ++ " -> " ++ showDef t'
+            name ++ " -> " ++ showDef (C.get t')
           _ -> show t
 
 instance Show SType where
@@ -87,11 +102,7 @@ instance Show SType where
       Void -> "void"
 
 -- | Resolve type of an Identifier
-resolve ::
-     Identifier
-  -> SymbolTable s
-  -> ErrorMessage'
-  -> ST s (Glc' SType)
+resolve :: Identifier -> SymbolTable s -> ErrorMessage' -> ST s (Glc' SType)
 resolve ident@(Identifier _ idv) st notDeclError = do
   res <- S.lookup st idv
   sres <- maybe (S.disableMessages st $> Left notDeclError) (return . Right) res
@@ -110,8 +121,10 @@ resolve ident@(Identifier _ idv) st notDeclError = do
         "string"  -> Right PString
         _         -> Left $ createError ident NotBase -- This shouldn't happen, don't insert any other base types
     resolve' ConstantBool _ _ = Right PBool
-    resolve' (Variable _) _ _ = Left $ createError ident $ NotTypeMap "variable "
-    resolve' (SType t') scope ident' = Right $ TypeMap (mkSIdStr scope ident') t'
+    resolve' (Variable _) _ _ =
+      Left $ createError ident $ NotTypeMap "variable "
+    resolve' (SType t') scope ident' =
+      Right $ TypeMap (mkSIdStr scope ident') t'
     resolve' (Func _ _) _ _ = Left $ createError ident $ NotTypeMap "function "
 
 data ResolveError
@@ -120,7 +133,9 @@ data ResolveError
   deriving (Show, Eq)
 
 instance ErrorEntry ResolveError where
-  errorMessage (NotTypeMap s) = "Identifier resolves to a " ++ s ++ " which is not a type map and so we cannot resolve its type"
+  errorMessage (NotTypeMap s) =
+    "Identifier resolves to a " ++
+    s ++ " which is not a type map and so we cannot resolve its type"
   errorMessage NotBase = "Undefined base type, cannot resolve to a base type"
 
 -- | Take Symbol table scope and string to make ScopedIdent, add dummy offset

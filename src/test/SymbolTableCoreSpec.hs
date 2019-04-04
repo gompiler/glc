@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-
 module SymbolTableCoreSpec
   ( spec
   ) where

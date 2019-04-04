@@ -7,6 +7,7 @@ module CheckedPrettify
 
 import           Base               (Offset (..))
 import           CheckedData
+import qualified Cyclic             as C
 import qualified Data               as D
 import           Data.List          (intercalate)
 import           Data.List.NonEmpty (NonEmpty (..))
@@ -68,6 +69,8 @@ instance ConvertAST Signature D.Signature where
 instance ConvertAST SimpleStmt D.SimpleStmt where
   toOrig EmptyStmt = D.EmptyStmt
   toOrig (ExprStmt e) = D.ExprStmt (toOrig e)
+  toOrig (VoidExprStmt (Ident vname) el) =
+    D.ExprStmt (D.Arguments o (D.Var $ D.Identifier o vname) (map toOrig el))
   toOrig (Increment e) = D.Increment o (toOrig e)
   toOrig (Decrement e) = D.Decrement o (toOrig e)
   toOrig (Assign op eltup) =
@@ -114,14 +117,15 @@ instance ConvertAST Expr D.Expr where
   toOrig (Selector _ e (Ident vname)) =
     D.Selector o (toOrig e) (D.Identifier o vname)
   toOrig (Index _ e1 e2) = D.Index o (toOrig e1) (toOrig e2)
-  toOrig (Arguments _ (Ident vname) el) = D.Arguments o (D.Var (D.Identifier o vname)) (map toOrig el)
+  toOrig (Arguments _ (Ident vname) el) =
+    D.Arguments o (D.Var (D.Identifier o vname)) (map toOrig el)
 
 instance ConvertAST Literal (Either D.Literal D.Expr) where
-  toOrig (IntLit i)    = Left $ D.IntLit o D.Decimal (show i)
-  toOrig (FloatLit f)  = Left $ D.FloatLit o (show f)
-  toOrig (RuneLit c)   = Left $ D.RuneLit o (show c)
-  toOrig (StringLit s) = Left $ D.StringLit o D.Interpreted s
-  toOrig (BoolLit True) = Right $ D.Var (D.Identifier o "true")
+  toOrig (IntLit i)      = Left $ D.IntLit o D.Decimal (show i)
+  toOrig (FloatLit f)    = Left $ D.FloatLit o (show f)
+  toOrig (RuneLit c)     = Left $ D.RuneLit o (show c)
+  toOrig (StringLit s)   = Left $ D.StringLit o D.Interpreted s
+  toOrig (BoolLit True)  = Right $ D.Var (D.Identifier o "true")
   toOrig (BoolLit False) = Right $ D.Var (D.Identifier o "false")
 
 instance ConvertAST BinaryOp D.BinaryOp where
@@ -164,6 +168,12 @@ instance ConvertAST AssignOp D.AssignOp where
   toOrig (AssignOp (Just op)) = D.AssignOp (Just (toOrig op))
   toOrig (AssignOp Nothing)   = D.AssignOp Nothing
 
+instance ConvertAST CType D.Type where
+  toOrig = toOrig . C.get
+
+instance ConvertAST CType D.Type' where
+  toOrig t = (o, toOrig t)
+
 instance ConvertAST Type D.Type' where
   toOrig t = (o, toOrig t)
 
@@ -177,6 +187,8 @@ instance ConvertAST Type D.Type where
   toOrig PBool = D.Type (D.Identifier o "bool")
   toOrig PRune = D.Type (D.Identifier o "rune")
   toOrig PString = D.Type (D.Identifier o "string")
+  toOrig Cycle = D.Type (D.Identifier o "cycle")
+  toOrig (TypeMap t) = toOrig t -- TODO verify
 
 instance ConvertAST FieldDecl D.FieldDecl where
   toOrig (FieldDecl (Ident vname) t) =
