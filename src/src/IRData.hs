@@ -7,6 +7,8 @@
 -- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
 module IRData where
 
+import ResourceData (VarIndex)
+
 type LabelName = String
 
 data FieldAccess
@@ -106,9 +108,9 @@ data LDCType
 
 data Instruction
   = Load IRType
-         Int
+         VarIndex
   | Store IRType
-          Int
+          VarIndex
   | Return (Maybe IRType)
   | Dup
   | Goto LabelName
