@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -1067,12 +1066,6 @@ checkDup st l err stres =
   case getFirstDuplicate l of
     Nothing  -> stres
     Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
-
-instance C.Cyclic (Glc' T.Type) where
-  isRoot (Left _) = False
-  isRoot (Right current) = C.isRoot current
-  hasRoot (Left _) = False
-  hasRoot (Right current) = C.hasRoot current
 
 -- | Convert SType to base type, aka Type from CheckedData
 toBase :: Expr -> CType -> Glc' T.CType
