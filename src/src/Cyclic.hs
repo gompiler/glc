@@ -10,7 +10,7 @@
 -- For instance, eq will compare the current structure, and only compare the root
 -- if a cycle is detected
 module Cyclic
-  ( CyclicContainer(..)
+  ( CyclicContainer
   , Cyclic(..)
   , new
   , get
