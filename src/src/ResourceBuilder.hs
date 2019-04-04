@@ -181,14 +181,14 @@ instance Converter T.Stmt Stmt
           s2' <- wrap $ cs s2
           return $ If (s', e') s1' s2'
       T.Switch s e cases ->
-        Switch <$> css s <*> maybe (return undefined) ce e <*>
+        Switch <$> css s <*> maybe (return $ Lit $ T.BoolLit True) ce e <*>
         fmap catMaybes (mapM convertSwitchCase cases) <*>
         -- Note that we find a list of all defaults
         -- and only use the first one
         -- It is guaranteed in the weeding phase that we have at most one default,
         -- even if it isn't reflected structurally
-        fmap -- TODO add bool as default
-          (fromMaybe undefined . listToMaybe . catMaybes)
+        fmap
+          (fromMaybe (SimpleStmt EmptyStmt) . listToMaybe . catMaybes)
           (mapM convertDefaultCase cases)
       T.For clause s ->
         wrap $ do
@@ -213,9 +213,9 @@ instance Converter T.Stmt Stmt
       ce :: T.Expr -> ST s Expr
       ce = convert rc
       convertForClause :: T.ForClause -> ST s ForClause
-      convertForClause (T.ForClause pre e post)
-        -- TODO add constant bool for default
-       = ForClause <$> css pre <*> maybe (pure undefined) ce e <*> css post
+      convertForClause (T.ForClause pre e post) =
+        ForClause <$> css pre <*> maybe (pure $ Lit $ T.BoolLit True) ce e <*>
+        css post
       convertSwitchCase :: T.SwitchCase -> ST s (Maybe SwitchCase)
       convertSwitchCase (T.Case exprs s) =
         wrap $ do
