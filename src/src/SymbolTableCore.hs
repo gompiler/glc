@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns  #-}
-{-# LANGUAGE GADTs         #-}
 {-# LANGUAGE TupleSections #-}
 
 -- | State based eager symbol table

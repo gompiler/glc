@@ -11,18 +11,10 @@ module ResourceContext
 
 import           Base
 import qualified CheckedData             as C
-
---import           Control.Monad           (unless)
 import           Control.Monad.ST
 import           Data.Either             (partitionEithers)
-
-import qualified Data.HashTable.ST.Basic as HT
-
---import           Data.Foldable           (asum)
 import           Data.Hashable
-
---import           Data.List.NonEmpty      (NonEmpty (..), fromList, toList, (<|))
---import qualified Data.List.NonEmpty      as NonEmpty (last)
+import qualified Data.HashTable.ST.Basic as HT
 import           Data.STRef
 import           Prelude                 hiding (lookup)
 import           ResourceData
