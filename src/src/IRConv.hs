@@ -237,7 +237,7 @@ exprType (T.Var t _)          = t
 exprType (T.AppendExpr t _ _) = t
 exprType (T.LenExpr _)        = C.new T.PInt
 exprType (T.CapExpr _)        = C.new T.PInt
-exprType (T.Selector t _ _)   = t
+exprType (T.Selector t _ _ _)   = t
 exprType (T.Index t _ _)      = t
 exprType (T.Arguments t _ _)  = t
 
