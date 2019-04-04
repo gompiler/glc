@@ -1,6 +1,4 @@
-{-# LANGUAGE GADTs        #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE RankNTypes   #-}
+{-# LANGUAGE GADTs #-}
 
 -- | Allows cyclic data to be stored without cyclic structures
 -- The data must contain some key to represent a cycle.
