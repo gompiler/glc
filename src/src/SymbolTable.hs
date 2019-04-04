@@ -874,7 +874,19 @@ instance Symbolize Expr T.Expr where
               '\\' -> '\\'
               _    -> error "Invalid escape character in rune lit" -- Should never happen because scanner guarantees these escape characters
           c -> c
-      StringLit _ _ s -> Right $ T.Lit $ T.StringLit s -- TODO: Resolve separate types of strings
+      StringLit _ Interpreted s -> Right $ T.Lit $ T.StringLit (stripQuotes s)
+        where
+          stripQuotes :: String -> String
+          stripQuotes s'@(_:t) = let n = length s' in
+                                   if n >= 2 then
+                                     (take (n - 2) t) -- Take everything except last char, i.e. quote
+                                   else t
+          stripQuotes s' = s'
+      StringLit _ Raw s -> Right $ T.Lit $ T.StringLit $ escBackslash (filter (/='`') s)
+        where
+          escBackslash :: String -> String
+          escBackslash s' = concat (map (\c -> if c == '\\' then "\\\\"
+                                         else [c]) s')
   recurse st e@(Var ident@(Identifier o vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname

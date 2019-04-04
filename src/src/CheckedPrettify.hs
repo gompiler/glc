@@ -123,7 +123,7 @@ instance ConvertAST Literal (Either D.Literal D.Expr) where
   toOrig (IntLit i)      = Left $ D.IntLit o D.Decimal (show i)
   toOrig (FloatLit f)    = Left $ D.FloatLit o (show f)
   toOrig (RuneLit c)     = Left $ D.RuneLit o (show c)
-  toOrig (StringLit s)   = Left $ D.StringLit o D.Interpreted s
+  toOrig (StringLit s)   = Left $ D.StringLit o D.Interpreted $ "\"" ++ s ++ "\""
   toOrig (BoolLit True)  = Right $ D.Var (D.Identifier o "true")
   toOrig (BoolLit False) = Right $ D.Var (D.Identifier o "false")
 
