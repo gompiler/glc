@@ -1,64 +1,42 @@
-module CheckedData where
+module ResourceData where
 
+import           CheckedData        (AssignOp, BinaryOp, Ident, Literal,
+                                     UnaryOp)
 import           Data.List.NonEmpty (NonEmpty (..))
-import qualified Cyclic as C
 
-data ScopedIdent =
-  ScopedIdent Scope
-              Ident
-  deriving (Show, Eq)
-
-newtype Ident =
-  Ident String
-  deriving (Show, Eq)
-
-newtype Scope =
-  Scope Int
+-- Represents the stack index within a method
+newtype VarIndex =
+  VarIndex Int
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Source_file_organization
 -- Imports not supported in golite
+-- Note the following changes:
+-- * We collect all possible structs and provide a list of unique struct types
+-- * We collect all init operations and put them in one section
+-- * We separate var declarations and function declarations
+-- To create a working program, data should be loaded in this order
 data Program = Program
   { package   :: Ident
-  , topLevels :: [TopDecl]
+  , structs   :: [StructType]
+  , topVars   :: [VarDecl]
+  , init :: [Stmt]
+  , functions :: [FuncDecl]
   } deriving (Show, Eq)
 
 ----------------------------------------------------------------------
 -- Declarations
--- | See https://golang.org/ref/spec#TopLevelDecl
-data TopDecl
-  = TopDecl Decl
-  | TopFuncDecl FuncDecl
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#Declaration
--- Golite does not support type alias
-data Decl
-  -- | See https://golang.org/ref/spec#VarDecl
-  -- If only one entry exists, it is treated as a single line declaration
-  -- Otherwise, it is treated as var ( ... )
-  = VarDecl [VarDecl']
-  | TypeDef [TypeDef']
-  deriving (Show, Eq)
-
 -- | See https://golang.org/ref/spec#VarDecl
 -- Note that a proper declaration can be mapped to pairs of ids and expressions
 -- The inferred type here is a valid type after we check that
 -- the expression type matches the declared type, if any.
 -- This is necessary for cases like var a float = 5,
 -- where the expression type is not necessarily the same as the declared one
-data VarDecl' =
-  VarDecl' ScopedIdent
-           CType
-           (Maybe Expr) -- Can declare a variable without an expression
-  deriving (Show, Eq)
+data VarDecl =
 
--- | See https://golang.org/ref/spec#TypeDef
-data TypeDef'
-  = TypeDef' ScopedIdent
-             CType
-  -- For mappings that aren't structs, we resolve them to their base types so we don't need to define them anymore
-  | NoDef
+  VarDecl VarIndex
+          Type
+          (Maybe Expr) -- TODO If no explicit expr, assign default?
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -72,7 +50,7 @@ data TypeDef'
 -- * Unnamed input parameters
 -- * Variadic parameters
 data FuncDecl =
-  FuncDecl ScopedIdent
+  FuncDecl Ident -- TODO check if we want this
            Signature
            FuncBody
   deriving (Show, Eq)
@@ -82,8 +60,8 @@ data FuncDecl =
 -- Golite does not support unnamed parameters
 -- At this stage, we can map each individual identifier to its expected type
 data ParameterDecl =
-  ParameterDecl ScopedIdent
-                CType
+  ParameterDecl VarIndex
+                Type
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Parameters
@@ -97,7 +75,7 @@ newtype Parameters =
 -- No result type needed
 data Signature =
   Signature Parameters
-            (Maybe CType)
+            (Maybe Type)
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -117,7 +95,7 @@ data SimpleStmt
   | Assign AssignOp
            (NonEmpty (Expr, Expr))
   -- | See https://golang.org/ref/spec#ShortVarDecl
-  | ShortDeclare (NonEmpty (ScopedIdent, Expr))
+  | ShortDeclare (NonEmpty (VarIndex, Expr))
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Statement
@@ -139,11 +117,13 @@ data Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
   -- | See https://golang.org/ref/spec#ExprSwitchStmt
   -- Golite does not support type switches
-  -- Note that there should be at most one default
-  -- The next AST model can make that distinction
+  -- In this AST, we now separate the default case from the other switch cases
+  -- If none exists, we will simply provide an empty statement
+  -- The expression also defaults to True if none exists
   | Switch SimpleStmt
-           (Maybe Expr)
+           Expr
            [SwitchCase]
+           Stmt
   -- | See https://golang.org/ref/spec#For_statements
   | For ForClause
         Stmt
@@ -154,7 +134,7 @@ data Stmt
   -- Labels are not supported in Golite
   | Continue
   -- | See https://golang.org/ref/spec#Declaration
-  | Declare Decl
+  | Declare VarDecl
   -- Golite exclusive
   | Print [Expr]
   -- Golite exclusive
@@ -165,17 +145,16 @@ data Stmt
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
-data SwitchCase
-  = Case (NonEmpty Expr)
-         Stmt
-  | Default Stmt
+data SwitchCase =
+  Case (NonEmpty Expr)
+       Stmt
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#For_statements
 -- Golite does not support range statement
 data ForClause =
   ForClause SimpleStmt
-            (Maybe Expr)
+            Expr
             SimpleStmt
   deriving (Show, Eq)
 
@@ -185,21 +164,22 @@ data ForClause =
 -- Note that we don't care about parentheses here;
 -- We can infer them from the AST
 data Expr
-  = Unary CType
+  = Unary Type
           UnaryOp
           Expr
-  | Binary CType
+  | Binary Type
            BinaryOp
            Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var CType ScopedIdent
+  | Var Type
+        VarIndex
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
-  | AppendExpr CType
+  | AppendExpr Type
                Expr
                Expr
   -- | Golite spec
@@ -212,100 +192,21 @@ data Expr
   | CapExpr Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
-  | Selector CType
+  | Selector Type
              Expr
              Ident
   -- | See https://golang.org/ref/spec#Index
   -- Eg expr1[expr2]
-  | Index CType
+  | Index Type
           Expr
           Expr
   -- | See https://golang.org/ref/spec#Arguments
   -- Eg expr(expr1, expr2, ...)
-  | Arguments CType
+  | Arguments Type
               Ident
               [Expr]
   deriving (Show, Eq)
 
--- | See https://golang.org/ref/spec#Literal
-data Literal
-  = IntLit Int
-  | BoolLit Bool
-  | FloatLit Float
-  | RuneLit Char
-  | StringLit String
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#binary_op
--- & See https://golang.org/ref/spec#rel_op
-data BinaryOp
-  = Or -- ||
-  | And -- &&
-  | Arithm ArithmOp
-  | EQ -- ==
-  | NEQ -- !=
-  | LT -- <
-  | LEQ -- <=
-  | GT -- >
-  | GEQ -- >=
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#add_op
--- & See https://golang.org/ref/spec#mul_op
--- We make no distinction between addop and mulop
--- As they are separated in the specs purely to show the order of operations
-data ArithmOp
-  --- Add Ops
-  = Add -- +
-  | Subtract -- -
-  | BitOr -- |
-  | BitXor -- ^
-  --- Mul Ops
-  | Multiply -- *
-  | Divide -- /
-  | Remainder -- %
-  | ShiftL -- <<
-  | ShiftR -- >>
-  | BitAnd -- &
-  | BitClear -- &^
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#unary_op
--- Golite only supports the four ops below
-data UnaryOp
-  = Pos -- +
-  | Neg -- -
-  | Not -- !
-  | BitComplement -- ^
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#assign_op
--- Symbol is the arithm op followed by '='
-newtype AssignOp =
-  AssignOp (Maybe ArithmOp)
-  deriving (Show, Eq)
-
-type CType = C.CyclicContainer Type
-
-instance C.Cyclic Type where
-  isRoot Cycle = True
-  isRoot _     = False
-  hasRoot Cycle           = True
-  hasRoot (ArrayType _ t)     = C.hasRoot t
-  hasRoot (SliceType t)       = C.hasRoot t
-  hasRoot (StructType fields) = any hasRoot' fields
-    where
-          hasRoot' :: FieldDecl -> Bool
-          hasRoot' (FieldDecl _ t) = C.hasRoot t
-  -- Note that an infer within another typemap is no longer the same
-  -- root as the current cycle. We therefore also mark it as false
-  hasRoot _               = False
-
--- | Type with scope value
--- Used for caching inferrable types
--- type InferredType = (Scope, Type)
--- Use Type for base type resolution instead
--- | See https://golang.org/ref/spec#Types
 data Type
   -- | See https://golang.org/ref/spec#Array_types
   -- Note that golite only supports int literal sizes
@@ -314,23 +215,17 @@ data Type
   -- | See https://golang.org/ref/spec#Slice_types
   | SliceType Type
   -- | See https://golang.org/ref/spec#Struct_types
-  | StructType [FieldDecl]
   | PInt
   | PFloat64
   | PBool
   | PRune
   | PString
-  -- | Base types allow for cycles
-  -- For instance,
-  -- type a []a
-  -- and
-  -- type b struct { cycle b; }
-  -- are all valid in golite
-  -- While we can represent it with an infinite data structure,
-  -- It makes modification more difficult
-  -- TODO check if we actually want to support this
-   | Cycle
-   | TypeMap CType
+  | StructType Ident
+  deriving (Show, Eq)
+
+data StructType =
+  Struct Ident
+         [FieldDecl]
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl

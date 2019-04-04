@@ -12,9 +12,8 @@ module SymbolTableCore
   , insert
   , lookup
   , lookupCurrent
-  , enterScope
-  , enterScopeCtx
-  , exitScope
+  , wrap
+  , wrap'
   , currentScope
   , scopeLevel
   , topScope
@@ -75,7 +74,7 @@ readRef (SyT ref) = readSTRef ref
 new :: ST s (SymbolTable s v l c)
 new = do
   ht <- HT.new
-  newRef $ SymbolTable (fromList [(Scope 1, ht, Nothing)]) [] False
+  newRef $! SymbolTable (fromList [(Scope 1, ht, Nothing)]) [] False
 
 -- | Inserts a key value pair at the upper most scope and return scope level
 insert :: SymbolTable s v l c -> String -> v -> ST s Scope
@@ -88,19 +87,17 @@ insert st k v = do
 lookup :: SymbolTable s v l c -> String -> ST s (Maybe (Scope, v))
 lookup st !k = do
   SymbolTable scopes _ _ <- readRef st
-  asum <$> mapM lookup' (toList scopes)
-  where
-    lookup' :: SymbolScope s v c -> ST s (Maybe (Scope, v))
-    lookup' (scope, ht, _) = do
-      v <- HT.lookup ht k
-      return $! fmap (scope, ) v
+  asum <$> mapM (lookup' k) (toList scopes)
+
+-- | Look up in provided scope
+lookup' :: String -> SymbolScope s v c -> ST s (Maybe (Scope, v))
+lookup' !k (scope, ht, _) = do
+  v <- HT.lookup ht k
+  return $! fmap (scope, ) v
 
 -- | Look up provided key at current scope only
 lookupCurrent :: SymbolTable s v l c -> String -> ST s (Maybe (Scope, v))
-lookupCurrent st !k = do
-  (scope, ht, _) <- currentScope st
-  v <- HT.lookup ht k
-  return $! fmap (scope, ) v
+lookupCurrent st !k = lookup' k =<< currentScope st
 
 -- | Create new scope
 enterScope :: SymbolTable s v l c -> ST s ()
@@ -125,6 +122,22 @@ exitScope :: SymbolTable s v l c -> ST s ()
 exitScope st = do
   SymbolTable (_ :| scopes) list msgStatus <- readRef st
   writeRef st $! SymbolTable (fromList scopes) list msgStatus
+
+-- | Enter scope before and exit scope after action
+wrap :: SymbolTable s v l c -> ST s o -> ST s o
+wrap st action = do
+  enterScope st
+  res <- action
+  exitScope st
+  return res
+
+-- | Same as wrap, but add a function context
+wrap' :: SymbolTable s v l c -> c -> ST s o -> ST s o
+wrap' st context action = do
+  enterScopeCtx st context
+  res <- action
+  exitScope st
+  return res
 
 -- | Retrieve current scope level
 scopeLevel :: SymbolTable s v l c -> ST s Scope
