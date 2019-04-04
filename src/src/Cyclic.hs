@@ -16,9 +16,7 @@ module Cyclic
   , get
   , mapContainer
   , fmapContainer
-  , flipC
   , getRoot
-  , mapEither
   , set
   , map
   , getActual
@@ -76,30 +74,13 @@ mapContainer ::
 mapContainer action (CyclicContainer root current) =
   CyclicContainer (action root) (action current)
 
--- | Map container with an Either output
--- Result is Left if any part of the cyclic container is Left
-mapEither ::
-     (Cyclic a, Cyclic b)
-  => (a -> Either e b)
-  -> CyclicContainer a
-  -> Either e (CyclicContainer b)
-mapEither action (CyclicContainer root current) =
-  case (action root, action current) of
-    (Left err, _)                 -> Left err
-    (_, Left err)                 -> Left err
-    (Right root', Right current') -> Right $ CyclicContainer root' current'
-
 fmapContainer ::
-     (Cyclic a, Monad m)
-  => (a -> m a)
+     (Cyclic a, Cyclic b, Monad m)
+  => (a -> m b)
   -> CyclicContainer a
-  -> m (CyclicContainer a)
+  -> m (CyclicContainer b)
 fmapContainer action (CyclicContainer root current) =
   CyclicContainer <$> action root <*> action current
-
--- | Flip order of monads
-flipC :: (Cyclic a, Monad m) => CyclicContainer (m a) -> m (CyclicContainer a)
-flipC (CyclicContainer mRoot mCurrent) = CyclicContainer <$> mRoot <*> mCurrent
 
 class Cyclic a where
   isRoot :: a -> Bool

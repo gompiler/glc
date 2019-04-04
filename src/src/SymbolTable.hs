@@ -1076,10 +1076,7 @@ instance C.Cyclic (Glc' T.Type) where
 
 -- | Convert SType to base type, aka Type from CheckedData
 toBase :: Expr -> CType -> Glc' T.CType
--- Might be preferable here to use fmapContainer and get rid of the
--- instantiation above so we can remove disabling orphan warnings in
--- the preamble
-toBase e = C.flipC . C.mapContainer toBase'
+toBase e = C.fmapContainer toBase'
   where
     toBase' :: SType -> Glc' T.Type
     toBase' (Array i t) = T.ArrayType i <$> toBase' t
@@ -1098,7 +1095,7 @@ toBase e = C.flipC . C.mapContainer toBase'
     toBase' PRune = Right T.PRune
     toBase' PString = Right T.PString
     toBase' Void = Left $ createError e BaseVoid
-    toBase' Infer = Right $ T.Cycle
+    toBase' Infer = Right T.Cycle
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: SymbolTable s -> Expr -> ST s (Glc' Bool)
