@@ -212,7 +212,7 @@ data Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
   | Selector CType
-             CType -- The second type here is for the struct type so we know what class to refer to
+             [FieldDecl] -- For the struct type so we know what class to refer to
              Expr
              Ident
   -- | See https://golang.org/ref/spec#Index
@@ -301,9 +301,6 @@ instance C.Cyclic Type where
   -- root as the current cycle. We therefore also mark it as false
   hasRoot _               = False
 
--- | Type with scope value
--- Used for caching inferrable types
--- type InferredType = (Scope, Type)
 -- Use Type for base type resolution instead
 -- | See https://golang.org/ref/spec#Types
 data Type

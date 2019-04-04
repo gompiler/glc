@@ -924,10 +924,14 @@ instance Symbolize Expr T.Expr where
     ect' <- infer st ec
     ets' <- infer st e -- Get the struct type
     ee' <- recurse st e
-    return $ createSel <$> ee' <*> (toBase e =<< ect') <*> (toBase e =<< ets')
+    return $ createSel <$> ee' <*> (toBase e =<< ect') <*> (structFields =<< (toBase e =<< ets'))
     where
-      createSel :: T.Expr -> T.CType -> T.CType -> T.Expr
-      createSel e' t' ts' = T.Selector t' ts' e' (T.Ident vname)
+      structFields :: T.CType -> Glc' [T.FieldDecl]
+      structFields t = case C.get t of
+                         T.StructType fdl -> Right fdl
+                         _ -> Left $ createError ec SelectNotStruct
+      createSel :: T.Expr -> T.CType -> [T.FieldDecl] -> T.Expr
+      createSel e' t' fdl' = T.Selector t' fdl' e' (T.Ident vname)
   recurse st e@(Index _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
@@ -1011,6 +1015,7 @@ data TypeCheckError
   | BaseVoid
   | InvalidCBool
   | NotAVar
+  | SelectNotStruct
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -1066,6 +1071,7 @@ instance ErrorEntry TypeCheckError where
       BaseVoid -> "Void cannot be converted to base type"
       InvalidCBool -> "Invalid constant bool value"
       NotAVar -> "Cannot get type of non-const/var identifier"
+      SelectNotStruct -> "Selector operator cannot be used on something that isn't a struct"
 
 -- | Get the first duplicate in a list, for checking if fields of a struct are all unique
 getFirstDuplicate :: Eq a => [a] -> Maybe a
