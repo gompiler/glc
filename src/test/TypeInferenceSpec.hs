@@ -21,7 +21,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
     errgen e = e expStr `withPrefix` "typinf error"
     parseResult :: Glc Expr
     parseResult = parse expStr
-    runExpr :: Expr -> Either ErrorMessage CType
+    runExpr :: Expr -> Glc CType
     runExpr e =
       runST $ do
         st <- SymTab.new

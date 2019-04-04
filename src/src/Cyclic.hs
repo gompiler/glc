@@ -16,7 +16,6 @@ module Cyclic
   , get
   , mapContainer
   , fmapContainer
-  , flipC
   , getRoot
   , set
   , map
@@ -75,14 +74,18 @@ mapContainer ::
 mapContainer action (CyclicContainer root current) =
   CyclicContainer (action root) (action current)
 
-fmapContainer :: (Cyclic a, Monad m) => (a -> m a) -> CyclicContainer a -> m (CyclicContainer a)
+fmapContainer ::
+     (Cyclic a, Cyclic b, Monad m)
+  => (a -> m b)
+  -> CyclicContainer a
+  -> m (CyclicContainer b)
 fmapContainer action (CyclicContainer root current) =
   CyclicContainer <$> action root <*> action current
-
--- | Flip order of monads
-flipC :: (Cyclic a, Monad m) => CyclicContainer (m a) -> m (CyclicContainer a)
-flipC (CyclicContainer mRoot mCurrent) = CyclicContainer <$> mRoot <*> mCurrent
 
 class Cyclic a where
   isRoot :: a -> Bool
   hasRoot :: a -> Bool
+
+instance Cyclic a => Cyclic (CyclicContainer a) where
+  isRoot = isRoot . get
+  hasRoot = hasRoot . get

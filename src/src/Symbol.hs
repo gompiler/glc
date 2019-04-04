@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE TypeSynonymInstances #-}
-
 module Symbol where
 
 import           Base
@@ -51,10 +48,6 @@ instance C.Cyclic SType where
   -- Note that an infer within another typemap is no longer the same
   -- root as the current cycle. We therefore also mark it as false
   hasRoot _               = False
-
-instance C.Cyclic CType where
-  isRoot c = C.isRoot $ C.get c
-  hasRoot c = C.hasRoot $ C.get c
 
 data SType
   = Array Int

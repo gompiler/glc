@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-
 module WeedingTypes
   ( weedT
   ) where

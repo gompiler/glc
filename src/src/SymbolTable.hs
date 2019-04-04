@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -417,20 +416,18 @@ instance Symbolize SimpleStmt T.SimpleStmt where
                   else Left $ createError (head idl') ShortDec
       checkDec :: Identifier -> Expr -> ST s (Glc' (Bool, (SIdent, T.Expr)))
       checkDec ident e = do
-        et <- infer st e -- Glc' SType
+        et <- infer st e -- glc type
+        ee <- recurse st e -- glc expr
         either
           (return . Left)
           (\t -> do
-             et' <- recurse st e
              eb <- checkId' ident t
-             either (return . Left) (attachExpr eb) et')
+             return $ attachExpr eb =<< ee)
           et
         where
           attachExpr ::
-               Glc' (Bool, SIdent)
-            -> T.Expr
-            -> ST s (Glc' (Bool, (SIdent, T.Expr)))
-          attachExpr eb e' = return $ (\(b, sid) -> (b, (sid, e'))) <$> eb
+               Glc' (Bool, SIdent) -> T.Expr -> Glc' (Bool, (SIdent, T.Expr))
+          attachExpr eb e' = (\(b, sid) -> (b, (sid, e'))) <$> eb
           checkId' ::
                Identifier
             -> CType
@@ -833,7 +830,7 @@ instance Symbolize Expr T.Expr where
     et' <- infer st e
     ee1' <- recurse st e1
     ee2' <- recurse st e2
-    return $ createBin <$> ee1' <*> ee2' <*> (toBase e =<< et')
+    return $ T.Binary <$> (toBase e =<< et') <*-> convOp op <*> ee1' <*> ee2'
     where
       convOp :: BinaryOp -> T.BinaryOp
       convOp op' =
@@ -847,8 +844,6 @@ instance Symbolize Expr T.Expr where
           LEQ        -> T.LEQ
           Data.GT    -> T.GT
           GEQ        -> T.GEQ
-      createBin :: T.Expr -> T.Expr -> T.CType -> T.Expr
-      createBin e1' e2' t' = T.Binary t' (convOp op) e1' e2'
   recurse _ (Lit lit) =
     return $
     case lit of
@@ -939,10 +934,7 @@ instance Symbolize Expr T.Expr where
   recurse st ec@(Arguments _ e@(Var (Identifier _ vname)) el) = do
     ect' <- infer st ec
     eel' <- mapM (recurse st) el
-    return $ createArgs <$> sequence eel' <*> (toBase e =<< ect')
-    where
-      createArgs :: [T.Expr] -> T.CType -> T.Expr
-      createArgs el' t' = T.Arguments t' (T.Ident vname) el'
+    return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> sequence eel'
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
 
 intTypeToInt :: Literal -> Maybe Int
@@ -1077,18 +1069,9 @@ checkDup st l err stres =
     Nothing  -> stres
     Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
 
-instance C.Cyclic (Glc' T.Type) where
-  isRoot (Left _) = False
-  isRoot (Right current) = C.isRoot current
-  hasRoot (Left _) = False
-  hasRoot (Right current) = C.hasRoot current
-
 -- | Convert SType to base type, aka Type from CheckedData
 toBase :: Expr -> CType -> Glc' T.CType
--- Might be preferable here to use fmapContainer and get rid of the
--- instantiation above so we can remove disabling orphan warnings in
--- the preamble
-toBase e = C.flipC . C.mapContainer toBase'
+toBase e = C.fmapContainer toBase'
   where
     toBase' :: SType -> Glc' T.Type
     toBase' (Array i t) = T.ArrayType i <$> toBase' t
@@ -1107,7 +1090,7 @@ toBase e = C.flipC . C.mapContainer toBase'
     toBase' PRune = Right T.PRune
     toBase' PString = Right T.PString
     toBase' Void = Left $ createError e BaseVoid
-    toBase' Infer = Right $ T.Cycle
+    toBase' Infer = Right T.Cycle
 
 -- | Is the expression addressable, aka an lvalue that we can assign to?
 isAddr :: SymbolTable s -> Expr -> ST s (Glc' Bool)
@@ -1238,7 +1221,7 @@ pTable code =
      let (me, syml) = pTable' p
       in ( me >>= (\e -> Just $ e code `withPrefix` "Symbol table error at ")
          , syml)) <$>
-  (weedT code)
+  weedT code
 
 pTable' :: Program -> (Maybe ErrorMessage', String)
 pTable' p =
