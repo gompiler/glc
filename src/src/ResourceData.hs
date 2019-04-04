@@ -88,6 +88,7 @@ data SimpleStmt
   -- | See https://golang.org/ref/spec#Expression_statements
   -- Note that expr must be some function
   | ExprStmt Expr
+  | VoidExprStmt Ident [Expr]
   -- | See https://golang.org/ref/spec#IncDecStmt
   | Increment Expr
   | Decrement Expr

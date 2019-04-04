@@ -49,6 +49,10 @@ instance C.Cyclic SType where
   -- root as the current cycle. We therefore also mark it as false
   hasRoot _               = False
 
+instance C.Cyclic CType where
+  isRoot c = C.isRoot $ C.get c
+  hasRoot c = C.hasRoot $ C.get c
+
 data SType
   = Array Int
           SType

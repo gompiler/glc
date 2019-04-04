@@ -10,11 +10,13 @@
 -- For instance, eq will compare the current structure, and only compare the root
 -- if a cycle is detected
 module Cyclic
-  ( CyclicContainer
+  ( CyclicContainer(..)
   , Cyclic(..)
   , new
   , get
   , mapContainer
+  , fmapContainer
+  , flipC
   , getRoot
   , mapEither
   , set
@@ -86,6 +88,14 @@ mapEither action (CyclicContainer root current) =
     (Left err, _)                 -> Left err
     (_, Left err)                 -> Left err
     (Right root', Right current') -> Right $ CyclicContainer root' current'
+
+fmapContainer :: (Cyclic a, Monad m) => (a -> m a) -> CyclicContainer a -> m (CyclicContainer a)
+fmapContainer action (CyclicContainer root current) =
+  CyclicContainer <$> action root <*> action current
+
+-- | Flip order of monads
+flipC :: (Cyclic a, Monad m) => CyclicContainer (m a) -> m (CyclicContainer a)
+flipC (CyclicContainer mRoot mCurrent) = CyclicContainer <$> mRoot <*> mCurrent
 
 class Cyclic a where
   isRoot :: a -> Bool

@@ -150,12 +150,13 @@ instance Converter T.SimpleStmt SimpleStmt where
   convert :: forall s. RC.ResourceContext s -> T.SimpleStmt -> ST s SimpleStmt
   convert rc stmt =
     case stmt of
-      T.EmptyStmt          -> return EmptyStmt
-      T.ExprStmt e         -> ExprStmt <$> ce e
-      T.Increment e        -> Increment <$> ce e
-      T.Decrement e        -> Decrement <$> ce e
-      T.Assign op exprs    -> Assign op <$> mapM convertAssign exprs
-      T.ShortDeclare decls -> ShortDeclare <$> mapM convertShortDecl decls
+      T.EmptyStmt           -> return EmptyStmt
+      T.ExprStmt e          -> ExprStmt <$> ce e
+      T.VoidExprStmt idt el -> VoidExprStmt idt <$> mapM ce el
+      T.Increment e         -> Increment <$> ce e
+      T.Decrement e         -> Decrement <$> ce e
+      T.Assign op exprs     -> Assign op <$> mapM convertAssign exprs
+      T.ShortDeclare decls  -> ShortDeclare <$> mapM convertShortDecl decls
     where
       convertAssign :: (T.Expr, T.Expr) -> ST s (Expr, Expr)
       convertAssign (e1, e2) = (,) <$> ce e1 <*> ce e2
