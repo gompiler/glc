@@ -286,7 +286,7 @@ instance Symbolize FuncDecl T.FuncDecl
               recurseSl :: S.Scope -> ST s (Glc' T.FuncDecl)
               recurseSl scope' = do
                 esl' <- sequence <$> mapM (recurse st) sl
-                return $ createFuncD <$> (func2sig scope' ftup) <*> esl'
+                return $ createFuncD <$> func2sig scope' ftup <*> esl'
                 where
                   createFuncD :: T.Signature -> [T.Stmt] -> T.FuncDecl
                   createFuncD sig' sl' =
