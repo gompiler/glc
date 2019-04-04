@@ -1206,7 +1206,7 @@ pTable code =
      let (me, syml) = pTable' p
       in ( me >>= (\e -> Just $ e code `withPrefix` "Symbol table error at ")
          , syml)) <$>
-  (weedT code)
+  weedT code
 
 pTable' :: Program -> (Maybe ErrorMessage', String)
 pTable' p =
