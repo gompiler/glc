@@ -53,12 +53,10 @@ data VarDecl' =
            (Maybe Expr) -- Can declare a variable without an expression
   deriving (Show, Eq)
 
--- | See https://golang.org/ref/spec#TypeDef
-data TypeDef'
-  = TypeDef' ScopedIdent
-             CType
-  -- For mappings that aren't structs, we resolve them to their base types so we don't need to define them anymore
-  | NoDef
+-- | Placeholder, no typedefs
+-- This is here since generating this new AST at typecheck is a one to one map
+data TypeDef' =
+  NoDef
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -214,6 +212,7 @@ data Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
   | Selector CType
+             [FieldDecl] -- For the struct type so we know what class to refer to
              Expr
              Ident
   -- | See https://golang.org/ref/spec#Index
@@ -302,9 +301,6 @@ instance C.Cyclic Type where
   -- root as the current cycle. We therefore also mark it as false
   hasRoot _               = False
 
--- | Type with scope value
--- Used for caching inferrable types
--- type InferredType = (Scope, Type)
 -- Use Type for base type resolution instead
 -- | See https://golang.org/ref/spec#Types
 data Type
