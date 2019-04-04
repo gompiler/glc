@@ -194,9 +194,8 @@ instance Typify Type where
   -- This last array case should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType' _ _ (ArrayType _ _) _ =
-    error
-      "Trying to convert type of an ArrayType with non literal int as length"
+  toType' _ _ (ArrayType e _) _ =
+    return $ Left $ createError e ArrayNonIntLit
 
 instance Symbolize Program T.Program where
   recurse st (Program (Identifier _ pkg) tdl)
@@ -856,26 +855,25 @@ instance Symbolize Expr T.Expr where
           (_, ['.'])  -> fs ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
           ([], '.':_) -> '0' : fs -- Prepend 0 because .1 is not a valid Float
           (_, _)      -> fs
-      RuneLit _ cs ->
-        Right $
-        T.Lit $
-        T.RuneLit $
+      RuneLit o cs ->
+        T.Lit .
+        T.RuneLit <$>
         case cs !! 1 of
           '\\' ->
             case cs !! 2 of
-              'a'  -> '\a'
-              'b'  -> '\b'
-              'f'  -> '\f'
-              'n'  -> '\n'
-              'r'  -> '\r'
-              't'  -> '\t'
-              'v'  -> '\v'
-              '\'' -> '\''
-              '\\' -> '\\'
-              _    -> error "Invalid escape character in rune lit" -- Should never happen because scanner guarantees these escape characters
-          c -> c
-      StringLit _ Interpreted s -> Right $ T.Lit $ T.StringLit (stripQuotes s)
-      StringLit _ Raw s -> Right $ T.Lit $ T.StringLit $ esc (stripQuotes s)
+              'a'  -> Right '\a'
+              'b'  -> Right '\b'
+              'f'  -> Right '\f'
+              'n'  -> Right '\n'
+              'r'  -> Right '\r'
+              't'  -> Right '\t'
+              'v'  -> Right '\v'
+              '\'' -> Right '\''
+              '\\' -> Right '\\'
+              c    ->  Left $ createError o (RuneInvalidEsc c)-- Should never happen because scanner guarantees these escape characters
+          c -> Right c
+      StringLit o Interpreted s -> T.Lit . T.StringLit <$> (stripQuotes s o)
+      StringLit o Raw s -> T.Lit . T.StringLit . esc <$> (stripQuotes s o)
         where
           -- Escape all things that need to be escaped so that we can
           -- transform a raw string to an interpreted string
@@ -954,11 +952,11 @@ instance Symbolize Expr T.Expr where
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
 
 -- | Strip first and last character of a string
-stripQuotes :: String -> String
-stripQuotes s = if length s < 2 then
-                  error "String has no quotes"
+stripQuotes :: String -> Offset -> Glc' String
+stripQuotes s off = if length s < 2 then
+                  Left $ createError off NoQuotes
                 else
-                  tail $ init s
+                  Right $ tail $ init s
 
 intTypeToInt :: Literal -> Maybe Int
 intTypeToInt (IntLit _ t s) =
@@ -1016,6 +1014,9 @@ data TypeCheckError
   | InvalidCBool
   | NotAVar
   | SelectNotStruct
+  | RuneInvalidEsc Char
+  | NoQuotes
+  | ArrayNonIntLit
   deriving (Show, Eq)
 
 instance ErrorEntry SymbolError where
@@ -1072,6 +1073,9 @@ instance ErrorEntry TypeCheckError where
       InvalidCBool -> "Invalid constant bool value"
       NotAVar -> "Cannot get type of non-const/var identifier"
       SelectNotStruct -> "Selector operator cannot be used on something that isn't a struct"
+      RuneInvalidEsc c' -> "Invalid escape character " ++ show c' ++ " in rune literal"
+      NoQuotes -> "String has no quotes"
+      ArrayNonIntLit -> "Trying to convert type of an ArrayType with non literal int as length"
 
 -- | Get the first duplicate in a list, for checking if fields of a struct are all unique
 getFirstDuplicate :: Eq a => [a] -> Maybe a
