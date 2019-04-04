@@ -1,10 +1,11 @@
-FROM python:3.5-alpine3.9
+FROM debian:stable
 
 RUN set -ex \
-        && apk --update add --no-cache openjdk8-jre make curl ghc bash\
+        && apt-get update\
+        && apt-get install -y openjdk-8-jre python3.5 curl\
         && curl -sSL https://get.haskellstack.org/ | sh
-# ENV PATH="${HOME}/.local/bin:${PATH}"
 RUN mkdir -p /repo/
 WORKDIR /repo/
 ADD . /repo/
-CMD ["./travis_test.sh"]
+RUN cd src && stack --no-terminal --install-ghc test --only-dependencies --pedantic
+CMD ["./docker_test.sh"]
