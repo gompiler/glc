@@ -90,7 +90,7 @@ instance IRRep T.Stmt where
     toIR e ++
     concatMap toIR scs ++
     IRLabel "default_todo" :
-    toIR dstmt ++ iri [Goto "end_todo"] ++ IRLabel "end_todo" : iri [NOp]
+    toIR dstmt ++ IRLabel "end_todo" : iri [NOp]
       -- duplicate expression for case statement expressions in lists
   toIR T.For {} = undefined
   toIR T.Break = iri [Goto "end_todo"]
