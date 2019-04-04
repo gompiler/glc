@@ -18,15 +18,20 @@ genIR :: String -> Glc Class
 genIR code = toClass . convertProgram <$> S.typecheckGen code
 
 toClass :: T.Program -> Class
-toClass (T.Program _ _ tfs _ tms) -- TODO: INITS EZ
- = Class {cname = "Main", fields = cFields, methods = cMethods} -- TODO
+toClass (T.Program _ _ tfs is tms) =
+  Class {cname = "Main", fields = cFields, methods = cMethods} -- TODO
   where
     cFields :: [Field]
     cFields = map vdToField tfs
     cMethods :: [Method]
-    cMethods = toMethods tms
-    -- toFields :: [T.VarDecl] -> [Field]
-    -- toFields = concatMap (\(T.VarDecl ds) -> map vdToField ds)
+    cMethods =
+      Method
+        { mname = "glc__init"
+        , stackLimit = 25
+        , localsLimit = 25
+        , body = concatMap toIR is
+        } :
+      toMethods tms
     vdToField :: T.VarDecl -> Field
     vdToField (T.VarDecl (T.VarIndex fi) _ _) =
       Field
@@ -40,7 +45,7 @@ toClass (T.Program _ _ tfs _ tms) -- TODO: INITS EZ
       concatMap
         (\(T.FuncDecl (D.Ident fni) _ fb) ->
            [ Method
-               { mname = fni
+               { mname = "glc__" ++ fni
                , stackLimit = 25 -- TODO
                , localsLimit = 25 -- TODO
                , body = toIR fb
@@ -248,5 +253,3 @@ getLiteralType (D.IntLit _)    = T.PInt
 getLiteralType (D.FloatLit _)  = T.PFloat64
 getLiteralType (D.RuneLit _)   = T.PRune
 getLiteralType (D.StringLit _) = T.PString
--- siToName :: T.ScopedIdent -> String
--- siToName (T.ScopedIdent (T.Scope sc) (T.Ident nm)) = nm ++ "__" ++ show sc
