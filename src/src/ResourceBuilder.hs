@@ -137,7 +137,7 @@ instance Converter T.Expr Expr where
       T.AppendExpr t e1 e2  -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
       T.LenExpr e           -> LenExpr <$> ce e
       T.CapExpr e           -> CapExpr <$> ce e
-      T.Selector t e i      -> Selector <$> ct t <*> ce e <*-> i
+      T.Selector t _ e i      -> Selector <$> ct t <*> ce e <*-> i
       T.Index t e1 e2       -> Index <$> ct t <*> ce e1 <*> ce e2
       T.Arguments t i exprs -> Arguments <$> ct t <*-> i <*> mapM ce exprs
     where
