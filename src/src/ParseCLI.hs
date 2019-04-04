@@ -142,10 +142,9 @@ cmdParser =
      hsubparser
        (commandGroup "MODE ((-f|--file-path FILEPATH))" <>
         command "codegen" codegenParser) <|>
-     hsubparser (internal <> command "ir" prettyInvarParser <>
-                 command "ir" irParser) <|>
      hsubparser (internal <> command "prettyinvar" prettyInvarParser
-                 <> command "prettyt" prettyTypecheckP) <**>
+                 <> command "prettyt" prettyTypecheckP
+                 <> command "ir" irParser) <**>
      helper)
     (fullDesc <>
      progDesc "Compiler for goLite" <> header "glc - a compiler for goLite")
