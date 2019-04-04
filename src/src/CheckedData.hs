@@ -110,6 +110,7 @@ data SimpleStmt
   -- | See https://golang.org/ref/spec#Expression_statements
   -- Note that expr must be some function
   | ExprStmt Expr
+  | VoidExprStmt Ident [Expr] -- For void calls only as they don't have a return type
   -- | See https://golang.org/ref/spec#IncDecStmt
   | Increment Expr
   | Decrement Expr

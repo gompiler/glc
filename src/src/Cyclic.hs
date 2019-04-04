@@ -77,7 +77,7 @@ mapContainer action (CyclicContainer root current) =
 
 fmapContainer :: (Cyclic a, Monad m) => (a -> m a) -> CyclicContainer a -> m (CyclicContainer a)
 fmapContainer action (CyclicContainer root current) =
-  CyclicContainer <$> (action root) <*> (action current)
+  CyclicContainer <$> action root <*> action current
 
 -- | Flip order of monads
 flipC :: (Cyclic a, Monad m) => CyclicContainer (m a) -> m (CyclicContainer a)

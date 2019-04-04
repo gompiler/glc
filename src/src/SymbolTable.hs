@@ -453,11 +453,14 @@ instance Symbolize SimpleStmt T.SimpleStmt where
                 scope <- S.insert st vname (Variable t) -- Overwrite infer with actual type so we can infer other variables
                 return $ Right (True, mkSIdStr scope vname)
   recurse _ EmptyStmt = return $ Right T.EmptyStmt
-  recurse st (ExprStmt e@(Arguments _ (Var (Identifier _ vname)) _)) = do
+  recurse st (ExprStmt e@(Arguments _ (Var (Identifier _ vname)) el)) = do
     res <- S.lookup st vname
     case res of
-      Just (_, Func _ _) ->
-        T.ExprStmt <$$> recurse st e -- Verify that expr only uses things that are defined
+      Just (_, Func _ t) ->
+        if t == void then
+          T.VoidExprStmt (T.Ident vname) <$$> (sequence <$> (mapM (recurse st) el))
+        else
+          T.ExprStmt <$$> recurse st e -- Verify that expr only uses things that are defined
       _ -> return $ Left $ createError e ESNotFunc
   recurse st (ExprStmt e) = T.ExprStmt <$$> recurse st e -- If the above case isn't matched, then we pass to here which will fail because func call isn't on an identifier
   recurse st (Increment _ e) = do
@@ -932,10 +935,8 @@ instance Symbolize Expr T.Expr where
       createIndex :: T.Expr -> T.Expr -> T.CType -> T.Expr
       createIndex e1' e2' t' = T.Index t' e1' e2'
   recurse st ec@(Arguments _ e@(Var (Identifier _ vname)) el) = do
-    ect' <- infer' st ec -- This is infer' because it is allowed to be a Void call
+    ect' <- infer st ec
     eel' <- mapM (recurse st) el
-    -- return $ createArgs <$> sequence eel' <*> ((\t' -> if t' == void then Right void
-                                                       -- else toBase e t') =<< ect')
     return $ createArgs <$> sequence eel' <*> (toBase e =<< ect')
     where
       createArgs :: [T.Expr] -> T.CType -> T.Expr
@@ -1082,6 +1083,9 @@ instance C.Cyclic (Glc' T.Type) where
 
 -- | Convert SType to base type, aka Type from CheckedData
 toBase :: Expr -> CType -> Glc' T.CType
+-- Might be preferable here to use fmapContainer and get rid of the
+-- instantiation above so we can remove disabling orphan warnings in
+-- the preamble
 toBase e = C.flipC . C.mapContainer toBase'
   where
     toBase' :: SType -> Glc' T.Type

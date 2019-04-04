@@ -69,6 +69,8 @@ instance ConvertAST Signature D.Signature where
 instance ConvertAST SimpleStmt D.SimpleStmt where
   toOrig EmptyStmt = D.EmptyStmt
   toOrig (ExprStmt e) = D.ExprStmt (toOrig e)
+  toOrig (VoidExprStmt (Ident vname) el) =
+    D.ExprStmt (D.Arguments o (D.Var $ D.Identifier o vname) (map toOrig el))
   toOrig (Increment e) = D.Increment o (toOrig e)
   toOrig (Decrement e) = D.Decrement o (toOrig e)
   toOrig (Assign op eltup) =
