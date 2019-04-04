@@ -801,13 +801,9 @@ instance Symbolize TypeDef' T.TypeDef' where
       (return . Left)
       (\t' -> do
          me <- checkId st (SType t') "Type " ident
-         maybe
-           (case C.get t' -- Ignore all types except for structs, as structs will be the only types we will have to define
-               -- Here we wrap the ident in a var just to pass offset to toBase in case of error
-                  of
-              Struct _ -> return $ T.TypeDef' sident <$> toBase (Var ident) t'
-              _ -> return $ Right T.NoDef)
-           (return . Left)
+         return $ maybe
+           (Right T.NoDef)
+           Left
            me)
       et
 

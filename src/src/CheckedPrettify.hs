@@ -48,8 +48,7 @@ instance ConvertAST VarDecl' D.VarDecl' where
     D.VarDecl' (si2idents si) (Left (toOrig t, []))
 
 instance ConvertAST TypeDef' (Maybe D.TypeDef') where
-  toOrig (TypeDef' si t) = Just $ D.TypeDef' (si2ident si) (toOrig t)
-  toOrig NoDef           = Nothing
+  toOrig NoDef = Nothing
 
 instance ConvertAST FuncDecl D.FuncDecl where
   toOrig (FuncDecl si sig fb) =

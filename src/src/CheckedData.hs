@@ -53,12 +53,9 @@ data VarDecl' =
            (Maybe Expr) -- Can declare a variable without an expression
   deriving (Show, Eq)
 
--- | See https://golang.org/ref/spec#TypeDef
-data TypeDef'
-  = TypeDef' ScopedIdent
-             CType
-  -- For mappings that aren't structs, we resolve them to their base types so we don't need to define them anymore
-  | NoDef
+-- | Placeholder, no typedefs
+data TypeDef' =
+  NoDef
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
