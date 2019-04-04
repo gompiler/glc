@@ -414,20 +414,18 @@ instance Symbolize SimpleStmt T.SimpleStmt where
                   else Left $ createError (head idl') ShortDec
       checkDec :: Identifier -> Expr -> ST s (Glc' (Bool, (SIdent, T.Expr)))
       checkDec ident e = do
-        et <- infer st e -- Glc' SType
+        et <- infer st e -- glc type
+        ee <- recurse st e -- glc expr
         either
           (return . Left)
           (\t -> do
-             et' <- recurse st e
              eb <- checkId' ident t
-             either (return . Left) (attachExpr eb) et')
+             return $ attachExpr eb =<< ee)
           et
         where
           attachExpr ::
-               Glc' (Bool, SIdent)
-            -> T.Expr
-            -> ST s (Glc' (Bool, (SIdent, T.Expr)))
-          attachExpr eb e' = return $ (\(b, sid) -> (b, (sid, e'))) <$> eb
+               Glc' (Bool, SIdent) -> T.Expr -> Glc' (Bool, (SIdent, T.Expr))
+          attachExpr eb e' = (\(b, sid) -> (b, (sid, e'))) <$> eb
           checkId' ::
                Identifier
             -> CType
