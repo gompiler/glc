@@ -14,12 +14,16 @@ import qualified SymbolTable        as S
 displayIR :: String -> IO ()
 displayIR code = either putExit (putSucc . show) (genIR code)
 
-genIR :: String -> Glc Class
-genIR code = toClass . convertProgram <$> S.typecheckGen code
+genIR :: String -> Glc [Class]
+genIR code = toClasses . convertProgram <$> S.typecheckGen code
 
-toClass :: T.Program -> Class
-toClass (T.Program _ _ tfs is tms) =
-  Class {cname = "Main", fields = cFields, methods = cMethods} -- TODO
+toClasses :: T.Program -> [Class]
+toClasses (T.Program _ scts tfs is tms) =
+  Class {
+    cname = "Main"
+    , fields = cFields
+    , methods = cMethods
+    } : (map structClass scts) -- TODO
   where
     cFields :: [Field]
     cFields = map vdToField tfs
@@ -51,6 +55,21 @@ toClass (T.Program _ _ tfs is tms) =
                , body = toIR fb
                }
            ])
+    structClass :: T.StructType -> Class
+    structClass (T.Struct (D.Ident sid) fdls) =
+      Class
+        { cname = "GlcStruct__" ++ sid
+        , fields = map sfToF fdls
+        , methods = [] -- TODO: EQUALITY CHECKS?
+        }
+    sfToF :: T.FieldDecl -> Field
+    sfToF (T.FieldDecl (D.Ident fid) _) = -- TODO: TYPE
+      Field
+        { access = FPublic
+        , fname = fid
+        , descriptor = "TODO"
+        -- , value = Nothing
+        }
 
 class IRRep a where
   toIR :: a -> [IRItem]
