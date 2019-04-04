@@ -926,11 +926,12 @@ instance Symbolize Expr T.Expr where
     either (return . Left) (const $ return $ T.CapExpr <$> ee') ect'
   recurse st ec@(Selector _ e (Identifier _ vname)) = do
     ect' <- infer st ec
+    ets' <- infer st e -- Get the struct type
     ee' <- recurse st e
-    return $ createSel <$> ee' <*> (toBase e =<< ect')
+    return $ createSel <$> ee' <*> (toBase e =<< ect') <*> (toBase e =<< ets')
     where
-      createSel :: T.Expr -> T.CType -> T.Expr
-      createSel e' t' = T.Selector t' e' (T.Ident vname)
+      createSel :: T.Expr -> T.CType -> T.CType -> T.Expr
+      createSel e' t' ts' = T.Selector t' ts' e' (T.Ident vname)
   recurse st e@(Index _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1

@@ -113,7 +113,7 @@ instance ConvertAST Expr D.Expr where
   toOrig (AppendExpr _ e1 e2) = D.AppendExpr o (toOrig e1) (toOrig e2)
   toOrig (LenExpr e) = D.LenExpr o (toOrig e)
   toOrig (CapExpr e) = D.CapExpr o (toOrig e)
-  toOrig (Selector _ e (Ident vname)) =
+  toOrig (Selector _ _ e (Ident vname)) =
     D.Selector o (toOrig e) (D.Identifier o vname)
   toOrig (Index _ e1 e2) = D.Index o (toOrig e1) (toOrig e2)
   toOrig (Arguments _ (Ident vname) el) =

@@ -211,6 +211,7 @@ data Expr
   -- | See https://golang.org/ref/spec#Selector
   -- Eg a.b
   | Selector CType
+             CType -- The second type here is for the struct type so we know what class to refer to
              Expr
              Ident
   -- | See https://golang.org/ref/spec#Index
