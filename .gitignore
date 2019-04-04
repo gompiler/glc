@@ -1,1 +1,3 @@
 src/glc
+*.j
+*.cpp
