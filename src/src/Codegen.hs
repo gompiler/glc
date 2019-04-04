@@ -3,7 +3,8 @@ module Codegen where
 import           Data.ByteString.Builder (string7, toLazyByteString)
 import           Data.ByteString.Lazy    (ByteString, append)
 import qualified Data.ByteString.Lazy    as B (concat, writeFile)
-import           IR
+import           IRConv
+import           IRData
 import           Scanner                 (putExit, putSucc)
 import           System.FilePath         (dropExtension)
 
