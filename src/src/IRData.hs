@@ -5,6 +5,7 @@
 -- https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html
 -- https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
 -- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
+-- http://www.cs.sjsu.edu/~pearce/modules/lectures/co/jvm/jasmin/demos/demos.html
 module IRData where
 
 import ResourceData (VarIndex)
