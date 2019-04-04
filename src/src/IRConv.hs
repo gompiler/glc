@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module IRConv where
 
 import           Base               (Glc)
@@ -17,11 +15,11 @@ displayIR :: String -> IO ()
 displayIR code = either putExit (putSucc . show) (genIR code)
 
 genIR :: String -> Glc Class
-genIR code = toClass <$> convertProgram <$> S.typecheckGen code
+genIR code = toClass . convertProgram <$> S.typecheckGen code
 
 toClass :: T.Program -> Class
-toClass (T.Program _ _ tfs _ tms ) = -- TODO: INITS EZ
-  Class {cname = "Main", fields = cFields, methods = cMethods} -- TODO
+toClass (T.Program _ _ tfs _ tms) -- TODO: INITS EZ
+ = Class {cname = "Main", fields = cFields, methods = cMethods} -- TODO
   where
     cFields :: [Field]
     cFields = map vdToField tfs
@@ -33,7 +31,7 @@ toClass (T.Program _ _ tfs _ tms ) = -- TODO: INITS EZ
     vdToField (T.VarDecl (T.VarIndex fi) _ _) =
       Field
         { access = FProtected
-        , fname = "field__" ++ (show fi)
+        , fname = "field__" ++ show fi
         , descriptor = "TODO"
       -- , value = Nothing
         }
@@ -41,13 +39,13 @@ toClass (T.Program _ _ tfs _ tms ) = -- TODO: INITS EZ
     toMethods =
       concatMap
         (\(T.FuncDecl (D.Ident fni) _ fb) ->
-             [ Method
-                 { mname = fni
-                 , stackLimit = 25 -- TODO
-                 , localsLimit = 25 -- TODO
-                 , body = toIR fb
-                 }
-             ])
+           [ Method
+               { mname = fni
+               , stackLimit = 25 -- TODO
+               , localsLimit = 25 -- TODO
+               , body = toIR fb
+               }
+           ])
 
 class IRRep a where
   toIR :: a -> [IRItem]
@@ -64,9 +62,11 @@ instance IRRep T.Stmt where
     [IRInst (Goto "end_todo"), IRLabel "else_todo"] ++
     toIR elses ++ [IRLabel "end_todo"]
   toIR (T.Switch sstmt e scs dstmt) =
-    toIR sstmt ++ toIR e ++ concatMap toIR scs ++
-    IRLabel "default_todo" : toIR dstmt ++ iri [Goto "end_todo"] ++
-    IRLabel "end_todo" : iri [NOp] -- Default doesn't need to check expr value
+    toIR sstmt ++
+    toIR e ++
+    concatMap toIR scs ++
+    IRLabel "default_todo" :
+    toIR dstmt ++ iri [Goto "end_todo"] ++ IRLabel "end_todo" : iri [NOp]
       -- duplicate expression for case statement expressions in lists
   toIR T.For {} = undefined
   toIR T.Break = iri [Goto "end_todo"]
@@ -248,6 +248,5 @@ getLiteralType (D.IntLit _)    = T.PInt
 getLiteralType (D.FloatLit _)  = T.PFloat64
 getLiteralType (D.RuneLit _)   = T.PRune
 getLiteralType (D.StringLit _) = T.PString
-
 -- siToName :: T.ScopedIdent -> String
 -- siToName (T.ScopedIdent (T.Scope sc) (T.Ident nm)) = nm ++ "__" ++ show sc
