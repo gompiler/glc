@@ -33,7 +33,7 @@ instance Show FieldAccess where
 data Field = Field
   { access     :: FieldAccess
   , fname      :: String
-  , descriptor :: String
+  , descriptor :: JType
   -- , value :: LDCType TODO?
   } deriving (Show, Eq)
 

@@ -37,11 +37,11 @@ toClasses (T.Program _ scts tfs is tms) =
         } :
       toMethods tms
     vdToField :: T.VarDecl -> Field
-    vdToField (T.VarDecl (T.VarIndex fi) _ _) =
+    vdToField (T.VarDecl (T.VarIndex fi) t _) =
       Field
         { access = FProtected
         , fname = "field__" ++ show fi
-        , descriptor = "TODO"
+        , descriptor = typeToJType t
       -- , value = Nothing
         }
     toMethods :: [T.FuncDecl] -> [Method]
@@ -63,11 +63,11 @@ toClasses (T.Program _ scts tfs is tms) =
         , methods = [] -- TODO: EQUALITY CHECKS?
         }
     sfToF :: T.FieldDecl -> Field
-    sfToF (T.FieldDecl (D.Ident fid) _) = -- TODO: TYPE
+    sfToF (T.FieldDecl (D.Ident fid) t) =
       Field
         { access = FPublic
         , fname = fid
-        , descriptor = "TODO"
+        , descriptor = typeToJType t
         -- , value = Nothing
         }
 
@@ -272,3 +272,13 @@ getLiteralType (D.IntLit _)    = T.PInt
 getLiteralType (D.FloatLit _)  = T.PFloat64
 getLiteralType (D.RuneLit _)   = T.PRune
 getLiteralType (D.StringLit _) = T.PString
+
+typeToJType :: T.Type -> JType
+typeToJType T.PInt                       = JInt
+typeToJType T.PFloat64                   = JFloat
+typeToJType T.PRune                      = JInt
+typeToJType T.PBool                      = JBool
+typeToJType T.PString                    = JClass (jString)
+typeToJType (T.StructType (D.Ident sid)) =
+  JClass (ClassRef $ "GlcStruct__" ++ sid)
+typeToJType _                            = undefined -- TODO
