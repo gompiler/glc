@@ -458,7 +458,9 @@ instance Symbolize SimpleStmt T.SimpleStmt where
     case res of
       Just (_, Func _ t) ->
         if t == void then
-          T.VoidExprStmt (T.Ident vname) <$$> (sequence <$> (mapM (recurse st) el))
+          either (return . Left) (const $ T.VoidExprStmt (T.Ident vname) <$$> (sequence <$> (mapM (recurse st) el))) =<< (infer' st e)
+          -- Infer' because we allow void
+          -- Use this to make sure the function call is valid
         else
           T.ExprStmt <$$> recurse st e -- Verify that expr only uses things that are defined
       _ -> return $ Left $ createError e ESNotFunc

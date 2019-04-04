@@ -544,6 +544,7 @@ spec = do
     , "func a(){}; func main(){ if a() {}; }"
     , "func a(){}; func main(){ switch a() {}; }"
     , "func a(){}; func main(){ for a() {}; }"
+    , "func a(a1 int, a2 float64){}; func main(){ a(3);}"
     -- , "var a int; type b a;"
     ]
   expectTypecheckFailNoMain
