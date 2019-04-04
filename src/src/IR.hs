@@ -1,6 +1,8 @@
-module IR where
+module IR
+where
 
 import qualified CheckedData        as C
+import           Base               (Glc)
 import           Data.Char          (ord)
 import           Data.List          (intercalate)
 import qualified Data.List.NonEmpty as NE (map)
@@ -23,7 +25,15 @@ data FieldAccess
   | FFinal
   | FVolatile
   | FTransient
-  deriving (Show)
+
+instance Show FieldAccess where
+  show FPublic = "public"
+  show FPrivate = "private"
+  show FProtected = "protected"
+  show FStatic = "static"
+  show FFinal = "final"
+  show FVolatile = "volatile"
+  show FTransient = "transient"
 
 data Field = Field
   { access     :: FieldAccess
@@ -45,7 +55,7 @@ data Method = Method
   , body        :: [IRItem]
   } deriving (Show)
 
-data ClassRef =
+newtype ClassRef =
   ClassRef String
   deriving (Show)
 
@@ -59,7 +69,9 @@ data MethodRef =
             String
             [JType]
             JType
-  deriving (Show)
+
+instance Show MethodRef where
+  show (MethodRef (ClassRef cn) mn tl t) = "Method " ++ cn ++ " " ++ mn ++ " (" ++ concat (map show tl) ++ ")" ++ show t
 
 data JType
   = JClass ClassRef -- Lwhatever;
@@ -67,7 +79,13 @@ data JType
   | JFloat -- F
   | JBool -- Z
   | JVoid -- V
-  deriving (Show)
+
+instance Show JType where
+  show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
+  show JInt = "I"
+  show JFloat = "F"
+  show JBool = "Z"
+  show JVoid = "V"
 
 data IRItem
   = IRInst Instruction
@@ -138,7 +156,10 @@ jString :: ClassRef
 jString = ClassRef "java/lang/String"
 
 displayIR :: String -> IO ()
-displayIR code = either putExit (putSucc . show . toClass) (S.typecheckGen code)
+displayIR code = either putExit (putSucc . show) (genIR code)
+
+genIR :: String -> Glc Class
+genIR code = toClass <$> S.typecheckGen code
 
 toClass :: C.Program -> Class
 toClass (C.Program _ tls) =
