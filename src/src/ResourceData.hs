@@ -173,7 +173,6 @@ data Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
-  | NullVal -- TODO check
   -- | See https://golang.org/ref/spec#OperandName
   | Var Type
         VarIndex
