@@ -5,7 +5,10 @@
 -- https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html
 -- https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
 -- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
+-- http://www.cs.sjsu.edu/~pearce/modules/lectures/co/jvm/jasmin/demos/demos.html
 module IRData where
+
+import           ResourceData (VarIndex)
 
 type LabelName = String
 
@@ -31,7 +34,7 @@ instance Show FieldAccess where
 data Field = Field
   { access     :: FieldAccess
   , fname      :: String
-  , descriptor :: String
+  , descriptor :: JType
   -- , value :: LDCType TODO?
   } deriving (Show, Eq)
 
@@ -106,9 +109,9 @@ data LDCType
 
 data Instruction
   = Load IRType
-         Int
+         VarIndex
   | Store IRType
-          Int
+          VarIndex
   | Return (Maybe IRType)
   | Dup
   | Goto LabelName
@@ -128,6 +131,8 @@ data Instruction
   | IXOr
   | LDC LDCType -- pushes an int/float/string value onto the stack
   | New ClassRef -- class
+  | ANewArray ClassRef
+  | NewArray IRPrimitive
   | NOp
   | Pop
   | Swap
@@ -150,3 +155,7 @@ stringBuilder = ClassRef "java/lang/StringBuilder"
 
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
+
+-- Custom-defined methods
+glcUtils :: ClassRef
+glcUtils = ClassRef "glcgutils/Utils"
