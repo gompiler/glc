@@ -213,7 +213,15 @@ instance IRRep T.Expr where
           D.BitAnd    -> IAnd
           D.Add       -> undefined -- handled above
           D.BitClear  -> undefined -- handled above TODO
-  toIR T.Binary {} = undefined -- TODO
+  toIR (T.Binary _ T.Or e1 e2) = undefined -- TODO: NEED SHORTCUT!
+  toIR (T.Binary _ T.And e1 e2) = undefined -- TODO: NEED SHORTCUT!
+  toIR (T.Binary _ T.EQ _ _) = undefined -- TODO
+  toIR (T.Binary t T.NEQ e1 e2) =
+    toIR (T.Binary t T.EQ e1 e2) ++ toIR (T.Unary T.PBool D.Not) -- != is =, !
+  toIR (T.Binary _ T.LT _ _) = undefined
+  toIR (T.Binary _ T.LEQ _ _) = undefined
+  toIR (T.Binary _ T.GT _ _) = undefined
+  toIR (T.Binary _ T.GEQ _ _) = undefined
   toIR (T.Lit l) = toIR l
   toIR (T.Var t vi) = iri [Load (astToIRType t) vi] -- TODO (also bool?)
   toIR T.AppendExpr {} = undefined -- TODO
