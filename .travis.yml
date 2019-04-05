@@ -1,8 +1,8 @@
 language: generic
 cache:
   directories:
+  - $HOME/.stack
   - $HOME/docker
-  - /var/lib/docker/volumes
 addons:
   apt:
     packages:
@@ -16,7 +16,7 @@ before_cache:
 before_install:
 - if [[ -d $HOME/docker ]]; then ls $HOME/docker/*.tar.gz | xargs -I {file} sh -c "zcat {file} | docker load"; fi
 - docker build --cache-from gompiler -t gompiler .
-- docker volume create stack
+- docker volume create -o device=$HOME/.stack -o o=bind stack
 script:
 - cd $TRAVIS_BUILD_DIR
 - docker run -v stack:/root/.stack gompiler
