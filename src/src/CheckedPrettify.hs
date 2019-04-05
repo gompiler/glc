@@ -11,128 +11,128 @@ import qualified Cyclic             as C
 import qualified Data               as D
 import           Data.List          (intercalate)
 import           Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NE (map, unzip)
+import qualified Data.List.NonEmpty as NE (unzip)
 import qualified Data.Maybe         as Maybe (mapMaybe)
 import qualified Prettify           as P (Prettify (..))
-
-class ConvertAST a b where
-  toOrig :: a -> b
 
 o :: Offset
 o = Offset 0
 
--- | Scoped identifier to identifier with offset
-si2ident :: ScopedIdent -> D.Identifier
-si2ident (ScopedIdent _ (Ident vname)) = D.Identifier o vname
+class Convert a b where
+  convert :: a -> b
+
+instance (Convert a1 a2, Convert b1 b2) => Convert (a1, b1) (a2, b2) where
+  convert (a, b) = (convert a, convert b)
+
+instance (Convert a b, Functor f) => Convert (f a) (f b) where
+  convert = fmap convert
+
+instance Convert Ident D.Identifier where
+  convert (Ident vname) = D.Identifier o vname
+
+instance Convert ScopedIdent D.Identifier where
+  convert (ScopedIdent _ i) = convert i
 
 -- | Scoped identifier to non empty idents with offsets
-si2idents :: ScopedIdent -> D.Identifiers
-si2idents si = si2ident si :| []
+instance Convert ScopedIdent D.Identifiers where
+  convert si = convert si :| []
 
-instance ConvertAST Program D.Program where
-  toOrig (Program (Ident vname) tl) =
-    D.Program (D.Identifier o vname) (map toOrig tl)
+instance Convert Program D.Program where
+  convert (Program i tl) = D.Program (convert i) (convert tl)
 
-instance ConvertAST TopDecl D.TopDecl where
-  toOrig (TopDecl d)      = D.TopDecl (toOrig d)
-  toOrig (TopFuncDecl fd) = D.TopFuncDecl (toOrig fd)
+instance Convert TopDecl D.TopDecl where
+  convert (TopDecl d)      = D.TopDecl (convert d)
+  convert (TopFuncDecl fd) = D.TopFuncDecl (convert fd)
 
-instance ConvertAST Decl D.Decl where
-  toOrig (VarDecl vdl) = D.VarDecl (map toOrig vdl)
-  toOrig (TypeDef tdl) = D.TypeDef (Maybe.mapMaybe toOrig tdl)
+instance Convert Decl D.Decl where
+  convert (VarDecl vdl) = D.VarDecl (convert vdl)
+  convert (TypeDef tdl) = D.TypeDef (Maybe.mapMaybe convert tdl)
 
-instance ConvertAST VarDecl' D.VarDecl' where
-  toOrig (VarDecl' si t (Just e)) =
-    D.VarDecl' (si2idents si) (Left (toOrig t, [toOrig e]))
-  toOrig (VarDecl' si t Nothing) =
-    D.VarDecl' (si2idents si) (Left (toOrig t, []))
+instance Convert VarDecl' D.VarDecl' where
+  convert (VarDecl' si t (Just e)) =
+    D.VarDecl' (convert si) (Left (convert t, [convert e]))
+  convert (VarDecl' si t Nothing) =
+    D.VarDecl' (convert si) (Left (convert t, []))
 
-instance ConvertAST TypeDef' (Maybe D.TypeDef') where
-  toOrig NoDef = Nothing
+instance Convert TypeDef' (Maybe D.TypeDef') where
+  convert NoDef = Nothing
 
-instance ConvertAST FuncDecl D.FuncDecl where
-  toOrig (FuncDecl si sig fb) =
-    D.FuncDecl (si2ident si) (toOrig sig) (toOrig fb)
+instance Convert FuncDecl D.FuncDecl where
+  convert (FuncDecl si sig fb) =
+    D.FuncDecl (convert si) (convert sig) (convert fb)
 
-instance ConvertAST ParameterDecl D.ParameterDecl where
-  toOrig (ParameterDecl si t) = D.ParameterDecl (si2idents si) (toOrig t)
+instance Convert ParameterDecl D.ParameterDecl where
+  convert (ParameterDecl si t) = D.ParameterDecl (convert si) (convert t)
 
-instance ConvertAST Parameters D.Parameters where
-  toOrig (Parameters pdl) = D.Parameters (map toOrig pdl)
+instance Convert Parameters D.Parameters where
+  convert (Parameters pdl) = D.Parameters (convert pdl)
 
-instance ConvertAST Signature D.Signature where
-  toOrig (Signature params (Just t)) =
-    D.Signature (toOrig params) (Just (toOrig t))
-  toOrig (Signature params Nothing) = D.Signature (toOrig params) Nothing
+instance Convert Signature D.Signature where
+  convert (Signature params t) = D.Signature (convert params) (convert t)
 
-instance ConvertAST SimpleStmt D.SimpleStmt where
-  toOrig EmptyStmt = D.EmptyStmt
-  toOrig (ExprStmt e) = D.ExprStmt (toOrig e)
-  toOrig (VoidExprStmt (Ident vname) el) =
-    D.ExprStmt (D.Arguments o (D.Var $ D.Identifier o vname) (map toOrig el))
-  toOrig (Increment e) = D.Increment o (toOrig e)
-  toOrig (Decrement e) = D.Decrement o (toOrig e)
-  toOrig (Assign op eltup) =
-    let (nel1, nel2) = NE.unzip eltup
-     in D.Assign o (toOrig op) (NE.map toOrig nel1) (NE.map toOrig nel2)
-  toOrig (ShortDeclare ideltup) =
-    let (nsil, nel) = NE.unzip ideltup
-     in D.ShortDeclare (NE.map si2ident nsil) (NE.map toOrig nel)
+instance Convert SimpleStmt D.SimpleStmt where
+  convert EmptyStmt = D.EmptyStmt
+  convert (ExprStmt e) = D.ExprStmt (convert e)
+  convert (VoidExprStmt (Ident vname) el) =
+    D.ExprStmt (D.Arguments o (D.Var $ D.Identifier o vname) (convert el))
+  convert (Increment e) = D.Increment o (convert e)
+  convert (Decrement e) = D.Decrement o (convert e)
+  convert (Assign op eltup) =
+    uncurry (D.Assign o (convert op)) (convert $ NE.unzip eltup)
+  convert (ShortDeclare ideltup) =
+    uncurry D.ShortDeclare (convert $ NE.unzip ideltup)
 
-instance ConvertAST Stmt D.Stmt where
-  toOrig (BlockStmt sl) = D.BlockStmt (map toOrig sl)
-  toOrig (SimpleStmt ss) = D.SimpleStmt (toOrig ss)
-  toOrig (If (ss, e) s1 s2) = D.If (toOrig ss, toOrig e) (toOrig s1) (toOrig s2)
-  toOrig (Switch ss (Just e) scl) =
-    D.Switch (toOrig ss) (Just (toOrig e)) (map toOrig scl)
-  toOrig (Switch ss Nothing scl) = D.Switch (toOrig ss) Nothing (map toOrig scl)
-  toOrig (For fcl s) = D.For (toOrig fcl) (toOrig s)
-  toOrig Break = D.Break o
-  toOrig Continue = D.Continue o
-  toOrig (Declare d) = D.Declare (toOrig d)
-  toOrig (Print el) = D.Print (map toOrig el)
-  toOrig (Println el) = D.Println (map toOrig el)
-  toOrig (Return (Just e)) = D.Return o (Just (toOrig e))
-  toOrig (Return Nothing) = D.Return o Nothing
+instance Convert Stmt D.Stmt where
+  convert (BlockStmt sl) = D.BlockStmt (convert sl)
+  convert (SimpleStmt ss) = D.SimpleStmt (convert ss)
+  convert (If (ss, e) s1 s2) =
+    D.If (convert ss, convert e) (convert s1) (convert s2)
+  convert (Switch ss e scl) = D.Switch (convert ss) (convert e) (convert scl)
+  convert (For fcl s) = D.For (convert fcl) (convert s)
+  convert Break = D.Break o
+  convert Continue = D.Continue o
+  convert (Declare d) = D.Declare (convert d)
+  convert (Print el) = D.Print (convert el)
+  convert (Println el) = D.Println (convert el)
+  convert (Return e) = D.Return o (convert e)
 
-instance ConvertAST SwitchCase D.SwitchCase where
-  toOrig (Case nle s) = D.Case o (NE.map toOrig nle) (toOrig s)
-  toOrig (Default s)  = D.Default o (toOrig s)
+instance Convert SwitchCase D.SwitchCase where
+  convert (Case nle s) = D.Case o (convert nle) (convert s)
+  convert (Default s)  = D.Default o (convert s)
 
-instance ConvertAST ForClause D.ForClause where
-  toOrig (ForClause ss1 (Just e) ss2) =
-    D.ForClause (toOrig ss1) (Just (toOrig e)) (toOrig ss2)
-  toOrig (ForClause ss1 Nothing ss2) =
-    D.ForClause (toOrig ss1) Nothing (toOrig ss2)
+instance Convert ForClause D.ForClause where
+  convert (ForClause pre e post) =
+    D.ForClause (convert pre) (convert e) (convert post)
 
-instance ConvertAST Expr D.Expr where
-  toOrig (Unary _ op e) = D.Unary o (toOrig op) (toOrig e)
-  toOrig (Binary _ op e1 e2) = D.Binary o (toOrig op) (toOrig e1) (toOrig e2)
-  toOrig (Lit lit) = either D.Lit id (toOrig lit)
-  toOrig (Var _ si) = D.Var (si2ident si)
-  toOrig (AppendExpr _ e1 e2) = D.AppendExpr o (toOrig e1) (toOrig e2)
-  toOrig (LenExpr e) = D.LenExpr o (toOrig e)
-  toOrig (CapExpr e) = D.CapExpr o (toOrig e)
-  toOrig (Selector _ _ e (Ident vname)) =
-    D.Selector o (toOrig e) (D.Identifier o vname)
-  toOrig (Index _ e1 e2) = D.Index o (toOrig e1) (toOrig e2)
-  toOrig (Arguments _ (Ident vname) el) =
-    D.Arguments o (D.Var (D.Identifier o vname)) (map toOrig el)
+instance Convert Expr D.Expr where
+  convert (Unary _ op e) = D.Unary o (convert op) (convert e)
+  convert (Binary _ op e1 e2) =
+    D.Binary o (convert op) (convert e1) (convert e2)
+  convert (Lit lit) = either D.Lit id (convert lit)
+  convert (Var _ si) = D.Var (convert si)
+  convert (AppendExpr _ e1 e2) = D.AppendExpr o (convert e1) (convert e2)
+  convert (LenExpr e) = D.LenExpr o (convert e)
+  convert (CapExpr e) = D.CapExpr o (convert e)
+  convert (Selector _ _ e (Ident vname)) =
+    D.Selector o (convert e) (D.Identifier o vname)
+  convert (Index _ e1 e2) = D.Index o (convert e1) (convert e2)
+  convert (Arguments _ (Ident vname) el) =
+    D.Arguments o (D.Var (D.Identifier o vname)) (convert el)
 
-instance ConvertAST Literal (Either D.Literal D.Expr) where
-  toOrig (IntLit i)      = Left $ D.IntLit o D.Decimal (show i)
-  toOrig (FloatLit f)    = Left $ D.FloatLit o (show f)
-  toOrig (RuneLit c)     = Left $ D.RuneLit o (show c)
-  toOrig (StringLit s)   = Left $ D.StringLit o D.Interpreted $ "\"" ++ s ++ "\""
-  toOrig (BoolLit True)  = Right $ D.Var (D.Identifier o "true")
-  toOrig (BoolLit False) = Right $ D.Var (D.Identifier o "false")
+instance Convert Literal (Either D.Literal D.Expr) where
+  convert (IntLit i) = Left $ D.IntLit o D.Decimal (show i)
+  convert (FloatLit f) = Left $ D.FloatLit o (show f)
+  convert (RuneLit c) = Left $ D.RuneLit o (show c)
+  convert (StringLit s) = Left $ D.StringLit o D.Interpreted $ "\"" ++ s ++ "\""
+  convert (BoolLit True) = Right $ D.Var (D.Identifier o "true")
+  convert (BoolLit False) = Right $ D.Var (D.Identifier o "false")
 
-instance ConvertAST BinaryOp D.BinaryOp where
-  toOrig op =
+instance Convert BinaryOp D.BinaryOp where
+  convert op =
     case op of
       Or             -> D.Or
       And            -> D.And
-      Arithm aop     -> D.Arithm (toOrig aop)
+      Arithm aop     -> D.Arithm (convert aop)
       CheckedData.EQ -> D.EQ
       NEQ            -> D.NEQ
       CheckedData.LT -> D.LT
@@ -140,8 +140,8 @@ instance ConvertAST BinaryOp D.BinaryOp where
       CheckedData.GT -> D.GT
       GEQ            -> D.GEQ
 
-instance ConvertAST ArithmOp D.ArithmOp where
-  toOrig op =
+instance Convert ArithmOp D.ArithmOp where
+  convert op =
     case op of
       Add       -> D.Add
       Subtract  -> D.Subtract
@@ -155,43 +155,41 @@ instance ConvertAST ArithmOp D.ArithmOp where
       BitAnd    -> D.BitAnd
       BitClear  -> D.BitClear
 
-instance ConvertAST UnaryOp D.UnaryOp where
-  toOrig op =
+instance Convert UnaryOp D.UnaryOp where
+  convert op =
     case op of
       Pos           -> D.Pos
       Neg           -> D.Neg
       Not           -> D.Not
       BitComplement -> D.BitComplement
 
-instance ConvertAST AssignOp D.AssignOp where
-  toOrig (AssignOp (Just op)) = D.AssignOp (Just (toOrig op))
-  toOrig (AssignOp Nothing)   = D.AssignOp Nothing
+instance Convert AssignOp D.AssignOp where
+  convert (AssignOp op) = D.AssignOp (convert op)
 
-instance ConvertAST CType D.Type where
-  toOrig = toOrig . C.get
+instance Convert CType D.Type where
+  convert = convert . C.get
 
-instance ConvertAST CType D.Type' where
-  toOrig t = (o, toOrig t)
+instance Convert CType D.Type' where
+  convert t = (o, convert t)
 
-instance ConvertAST Type D.Type' where
-  toOrig t = (o, toOrig t)
+instance Convert Type D.Type' where
+  convert t = (o, convert t)
 
-instance ConvertAST Type D.Type where
-  toOrig (ArrayType i t) =
-    D.ArrayType (D.Lit (D.IntLit o D.Decimal (show i))) (toOrig t)
-  toOrig (SliceType t) = D.SliceType (toOrig t)
-  toOrig (StructType fdl) = D.StructType (map toOrig fdl)
-  toOrig PInt = D.Type (D.Identifier o "int")
-  toOrig PFloat64 = D.Type (D.Identifier o "float64")
-  toOrig PBool = D.Type (D.Identifier o "bool")
-  toOrig PRune = D.Type (D.Identifier o "rune")
-  toOrig PString = D.Type (D.Identifier o "string")
-  toOrig Cycle = D.Type (D.Identifier o "cycle")
-  toOrig (TypeMap t) = toOrig t -- TODO verify
+instance Convert Type D.Type where
+  convert (ArrayType i t) =
+    D.ArrayType (D.Lit (D.IntLit o D.Decimal (show i))) (convert t)
+  convert (SliceType t) = D.SliceType (convert t)
+  convert (StructType fdl) = D.StructType (convert fdl)
+  convert PInt = D.Type (D.Identifier o "int")
+  convert PFloat64 = D.Type (D.Identifier o "float64")
+  convert PBool = D.Type (D.Identifier o "bool")
+  convert PRune = D.Type (D.Identifier o "rune")
+  convert PString = D.Type (D.Identifier o "string")
+  convert Cycle = D.Type (D.Identifier o "cycle")
+  convert (TypeMap t) = convert t -- TODO verify
 
-instance ConvertAST FieldDecl D.FieldDecl where
-  toOrig (FieldDecl (Ident vname) t) =
-    D.FieldDecl (D.Identifier o vname :| []) (toOrig t)
+instance Convert FieldDecl D.FieldDecl where
+  convert (FieldDecl i t) = D.FieldDecl (convert i :| []) (convert t)
 
 -- This is a new class because if we declare an instance of prettify here
 -- we will get an orphan instance warning
@@ -201,4 +199,4 @@ class Prettify a where
   prettify' :: a -> [String]
 
 instance Prettify Program where
-  prettify' p = P.prettify' (toOrig p :: D.Program)
+  prettify' p = P.prettify' (convert p :: D.Program)

@@ -10,8 +10,6 @@ import qualified CheckedData        as T
 import qualified CheckedPrettify    as P (Prettify (..))
 import qualified Cyclic             as C
 import           Data.List          (intercalate)
-import           Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NE (map)
 import           Prelude            hiding (init)
 import           ResourceData
 
@@ -22,11 +20,8 @@ instance (Convert a1 a2, Convert b1 b2) =>
          Convert (a1, b1) (a2, b2) where
   convert (a, b) = (convert a, convert b)
 
-instance (Convert a b) => Convert (NonEmpty a) (NonEmpty b) where
-  convert = NE.map convert
-
-instance (Convert a b) => Convert [a] [b] where
-  convert = map convert
+instance (Convert a b, Functor f) => Convert (f a) (f b) where
+  convert = fmap convert
 
 instance Convert VarIndex T.ScopedIdent where
   convert (VarIndex i) = T.ScopedIdent (T.Scope 0) (T.Ident $ "var" ++ show i)
@@ -47,7 +42,7 @@ instance Convert StructType T.TopDecl where
 
 instance Convert TopVarDecl T.TopDecl where
   convert (TopVarDecl i t e) =
-    T.TopDecl $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert <$> e)]
+    T.TopDecl $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert e)]
 
 instance Convert FuncDecl T.FuncDecl where
   convert (FuncDecl i sig fb) = T.FuncDecl (convert i) (convert sig) (convert fb)
@@ -85,10 +80,10 @@ instance Convert Stmt T.Stmt where
   convert Break = T.Break
   convert Continue = T.Continue
   convert (VarDecl i t e) =
-    T.Declare $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert <$> e)]
+    T.Declare $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert e)]
   convert (Print el) = T.Print (convert el)
   convert (Println el) = T.Println (convert el)
-  convert (Return e) = T.Return (convert <$> e)
+  convert (Return e) = T.Return (convert e)
 
 instance Convert SwitchCase T.SwitchCase where
   convert (Case nle s) = T.Case (convert nle) (convert s)
