@@ -144,7 +144,10 @@ instance IRRep T.SwitchCase where
 
 instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt          = []
-  toIR (T.VoidExprStmt _ _) = undefined -- Akin to Argument without a type
+  toIR (T.VoidExprStmt (D.Ident aid) args) = -- Akin to Argument without a type
+    iri [Load Object (T.VarIndex 0)] ++ -- this object
+    concatMap toIR args ++
+    iri [InvokeVirtual $ MethodRef (ClassRef "Main") aid (map exprJType args) JVoid]
   toIR (T.ExprStmt e)       = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR T.Increment {}       = undefined -- iinc for int, otherwise load/save + 1
   toIR T.Decrement {}       = undefined -- iinc for int (-1), otherwise "
