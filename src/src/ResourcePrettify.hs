@@ -15,115 +15,115 @@ import qualified Data.List.NonEmpty as NE (map)
 import           Prelude            hiding (init)
 import           ResourceData
 
-class ConvertAST a b where
-  toOrig :: a -> b
+class Convert a b where
+  convert :: a -> b
 
-instance (ConvertAST a1 a2, ConvertAST b1 b2) =>
-         ConvertAST (a1, b1) (a2, b2) where
-  toOrig (a, b) = (toOrig a, toOrig b)
+instance (Convert a1 a2, Convert b1 b2) =>
+         Convert (a1, b1) (a2, b2) where
+  convert (a, b) = (convert a, convert b)
 
-instance (ConvertAST a b) => ConvertAST (NonEmpty a) (NonEmpty b) where
-  toOrig = NE.map toOrig
+instance (Convert a b) => Convert (NonEmpty a) (NonEmpty b) where
+  convert = NE.map convert
 
-instance (ConvertAST a b) => ConvertAST [a] [b] where
-  toOrig = map toOrig
+instance (Convert a b) => Convert [a] [b] where
+  convert = map convert
 
-instance ConvertAST VarIndex T.ScopedIdent where
-  toOrig (VarIndex i) = T.ScopedIdent (T.Scope 0) (T.Ident $ "var" ++ show i)
+instance Convert VarIndex T.ScopedIdent where
+  convert (VarIndex i) = T.ScopedIdent (T.Scope 0) (T.Ident $ "var" ++ show i)
 
-instance ConvertAST T.Ident T.ScopedIdent where
-  toOrig = T.ScopedIdent (T.Scope 0)
+instance Convert T.Ident T.ScopedIdent where
+  convert = T.ScopedIdent (T.Scope 0)
 
-instance ConvertAST Program T.Program where
-  toOrig Program {package, structs, topVars, functions} =
+instance Convert Program T.Program where
+  convert Program {package, structs, topVars, functions} =
     T.Program {T.package = package, T.topLevels = topLevels}
     -- TODO save init
     where
       topLevels =
-        toOrig structs ++ toOrig topVars ++ map T.TopFuncDecl (toOrig functions)
+        convert structs ++ convert topVars ++ map T.TopFuncDecl (convert functions)
 
-instance ConvertAST StructType T.TopDecl where
-  toOrig (Struct _ _) = T.TopDecl $ T.TypeDef []
+instance Convert StructType T.TopDecl where
+  convert (Struct _ _) = T.TopDecl $ T.TypeDef []
 
-instance ConvertAST TopVarDecl T.TopDecl where
-  toOrig (TopVarDecl i t e) =
-    T.TopDecl $ T.VarDecl [T.VarDecl' (toOrig i) (toOrig t) (toOrig <$> e)]
+instance Convert TopVarDecl T.TopDecl where
+  convert (TopVarDecl i t e) =
+    T.TopDecl $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert <$> e)]
 
-instance ConvertAST FuncDecl T.FuncDecl where
-  toOrig (FuncDecl i sig fb) = T.FuncDecl (toOrig i) (toOrig sig) (toOrig fb)
+instance Convert FuncDecl T.FuncDecl where
+  convert (FuncDecl i sig fb) = T.FuncDecl (convert i) (convert sig) (convert fb)
 
-instance ConvertAST ParameterDecl T.ParameterDecl where
-  toOrig (ParameterDecl si t) = T.ParameterDecl (toOrig si) (toOrig t)
+instance Convert ParameterDecl T.ParameterDecl where
+  convert (ParameterDecl si t) = T.ParameterDecl (convert si) (convert t)
 
-instance ConvertAST Parameters T.Parameters where
-  toOrig (Parameters pdl) = T.Parameters (toOrig pdl)
+instance Convert Parameters T.Parameters where
+  convert (Parameters pdl) = T.Parameters (convert pdl)
 
-instance ConvertAST Signature T.Signature where
-  toOrig (Signature params (Just t)) =
-    T.Signature (toOrig params) (Just (toOrig t))
-  toOrig (Signature params Nothing) = T.Signature (toOrig params) Nothing
+instance Convert Signature T.Signature where
+  convert (Signature params (Just t)) =
+    T.Signature (convert params) (Just (convert t))
+  convert (Signature params Nothing) = T.Signature (convert params) Nothing
 
-instance ConvertAST SimpleStmt T.SimpleStmt where
-  toOrig EmptyStmt              = T.EmptyStmt
-  toOrig (ExprStmt e)           = T.ExprStmt $ toOrig e
-  toOrig (VoidExprStmt i exprs) = T.VoidExprStmt i $ toOrig exprs
-  toOrig (Increment e)          = T.Increment $ toOrig e
-  toOrig (Decrement e)          = T.Decrement $ toOrig e
-  toOrig (Assign op eltup)      = T.Assign op (toOrig eltup)
-  toOrig (ShortDeclare ideltup) = T.ShortDeclare (toOrig ideltup)
+instance Convert SimpleStmt T.SimpleStmt where
+  convert EmptyStmt              = T.EmptyStmt
+  convert (ExprStmt e)           = T.ExprStmt $ convert e
+  convert (VoidExprStmt i exprs) = T.VoidExprStmt i $ convert exprs
+  convert (Increment e)          = T.Increment $ convert e
+  convert (Decrement e)          = T.Decrement $ convert e
+  convert (Assign op eltup)      = T.Assign op (convert eltup)
+  convert (ShortDeclare ideltup) = T.ShortDeclare (convert ideltup)
 
-instance ConvertAST Stmt T.Stmt where
-  toOrig (BlockStmt sl) = T.BlockStmt (toOrig sl)
-  toOrig (SimpleStmt ss) = T.SimpleStmt (toOrig ss)
-  toOrig (If (ss, e) s1 s2) = T.If (toOrig ss, toOrig e) (toOrig s1) (toOrig s2)
-  toOrig (Switch ss e scl d) =
+instance Convert Stmt T.Stmt where
+  convert (BlockStmt sl) = T.BlockStmt (convert sl)
+  convert (SimpleStmt ss) = T.SimpleStmt (convert ss)
+  convert (If (ss, e) s1 s2) = T.If (convert ss, convert e) (convert s1) (convert s2)
+  convert (Switch ss e scl d) =
     T.Switch
-      (toOrig ss)
-      (Just (toOrig e))
-      (toOrig scl ++ [T.Default $ toOrig d])
-  toOrig (For fcl s) = T.For (toOrig fcl) (toOrig s)
-  toOrig Break = T.Break
-  toOrig Continue = T.Continue
-  toOrig (VarDecl i t e) =
-    T.Declare $ T.VarDecl [T.VarDecl' (toOrig i) (toOrig t) (toOrig <$> e)]
-  toOrig (Print el) = T.Print (toOrig el)
-  toOrig (Println el) = T.Println (toOrig el)
-  toOrig (Return e) = T.Return (toOrig <$> e)
+      (convert ss)
+      (Just (convert e))
+      (convert scl ++ [T.Default $ convert d])
+  convert (For fcl s) = T.For (convert fcl) (convert s)
+  convert Break = T.Break
+  convert Continue = T.Continue
+  convert (VarDecl i t e) =
+    T.Declare $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert <$> e)]
+  convert (Print el) = T.Print (convert el)
+  convert (Println el) = T.Println (convert el)
+  convert (Return e) = T.Return (convert <$> e)
 
-instance ConvertAST SwitchCase T.SwitchCase where
-  toOrig (Case nle s) = T.Case (toOrig nle) (toOrig s)
+instance Convert SwitchCase T.SwitchCase where
+  convert (Case nle s) = T.Case (convert nle) (convert s)
 
-instance ConvertAST ForClause T.ForClause where
-  toOrig (ForClause pre cond post) =
-    T.ForClause (toOrig pre) (Just (toOrig cond)) (toOrig post)
+instance Convert ForClause T.ForClause where
+  convert (ForClause pre cond post) =
+    T.ForClause (convert pre) (Just (convert cond)) (convert post)
 
-instance ConvertAST Expr T.Expr where
-  toOrig (Unary t op e) = T.Unary (toOrig t) op (toOrig e)
-  toOrig (Binary t op e1 e2) = T.Binary (toOrig t) op (toOrig e1) (toOrig e2)
-  toOrig (Lit lit) = T.Lit lit
-  toOrig (Var t i) = T.Var (toOrig t) (toOrig i)
-  toOrig (AppendExpr t e1 e2) = T.AppendExpr (toOrig t) (toOrig e1) (toOrig e2)
-  toOrig (LenExpr e) = T.LenExpr (toOrig e)
-  toOrig (CapExpr e) = T.CapExpr (toOrig e)
-  toOrig (Selector t e i) = T.Selector (toOrig t) [] (toOrig e) i
-  toOrig (Index t e1 e2) = T.Index (toOrig t) (toOrig e1) (toOrig e2)
-  toOrig (Arguments t i exprs) = T.Arguments (toOrig t) i (toOrig exprs)
+instance Convert Expr T.Expr where
+  convert (Unary t op e) = T.Unary (convert t) op (convert e)
+  convert (Binary t op e1 e2) = T.Binary (convert t) op (convert e1) (convert e2)
+  convert (Lit lit) = T.Lit lit
+  convert (Var t i) = T.Var (convert t) (convert i)
+  convert (AppendExpr t e1 e2) = T.AppendExpr (convert t) (convert e1) (convert e2)
+  convert (LenExpr e) = T.LenExpr (convert e)
+  convert (CapExpr e) = T.CapExpr (convert e)
+  convert (Selector t e i) = T.Selector (convert t) [] (convert e) i
+  convert (Index t e1 e2) = T.Index (convert t) (convert e1) (convert e2)
+  convert (Arguments t i exprs) = T.Arguments (convert t) i (convert exprs)
 
-instance ConvertAST Type T.CType where
-  toOrig = C.new . toOrig
+instance Convert Type T.CType where
+  convert = C.new . convert
 
-instance ConvertAST Type T.Type where
-  toOrig (ArrayType i t) = T.ArrayType i (toOrig t)
-  toOrig (SliceType t)   = T.SliceType (toOrig t)
-  toOrig (StructType _)  = T.StructType []
-  toOrig PInt            = T.PInt
-  toOrig PFloat64        = T.PFloat64
-  toOrig PBool           = T.PBool
-  toOrig PRune           = T.PRune
-  toOrig PString         = T.PString
+instance Convert Type T.Type where
+  convert (ArrayType i t) = T.ArrayType i (convert t)
+  convert (SliceType t)   = T.SliceType (convert t)
+  convert (StructType _)  = T.StructType []
+  convert PInt            = T.PInt
+  convert PFloat64        = T.PFloat64
+  convert PBool           = T.PBool
+  convert PRune           = T.PRune
+  convert PString         = T.PString
 
-instance ConvertAST FieldDecl T.FieldDecl where
-  toOrig (FieldDecl i t) = T.FieldDecl i (toOrig t)
+instance Convert FieldDecl T.FieldDecl where
+  convert (FieldDecl i t) = T.FieldDecl i (convert t)
 
 -- This is a new class because if we declare an instance of prettify here
 -- we will get an orphan instance warning
@@ -133,4 +133,4 @@ class Prettify a where
   prettify' :: a -> [String]
 
 instance Prettify Program where
-  prettify' p = P.prettify' (toOrig p :: T.Program)
+  prettify' p = P.prettify' (convert p :: T.Program)
