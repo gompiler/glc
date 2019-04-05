@@ -215,7 +215,11 @@ instance IRRep T.Expr where
           D.BitAnd    -> IAnd
           D.Add       -> undefined -- handled above
           D.BitClear  -> undefined -- handled above TODO
-  toIR (T.Binary _ T.Or _ _) = undefined -- TODO: NEED SHORTCUT!
+  toIR (T.Binary _ T.Or e1 e2) =
+    toIR e1 ++
+    iri [Dup, If IRData.NE "true_ne_todo", Pop] ++
+    toIR e2 ++
+    [IRLabel "true_ne_todo"]
   toIR (T.Binary _ T.And _ _) = undefined -- TODO: NEED SHORTCUT!
   toIR (T.Binary _ T.EQ _ _) = undefined -- TODO
   toIR (T.Binary t T.NEQ e1 e2) =
