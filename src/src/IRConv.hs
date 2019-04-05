@@ -194,6 +194,7 @@ instance IRRep T.Expr where
       sbAppend :: MethodRef
       sbAppend =
         MethodRef stringBuilder "append" [JClass jString] (JClass stringBuilder)
+  toIR (T.Binary _ (D.Arithm D.BitClear) _ _) = undefined
   toIR (T.Binary t (D.Arithm aop) e1 e2) =
     case astToIRPrim t of
       Just t' -> binary e1 e2 (opToInst t')
@@ -247,7 +248,7 @@ instance IRRep T.Expr where
       fr =
         case exprJType e of
           JClass cref -> FieldRef cref fid
-          _           -> undefined -- Can't get field on different object
+          _           -> undefined -- Can't get field on non-class
   toIR (T.Index t e1 e2) =
     case exprType e1 of
       T.ArrayType _ _ -> -- TODO: CHECK LENGTH HERE?
