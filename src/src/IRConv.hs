@@ -2,7 +2,7 @@ module IRConv where
 
 import           Base               (Glc)
 import qualified CheckedData        as D
-import           Data.Char          (ord)
+import           Data.Char          (ord, toLower)
 import           Data.List          (intercalate)
 import qualified Data.List.NonEmpty as NE (map)
 import           Foreign.Marshal.Utils (fromBool)
@@ -220,19 +220,29 @@ instance IRRep T.Expr where
   toIR (T.Binary _ T.EQ _ _) = undefined -- TODO
   toIR (T.Binary t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary t T.EQ e1 e2)) -- != is =, !
-  toIR (T.Binary _ T.LT e1 e2) =
-    toIR e1 ++ toIR e2 ++ cmpIR ++ iri [IConst0, Goto "end_lt_todo"] ++
-    [IRLabel "true_lt_todo", IRInst IConst1, IRLabel "end_lt_todo", IRInst NOp]
+  toIR (T.Binary _ op e1 e2) = -- comparisons
+    toIR e1 ++ toIR e2 ++ cmpIR ++ iri [IConst0, Goto endLabel] ++
+    [IRLabel trueLabel, IRInst IConst1, IRLabel endLabel, IRInst NOp]
     where
+      labelOp :: String
+      labelOp = map toLower (show op)
+      trueLabel :: LabelName
+      trueLabel = "true_" ++ labelOp ++ "_todo"
+      endLabel :: LabelName
+      endLabel = "end_" ++ labelOp ++ "_todo"
       cmpIR :: [IRItem]
       cmpIR =
         case exprIRType e1 of
-          Prim IRInt   -> iri [IfICmp IRData.LT "true_lt_todo"]
-          Prim IRFloat -> iri [FCmpG, If IRData.LT "true_lt_todo"]
+          Prim IRInt   -> iri [IfICmp irCmp trueLabel]
+          Prim IRFloat -> iri [FCmpG, If irCmp trueLabel]
           Object       -> undefined
-  toIR (T.Binary _ T.LEQ _ _) = undefined
-  toIR (T.Binary _ T.GT _ _) = undefined
-  toIR (T.Binary _ T.GEQ _ _) = undefined
+      irCmp :: IRCmp
+      irCmp = case op of
+        T.LT  -> IRData.LT
+        T.LEQ -> IRData.LE
+        T.GT  -> IRData.GT
+        T.GEQ -> IRData.GE
+        _     -> undefined -- Handled above
   toIR (T.Lit l) = toIR l
   toIR (T.Var t vi) = iri [Load (astToIRType t) vi] -- TODO (also bool?)
   toIR T.AppendExpr {} = undefined -- TODO
