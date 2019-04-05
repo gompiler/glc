@@ -81,16 +81,29 @@ instance IRRep T.Stmt where
     toIR expr ++
     iri [If IRData.EQ "else_todo"] ++ -- TODO: PROPER EQUALITY CHECK
     toIR ifs ++
-    [IRInst (Goto "end_todo"), IRLabel "else_todo"] ++
-    toIR elses ++ [IRLabel "end_todo"]
+    [IRInst (Goto "end_if_todo"), IRLabel "else_todo"] ++
+    toIR elses ++ [IRLabel "end_if_todo"]
   toIR (T.Switch sstmt e scs dstmt) =
     toIR sstmt ++
     toIR e ++
-    concatMap toIR scs ++
-    IRLabel "default_todo" : toIR dstmt ++ IRLabel "end_todo" : iri [NOp]
+    concatMap irCase (zip [1..] scs) ++
+    IRLabel "default_todo" : toIR dstmt ++ IRLabel "end_sc_todo" : iri [NOp]
       -- duplicate expression for case statement expressions in lists
+    where
+      irCase :: (Int, T.SwitchCase) -> [IRItem]
+      irCase (idx, T.Case exprs stmt) -- concat $ map (toIR . some equality check) exprs
+        =
+          concat (NE.map toCaseHeader exprs) ++
+          [IRLabel $ "case_" ++ show idx ++ "_todo"] ++
+          toIR stmt ++
+          iri [Goto "end_sc_todo"]
+          where
+            toCaseHeader :: T.Expr -> [IRItem]
+            toCaseHeader ce =
+              IRInst Dup : toIR ce ++
+              iri [If IRData.EQ $ "case_" ++ show idx ++ "_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
   toIR T.For {} = undefined
-  toIR T.Break = iri [Goto "end_todo"]
+  toIR T.Break = iri [Goto "end_loop_todo"]
   toIR T.Continue = iri [Goto "loop_todo"] -- TODO: MAKE SURE POST-STMT IS DONE?
   toIR (T.VarDecl idx t me) =
     case me of
@@ -137,7 +150,7 @@ instance IRRep T.SwitchCase where
   toIR (T.Case exprs stmt) -- concat $ map (toIR . some equality check) exprs
    =
     concat (NE.map toCaseHeader exprs) ++
-    [IRLabel "case_todo"] ++ toIR stmt ++ iri [Goto "end_todo"]
+    [IRLabel "case_todo"] ++ toIR stmt ++ iri [Goto "end_sc_todo"]
     where
       toCaseHeader :: T.Expr -> [IRItem]
       toCaseHeader e = IRInst Dup : toIR e ++ iri [If IRData.EQ "case_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
