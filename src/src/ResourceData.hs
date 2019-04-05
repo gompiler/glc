@@ -291,7 +291,11 @@ instance Convert Program T.Program where
         convert topVars ++ map T.TopFuncDecl (convert $ initFunc : functions)
 
 instance Convert StructType T.TopDecl where
-  convert (Struct _ _) = T.TopDecl $ T.TypeDef []
+  convert t = T.TopDecl $ T.TypeDef [convert t]
+
+instance Convert StructType T.TypeDef' where
+  convert (Struct i fields) =
+    T.TypeDef' (convert i) (C.new $ T.StructType $ convert fields)
 
 instance Convert TopVarDecl T.TopDecl where
   convert (TopVarDecl i t e) =
