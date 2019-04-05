@@ -221,7 +221,10 @@ instance IRRep T.Expr where
   toIR T.CapExpr {} = undefined -- TODO
   toIR T.Selector {} = undefined -- TODO
   toIR T.Index {} = undefined -- TODO
-  toIR T.Arguments {} = undefined -- TODO
+  toIR (T.Arguments t (D.Ident aid) args) =
+    iri [Load Object (T.VarIndex 0)] ++ -- this object
+    concatMap toIR args ++
+    iri [InvokeVirtual $ MethodRef (ClassRef "Main") aid (map exprJType args) (typeToJType t)]
 
 instance IRRep D.Literal where
   toIR (D.BoolLit i) =
@@ -267,6 +270,9 @@ astToIRPrim _          = Nothing
 
 exprIRType :: T.Expr -> IRType
 exprIRType = astToIRType . exprType
+
+exprJType :: T.Expr -> JType
+exprJType = typeToJType . exprType
 
 getLiteralType :: D.Literal -> T.Type
 getLiteralType (D.BoolLit _)   = T.PBool
