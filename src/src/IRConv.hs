@@ -112,7 +112,7 @@ printIR e =
     T.PInt     -> printLoad ++ toIR e ++ intPrint
     T.PFloat64 -> printLoad ++ toIR e ++ floatPrint
     T.PRune    -> printLoad ++ toIR e ++ intPrint
-    T.PBool    -> undefined -- TODO: PRINT true/false
+    T.PBool    -> printLoad ++ toIR e ++ boolToString ++ stringPrint -- TODO: PRINT true/false
     T.PString  -> printLoad ++ toIR e ++ stringPrint
     _          -> undefined -- TODO
   where
@@ -126,6 +126,9 @@ printIR e =
     stringPrint :: [IRItem]
     stringPrint =
       iri [InvokeVirtual $ MethodRef printStream "print" [JClass jString] JVoid]
+    boolToString :: [IRItem]
+    boolToString =
+      iri [InvokeVirtual $ MethodRef glcUtils "boolStr" [JInt] (JClass jString)]
 
 instance IRRep T.ForClause where
   toIR T.ForClause {} = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
