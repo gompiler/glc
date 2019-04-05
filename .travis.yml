@@ -6,6 +6,9 @@ addons:
   apt:
     packages:
     - libgmp-dev
+branches:
+    except:
+    - benchmarks
 before_install:
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
