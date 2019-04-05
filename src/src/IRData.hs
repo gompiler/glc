@@ -8,7 +8,7 @@
 -- http://www.cs.sjsu.edu/~pearce/modules/lectures/co/jvm/jasmin/demos/demos.html
 module IRData where
 
-import ResourceData (VarIndex)
+import           ResourceData (VarIndex)
 
 type LabelName = String
 
