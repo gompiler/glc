@@ -131,6 +131,8 @@ data Instruction
   | IXOr
   | LDC LDCType -- pushes an int/float/string value onto the stack
   | New ClassRef -- class
+  | ANewArray ClassRef
+  | NewArray IRPrimitive
   | NOp
   | Pop
   | Swap
