@@ -6,6 +6,7 @@
 -- https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
 -- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
 -- http://www.cs.sjsu.edu/~pearce/modules/lectures/co/jvm/jasmin/demos/demos.html
+-- http://homepages.inf.ed.ac.uk/kwxm/JVM/fcmpg.html
 module IRData where
 
 import           ResourceData (VarIndex)
@@ -101,6 +102,15 @@ data IRType
   | Object -- String, array, struct, slice
   deriving (Show, Eq)
 
+data IRCmp
+  = LT
+  | LE
+  | GT
+  | GE
+  | EQ
+  | NE
+  deriving (Show, Eq)
+
 data LDCType
   = LDCInt Int -- Integers, booleans, runes
   | LDCFloat Float -- Float64s
@@ -128,10 +138,15 @@ data Instruction
   | IALoad
   | IAnd
   | IAStore
-  | IfEq LabelName
+  | If IRCmp LabelName
+  | IfICmp IRCmp LabelName
   | IOr
   | IXOr
   | LDC LDCType -- pushes an int/float/string value onto the stack
+  | IConstM1 -- -1
+  | IConst0 -- 0
+  | IConst1 -- 1
+  | FCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
   | New ClassRef -- class
   | ANewArray ClassRef
   | NewArray IRPrimitive
