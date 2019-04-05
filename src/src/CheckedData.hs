@@ -334,7 +334,6 @@ data FieldDecl =
 -- The following maps CheckedData to Data,
 -- allowing us to derive Prettify
 ------------------------------------------------------------------------
-
 o :: Offset
 o = Offset 0
 
@@ -387,8 +386,8 @@ instance Convert Signature T.Signature where
 instance Convert SimpleStmt T.SimpleStmt where
   convert EmptyStmt = T.EmptyStmt
   convert (ExprStmt e) = T.ExprStmt (convert e)
-  convert (VoidExprStmt (Ident vname) el) =
-    T.ExprStmt (T.Arguments o (T.Var $ T.Identifier o vname) (convert el))
+  convert (VoidExprStmt i el) =
+    T.ExprStmt (T.Arguments o (T.Var $ convert i) (convert el))
   convert (Increment e) = T.Increment o (convert e)
   convert (Decrement e) = T.Decrement o (convert e)
   convert (Assign op eltup) = uncurry (T.Assign o op) (convert $ NE.unzip eltup)
@@ -425,19 +424,17 @@ instance Convert Expr T.Expr where
   convert (AppendExpr _ e1 e2) = T.AppendExpr o (convert e1) (convert e2)
   convert (LenExpr e) = T.LenExpr o (convert e)
   convert (CapExpr e) = T.CapExpr o (convert e)
-  convert (Selector _ _ e (Ident vname)) =
-    T.Selector o (convert e) (T.Identifier o vname)
+  convert (Selector _ _ e i) = T.Selector o (convert e) (convert i)
   convert (Index _ e1 e2) = T.Index o (convert e1) (convert e2)
-  convert (Arguments _ (Ident vname) el) =
-    T.Arguments o (T.Var (T.Identifier o vname)) (convert el)
+  convert (Arguments _ i el) = T.Arguments o (T.Var (convert i)) (convert el)
 
 instance Convert Literal (Either T.Literal T.Expr) where
   convert (IntLit i) = Left $ T.IntLit o T.Decimal (show i)
   convert (FloatLit f) = Left $ T.FloatLit o (show f)
   convert (RuneLit c) = Left $ T.RuneLit o (show c)
   convert (StringLit s) = Left $ T.StringLit o T.Interpreted $ "\"" ++ s ++ "\""
-  convert (BoolLit True) = Right $ T.Var (T.Identifier o "true")
-  convert (BoolLit False) = Right $ T.Var (T.Identifier o "false")
+  convert (BoolLit True) = Right $ T.Var (convert $ Ident "true")
+  convert (BoolLit False) = Right $ T.Var (convert $ Ident "false")
 
 instance Convert CType T.Type where
   convert = convert . C.get
@@ -453,12 +450,12 @@ instance Convert Type T.Type where
     T.ArrayType (T.Lit (T.IntLit o T.Decimal (show i))) (convert t)
   convert (SliceType t) = T.SliceType (convert t)
   convert (StructType fdl) = T.StructType (convert fdl)
-  convert PInt = T.Type (T.Identifier o "int")
-  convert PFloat64 = T.Type (T.Identifier o "float64")
-  convert PBool = T.Type (T.Identifier o "bool")
-  convert PRune = T.Type (T.Identifier o "rune")
-  convert PString = T.Type (T.Identifier o "string")
-  convert Cycle = T.Type (T.Identifier o "cycle")
+  convert PInt = T.Type (convert $ Ident "int")
+  convert PFloat64 = T.Type (convert $ Ident "float64")
+  convert PBool = T.Type (convert $ Ident "bool")
+  convert PRune = T.Type (convert $ Ident "rune")
+  convert PString = T.Type (convert $ Ident "string")
+  convert Cycle = T.Type (convert $ Ident "cycle")
   convert (TypeMap t) = convert t -- TODO verify
 
 instance Convert FieldDecl T.FieldDecl where
