@@ -94,7 +94,9 @@ data VarDecl' =
 -- | Placeholder, no typedefs
 -- This is here since generating this new AST at typecheck is a one to one map
 data TypeDef' =
-  NoDef
+  TypeDef' ScopedIdent
+           CType
+  | NoDef
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -368,6 +370,7 @@ instance Convert VarDecl' T.VarDecl' where
     T.VarDecl' (convert si) (Left (convert t, []))
 
 instance Convert TypeDef' (Maybe T.TypeDef') where
+  convert (TypeDef' si t) = Just $ T.TypeDef' (convert si) (convert t)
   convert NoDef = Nothing
 
 instance Convert FuncDecl T.FuncDecl where
