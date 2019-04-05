@@ -225,10 +225,19 @@ instance IRRep T.Expr where
   toIR (T.Lit l) = toIR l
   toIR (T.Var t vi) = iri [Load (astToIRType t) vi] -- TODO (also bool?)
   toIR T.AppendExpr {} = undefined -- TODO
-  toIR T.LenExpr {} = undefined -- TODO
+  toIR (T.LenExpr e) =
+    case exprType e of
+      T.ArrayType l _ -> iri [LDC (LDCInt l)] -- fixed at compile time
+      T.SliceType _   -> undefined -- TODO
+      _               -> undefined -- Can't take length of anything else
   toIR T.CapExpr {} = undefined -- TODO
   toIR T.Selector {} = undefined -- TODO
-  toIR T.Index {} = undefined -- TODO
+  toIR (T.Index t e1 e2) =
+    case exprType e1 of
+      T.ArrayType _ _ -> -- TODO: CHECK LENGTH HERE?
+        toIR e1 ++ toIR e2 ++ iri [ArrayLoad (astToIRType t)]
+      T.SliceType {} -> undefined -- TODO
+      _              -> undefined -- Cannot index any other type
   toIR (T.Arguments t (D.Ident aid) args) =
     iri [Load Object (T.VarIndex 0)] ++ -- this object
     concatMap toIR args ++
