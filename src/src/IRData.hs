@@ -110,8 +110,10 @@ data LDCType
 data Instruction
   = Load IRType
          VarIndex
+  | ArrayLoad IRType -- consumes an object reference and an index
   | Store IRType
           VarIndex
+  | ArrayStore IRType -- consumes an object reference and an index
   | Return (Maybe IRType)
   | Dup
   | Goto LabelName
