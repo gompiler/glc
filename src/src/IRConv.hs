@@ -220,7 +220,11 @@ instance IRRep T.Expr where
     iri [Dup, If IRData.NE "true_ne_todo", Pop] ++
     toIR e2 ++
     [IRLabel "true_ne_todo"]
-  toIR (T.Binary _ T.And _ _) = undefined -- TODO: NEED SHORTCUT!
+  toIR (T.Binary _ T.And _ _) =
+    toIR e1 ++
+    iri [Dup, If IRData.EQ "false_eq_todo", Pop] ++
+    toIR e2 ++
+    [IRLabel "false_eq_todo"]
   toIR (T.Binary _ T.EQ _ _) = undefined -- TODO
   toIR (T.Binary t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary t T.EQ e1 e2)) -- != is =, !
