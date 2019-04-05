@@ -5,6 +5,7 @@ import qualified CheckedData        as D
 import           Data.Char          (ord)
 import           Data.List          (intercalate)
 import qualified Data.List.NonEmpty as NE (map)
+import           Foreign.Marshal.Utils (fromBool)
 import           IRData
 import           ResourceBuilder    (convertProgram)
 import qualified ResourceData       as T
@@ -264,17 +265,10 @@ instance IRRep T.Expr where
       ]
 
 instance IRRep D.Literal where
-  toIR (D.BoolLit i) =
-    iri
-      [ LDC
-          (LDCInt
-             (if i
-                then 1
-                else 0))
-      ]
-  toIR (D.IntLit i) = iri [LDC (LDCInt i)]
-  toIR (D.FloatLit f) = iri [LDC (LDCFloat f)]
-  toIR (D.RuneLit r) = iri [LDC (LDCInt $ ord r)]
+  toIR (D.BoolLit i)   = iri [LDC (LDCInt $ fromBool i)]
+  toIR (D.IntLit i)    = iri [LDC (LDCInt i)]
+  toIR (D.FloatLit f)  = iri [LDC (LDCFloat f)]
+  toIR (D.RuneLit r)   = iri [LDC (LDCInt $ ord r)]
   toIR (D.StringLit s) = iri [LDC (LDCString s)]
 
 iri :: [Instruction] -> [IRItem]
