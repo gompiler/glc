@@ -1,15 +1,20 @@
 language: generic
 cache:
   directories:
-  - "$HOME/.stack"
+  - $HOME/docker
 addons:
   apt:
     packages:
     - libgmp-dev
 services:
 - docker
+# Caching docker images from here
+# https://github.com/travis-ci/travis-ci/issues/5358
+before_cache:
+- mkdir -p $HOME/docker && docker images -a --filter='dangling=false' --format '{{.Repository}}:{{.Tag}} {{.ID}}'
+    | xargs -n 2 -t sh -c 'test -e $HOME/docker/$1.tar.gz || docker save $0 | gzip -2 > $HOME/docker/$1.tar.gz'
 before_install:
-- docker build -t gompiler .
+- if [[ -d $HOME/docker ]]; then ls $HOME/docker/*.tar.gz | xargs -I {file} sh -c "zcat {file} | docker load"; else; docker build -t gompiler .; fi
 script:
 - cd $TRAVIS_BUILD_DIR
 - docker run gompiler
