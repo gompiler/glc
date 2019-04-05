@@ -78,7 +78,7 @@ instance IRRep T.Stmt where
    =
     toIR sstmt ++
     toIR expr ++
-    iri [IfEq "else_todo"] ++ -- TODO: PROPER EQUALITY CHECK
+    iri [If IRData.EQ "else_todo"] ++ -- TODO: PROPER EQUALITY CHECK
     toIR ifs ++
     [IRInst (Goto "end_todo"), IRLabel "else_todo"] ++
     toIR elses ++ [IRLabel "end_todo"]
@@ -139,7 +139,7 @@ instance IRRep T.SwitchCase where
     [IRLabel "case_todo"] ++ toIR stmt ++ iri [Goto "end_todo"]
     where
       toCaseHeader :: T.Expr -> [IRItem]
-      toCaseHeader e = IRInst Dup : toIR e ++ iri [IfEq "case_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
+      toCaseHeader e = IRInst Dup : toIR e ++ iri [If IRData.EQ "case_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
 
 instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
@@ -218,7 +218,16 @@ instance IRRep T.Expr where
   toIR (T.Binary _ T.EQ _ _) = undefined -- TODO
   toIR (T.Binary t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary t T.EQ e1 e2)) -- != is =, !
-  toIR (T.Binary _ T.LT _ _) = undefined
+  toIR (T.Binary _ T.LT e1 e2) =
+    toIR e1 ++ toIR e2 ++ cmpIR ++ iri [IConst0, Goto "end_lt_todo"] ++
+    [IRLabel "true_lt_todo", IRInst IConst1, IRLabel "end_lt_todo", IRInst NOp]
+    where
+      cmpIR :: [IRItem]
+      cmpIR =
+        case exprIRType e1 of
+          Prim IRInt   -> iri [IfICmp IRData.LT "true_lt_todo"]
+          Prim IRFloat -> iri [FCmpG, If IRData.LT "true_lt_todo"]
+          Object       -> undefined
   toIR (T.Binary _ T.LEQ _ _) = undefined
   toIR (T.Binary _ T.GT _ _) = undefined
   toIR (T.Binary _ T.GEQ _ _) = undefined
