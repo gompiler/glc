@@ -220,7 +220,7 @@ instance IRRep T.Expr where
     iri [Dup, If IRData.NE "true_ne_todo", Pop] ++
     toIR e2 ++
     [IRLabel "true_ne_todo"]
-  toIR (T.Binary _ T.And _ _) =
+  toIR (T.Binary _ T.And e1 e2) =
     toIR e1 ++
     iri [Dup, If IRData.EQ "false_eq_todo", Pop] ++
     toIR e2 ++
