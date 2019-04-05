@@ -27,17 +27,17 @@ toClasses (T.Program _ scts tfs is tms) =
     cMethods :: [Method]
     cMethods =
       Method
-        { mname = "glc__init"
+        { mname = "glc_fn__init"
         , stackLimit = 25
         , localsLimit = 25
         , body = concatMap toIR is
         } :
       toMethods tms
-    vdToField :: T.VarDecl -> Field
-    vdToField (T.VarDecl (T.VarIndex fi) t _) =
+    vdToField :: T.TopVarDecl -> Field
+    vdToField (T.TopVarDecl (D.Ident fi) t _) =
       Field
         { access = FProtected
-        , fname = "field__" ++ show fi
+        , fname = "glc_fd__" ++ fi
         , descriptor = typeToJType t
       -- , value = Nothing
         }
@@ -46,7 +46,7 @@ toClasses (T.Program _ scts tfs is tms) =
       concatMap
         (\(T.FuncDecl (D.Ident fni) _ fb) ->
            [ Method
-               { mname = "glc__" ++ fni
+               { mname = "glc_fn__" ++ fni
                , stackLimit = 25 -- TODO
                , localsLimit = 25 -- TODO
                , body = toIR fb
@@ -91,7 +91,10 @@ instance IRRep T.Stmt where
   toIR T.For {} = undefined
   toIR T.Break = iri [Goto "end_todo"]
   toIR T.Continue = iri [Goto "loop_todo"] -- TODO: MAKE SURE POST-STMT IS DONE?
-  toIR (T.Declare d) = toIR d
+  toIR (T.VarDecl idx t me) =
+    case me of
+      Just e -> toIR e ++ iri [Store (astToIRType t) idx]
+      _      -> [] -- TODO: Get default and store?
   toIR (T.Print el) = concatMap printIR el
   toIR (T.Println el) =
     intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++
@@ -153,12 +156,6 @@ instance IRRep T.SimpleStmt where
   toIR T.Decrement {} = undefined -- iinc for int (-1), otherwise "
   toIR T.Assign {} = undefined -- store IRType
   toIR (T.ShortDeclare _) = undefined -- concat (map toIR $ toList el) ++ [istores...]
-
-instance IRRep T.VarDecl where
-  toIR (T.VarDecl idx t me) =
-    case me of
-      Just e -> toIR e ++ iri [Store (astToIRType t) idx]
-      _      -> [] -- TODO: Get default and store?
 
 instance IRRep T.Expr where
   toIR (T.Unary _ D.Pos e) = toIR e -- unary pos is identity function after typecheck

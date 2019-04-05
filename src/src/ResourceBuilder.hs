@@ -48,7 +48,7 @@ instance Converter T.Program Program where
         }
 
 data TopLevel
-  = TopVar [VarDecl]
+  = TopVar [TopVarDecl]
   | TopFunc FuncDecl
   | TopInit Stmt
 
@@ -83,14 +83,28 @@ instance Converter T.ParameterDecl ParameterDecl where
 instance Converter T.Parameters Parameters where
   convert rc (T.Parameters params) = Parameters <$> mapM (convert rc) params
 
-instance Converter T.Decl [VarDecl] where
-  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [VarDecl]
+instance Converter T.Decl [TopVarDecl] where
+  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [TopVarDecl]
   convert rc decl =
     case decl of
       T.VarDecl decls -> mapM convertVarDecl decls
       T.TypeDef decls -> mapM_ convertTypeDecl decls $> []
     where
-      convertVarDecl :: T.VarDecl' -> ST s VarDecl
+      convertVarDecl :: T.VarDecl' -> ST s TopVarDecl
+      convertVarDecl (T.VarDecl' (T.ScopedIdent _ i) t expr) =
+        TopVarDecl <$> pure i <*> convert rc t <*>
+        maybe (return Nothing) (Just <$$> convert rc) expr
+      convertTypeDecl :: T.TypeDef' -> ST s ()
+      convertTypeDecl _ = return ()
+
+instance Converter T.Decl [Stmt] where
+  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [Stmt]
+  convert rc decl =
+    case decl of
+      T.VarDecl decls -> mapM convertVarDecl decls
+      T.TypeDef decls -> mapM_ convertTypeDecl decls $> []
+    where
+      convertVarDecl :: T.VarDecl' -> ST s Stmt
       convertVarDecl (T.VarDecl' i t expr) =
         VarDecl <$> RC.getVarIndex rc i <*> convert rc t <*>
         maybe (return Nothing) (Just <$$> convert rc) expr
@@ -137,7 +151,7 @@ instance Converter T.Expr Expr where
       T.AppendExpr t e1 e2  -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
       T.LenExpr e           -> LenExpr <$> ce e
       T.CapExpr e           -> CapExpr <$> ce e
-      T.Selector t _ e i      -> Selector <$> ct t <*> ce e <*-> i
+      T.Selector t _ e i    -> Selector <$> ct t <*> ce e <*-> i
       T.Index t e1 e2       -> Index <$> ct t <*> ce e1 <*> ce e2
       T.Arguments t i exprs -> Arguments <$> ct t <*-> i <*> mapM ce exprs
     where
@@ -200,7 +214,7 @@ instance Converter T.Stmt Stmt
       T.Break -> return Break
       T.Continue -> return Continue
         -- TODO ensure blockstmt doesn't end up adding scopes for this case
-      T.Declare decl -> BlockStmt . fmap Declare <$> convert rc decl
+      T.Declare decl -> BlockStmt <$> convert rc decl
       T.Print exprs -> Print <$> mapM ce exprs
       T.Println exprs -> Println <$> mapM ce exprs
       T.Return e -> Return <$> maybe (return Nothing) (Just <$$> ce) e

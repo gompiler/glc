@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeApplications  #-}
 
 module Prettify
   ( Prettify(..)
@@ -221,15 +221,15 @@ instance Prettify Literal where
   prettify' = prettify''
 
 instance Prettify BinaryOp where
-  prettify Or          = "||"
-  prettify And         = "&&"
+  prettify Or         = "||"
+  prettify And        = "&&"
   prettify (Arithm o) = prettify o
-  prettify Data.EQ     = "=="
-  prettify NEQ         = "!="
-  prettify Data.LT     = "<"
-  prettify LEQ         = "<="
-  prettify Data.GT     = ">"
-  prettify GEQ         = ">="
+  prettify Data.EQ    = "=="
+  prettify NEQ        = "!="
+  prettify Data.LT    = "<"
+  prettify LEQ        = "<="
+  prettify Data.GT    = ">"
+  prettify GEQ        = ">="
   prettify' = prettify''
 
 instance Prettify ArithmOp where

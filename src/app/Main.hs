@@ -5,7 +5,6 @@ import           IRConv                  (displayIR)
 import qualified Options.Applicative as Op
 import           ParseCLI
 import           Prettify            (checkPrettifyInvariance, prettify)
-import           CheckedPrettify     (prettify)
 import           Scanner             (putExit, putSucc, scanC, scanP)
 import           SymbolTable         (symbol, typecheckP, typecheckGen)
 import           Weeding             (weed)
@@ -29,6 +28,6 @@ main = do
         Symbol -> symbol
         Typecheck -> typecheckP
         IR -> displayIR
-        PrettyTypecheck -> either putExit (putStrLn . CheckedPrettify.prettify) . typecheckGen
+        PrettyTypecheck -> either putExit (putStrLn . prettify) . typecheckGen
         Codegen ->
           const $ putExit $ createError' "codegen called without filename" -- This should never happen because of case above
