@@ -19,24 +19,18 @@ newtype VarIndex =
 data Program = Program
   { package   :: Ident
   , structs   :: [StructType]
-  , topVars   :: [VarDecl]
-  , init :: [Stmt]
+  , topVars   :: [TopVarDecl]
+  , init      :: [Stmt]
   , functions :: [FuncDecl]
   } deriving (Show, Eq)
 
 ----------------------------------------------------------------------
 -- Declarations
 -- | See https://golang.org/ref/spec#VarDecl
--- Note that a proper declaration can be mapped to pairs of ids and expressions
--- The inferred type here is a valid type after we check that
--- the expression type matches the declared type, if any.
--- This is necessary for cases like var a float = 5,
--- where the expression type is not necessarily the same as the declared one
-data VarDecl =
-
-  VarDecl VarIndex
-          Type
-          (Maybe Expr) -- TODO If no explicit expr, assign default?
+data TopVarDecl =
+  TopVarDecl Ident
+             Type
+             (Maybe Expr)
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -88,7 +82,8 @@ data SimpleStmt
   -- | See https://golang.org/ref/spec#Expression_statements
   -- Note that expr must be some function
   | ExprStmt Expr
-  | VoidExprStmt Ident [Expr]
+  | VoidExprStmt Ident
+                 [Expr]
   -- | See https://golang.org/ref/spec#IncDecStmt
   | Increment Expr
   | Decrement Expr
@@ -135,7 +130,11 @@ data Stmt
   -- Labels are not supported in Golite
   | Continue
   -- | See https://golang.org/ref/spec#Declaration
-  | Declare VarDecl
+  -- At this stage, we only have var declarations
+  -- If no expr is provided, we will also assign a default
+  | VarDecl VarIndex
+            Type
+            (Maybe Expr)
   -- Golite exclusive
   | Print [Expr]
   -- Golite exclusive
@@ -174,6 +173,7 @@ data Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
+  | NullVal -- TODO check
   -- | See https://golang.org/ref/spec#OperandName
   | Var Type
         VarIndex
