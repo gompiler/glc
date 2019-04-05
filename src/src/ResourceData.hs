@@ -268,6 +268,12 @@ data FieldDecl =
             Type
   deriving (Show, Eq)
 
+------------------------------------------------------------------------
+-- Converter logic
+-- The following maps ResourceData to CheckedData,
+-- allowing us to derive Prettify
+------------------------------------------------------------------------
+
 instance Convert VarIndex T.ScopedIdent where
   convert (VarIndex i) = T.ScopedIdent (T.Scope 0) (T.Ident $ "var" ++ show i)
 

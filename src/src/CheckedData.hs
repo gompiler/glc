@@ -329,6 +329,12 @@ data FieldDecl =
             Type
   deriving (Show, Eq)
 
+------------------------------------------------------------------------
+-- Converter logic
+-- The following maps CheckedData to Data,
+-- allowing us to derive Prettify
+------------------------------------------------------------------------
+
 o :: Offset
 o = Offset 0
 
