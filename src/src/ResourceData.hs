@@ -273,18 +273,22 @@ data FieldDecl =
 -- The following maps ResourceData to CheckedData,
 -- allowing us to derive Prettify
 ------------------------------------------------------------------------
-
 instance Convert VarIndex T.ScopedIdent where
   convert (VarIndex i) = T.ScopedIdent (T.Scope 0) (T.Ident $ "var" ++ show i)
 
 instance Convert Program T.Program where
-  convert Program {package, structs, topVars, functions} =
+  convert Program {package, structs, init, topVars, functions} =
     T.Program {T.package = package, T.topLevels = topLevels}
-    -- TODO save init
     where
+      initFunc :: FuncDecl
+      initFunc =
+        FuncDecl
+          (Ident "init")
+          (Signature (Parameters []) Nothing)
+          (BlockStmt init)
       topLevels =
         convert structs ++
-        convert topVars ++ map T.TopFuncDecl (convert functions)
+        convert topVars ++ map T.TopFuncDecl (convert $ initFunc : functions)
 
 instance Convert StructType T.TopDecl where
   convert (Struct _ _) = T.TopDecl $ T.TypeDef []
