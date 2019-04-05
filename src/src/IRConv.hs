@@ -144,8 +144,8 @@ instance IRRep T.SwitchCase where
 
 instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt          = []
-  toIR (T.VoidExprStmt _ _) = undefined
-  toIR (T.ExprStmt e)       = toIR e ++ iri [Pop] -- Invariant: pop expression result TODO: VOID FUNCTIONS
+  toIR (T.VoidExprStmt _ _) = undefined -- Akin to Argument without a type
+  toIR (T.ExprStmt e)       = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR T.Increment {}       = undefined -- iinc for int, otherwise load/save + 1
   toIR T.Decrement {}       = undefined -- iinc for int (-1), otherwise "
   toIR T.Assign {}          = undefined -- store IRType
@@ -155,7 +155,7 @@ instance IRRep T.VarDecl where
   toIR (T.VarDecl idx t me) =
     case me of
       Just e -> toIR e ++ iri [Store (astToIRType t) idx]
-      _      -> [] -- HOPEFULLY WE CAN REMOVE THE NOTHING!
+      _      -> [] -- TODO: Get default and store?
 
 instance IRRep T.Expr where
   toIR (T.Unary _ D.Pos e) = toIR e -- unary pos is identity function after typecheck
@@ -168,7 +168,6 @@ instance IRRep T.Expr where
     where
       intPattern :: [IRItem]
       intPattern = toIR e ++ iri [LDC (LDCInt (-1)), Mul IRInt]
-       -- int: toIR e ++ [IRInst $ LDC (LDCInt -1), Mul typeToPrimitive TODO]
   toIR (T.Unary _ D.Not e) = toIR e ++ iri [LDC (LDCInt 1), IXOr] -- !i is equivalent to i XOR 1
   toIR (T.Unary _ D.BitComplement _) = undefined -- TODO: how to do this?
   toIR (T.Binary t (D.Arithm D.Add) e1 e2) =

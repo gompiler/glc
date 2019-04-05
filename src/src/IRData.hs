@@ -155,3 +155,7 @@ stringBuilder = ClassRef "java/lang/StringBuilder"
 
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
+
+-- Custom-defined methods
+glcUtils :: ClassRef
+glcUtils = ClassRef "glcgutils/Utils"
