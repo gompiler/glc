@@ -116,7 +116,7 @@ printIR e =
     _          -> undefined -- TODO
   where
     printLoad :: [IRItem]
-    printLoad = iri [GetStatic systemOut printStream]
+    printLoad = iri [GetStatic systemOut (JClass printStream)]
     intPrint :: [IRItem]
     intPrint = iri [InvokeVirtual $ MethodRef printStream "print" [JInt] JVoid]
     floatPrint :: [IRItem]
@@ -240,7 +240,14 @@ instance IRRep T.Expr where
       T.SliceType _   -> undefined -- TODO
       _               -> undefined -- Can't take length of anything else
   toIR T.CapExpr {} = undefined -- TODO
-  toIR T.Selector {} = undefined -- TODO
+  toIR (T.Selector t e (T.Ident fid)) =
+    toIR e ++ iri [GetField fr (typeToJType t)]
+    where
+      fr :: FieldRef
+      fr =
+        case exprJType e of
+          JClass cref -> FieldRef cref fid
+          _           -> undefined -- Can't get field on different object
   toIR (T.Index t e1 e2) =
     case exprType e1 of
       T.ArrayType _ _ -> -- TODO: CHECK LENGTH HERE?

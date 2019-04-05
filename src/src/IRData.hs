@@ -154,7 +154,9 @@ data Instruction
   | Pop
   | Swap
   | GetStatic FieldRef
-              ClassRef -- field spec, descriptor
+              JType -- field spec, descriptor
+  | GetField FieldRef
+             JType
   | InvokeSpecial MethodRef -- method spec
   | InvokeVirtual MethodRef -- method spec
   | Debug String -- TODO: remove
