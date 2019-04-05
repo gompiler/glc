@@ -19,11 +19,8 @@ genIR code = toClasses . convertProgram <$> S.typecheckGen code
 
 toClasses :: T.Program -> [Class]
 toClasses (T.Program _ scts tfs is tms) =
-  Class {
-    cname = "Main"
-    , fields = cFields
-    , methods = cMethods
-    } : (map structClass scts) -- TODO
+  Class {cname = "Main", fields = cFields, methods = cMethods} :
+  map structClass scts -- TODO
   where
     cFields :: [Field]
     cFields = map vdToField tfs
@@ -89,8 +86,7 @@ instance IRRep T.Stmt where
     toIR sstmt ++
     toIR e ++
     concatMap toIR scs ++
-    IRLabel "default_todo" :
-    toIR dstmt ++ IRLabel "end_todo" : iri [NOp]
+    IRLabel "default_todo" : toIR dstmt ++ IRLabel "end_todo" : iri [NOp]
       -- duplicate expression for case statement expressions in lists
   toIR T.For {} = undefined
   toIR T.Break = iri [Goto "end_todo"]
@@ -143,16 +139,20 @@ instance IRRep T.SwitchCase where
       toCaseHeader e = IRInst Dup : toIR e ++ iri [IfEq "case_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
 
 instance IRRep T.SimpleStmt where
-  toIR T.EmptyStmt          = []
-  toIR (T.VoidExprStmt (D.Ident aid) args) = -- Akin to Argument without a type
+  toIR T.EmptyStmt = []
+  toIR (T.VoidExprStmt (D.Ident aid) args) -- Akin to Argument without a type
+   =
     iri [Load Object (T.VarIndex 0)] ++ -- this object
     concatMap toIR args ++
-    iri [InvokeVirtual $ MethodRef (ClassRef "Main") aid (map exprJType args) JVoid]
-  toIR (T.ExprStmt e)       = toIR e ++ iri [Pop] -- Invariant: pop expression result
-  toIR T.Increment {}       = undefined -- iinc for int, otherwise load/save + 1
-  toIR T.Decrement {}       = undefined -- iinc for int (-1), otherwise "
-  toIR T.Assign {}          = undefined -- store IRType
-  toIR (T.ShortDeclare _)   = undefined -- concat (map toIR $ toList el) ++ [istores...]
+    iri
+      [ InvokeVirtual $
+        MethodRef (ClassRef "Main") aid (map exprJType args) JVoid
+      ]
+  toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
+  toIR T.Increment {} = undefined -- iinc for int, otherwise load/save + 1
+  toIR T.Decrement {} = undefined -- iinc for int (-1), otherwise "
+  toIR T.Assign {} = undefined -- store IRType
+  toIR (T.ShortDeclare _) = undefined -- concat (map toIR $ toList el) ++ [istores...]
 
 instance IRRep T.VarDecl where
   toIR (T.VarDecl idx t me) =
@@ -227,7 +227,10 @@ instance IRRep T.Expr where
   toIR (T.Arguments t (D.Ident aid) args) =
     iri [Load Object (T.VarIndex 0)] ++ -- this object
     concatMap toIR args ++
-    iri [InvokeVirtual $ MethodRef (ClassRef "Main") aid (map exprJType args) (typeToJType t)]
+    iri
+      [ InvokeVirtual $
+        MethodRef (ClassRef "Main") aid (map exprJType args) (typeToJType t)
+      ]
 
 instance IRRep D.Literal where
   toIR (D.BoolLit i) =
@@ -285,11 +288,11 @@ getLiteralType (D.RuneLit _)   = T.PRune
 getLiteralType (D.StringLit _) = T.PString
 
 typeToJType :: T.Type -> JType
-typeToJType T.PInt                       = JInt
-typeToJType T.PFloat64                   = JFloat
-typeToJType T.PRune                      = JInt
-typeToJType T.PBool                      = JBool
-typeToJType T.PString                    = JClass (jString)
+typeToJType T.PInt = JInt
+typeToJType T.PFloat64 = JFloat
+typeToJType T.PRune = JInt
+typeToJType T.PBool = JBool
+typeToJType T.PString = JClass jString
 typeToJType (T.StructType (D.Ident sid)) =
   JClass (ClassRef $ "GlcStruct__" ++ sid)
-typeToJType _                            = undefined -- TODO
+typeToJType _ = undefined -- TODO
