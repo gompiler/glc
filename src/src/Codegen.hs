@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Codegen where
 
 import           Data.ByteString.Builder (string7, toLazyByteString)
@@ -20,13 +21,16 @@ instance Bytecode Class where
       , B.concat $ map toBC mts
       ]
 
+instance Bytecode [Class] where
+  toBC cls = B.concat (map toBC cls)
+
 instance Bytecode Field where
   toBC (Field acc fn desc)
     -- .field $(access) $(fieldname) $(signature)
     -- ex.
     -- public int thing; ->
     -- .field public thing I
-   = bstrM [".field ", show acc, " ", fn, " ", desc, "\n"]
+   = bstrM [".field ", show acc, " ", fn, " ", show desc, "\n"]
 
 instance Bytecode Method where
   toBC (Method mn sl ll bod)
