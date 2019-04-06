@@ -149,9 +149,6 @@ printIR e =
     boolToString =
       iri [InvokeVirtual $ MethodRef (CRef glcUtils) "boolStr" [JInt] (JClass jString)]
 
-instance IRRep T.ForClause where
-  toIR T.ForClause {} = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
-
 instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
   toIR (T.VoidExprStmt (D.Ident aid) args) -- Akin to Argument without a type
