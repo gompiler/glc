@@ -10,7 +10,7 @@ module Prettify
 
 import           Base
 import           Data
-import           Data.List          (intercalate, null)
+import           Data.List          (intercalate)
 import           Data.List.NonEmpty (NonEmpty (..), toList)
 import qualified Data.Maybe         as Maybe
 import           Parser
