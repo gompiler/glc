@@ -70,11 +70,9 @@ instance Converter T.TopDecl TopLevel where
 
 instance Converter T.FuncDecl FuncDecl where
   convert rc (T.FuncDecl (T.ScopedIdent _ i) sig body) =
-    RC.wrap rc $ do
-      sig' <- convert rc sig
-      RC.wrap rc $ do
-        body' <- convert rc body
-        return $ FuncDecl i sig' body'
+    wrap $ FuncDecl <$-> i <*> convert rc sig <*> wrap (convert rc body)
+    where
+      wrap = RC.wrap rc
 
 instance Converter T.Signature Signature where
   convert rc (T.Signature params retType) =
@@ -97,7 +95,7 @@ instance Converter T.Decl [TopVarDecl] where
     where
       convertVarDecl :: T.VarDecl' -> ST s TopVarDecl
       convertVarDecl (T.VarDecl' (T.ScopedIdent _ i) t expr) =
-        TopVarDecl <$> pure i <*> convert rc t <*>
+        TopVarDecl <$-> i <*> convert rc t <*>
         maybe (return Nothing) (Just <$$> convert rc) expr
       convertTypeDecl :: T.TypeDef' -> ST s ()
       convertTypeDecl _ = return ()
@@ -149,15 +147,16 @@ instance Converter T.Expr Expr where
   convert :: forall s. RC.ResourceContext s -> T.Expr -> ST s Expr
   convert rc expr =
     case expr of
-      T.Unary t op e        -> Unary <$> ct t <*-> op <*> ce e
-      T.Binary t op e1 e2   -> Binary <$> ct t <*-> op <*> ce e1 <*> ce e2
-      T.Lit lit             -> return $ Lit lit
-      T.Var t i             -> Var <$> ct t <*> RC.getVarIndex rc i
-      T.AppendExpr t e1 e2  -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
-      T.LenExpr e           -> LenExpr <$> ce e
-      T.CapExpr e           -> CapExpr <$> ce e
-      T.Selector t _ e i    -> Selector <$> ct t <*> ce e <*-> i
-      T.Index t e1 e2       -> Index <$> ct t <*> ce e1 <*> ce e2
+      T.Unary t op e -> Unary <$> ct t <*-> op <*> ce e
+      T.Binary t op e1 e2 ->
+        Binary <$> RC.getLabel rc <*> ct t <*-> op <*> ce e1 <*> ce e2
+      T.Lit lit -> return $ Lit lit
+      T.Var t i -> Var <$> ct t <*> RC.getVarIndex rc i
+      T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
+      T.LenExpr e -> LenExpr <$> ce e
+      T.CapExpr e -> CapExpr <$> ce e
+      T.Selector t _ e i -> Selector <$> ct t <*> ce e <*-> i
+      T.Index t e1 e2 -> Index <$> ct t <*> ce e1 <*> ce e2
       T.Arguments t i exprs -> Arguments <$> ct t <*-> i <*> mapM ce exprs
     where
       ct :: T.CType -> ST s Type
@@ -192,15 +191,12 @@ instance Converter T.Stmt Stmt
     case stmt of
       T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
       T.SimpleStmt s -> SimpleStmt <$> css s
-      T.If (s, e) s1 s2 ->
-        wrap $ do
-          s' <- css s
-          e' <- ce e
-          s1' <- wrap $ cs s1
-          s2' <- wrap $ cs s2
-          return $ If (s', e') s1' s2'
+      T.If se s1 s2 ->
+        wrap $ If <$> label <*> cse se <*> wrap (cs s1) <*> wrap (cs s2)
       T.Switch s e cases ->
-        Switch <$> css s <*> maybe (return $ Lit $ T.BoolLit True) ce e <*>
+        wrap $
+        Switch <$> label <*> css s <*>
+        maybe (return $ Lit $ T.BoolLit True) ce e <*>
         fmap catMaybes (mapM convertSwitchCase cases) <*>
         -- Note that we find a list of all defaults
         -- and only use the first one
@@ -210,12 +206,7 @@ instance Converter T.Stmt Stmt
           (fromMaybe (SimpleStmt EmptyStmt) . listToMaybe . catMaybes)
           (mapM convertDefaultCase cases)
       T.For clause s ->
-        wrap $ do
-          clause' <- convertForClause clause
-          s' <- wrap $ cs s
-          -- TODO add label tags?
-          -- TODO check that clause scope is correct (post in same scope)
-          return $ For clause' s'
+        wrap $ For <$> label <*> convertForClause clause <*> wrap (cs s)
       T.Break -> return Break
       T.Continue -> return Continue
         -- TODO ensure blockstmt doesn't end up adding scopes for this case
@@ -224,7 +215,10 @@ instance Converter T.Stmt Stmt
       T.Println exprs -> Println <$> mapM ce exprs
       T.Return e -> Return <$> maybe (return Nothing) (Just <$$> ce) e
     where
+      label = RC.getLabel rc
       wrap = RC.wrap rc
+      cse :: (T.SimpleStmt, T.Expr) -> ST s (SimpleStmt, Expr)
+      cse (s, e) = (,) <$> css s <*> ce e
       css :: T.SimpleStmt -> ST s SimpleStmt
       css = convert rc
       cs :: T.Stmt -> ST s Stmt
@@ -237,10 +231,7 @@ instance Converter T.Stmt Stmt
         css post
       convertSwitchCase :: T.SwitchCase -> ST s (Maybe SwitchCase)
       convertSwitchCase (T.Case exprs s) =
-        wrap $ do
-          exprs' <- mapM ce exprs
-          s' <- wrap $ cs s
-          return $ Just $ Case exprs' s'
+        wrap $ Just <$$> Case <$> mapM ce exprs <*> wrap (cs s)
       convertSwitchCase _ = return Nothing
       convertDefaultCase :: T.SwitchCase -> ST s (Maybe Stmt)
       convertDefaultCase (T.Default s) = Just <$> wrap (cs s)
