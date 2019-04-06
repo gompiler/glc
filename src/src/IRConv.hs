@@ -75,8 +75,7 @@ class IRRep a where
 instance IRRep T.Stmt where
   toIR (T.BlockStmt stmts) = concatMap toIR stmts
   toIR (T.SimpleStmt stmt) = toIR stmt
-  toIR (T.If (T.LabelIndex idx) (sstmt, expr) ifs elses)
-   =
+  toIR (T.If (T.LabelIndex idx) (sstmt, expr) ifs elses) =
     toIR sstmt ++
     toIR expr ++
     iri [If IRData.EQ ("else_" ++ show idx)] ++ -- TODO: PROPER EQUALITY CHECK
@@ -87,8 +86,8 @@ instance IRRep T.Stmt where
     toIR sstmt ++
     toIR e ++
     concatMap irCase (zip [1 ..] scs) ++
-    IRLabel ("default_" ++ show idx) : toIR dstmt ++
-    IRLabel ("end_sc_" ++ show idx) : iri [NOp]
+    IRLabel ("default_" ++ show idx) :
+    toIR dstmt ++ IRLabel ("end_sc_" ++ show idx) : iri [NOp]
       -- duplicate expression for case statement expressions in lists
     where
       irCase :: (Int, T.SwitchCase) -> [IRItem]
@@ -138,16 +137,23 @@ printIR e =
     printLoad :: [IRItem]
     printLoad = iri [GetStatic systemOut (JClass printStream)]
     intPrint :: [IRItem]
-    intPrint = iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JInt] JVoid]
+    intPrint =
+      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JInt] JVoid]
     floatPrint :: [IRItem]
     floatPrint =
       iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JFloat] JVoid]
     stringPrint :: [IRItem]
     stringPrint =
-      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JClass jString] JVoid]
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef printStream) "print" [JClass jString] JVoid
+        ]
     boolToString :: [IRItem]
     boolToString =
-      iri [InvokeVirtual $ MethodRef (CRef glcUtils) "boolStr" [JInt] (JClass jString)]
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef glcUtils) "boolStr" [JInt] (JClass jString)
+        ]
 
 instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
@@ -164,7 +170,7 @@ instance IRRep T.SimpleStmt where
   toIR T.Decrement {} = undefined -- TODO iinc for int (-1), otherwise "
   toIR (T.Assign (T.AssignOp _) _) = undefined -- TODO store IRType
   toIR (T.ShortDeclare iExps) =
-    exprInsts ++ map expStore (zip idxs stTypes)
+    exprInsts ++ zipWith (curry expStore) idxs stTypes
     where
       idxs :: [T.VarIndex]
       idxs = reverse $ map fst (NE.toList iExps)
@@ -177,15 +183,21 @@ instance IRRep T.SimpleStmt where
       expStore :: (T.VarIndex, IRType) -> IRItem
       expStore (idx, t) = IRInst (Load t idx)
       maybeClone :: T.Expr -> [IRItem]
-      maybeClone e =
-        toIR e ++ cloneInsts
+      maybeClone e = toIR e ++ cloneInsts
         where
           cloneInsts :: [IRItem]
           cloneInsts =
             case exprJType e of
-              JClass cr -> iri [InvokeVirtual $ MethodRef (CRef cr) "clone" [] (JClass jObject)]
+              JClass cr ->
+                iri
+                  [ InvokeVirtual $
+                    MethodRef (CRef cr) "clone" [] (JClass jObject)
+                  ]
               JArray jt ->
-                iri [InvokeVirtual $ MethodRef (ARef jt) "clone" [] (JClass jObject)]
+                iri
+                  [ InvokeVirtual $
+                    MethodRef (ARef jt) "clone" [] (JClass jObject)
+                  ]
               _ -> [] -- Primitives and strings are not clonable
 
 instance IRRep T.Expr where
@@ -224,7 +236,11 @@ instance IRRep T.Expr where
     where
       sbAppend :: MethodRef
       sbAppend =
-        MethodRef (CRef stringBuilder) "append" [JClass jString] (JClass stringBuilder)
+        MethodRef
+          (CRef stringBuilder)
+          "append"
+          [JClass jString]
+          (JClass stringBuilder)
   toIR (T.Binary _ _ (D.Arithm D.BitClear) _ _) = undefined -- TODO
   toIR (T.Binary _ t (D.Arithm aop) e1 e2) =
     case typeToIRPrim t of
@@ -303,16 +319,20 @@ instance IRRep T.Expr where
           _           -> undefined -- Can't get field on non-class
   toIR (T.Index t e1 e2) =
     case exprType e1 of
-      T.ArrayType _ _ -> -- TODO: CHECK LENGTH HERE?
-        toIR e1 ++ toIR e2 ++ iri [ArrayLoad (typeToIRType t)]
+      T.ArrayType _ _ -- TODO: CHECK LENGTH HERE?
+       -> toIR e1 ++ toIR e2 ++ iri [ArrayLoad (typeToIRType t)]
       T.SliceType {} -> undefined -- TODO
-      _              -> undefined -- Cannot index any other type
+      _ -> undefined -- Cannot index any other type
   toIR (T.Arguments t (D.Ident aid) args) =
     iri [Load Object (T.VarIndex 0)] ++ -- this object
     concatMap toIR args ++
     iri
       [ InvokeVirtual $
-        MethodRef (CRef (ClassRef "Main")) aid (map exprJType args) (typeToJType t)
+        MethodRef
+          (CRef (ClassRef "Main"))
+          aid
+          (map exprJType args)
+          (typeToJType t)
       ]
 
 instance IRRep D.Literal where
@@ -330,7 +350,7 @@ binary e1 e2 inst = toIR e1 ++ toIR e2 ++ iri [inst]
 
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
-exprType (T.Binary _ t _ _ _)   = t
+exprType (T.Binary _ t _ _ _) = t
 exprType (T.Lit l)            = getLiteralType l
 exprType (T.Var t _)          = t
 exprType (T.AppendExpr t _ _) = t
@@ -365,7 +385,7 @@ getLiteralType (D.StringLit _) = T.PString
 
 typeToJType :: T.Type -> JType
 typeToJType (T.ArrayType _ t) = JArray (typeToJType t)
-typeToJType (T.SliceType {}) = undefined -- TODO
+typeToJType T.SliceType {} = undefined -- TODO
 typeToJType T.PInt = JInt
 typeToJType T.PFloat64 = JFloat
 typeToJType T.PRune = JInt
