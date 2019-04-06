@@ -1,7 +1,7 @@
-{-# LANGUAGE AllowAmbiguousTypes   #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module TestBase
   ( SpecBuilder(..)
@@ -25,23 +25,24 @@ module TestBase
   , expectAst
   , PrettyFormat(..)
   , expectPrettyExact
+  , expectPrettyMatch
   , expectPrettyInvar
   , qcGen
   ) where
 
-import           Base
-import           Control.Monad         (unless)
-import           Data
-import           Data.List.NonEmpty    (NonEmpty (..))
-import           Data.Text             (Text, unpack)
-import           Examples
-import           NeatInterpolation
-import           Parser
-import           Prettify
-import           Scanner               (InnerToken, scanT)
-import           Test.Hspec
-import           Test.Hspec.QuickCheck (prop)
-import           Test.QuickCheck
+import Base
+import Control.Monad (unless)
+import Data
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Text (Text, unpack)
+import Examples
+import NeatInterpolation
+import Parser
+import Prettify
+import Scanner (InnerToken, scanT)
+import Test.Hspec
+import Test.Hspec.QuickCheck (prop)
+import Test.QuickCheck
 
 o :: Offset
 o = Offset 0
@@ -211,23 +212,44 @@ expectPrettyExact =
        let s' = toString s
         in case multiPass s' of
              Left err -> expectationFailure $ show err
-             Right _  -> return ())
+             Right _ -> return ())
     toString
     (tag @a)
   where
+    multiPass :: String -> Glc String
     multiPass input = do
       pretty <- parse @a input <&> prettify
       let input' = format input
-      case expectStringMatch input' pretty of
-        Just err ->
-          Left $
-          err `withPrefix` ("Prettify failed for \n\n" ++ input' ++ "\n\n")
-        Nothing -> Right pretty
+      maybe (Right pretty) Left  $ expectStringMatch input' pretty
+
+expectPrettyMatch ::
+     forall s1 s2 p. (Stringable s1, Stringable s2, Prettify p)
+  => String
+  -> (String -> Glc p)
+  -> [(s1, s2)]
+  -> SpecWith ()
+expectPrettyMatch tag' formatter =
+  expectBase
+    "pretty match"
+    (\(s1, s2) ->
+       let input = toString s1
+           actual = format . prettify <$> formatter input
+           expected = format $ toString s2
+        in either
+             (expectationFailure . show)
+             (const $ return ())
+             (check'  expected =<< actual))
+    (toString . fst)
+    tag'
+  where
+    check' :: String -> String -> Glc String
+    check' expected actual =
+      maybe (Left $ createError' "hello") Left  $ expectStringMatch expected actual
 
 -- | Checks that two strings match
 -- Returns Just err if strings don't match, Nothing otherwise
 expectStringMatch :: String -> String -> Maybe ErrorMessage
-expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> indexError
+expectStringMatch expected actual = mismatchIndex expected actual <&> indexError
     -- | Return first index where strings don't match, or Nothing otherwise
   where
     mismatchIndex :: String -> String -> Maybe Int
@@ -238,7 +260,7 @@ expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> indexError
         then mismatchIndex' (i + 1) xs xs'
         else Just i
     mismatchIndex' i l l' =
-      if length l == length l'
+      if null l && null l'
         then Nothing
         else Just i
     -- | Generates error message around supplied index
@@ -247,9 +269,9 @@ expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> indexError
     -- The range is arbitrary
     indexError :: Int -> ErrorMessage
     indexError i =
-      let message = "Expected '" ++ ([i - 10 .. i + 3] >>= getSafe s2) ++ "'"
-          error' = createError (Offset i) message s1
-       in error' `withPrefix` ("Prettify failed for \n\n" ++ s1 ++ "\n\n")
+      let message = "Expected '" ++ ([i - 10 .. i + 3] >>= getSafe expected) ++ "'"
+          error' = createError (Offset i) message actual
+       in error' `withPrefix` ("Prettify failed for \n\n" ++ actual ++ "\n\n")
     -- | Safe index retrieval for strings
     -- Note that some chars are formatted for readability
     getSafe :: String -> Int -> String
@@ -257,7 +279,7 @@ expectStringMatch s1 s2 = mismatchIndex s1 s2 <&> indexError
       if i >= 0 && i < length s
         then case s !! i of
                '\n' -> "\\n"
-               s'   -> [s']
+               s' -> [s']
         else "?"
 
 class (Parsable a) =>
@@ -348,11 +370,11 @@ format program =
     clean s = lstrip (0, rstrip s)
     -- Removes leading whitespace and track number of occurrences
     lstrip :: (Int, String) -> (Int, String)
-    lstrip (i, ' ':xs)  = lstrip (i + 1, xs)
+    lstrip (i, ' ':xs) = lstrip (i + 1, xs)
     lstrip (i, '\t':xs) = lstrip (i + tabSize, xs)
     -- New lines don't affect indices; this is purely for formatting unlines,
     lstrip (i, '\n':xs) = lstrip (i, xs)
-    lstrip (i, s)       = (i, s)
+    lstrip (i, s) = (i, s)
     rstrip :: String -> String
     rstrip = reverse . (\s -> snd $ lstrip (0, s)) . reverse
     -- Removes leading empty lines; indices are left untouched
@@ -366,7 +388,7 @@ format program =
     rstrip' = reverse . lstrip' . reverse
     gcdAll :: [Int] -> Int
     gcdAll [] = 1
-    gcdAll l  = max 1 $ foldl1 gcd l
+    gcdAll l = max 1 $ foldl1 gcd l
 
 -- | Generate Either given a string and feed this to constructor
 --strData :: String -> (String -> a) -> (String, a)
