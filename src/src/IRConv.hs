@@ -43,16 +43,30 @@ toClasses (T.Program _ scts tfs is tms) =
       -- , value = Nothing
         }
     toMethods :: [T.FuncDecl] -> [Method]
-    toMethods =
-      concatMap
-        (\(T.FuncDecl (D.Ident fni) _ fb) ->
-           [ Method
-               { mname = "glc_fn__" ++ fni
-               , stackLimit = 25 -- TODO
-               , localsLimit = 25 -- TODO
-               , body = toIR fb
-               }
-           ])
+    toMethods = map fdToMethod
+      where
+        fdToMethod :: T.FuncDecl -> Method
+        fdToMethod (T.FuncDecl (D.Ident fni) _ fb) =
+          Method
+            { mname = "glc_fn__" ++ fni
+            , stackLimit = maxStack
+            , localsLimit = 25 -- TODO
+            , body = irBody
+            }
+          where
+            irBody :: [IRItem]
+            irBody = toIR fb
+            maxStack :: Int
+            maxStack = maxStackSize irBody 0
+            maxStackSize :: [IRItem] -> Int -> Int
+            maxStackSize irs current =
+              case irs of
+                [] -> current
+                IRLabel _:xs -> max current (maxStackSize xs current)
+                IRInst inst:xs ->
+                  max
+                    (current + stackDelta inst)
+                    (maxStackSize xs (current + stackDelta inst))
     structClass :: T.StructType -> Class
     structClass (T.Struct (D.Ident sid) fdls) =
       Class
