@@ -75,39 +75,40 @@ class IRRep a where
 instance IRRep T.Stmt where
   toIR (T.BlockStmt stmts) = concatMap toIR stmts
   toIR (T.SimpleStmt stmt) = toIR stmt
-  toIR (T.If (sstmt, expr) ifs elses) -- TODO: SIMPLE STMT!!!
+  toIR (T.If (T.LabelIndex idx) (sstmt, expr) ifs elses)
    =
     toIR sstmt ++
     toIR expr ++
-    iri [If IRData.EQ "else_todo"] ++ -- TODO: PROPER EQUALITY CHECK
+    iri [If IRData.EQ ("else_" ++ show idx)] ++ -- TODO: PROPER EQUALITY CHECK
     toIR ifs ++
-    [IRInst (Goto "end_if_todo"), IRLabel "else_todo"] ++
-    toIR elses ++ [IRLabel "end_if_todo"]
-  toIR (T.Switch sstmt e scs dstmt) =
+    [IRInst (Goto ("end_if_" ++ show idx)), IRLabel ("else_" ++ show idx)] ++
+    toIR elses ++ [IRLabel ("end_if_" ++ show idx)]
+  toIR (T.Switch (T.LabelIndex idx) sstmt e scs dstmt) =
     toIR sstmt ++
     toIR e ++
     concatMap irCase (zip [1 ..] scs) ++
-    IRLabel "default_todo" : toIR dstmt ++ IRLabel "end_sc_todo" : iri [NOp]
+    IRLabel ("default_" ++ show idx) : toIR dstmt ++
+    IRLabel ("end_sc_" ++ show idx) : iri [NOp]
       -- duplicate expression for case statement expressions in lists
     where
       irCase :: (Int, T.SwitchCase) -> [IRItem]
-      irCase (idx, T.Case exprs stmt) -- concat $ map (toIR . some equality check) exprs
+      irCase (cIdx, T.Case exprs stmt) -- concat $ map (toIR . some equality check) exprs
        =
         concat (NE.map toCaseHeader exprs) ++
-        [IRLabel $ "case_" ++ show idx ++ "_todo"] ++
-        toIR stmt ++ iri [Goto "end_sc_todo"]
+        [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
+        toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
         where
           toCaseHeader :: T.Expr -> [IRItem]
           toCaseHeader ce =
             IRInst Dup :
             toIR ce ++
-            iri [If IRData.EQ $ "case_" ++ show idx ++ "_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
-  toIR (T.For (T.ForClause lstmt cond rstmt) fbody) =
+            iri [If IRData.EQ $ "case_" ++ show cIdx ++ "_" ++ show idx] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
+  toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =
     toIR lstmt ++
-    [IRLabel "loop_todo"] ++
+    [IRLabel ("loop_" ++ show idx)] ++
     toIR cond ++
-    iri [If IRData.LE "end_loop_todo"] ++
-    toIR fbody ++ toIR rstmt ++ iri [Goto "loop_todo"]
+    iri [If IRData.LE ("end_loop_" ++ show idx)] ++
+    toIR fbody ++ toIR rstmt ++ iri [Goto ("loop_" ++ show idx)]
   toIR T.Break = iri [Goto "end_loop_todo"]
   toIR T.Continue = iri [Goto "loop_todo"] -- TODO: MAKE SURE POST-STMT IS DONE?
   toIR (T.VarDecl idx t me) =
@@ -151,15 +152,6 @@ printIR e =
 instance IRRep T.ForClause where
   toIR T.ForClause {} = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
 
-instance IRRep T.SwitchCase where
-  toIR (T.Case exprs stmt) -- concat $ map (toIR . some equality check) exprs
-   =
-    concat (NE.map toCaseHeader exprs) ++
-    [IRLabel "case_todo"] ++ toIR stmt ++ iri [Goto "end_sc_todo"]
-    where
-      toCaseHeader :: T.Expr -> [IRItem]
-      toCaseHeader e = IRInst Dup : toIR e ++ iri [If IRData.EQ "case_todo"] -- TODO: NEED REAL EQUALITY STUFF!!! this is = 0
-
 instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
   toIR (T.VoidExprStmt (D.Ident aid) args) -- Akin to Argument without a type
@@ -189,7 +181,7 @@ instance IRRep T.Expr where
       intPattern = toIR e ++ iri [LDC (LDCInt (-1)), Mul IRInt]
   toIR (T.Unary _ D.Not e) = toIR e ++ iri [LDC (LDCInt 1), IXOr] -- !i is equivalent to i XOR 1
   toIR (T.Unary _ D.BitComplement _) = undefined -- TODO: how to do this?
-  toIR (T.Binary t (D.Arithm D.Add) e1 e2) =
+  toIR (T.Binary _ t (D.Arithm D.Add) e1 e2) =
     case t of
       T.PInt -> binary e1 e2 (Add IRInt)
       T.PFloat64 -> binary e1 e2 (Add IRFloat)
@@ -213,8 +205,8 @@ instance IRRep T.Expr where
       sbAppend :: MethodRef
       sbAppend =
         MethodRef stringBuilder "append" [JClass jString] (JClass stringBuilder)
-  toIR (T.Binary _ (D.Arithm D.BitClear) _ _) = undefined
-  toIR (T.Binary t (D.Arithm aop) e1 e2) =
+  toIR (T.Binary _ _ (D.Arithm D.BitClear) _ _) = undefined
+  toIR (T.Binary _ t (D.Arithm aop) e1 e2) =
     case astToIRPrim t of
       Just t' -> binary e1 e2 (opToInst t')
       Nothing -> error "Cannot do op on non-primitive (non-numeric) types"
@@ -233,18 +225,18 @@ instance IRRep T.Expr where
           D.BitAnd    -> IAnd
           D.Add       -> undefined -- handled above
           D.BitClear  -> undefined -- handled above TODO
-  toIR (T.Binary _ T.Or e1 e2) =
+  toIR (T.Binary (T.LabelIndex idx) _ T.Or e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.NE "true_ne_todo", Pop] ++
-    toIR e2 ++ [IRLabel "true_ne_todo"]
-  toIR (T.Binary _ T.And e1 e2) =
+    iri [Dup, If IRData.NE ("true_ne_" ++ show idx), Pop] ++
+    toIR e2 ++ [IRLabel ("true_ne_" ++ show idx)]
+  toIR (T.Binary (T.LabelIndex idx) _ T.And e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.EQ "false_eq_todo", Pop] ++
-    toIR e2 ++ [IRLabel "false_eq_todo"]
-  toIR (T.Binary _ T.EQ _ _) = undefined -- TODO
-  toIR (T.Binary t T.NEQ e1 e2) =
-    toIR (T.Unary T.PBool D.Not (T.Binary t T.EQ e1 e2)) -- != is =, !
-  toIR (T.Binary _ op e1 e2) -- comparisons
+    iri [Dup, If IRData.EQ ("false_eq_" ++ show idx), Pop] ++
+    toIR e2 ++ [IRLabel ("false_eq_" ++ show idx)]
+  toIR (T.Binary _ _ T.EQ _ _) = undefined -- TODO
+  toIR (T.Binary idx t T.NEQ e1 e2) =
+    toIR (T.Unary T.PBool D.Not (T.Binary idx t T.EQ e1 e2)) -- != is =, !
+  toIR (T.Binary (T.LabelIndex idx) _ op e1 e2) -- comparisons
    =
     toIR e1 ++
     toIR e2 ++
@@ -255,9 +247,9 @@ instance IRRep T.Expr where
       labelOp :: String
       labelOp = map toLower (show op)
       trueLabel :: LabelName
-      trueLabel = "true_" ++ labelOp ++ "_todo"
+      trueLabel = "true_" ++ labelOp ++ "_" ++ show idx
       endLabel :: LabelName
-      endLabel = "end_" ++ labelOp ++ "_todo"
+      endLabel = "end_" ++ labelOp ++ "_" ++ show idx
       cmpIR :: [IRItem]
       cmpIR =
         case exprIRType e1 of
@@ -318,7 +310,7 @@ binary e1 e2 inst = toIR e1 ++ toIR e2 ++ iri [inst]
 
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
-exprType (T.Binary t _ _ _)   = t
+exprType (T.Binary _ t _ _ _)   = t
 exprType (T.Lit l)            = getLiteralType l
 exprType (T.Var t _)          = t
 exprType (T.AppendExpr t _ _) = t
