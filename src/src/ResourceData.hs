@@ -162,10 +162,12 @@ data Stmt
         Stmt
   -- | See https://golang.org/ref/spec#Break_statements
   -- Labels are not supported in Golite
-  | Break
+  -- Label index refers to closest parent label index
+  | Break LabelIndex
   -- | See https://golang.org/ref/spec#Continue_statements
   -- Labels are not supported in Golite
-  | Continue
+  -- Label index refers to closest parent label index
+  | Continue LabelIndex
   -- | See https://golang.org/ref/spec#Declaration
   -- At this stage, we only have var declarations
   -- If no expr is provided, we will also assign a default
@@ -341,8 +343,8 @@ instance Convert Stmt T.Stmt where
       (Just (convert e))
       (convert scl ++ [T.Default $ convert d])
   convert (For _ fcl s) = T.For (convert fcl) (convert s)
-  convert Break = T.Break
-  convert Continue = T.Continue
+  convert (Break _)= T.Break
+  convert (Continue _) = T.Continue
   convert (VarDecl i t e) =
     T.Declare $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert e)]
   convert (Print el) = T.Print (convert el)
