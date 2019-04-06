@@ -102,7 +102,10 @@ instance IRRep T.Stmt where
             toCaseHeader ce =
               IRInst Dup : toIR ce ++
               iri [If IRData.EQ $ "case_" ++ show idx ++ "_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
-  toIR T.For {} = undefined
+  toIR (T.For (T.ForClause lstmt cond rstmt) fbody) =
+    toIR lstmt ++ [IRLabel "loop_todo"] ++ toIR cond ++
+    iri [If IRData.LE "end_loop_todo"] ++ toIR fbody ++
+    toIR rstmt ++ iri [Goto "loop_todo"]
   toIR T.Break = iri [Goto "end_loop_todo"]
   toIR T.Continue = iri [Goto "loop_todo"] -- TODO: MAKE SURE POST-STMT IS DONE?
   toIR (T.VarDecl idx t me) =
