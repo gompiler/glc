@@ -1,16 +1,16 @@
 module IRConv where
 
-import           Base               (Glc)
-import qualified CheckedData        as D
-import           Data.Char          (ord, toLower)
-import           Data.List          (intercalate)
-import qualified Data.List.NonEmpty as NE (map)
+import           Base                  (Glc)
+import qualified CheckedData           as D
+import           Data.Char             (ord, toLower)
+import           Data.List             (intercalate)
+import qualified Data.List.NonEmpty    as NE (map)
 import           Foreign.Marshal.Utils (fromBool)
 import           IRData
-import           ResourceBuilder    (convertProgram)
-import qualified ResourceData       as T
-import           Scanner            (putExit, putSucc)
-import qualified SymbolTable        as S
+import           ResourceBuilder       (convertProgram)
+import qualified ResourceData          as T
+import           Scanner               (putExit, putSucc)
+import qualified SymbolTable           as S
 
 displayIR :: String -> IO ()
 displayIR code = either putExit (putSucc . show) (genIR code)
@@ -86,26 +86,28 @@ instance IRRep T.Stmt where
   toIR (T.Switch sstmt e scs dstmt) =
     toIR sstmt ++
     toIR e ++
-    concatMap irCase (zip [1..] scs) ++
+    concatMap irCase (zip [1 ..] scs) ++
     IRLabel "default_todo" : toIR dstmt ++ IRLabel "end_sc_todo" : iri [NOp]
       -- duplicate expression for case statement expressions in lists
     where
       irCase :: (Int, T.SwitchCase) -> [IRItem]
       irCase (idx, T.Case exprs stmt) -- concat $ map (toIR . some equality check) exprs
-        =
-          concat (NE.map toCaseHeader exprs) ++
-          [IRLabel $ "case_" ++ show idx ++ "_todo"] ++
-          toIR stmt ++
-          iri [Goto "end_sc_todo"]
-          where
-            toCaseHeader :: T.Expr -> [IRItem]
-            toCaseHeader ce =
-              IRInst Dup : toIR ce ++
-              iri [If IRData.EQ $ "case_" ++ show idx ++ "_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
+       =
+        concat (NE.map toCaseHeader exprs) ++
+        [IRLabel $ "case_" ++ show idx ++ "_todo"] ++
+        toIR stmt ++ iri [Goto "end_sc_todo"]
+        where
+          toCaseHeader :: T.Expr -> [IRItem]
+          toCaseHeader ce =
+            IRInst Dup :
+            toIR ce ++
+            iri [If IRData.EQ $ "case_" ++ show idx ++ "_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
   toIR (T.For (T.ForClause lstmt cond rstmt) fbody) =
-    toIR lstmt ++ [IRLabel "loop_todo"] ++ toIR cond ++
-    iri [If IRData.LE "end_loop_todo"] ++ toIR fbody ++
-    toIR rstmt ++ iri [Goto "loop_todo"]
+    toIR lstmt ++
+    [IRLabel "loop_todo"] ++
+    toIR cond ++
+    iri [If IRData.LE "end_loop_todo"] ++
+    toIR fbody ++ toIR rstmt ++ iri [Goto "loop_todo"]
   toIR T.Break = iri [Goto "end_loop_todo"]
   toIR T.Continue = iri [Goto "loop_todo"] -- TODO: MAKE SURE POST-STMT IS DONE?
   toIR (T.VarDecl idx t me) =
@@ -156,7 +158,7 @@ instance IRRep T.SwitchCase where
     [IRLabel "case_todo"] ++ toIR stmt ++ iri [Goto "end_sc_todo"]
     where
       toCaseHeader :: T.Expr -> [IRItem]
-      toCaseHeader e = IRInst Dup : toIR e ++ iri [If IRData.EQ "case_todo"] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
+      toCaseHeader e = IRInst Dup : toIR e ++ iri [If IRData.EQ "case_todo"] -- TODO: NEED REAL EQUALITY STUFF!!! this is = 0
 
 instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
@@ -234,18 +236,20 @@ instance IRRep T.Expr where
   toIR (T.Binary _ T.Or e1 e2) =
     toIR e1 ++
     iri [Dup, If IRData.NE "true_ne_todo", Pop] ++
-    toIR e2 ++
-    [IRLabel "true_ne_todo"]
+    toIR e2 ++ [IRLabel "true_ne_todo"]
   toIR (T.Binary _ T.And e1 e2) =
     toIR e1 ++
     iri [Dup, If IRData.EQ "false_eq_todo", Pop] ++
-    toIR e2 ++
-    [IRLabel "false_eq_todo"]
+    toIR e2 ++ [IRLabel "false_eq_todo"]
   toIR (T.Binary _ T.EQ _ _) = undefined -- TODO
   toIR (T.Binary t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary t T.EQ e1 e2)) -- != is =, !
-  toIR (T.Binary _ op e1 e2) = -- comparisons
-    toIR e1 ++ toIR e2 ++ cmpIR ++ iri [IConst0, Goto endLabel] ++
+  toIR (T.Binary _ op e1 e2) -- comparisons
+   =
+    toIR e1 ++
+    toIR e2 ++
+    cmpIR ++
+    iri [IConst0, Goto endLabel] ++
     [IRLabel trueLabel, IRInst IConst1, IRLabel endLabel, IRInst NOp]
     where
       labelOp :: String
@@ -261,12 +265,13 @@ instance IRRep T.Expr where
           Prim IRFloat -> iri [FCmpG, If irCmp trueLabel]
           Object       -> undefined
       irCmp :: IRCmp
-      irCmp = case op of
-        T.LT  -> IRData.LT
-        T.LEQ -> IRData.LE
-        T.GT  -> IRData.GT
-        T.GEQ -> IRData.GE
-        _     -> undefined -- Handled above
+      irCmp =
+        case op of
+          T.LT  -> IRData.LT
+          T.LEQ -> IRData.LE
+          T.GT  -> IRData.GT
+          T.GEQ -> IRData.GE
+          _     -> undefined -- Handled above
   toIR (T.Lit l) = toIR l
   toIR (T.Var t vi) = iri [Load (astToIRType t) vi] -- TODO (also bool?)
   toIR T.AppendExpr {} = undefined -- TODO
