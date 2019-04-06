@@ -24,6 +24,7 @@ module ResourceData
   , Type(..)
   , UnaryOp(..)
   , VarIndex(..)
+  , LabelIndex(..)
   ) where
 
 import           CheckedData        (ArithmOp (..), AssignOp (..),
@@ -39,6 +40,10 @@ import           Prettify           (Prettify (..))
 -- Represents the stack index within a method
 newtype VarIndex =
   VarIndex Int
+  deriving (Show, Eq)
+
+newtype LabelIndex =
+  LabelIndex Int
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Source_file_organization
@@ -139,7 +144,7 @@ data Stmt
   -- however, we already have a representation for an 'empty' simple stmt
   -- Note that the last entry is an optional block or if statement
   -- however, this all falls into our stmt category
-  | If (SimpleStmt, Expr)
+  | If LabelIndex (SimpleStmt, Expr)
        Stmt
        Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
@@ -148,12 +153,12 @@ data Stmt
   -- In this AST, we now separate the default case from the other switch cases
   -- If none exists, we will simply provide an empty statement
   -- The expression also defaults to True if none exists
-  | Switch SimpleStmt
+  | Switch LabelIndex SimpleStmt
            Expr
            [SwitchCase]
            Stmt
   -- | See https://golang.org/ref/spec#For_statements
-  | For ForClause
+  | For LabelIndex ForClause
         Stmt
   -- | See https://golang.org/ref/spec#Break_statements
   -- Labels are not supported in Golite
@@ -199,7 +204,7 @@ data Expr
   = Unary Type
           UnaryOp
           Expr
-  | Binary Type
+  | Binary LabelIndex Type
            BinaryOp
            Expr
            Expr
@@ -328,14 +333,14 @@ instance Convert SimpleStmt T.SimpleStmt where
 instance Convert Stmt T.Stmt where
   convert (BlockStmt sl) = T.BlockStmt (convert sl)
   convert (SimpleStmt ss) = T.SimpleStmt (convert ss)
-  convert (If (ss, e) s1 s2) =
+  convert (If _ (ss, e) s1 s2) =
     T.If (convert ss, convert e) (convert s1) (convert s2)
-  convert (Switch ss e scl d) =
+  convert (Switch _ ss e scl d) =
     T.Switch
       (convert ss)
       (Just (convert e))
       (convert scl ++ [T.Default $ convert d])
-  convert (For fcl s) = T.For (convert fcl) (convert s)
+  convert (For _ fcl s) = T.For (convert fcl) (convert s)
   convert Break = T.Break
   convert Continue = T.Continue
   convert (VarDecl i t e) =
@@ -353,7 +358,7 @@ instance Convert ForClause T.ForClause where
 
 instance Convert Expr T.Expr where
   convert (Unary t op e) = T.Unary (convert t) op (convert e)
-  convert (Binary t op e1 e2) =
+  convert (Binary _ t op e1 e2) =
     T.Binary (convert t) op (convert e1) (convert e2)
   convert (Lit lit) = T.Lit lit
   convert (Var t i) = T.Var (convert t) (convert i)
