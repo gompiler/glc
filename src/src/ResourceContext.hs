@@ -7,6 +7,7 @@ module ResourceContext
   , getStructName
   , getVarIndex
   , getAllStructs
+  , getLabel
   ) where
 
 import           Base
@@ -26,9 +27,10 @@ newtype ResourceContext s =
 -- While we only need to store a counter,
 -- this makes it easier to fetch the ordered struct list
 data ResourceContext_ s = RC
-  { allStructs :: [StructType]
-  , structMap  :: StructTable s
-  , varScopes  :: [ResourceScope s]
+  { allStructs   :: [StructType]
+  , structMap    :: StructTable s
+  , varScopes    :: [ResourceScope s]
+  , labelCounter :: Int
   }
 
 data ResourceScope s =
@@ -73,7 +75,13 @@ readRef (ResourceContext ref) = readSTRef ref
 new :: ST s (ResourceContext s)
 new = do
   structMap' <- HT.new
-  newRef $ RC {allStructs = [], varScopes = [], structMap = structMap'}
+  newRef $
+    RC
+      { allStructs = []
+      , varScopes = []
+      , structMap = structMap'
+      , labelCounter = 0
+      }
 
 -- | Create a new resource scope
 newScope :: ST s (ResourceScope s)
@@ -131,6 +139,14 @@ getVarIndex st si = do
     getVarIndex' key (RS varTable size) = do
       index <- HT.lookup varTable key
       return $! index <?> size
+
+-- | Returns a label id that is unique across the entire program
+getLabel :: ResourceContext s -> ST s LabelIndex
+getLabel st = do
+  rc <- readRef st
+  let i = labelCounter rc
+  writeRef st $! rc {labelCounter = i + 1}
+  return $ LabelIndex i
 
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type
