@@ -14,6 +14,7 @@
 -- * Add defaults for for loop condition and switch expr (both True by default)
 module ResourceBuilder
   ( convertProgram
+  , resourceGen
   ) where
 
 import           Base
@@ -24,6 +25,10 @@ import           Data.Maybe       (catMaybes, fromMaybe, listToMaybe)
 import           Prelude          hiding (init)
 import qualified ResourceContext  as RC
 import           ResourceData
+import           SymbolTable      (typecheckGen)
+
+resourceGen :: String -> Glc Program
+resourceGen p = convertProgram <$> typecheckGen p
 
 convertProgram :: T.Program -> Program
 convertProgram p =

@@ -98,7 +98,7 @@ parseAndInferNoST expStr = either Left runExpr parseResult
         _ <- SymTab.add st "arr_slice" (SType $ C.new $ Array 5 (Slice PInt))
         either (Left . errgen) Right <$> infer st e
 
-expectPass :: Stringable s => String -> [(s, SType)] -> SpecWith ()
+expectPass :: Stringable s => String -> [(s, SType)] -> Spec
 expectPass tag =
   expectBase
     "success"
@@ -119,7 +119,7 @@ expectPass tag =
     (\(s, _) -> toString s)
     ("typeinf: " ++ tag)
 
-expectFail :: Stringable s => String -> [s] -> SpecWith ()
+expectFail :: Stringable s => String -> [s] -> Spec
 expectFail tag =
   expectBase
     "fail"

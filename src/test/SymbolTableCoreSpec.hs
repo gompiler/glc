@@ -30,14 +30,14 @@ applyAction s (AddMessage msg) = stToIO $ addMessage s msg
 applyAction s (CheckMessages msgs) =
   stToIO (getMessages s) >>= (`shouldBe` msgs)
 
-testPass :: String -> [Action] -> SpecWith ()
+testPass :: String -> [Action] -> Spec
 testPass title actions =
   describe ("pass: " ++ title) $
   it "" $ do
     s <- stToIO new
     foldM_ (\t k -> applyAction t k >> return t) s actions
 
-testError :: String -> [Action] -> SpecWith ()
+testError :: String -> [Action] -> Spec
 testError title actions =
   describe ("pass: " ++ title) $
   it "" $ do

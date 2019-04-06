@@ -7,7 +7,7 @@ module WeedingSpec
 import           TestBase
 import           Weeding
 
-expectWeedPass :: Stringable s => [s] -> SpecWith ()
+expectWeedPass :: Stringable s => [s] -> Spec
 expectWeedPass =
   expectBase
     "weed success"
@@ -23,7 +23,7 @@ expectWeedPass =
     toString
     "wrapped stmt"
 
-expectWeedPassNoMain :: Stringable s => [s] -> SpecWith ()
+expectWeedPassNoMain :: Stringable s => [s] -> Spec
 expectWeedPassNoMain =
   expectBase
     "weed success"
@@ -38,7 +38,7 @@ expectWeedPassNoMain =
     toString
     "wrapped stmt"
 
-expectWeedError :: Stringable s => [(s, WeedingError)] -> SpecWith ()
+expectWeedError :: Stringable s => [(s, WeedingError)] -> Spec
 expectWeedError =
   expectBase
     "weed fail"
@@ -53,7 +53,7 @@ expectWeedError =
     (toString . fst)
     "program"
 
-expectWeedFail :: Stringable s => [s] -> SpecWith ()
+expectWeedFail :: Stringable s => [s] -> Spec
 expectWeedFail =
   expectBase
     "weed fail"
@@ -69,7 +69,7 @@ expectWeedFail =
     toString
     "wrapped stmt"
 
-expectWeedFailNoMain :: Stringable s => [s] -> SpecWith ()
+expectWeedFailNoMain :: Stringable s => [s] -> Spec
 expectWeedFailNoMain =
   expectBase
     "weed fail"
@@ -84,7 +84,7 @@ expectWeedFailNoMain =
     toString
     "wrapped stmt"
 
-expectWeedFailBlankPackage :: Stringable s => [s] -> SpecWith ()
+expectWeedFailBlankPackage :: Stringable s => [s] -> Spec
 expectWeedFailBlankPackage =
   expectBase
     "weed fail"

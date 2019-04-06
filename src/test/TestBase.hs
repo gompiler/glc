@@ -27,6 +27,7 @@ module TestBase
   , expectPrettyExact
   , expectPrettyMatch
   , expectPrettyInvar
+  , todoSpec
   , qcGen
   ) where
 
@@ -44,6 +45,9 @@ import Test.Hspec
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 
+todoSpec :: Spec
+todoSpec = describe "TODO" $ return ()
+
 o :: Offset
 o = Offset 0
 
@@ -56,7 +60,7 @@ instance Stringable String where
 instance Stringable Text where
   toString = unpack
 
-printError :: Either String String -> SpecWith ()
+printError :: Either String String -> Spec
 printError (Right s) =
   describe "print" $ it "right error" $ expectationFailure s
 printError (Left s) = describe "print" $ it "left error" $ expectationFailure s
@@ -76,7 +80,7 @@ expectBase ::
   -> (s -> String)
   -> String
   -> [s]
-  -> SpecWith ()
+  -> Spec
 expectBase suffix expectation' title name inputs =
   describe (name ++ " " ++ suffix) $ mapM_ expect inputs
     -- | We trim the spec title so that it doesn't take too much space
@@ -89,7 +93,7 @@ expectBase suffix expectation' title name inputs =
 expectPass ::
      forall a s. (ParseTest a, Stringable s)
   => [s]
-  -> SpecWith ()
+  -> Spec
 expectPass =
   expectBase
     "success"
@@ -107,7 +111,7 @@ expectPass =
 expectFail ::
      forall a s. (ParseTest a, Stringable s)
   => [s]
-  -> SpecWith ()
+  -> Spec
 expectFail =
   expectBase
     "fail"
@@ -124,7 +128,7 @@ expectFail =
 expectError ::
      forall a s e. (ParseTest a, Stringable s, ErrorEntry e)
   => [(s, e)]
-  -> SpecWith ()
+  -> Spec
 expectError =
   expectBase
     "error"
@@ -148,7 +152,7 @@ err `containsError` e =
 expectAst ::
      forall a s. (ParseTest a, Stringable s)
   => [(s, a)]
-  -> SpecWith ()
+  -> Spec
 expectAst =
   expectBase
     "ast"
@@ -171,7 +175,7 @@ expectAst =
 expectPrettyInvar ::
      forall a s. (ParseTest a, Prettify a, Stringable s)
   => [s]
-  -> SpecWith ()
+  -> Spec
 expectPrettyInvar =
   expectBase
     "pretty invar"
@@ -204,7 +208,7 @@ expectPrettyInvar =
 expectPrettyExact ::
      forall a s. (ParseTest a, Prettify a, Stringable s)
   => [s]
-  -> SpecWith ()
+  -> Spec
 expectPrettyExact =
   expectBase
     "pretty exact"
@@ -227,7 +231,7 @@ expectPrettyMatch ::
   => String
   -> (String -> Glc p)
   -> [(s1, s2)]
-  -> SpecWith ()
+  -> Spec
 expectPrettyMatch tag' formatter =
   expectBase
     "pretty match"
@@ -270,7 +274,7 @@ expectStringMatch expected actual = mismatchIndex expected actual <&> indexError
     indexError :: Int -> ErrorMessage
     indexError i =
       let message =
-            "Expected '" ++ ([i - 10 .. i + 3] >>= getSafe expected) ++ "'"
+            "Expected '" ++ ([i - 10 .. i + 7] >>= getSafe expected) ++ "'"
           error' = createError (Offset i) message actual
        in error' `withPrefix` ("Prettify failed for \n\n" ++ actual ++ "\n\n")
     -- | Safe index retrieval for strings
@@ -336,8 +340,8 @@ instance ParseTest Identifiers where
   placeholder = Identifier o "temp" :| []
 
 class SpecBuilder a where
-  expectation :: a -> SpecWith ()
-  specAll :: String -> [a] -> SpecWith ()
+  expectation :: a -> Spec
+  specAll :: String -> [a] -> Spec
   specAll name items = describe name $ mapM_ expectation items
 
 instance SpecBuilder (String, [InnerToken]) where
