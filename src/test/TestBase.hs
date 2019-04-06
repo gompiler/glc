@@ -220,7 +220,7 @@ expectPrettyExact =
     multiPass input = do
       pretty <- parse @a input <&> prettify
       let input' = format input
-      maybe (Right pretty) Left  $ expectStringMatch input' pretty
+      maybe (Right pretty) Left $ expectStringMatch input' pretty
 
 expectPrettyMatch ::
      forall s1 s2 p. (Stringable s1, Stringable s2, Prettify p)
@@ -238,13 +238,13 @@ expectPrettyMatch tag' formatter =
         in either
              (expectationFailure . show)
              (const $ return ())
-             (check'  expected =<< actual))
+             (check' expected =<< actual))
     (toString . fst)
     tag'
   where
     check' :: String -> String -> Glc String
     check' expected actual =
-      maybe (Left $ createError' "hello") Left  $ expectStringMatch expected actual
+      maybe (Right expected) Left $ expectStringMatch expected actual
 
 -- | Checks that two strings match
 -- Returns Just err if strings don't match, Nothing otherwise
@@ -269,7 +269,8 @@ expectStringMatch expected actual = mismatchIndex expected actual <&> indexError
     -- The range is arbitrary
     indexError :: Int -> ErrorMessage
     indexError i =
-      let message = "Expected '" ++ ([i - 10 .. i + 3] >>= getSafe expected) ++ "'"
+      let message =
+            "Expected '" ++ ([i - 10 .. i + 3] >>= getSafe expected) ++ "'"
           error' = createError (Offset i) message actual
        in error' `withPrefix` ("Prettify failed for \n\n" ++ actual ++ "\n\n")
     -- | Safe index retrieval for strings

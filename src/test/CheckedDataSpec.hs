@@ -37,21 +37,21 @@ prettifySpec =
 
         type pl_ind struct {
             pl []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             ind int
         }
 
         type twopl struct {
             pl1 []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             pl2 []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
         }
 
         func abs(f float64) float64 {
@@ -71,7 +71,7 @@ prettifySpec =
                 diff := (poly / polyprime)
                 xn = (xn - diff)
                 if (abs(diff) < tol) {
-                   return xn
+                    return xn
                 }
             }
             return xn
@@ -94,25 +94,25 @@ prettifySpec =
             y int
         }, min int, max int) struct {
             pl []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             ind int
         } {
             pivot := pl[max].x
             t := min
             for i := min; ; (i)++ {
                 if (pl[i].x < pivot) {
-                   pl[i], pl[t] = pl[t], pl[i]
-                   (t)++
+                    pl[i], pl[t] = pl[t], pl[i]
+                    (t)++
                 }
             }
             pl[t], pl[max] = pl[max], pl[t]
             var pli struct {
             pl []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             ind int
         }
             pli.pl = pl
@@ -130,9 +130,9 @@ prettifySpec =
             if (min < max) {
                 var pli struct {
             pl []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             ind int
         }
                 pli = partx(pl, min, max)
@@ -148,25 +148,25 @@ prettifySpec =
             y int
         }, min int, max int) struct {
             pl []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             ind int
         } {
             pivot := pl[max].y
             t := min
             for i := min; ; (i)++ {
                 if (pl[i].y < pivot) {
-                   pl[i], pl[t] = pl[t], pl[i]
-                   (t)++
+                    pl[i], pl[t] = pl[t], pl[i]
+                    (t)++
                 }
             }
             pl[t], pl[max] = pl[max], pl[t]
             var pli struct {
             pl []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             ind int
         }
             pli.pl = pl
@@ -184,9 +184,9 @@ prettifySpec =
             if (min < max) {
                 var pli struct {
             pl []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             ind int
         }
                 pli = party(pl, min, max)
@@ -202,23 +202,23 @@ prettifySpec =
             y int
         }) struct {
             pl1 []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             pl2 []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
         } {
             var pll struct {
             pl1 []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             pl2 []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
         }
             var pl1 []struct {
             x int
@@ -329,8 +329,8 @@ prettifySpec =
         } = initMin()
             for i := 0; ; (i)++ {
                 for j := 0; ; (j)++ {
-                   if (i == j) {
-                       var pp struct {
+                    if (i == j) {
+                        var pp struct {
             p1 struct {
                 x int
                 y int
@@ -340,10 +340,10 @@ prettifySpec =
                 y int
             }
         }
-                       pp.p1 = pl[i]
-                       pp.p2 = pl[j]
-                       min = minPpair(min, pp)
-                   }
+                        pp.p1 = pl[i]
+                        pp.p2 = pl[j]
+                        min = minPpair(min, pp)
+                    }
                 }
             }
             return min
@@ -374,10 +374,10 @@ prettifySpec =
             pl = qsorty(pl, 0, (len(pl) - 1))
             for i := 0; ; (i)++ {
                 for j := (i + 1); ; (j)++ {
-                   if (dist(pl[i], pl[j]) < dist(min.p1, min.p2)) {
-                       min.p1 = pl[i]
-                       min.p2 = pl[j]
-                   }
+                    if (dist(pl[i], pl[j]) < dist(min.p1, min.p2)) {
+                        min.p1 = pl[i]
+                        min.p2 = pl[j]
+                    }
                 }
             }
             return min
@@ -401,13 +401,13 @@ prettifySpec =
             } else {
                 var pll struct {
             pl1 []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
             pl2 []struct {
-            x int
-            y int
-        }
+                x int
+                y int
+            }
         } = split(pl)
                 var midp struct {
             x int
@@ -450,9 +450,9 @@ prettifySpec =
             y int
         }
                 for i := 0; ; (i)++ {
-                   if (abs(float64((pl[i].x - midp.x))) < dist(min.p1, min.p2)) {
-                       strip = append(strip, pl[i])
-                   }
+                    if (abs(float64((pl[i].x - midp.x))) < dist(min.p1, min.p2)) {
+                        strip = append(strip, pl[i])
+                    }
                 }
                 return minPpair(min, stripClosest(strip, min))
             }
@@ -490,9 +490,9 @@ prettifySpec =
             y int
         }
                 for i := 0; ; (i)++ {
-                   p.x = pa[0][i]
-                   p.y = pa[1][i]
-                   pl = append(pl, p)
+                    p.x = pa[0][i]
+                    p.y = pa[1][i]
+                    pl = append(pl, p)
                 }
                 return pl
             }
@@ -534,11 +534,11 @@ prettifySpec =
             var list []int
             if rev {
                 for i := max; ; (i)-- {
-                   list = append(list, (i * 5))
+                    list = append(list, (i * 5))
                 }
             } else {
                 for i := 0; ; (i)++ {
-                   list = append(list, (i * 5))
+                    list = append(list, (i * 5))
                 }
             }
             return list

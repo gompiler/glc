@@ -267,11 +267,10 @@ instance Prettify Type' where
   prettify' (_, t) = prettify' t
 
 instance Prettify Type where
-  prettify' (ArrayType e t)   = ["[" ++ prettify e ++ "]" ++ prettify t]
+  prettify' (ArrayType e t)   = skipNewLineBase "" ["[" ++ prettify e ++ "]"] $ prettify' t
   prettify' (StructType fdls) = "struct {" : tab (fdls >>= prettify') ++ ["}"]
-  prettify' (SliceType t)     = ["[]" ++ prettify t]
+  prettify' (SliceType t)     = skipNewLineBase "" ["[]"] $ prettify' t
   prettify' (Type ident)      = [prettify ident]
 
---  prettify s@StructType {} = intercalate "; " $ prettify' s
 instance Prettify FieldDecl where
   prettify' (FieldDecl idents t) = [prettify idents] `skipNewLine` prettify' t
