@@ -109,8 +109,8 @@ instance IRRep T.Stmt where
     toIR cond ++
     iri [If IRData.LE ("end_loop_" ++ show idx)] ++
     toIR fbody ++ toIR rstmt ++ iri [Goto ("loop_" ++ show idx)]
-  toIR T.Break = iri [Goto "end_loop_todo"]
-  toIR T.Continue = iri [Goto "loop_todo"] -- TODO: MAKE SURE POST-STMT IS DONE?
+  toIR (T.Break (T.LabelIndex idx)) = iri [Goto ("end_loop_" ++ show idx)]
+  toIR (T.Continue (T.LabelIndex idx)) = iri [Goto ("loop_" ++ show idx)] -- TODO: MAKE SURE POST-STMT IS DONE?
   toIR (T.VarDecl idx t me) =
     case me of
       Just e -> toIR e ++ iri [Store (typeToIRType t) idx]
