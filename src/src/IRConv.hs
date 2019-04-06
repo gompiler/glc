@@ -4,7 +4,7 @@ import           Base                  (Glc)
 import qualified CheckedData           as D
 import           Data.Char             (ord, toLower)
 import           Data.List             (intercalate)
-import qualified Data.List.NonEmpty    as NE (map)
+import qualified Data.List.NonEmpty    as NE (map, toList)
 import           Foreign.Marshal.Utils (fromBool)
 import           IRData
 import           ResourceBuilder       (convertProgram)
@@ -165,8 +165,18 @@ instance IRRep T.SimpleStmt where
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR T.Increment {} = undefined -- iinc for int, otherwise load/save + 1
   toIR T.Decrement {} = undefined -- iinc for int (-1), otherwise "
-  toIR T.Assign {} = undefined -- store IRType
-  toIR (T.ShortDeclare _) = undefined -- concat (map toIR $ toList el) ++ [istores...]
+  toIR (T.Assign (T.AssignOp _) _) = undefined -- store IRType
+  toIR (T.ShortDeclare iExps) = -- TODO: NEED CLONING
+    concatMap toIR exprs ++ map expStore (zip idxs stTypes)
+    where
+      idxs :: [T.VarIndex]
+      idxs = reverse $ map fst (NE.toList iExps)
+      exprs :: [T.Expr]
+      exprs = map snd (NE.toList iExps)
+      stTypes :: [IRType]
+      stTypes = reverse $ map exprIRType exprs
+      expStore :: (T.VarIndex, IRType) -> IRItem
+      expStore (idx, t) = IRInst (Load t idx)
 
 instance IRRep T.Expr where
   toIR (T.Unary _ D.Pos e) = toIR e -- unary pos is identity function after typecheck
