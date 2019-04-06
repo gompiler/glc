@@ -56,21 +56,28 @@ newtype ClassRef =
   ClassRef String
   deriving (Show, Eq)
 
+data ClassOrArrayRef
+  = CRef ClassRef
+  | ARef JType
+  deriving (Show, Eq)
+
 data FieldRef =
   FieldRef ClassRef
            String
   deriving (Show, Eq)
 
 data MethodRef =
-  MethodRef ClassRef
+  MethodRef ClassOrArrayRef
             String
             [JType]
             JType
   deriving (Eq)
 
 instance Show MethodRef where
-  show (MethodRef (ClassRef cn) mn tl t) =
+  show (MethodRef (CRef (ClassRef cn)) mn tl t) =
     "Method " ++ cn ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
+  show (MethodRef (ARef jt) mn tl t) =
+    "Method [" ++ show jt ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
 
 data JType
   = JClass ClassRef -- Lwhatever;
@@ -176,6 +183,9 @@ stringBuilder = ClassRef "java/lang/StringBuilder"
 
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
+
+jObject :: ClassRef
+jObject = ClassRef "java/lang/Object"
 
 -- Custom-defined methods
 glcUtils :: ClassRef

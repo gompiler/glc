@@ -138,16 +138,16 @@ printIR e =
     printLoad :: [IRItem]
     printLoad = iri [GetStatic systemOut (JClass printStream)]
     intPrint :: [IRItem]
-    intPrint = iri [InvokeVirtual $ MethodRef printStream "print" [JInt] JVoid]
+    intPrint = iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JInt] JVoid]
     floatPrint :: [IRItem]
     floatPrint =
-      iri [InvokeVirtual $ MethodRef printStream "print" [JFloat] JVoid]
+      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JFloat] JVoid]
     stringPrint :: [IRItem]
     stringPrint =
-      iri [InvokeVirtual $ MethodRef printStream "print" [JClass jString] JVoid]
+      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JClass jString] JVoid]
     boolToString :: [IRItem]
     boolToString =
-      iri [InvokeVirtual $ MethodRef glcUtils "boolStr" [JInt] (JClass jString)]
+      iri [InvokeVirtual $ MethodRef (CRef glcUtils) "boolStr" [JInt] (JClass jString)]
 
 instance IRRep T.ForClause where
   toIR T.ForClause {} = undefined -- s1 me s2 = toIR s1 ++ (maybe [] toIR me) ++ toIR s2
@@ -160,23 +160,36 @@ instance IRRep T.SimpleStmt where
     concatMap toIR args ++
     iri
       [ InvokeVirtual $
-        MethodRef (ClassRef "Main") aid (map exprJType args) JVoid
+        MethodRef (CRef (ClassRef "Main")) aid (map exprJType args) JVoid
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR T.Increment {} = undefined -- iinc for int, otherwise load/save + 1
   toIR T.Decrement {} = undefined -- iinc for int (-1), otherwise "
   toIR (T.Assign (T.AssignOp _) _) = undefined -- store IRType
-  toIR (T.ShortDeclare iExps) = -- TODO: NEED CLONING
-    concatMap toIR exprs ++ map expStore (zip idxs stTypes)
+  toIR (T.ShortDeclare iExps) =
+    exprInsts ++ map expStore (zip idxs stTypes)
     where
       idxs :: [T.VarIndex]
       idxs = reverse $ map fst (NE.toList iExps)
       exprs :: [T.Expr]
       exprs = map snd (NE.toList iExps)
+      exprInsts :: [IRItem]
+      exprInsts = concatMap maybeClone exprs
       stTypes :: [IRType]
       stTypes = reverse $ map exprIRType exprs
       expStore :: (T.VarIndex, IRType) -> IRItem
       expStore (idx, t) = IRInst (Load t idx)
+      maybeClone :: T.Expr -> [IRItem]
+      maybeClone e =
+        toIR e ++ cloneInsts
+        where
+          cloneInsts :: [IRItem]
+          cloneInsts =
+            case exprJType e of
+              JClass cr -> iri [InvokeVirtual $ MethodRef (CRef cr) "clone" [] (JClass jObject)]
+              JArray jt ->
+                iri [InvokeVirtual $ MethodRef (ARef jt) "clone" [] (JClass jObject)]
+              _ -> [] -- Primitives and strings are not clonable
 
 instance IRRep T.Expr where
   toIR (T.Unary _ D.Pos e) = toIR e -- unary pos is identity function after typecheck
@@ -200,7 +213,7 @@ instance IRRep T.Expr where
         iri
           [ New stringBuilder
           , Dup
-          , InvokeSpecial (MethodRef stringBuilder "<init>" [] JVoid)
+          , InvokeSpecial (MethodRef (CRef stringBuilder) "<init>" [] JVoid)
           ] ++
         toIR e1 ++
         iri [InvokeVirtual sbAppend] ++
@@ -208,13 +221,13 @@ instance IRRep T.Expr where
         iri [InvokeVirtual sbAppend] ++
         iri
           [ InvokeVirtual
-              (MethodRef stringBuilder "toString" [] (JClass jString))
+              (MethodRef (CRef stringBuilder) "toString" [] (JClass jString))
           ]
       _ -> iri [Debug $ show t] -- undefined
     where
       sbAppend :: MethodRef
       sbAppend =
-        MethodRef stringBuilder "append" [JClass jString] (JClass stringBuilder)
+        MethodRef (CRef stringBuilder) "append" [JClass jString] (JClass stringBuilder)
   toIR (T.Binary _ _ (D.Arithm D.BitClear) _ _) = undefined
   toIR (T.Binary _ t (D.Arithm aop) e1 e2) =
     case typeToIRPrim t of
@@ -302,7 +315,7 @@ instance IRRep T.Expr where
     concatMap toIR args ++
     iri
       [ InvokeVirtual $
-        MethodRef (ClassRef "Main") aid (map exprJType args) (typeToJType t)
+        MethodRef (CRef (ClassRef "Main")) aid (map exprJType args) (typeToJType t)
       ]
 
 instance IRRep D.Literal where
