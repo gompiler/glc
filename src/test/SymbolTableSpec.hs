@@ -8,7 +8,7 @@ import           TestBase        (Stringable (..), expectBase, text, toString)
 import           SymbolTable (pTable, typecheckGen)
 import           Test.Hspec
 
-expectSymPass :: Stringable s => [s] -> SpecWith ()
+expectSymPass :: Stringable s => [s] -> Spec
 expectSymPass =
   expectBase
     "success"
@@ -27,7 +27,7 @@ expectSymPass =
     toString
     "symbol"
 
-expectSymFail :: Stringable s => [s] -> SpecWith ()
+expectSymFail :: Stringable s => [s] -> Spec
 expectSymFail =
   expectBase
     "fail"
@@ -42,7 +42,7 @@ expectSymFail =
     toString
     "symbol"
 
-expectTypecheckPass :: Stringable s => [s] -> SpecWith ()
+expectTypecheckPass :: Stringable s => [s] -> Spec
 expectTypecheckPass =
   expectBase
     "success"
@@ -57,7 +57,7 @@ expectTypecheckPass =
     toString
     "typecheck"
 
-expectTypecheckFail :: Stringable s => [s] -> SpecWith ()
+expectTypecheckFail :: Stringable s => [s] -> Spec
 expectTypecheckFail =
   expectBase
     "fail"
@@ -72,7 +72,7 @@ expectTypecheckFail =
     toString
     "typecheck"
 
-expectTypecheckPassNoMain :: Stringable s => [s] -> SpecWith ()
+expectTypecheckPassNoMain :: Stringable s => [s] -> Spec
 expectTypecheckPassNoMain =
   expectBase
     "success"
@@ -87,7 +87,7 @@ expectTypecheckPassNoMain =
     toString
     "typecheck"
 
-expectTypecheckFailNoMain :: Stringable s => [s] -> SpecWith ()
+expectTypecheckFailNoMain :: Stringable s => [s] -> Spec
 expectTypecheckFailNoMain =
   expectBase
     "fail"

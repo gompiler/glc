@@ -194,8 +194,7 @@ instance Typify Type where
   -- This last array case should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType' _ _ (ArrayType e _) _ =
-    return $ Left $ createError e ArrayNonIntLit
+  toType' _ _ (ArrayType e _) _ = return $ Left $ createError e ArrayNonIntLit
 
 instance Symbolize Program T.Program where
   recurse st (Program (Identifier _ pkg) tdl)
@@ -346,8 +345,10 @@ instance Symbolize FuncDecl T.FuncDecl
       func2sig :: S.Scope -> ([Param], CType) -> Glc' T.Signature
       func2sig scope (pl, t') =
         (\pl2 ->
-           if t' == void then Right $ T.Signature (T.Parameters pl2) Nothing
-           else T.Signature (T.Parameters pl2) . Just <$> toBase (Var ident) t') =<<
+           if t' == void
+             then Right $ T.Signature (T.Parameters pl2) Nothing
+             else T.Signature (T.Parameters pl2) . Just <$>
+                  toBase (Var ident) t') =<<
         mapM (p2pd scope) pl
   recurse st (FuncDecl idents sig stmt) =
     recurse st (FuncDecl idents sig (BlockStmt [stmt]))
@@ -453,12 +454,16 @@ instance Symbolize SimpleStmt T.SimpleStmt where
     res <- S.lookup st vname
     case res of
       Just (_, Func _ t) ->
-        if t == void then
-          either (return . Left) (const $ T.VoidExprStmt (T.Ident vname) <$$> (sequence <$> (mapM (recurse st) el))) =<< (infer' st e)
+        if t == void
+          then either
+                 (return . Left)
+                 (const $
+                  T.VoidExprStmt (T.Ident vname) <$$>
+                  (sequence <$> mapM (recurse st) el)) =<<
+               infer' st e
           -- Infer' because we allow void
           -- Use this to make sure the function call is valid
-        else
-          T.ExprStmt <$$> recurse st e -- Verify that expr only uses things that are defined
+          else T.ExprStmt <$$> recurse st e -- Verify that expr only uses things that are defined
       _ -> return $ Left $ createError e ESNotFunc
   recurse st (ExprStmt e) = T.ExprStmt <$$> recurse st e -- If the above case isn't matched, then we pass to here which will fail because func call isn't on an identifier
   recurse st (Increment _ e) = do
@@ -800,14 +805,15 @@ instance Symbolize TypeDef' T.TypeDef' where
       (return . Left)
       (\t' -> do
          me <- checkId st (SType t') "Type " ident
-         return $ maybe
-           (case C.get t' -- Ignore all types except for structs, as structs will be the only types we will have to define
+         return $
+           maybe
+             (case C.get t' -- Ignore all types except for structs, as structs will be the only types we will have to define
                -- Here we wrap the ident in a var just to pass offset to toBase in case of error
-                  of
-              Struct _ -> T.TypeDef' sident <$> toBase (Var ident) t'
-              _ -> Right T.NoDef)
-           Left
-           me)
+                    of
+                Struct _ -> T.TypeDef' sident <$> toBase (Var ident) t'
+                _        -> Right T.NoDef)
+             Left
+             me)
       et
 
 instance Symbolize Expr T.Expr where
@@ -860,8 +866,7 @@ instance Symbolize Expr T.Expr where
           ([], '.':_) -> '0' : fs -- Prepend 0 because .1 is not a valid Float
           (_, _)      -> fs
       RuneLit o cs ->
-        T.Lit .
-        T.RuneLit <$>
+        T.Lit . T.RuneLit <$>
         case cs !! 1 of
           '\\' ->
             case cs !! 2 of
@@ -874,17 +879,20 @@ instance Symbolize Expr T.Expr where
               'v'  -> Right '\v'
               '\'' -> Right '\''
               '\\' -> Right '\\'
-              c    ->  Left $ createError o (RuneInvalidEsc c)-- Should never happen because scanner guarantees these escape characters
+              c    -> Left $ createError o (RuneInvalidEsc c) -- Should never happen because scanner guarantees these escape characters
           c -> Right c
-      StringLit o Interpreted s -> T.Lit . T.StringLit <$> (stripQuotes s o)
-      StringLit o Raw s -> T.Lit . T.StringLit . esc <$> (stripQuotes s o)
-        where
+      StringLit o Interpreted s -> T.Lit . T.StringLit <$> stripQuotes s o
+      StringLit o Raw s -> T.Lit . T.StringLit . esc <$> stripQuotes s o
           -- Escape all things that need to be escaped so that we can
           -- transform a raw string to an interpreted string
-          esc :: String -> String
-          esc s' = concat (map (\c -> if c == '\\' then "\\\\"
-                                      else if c == '"' then "\\\""
-                                           else [c]) s')
+        where esc :: String -> String
+              esc =
+                concatMap
+                  (\c ->
+                     case c of
+                       '\\' -> "\\\\"
+                       '"'  -> "\\\""
+                       _    -> [c])
   recurse st e@(Var ident@(Identifier o vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname
@@ -904,8 +912,7 @@ instance Symbolize Expr T.Expr where
               _       -> Left $ createError o InvalidCBool
           Variable stype ->
             (\t' -> T.Var t' (mkSIdStr scope vname)) <$> toBase e stype
-          _ ->
-            Left $ createError o NotAVar
+          _ -> Left $ createError o NotAVar
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
@@ -926,12 +933,15 @@ instance Symbolize Expr T.Expr where
     ect' <- infer st ec
     ets' <- infer st e -- Get the struct type
     ee' <- recurse st e
-    return $ createSel <$> ee' <*> (toBase e =<< ect') <*> (structFields =<< (toBase e =<< ets'))
+    return $
+      createSel <$> ee' <*> (toBase e =<< ect') <*>
+      (structFields =<< (toBase e =<< ets'))
     where
       structFields :: T.CType -> Glc' [T.FieldDecl]
-      structFields t = case C.get t of
-                         T.StructType fdl -> Right fdl
-                         _ -> Left $ createError ec SelectNotStruct
+      structFields t =
+        case C.get t of
+          T.StructType fdl -> Right fdl
+          _                -> Left $ createError ec SelectNotStruct
       createSel :: T.Expr -> T.CType -> [T.FieldDecl] -> T.Expr
       createSel e' t' fdl' = T.Selector t' fdl' e' (T.Ident vname)
   recurse st e@(Index _ e1 e2) = do
@@ -951,16 +961,18 @@ instance Symbolize Expr T.Expr where
       -- Remove casts as we resolve things to base types
       -- The use of head here is okay because if ec is inferred without error, then el is one expression
       -- See TypeInference.infer' Arguments case
-      Just (_, SType _) -> either (return . Left) (const $ return $ head <$> eel') ect'
-      _ -> return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> eel'
+      Just (_, SType _) ->
+        either (return . Left) (const $ return $ head <$> eel') ect'
+      _ ->
+        return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> eel'
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
 
 -- | Strip first and last character of a string
 stripQuotes :: String -> Offset -> Glc' String
-stripQuotes s off = if length s < 2 then
-                  Left $ createError off NoQuotes
-                else
-                  Right $ tail $ init s
+stripQuotes s off =
+  if length s < 2
+    then Left $ createError off NoQuotes
+    else Right $ tail $ init s
 
 intTypeToInt :: Literal -> Maybe Int
 intTypeToInt (IntLit _ t s) =
@@ -1076,10 +1088,13 @@ instance ErrorEntry TypeCheckError where
       BaseVoid -> "Void cannot be converted to base type"
       InvalidCBool -> "Invalid constant bool value"
       NotAVar -> "Cannot get type of non-const/var identifier"
-      SelectNotStruct -> "Selector operator cannot be used on something that isn't a struct"
-      RuneInvalidEsc c' -> "Invalid escape character " ++ show c' ++ " in rune literal"
+      SelectNotStruct ->
+        "Selector operator cannot be used on something that isn't a struct"
+      RuneInvalidEsc c' ->
+        "Invalid escape character " ++ show c' ++ " in rune literal"
       NoQuotes -> "String has no quotes"
-      ArrayNonIntLit -> "Trying to convert type of an ArrayType with non literal int as length"
+      ArrayNonIntLit ->
+        "Trying to convert type of an ArrayType with non literal int as length"
 
 -- | Get the first duplicate in a list, for checking if fields of a struct are all unique
 getFirstDuplicate :: Eq a => [a] -> Maybe a
@@ -1113,10 +1128,10 @@ toBase e = C.fmapContainer toBase'
       where
         f2fd :: Field -> Glc' T.FieldDecl
         f2fd (s, t) = T.FieldDecl (T.Ident s) <$> toBase' t
-    toBase' (TypeMap _ t) = if C.hasRoot t then
-                              T.TypeMap <$> toBase e t
-                            else
-                              C.get <$> toBase e t
+    toBase' (TypeMap _ t) =
+      if C.hasRoot t
+        then T.TypeMap <$> toBase e t
+        else C.get <$> toBase e t
     toBase' PInt = Right T.PInt
     toBase' PFloat64 = Right T.PFloat64
     toBase' PBool = Right T.PBool
