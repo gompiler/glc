@@ -354,6 +354,8 @@ getLiteralType (D.RuneLit _)   = T.PRune
 getLiteralType (D.StringLit _) = T.PString
 
 typeToJType :: T.Type -> JType
+typeToJType (T.ArrayType _ t) = JArray (typeToJType t)
+typeToJType (T.SliceType {}) = undefined -- TODO
 typeToJType T.PInt = JInt
 typeToJType T.PFloat64 = JFloat
 typeToJType T.PRune = JInt
@@ -361,4 +363,3 @@ typeToJType T.PBool = JBool
 typeToJType T.PString = JClass jString
 typeToJType (T.StructType (D.Ident sid)) =
   JClass (ClassRef $ "GlcStruct__" ++ sid)
-typeToJType _ = undefined -- TODO

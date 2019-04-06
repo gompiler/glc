@@ -74,6 +74,7 @@ instance Show MethodRef where
 
 data JType
   = JClass ClassRef -- Lwhatever;
+  | JArray JType -- [ as a prefix, ex. [I
   | JInt -- I
   | JFloat -- F
   | JBool -- Z
@@ -82,6 +83,7 @@ data JType
 
 instance Show JType where
   show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
+  show (JArray jt)            = "[" ++ show jt
   show JInt                   = "I"
   show JFloat                 = "F"
   show JBool                  = "Z"
