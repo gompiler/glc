@@ -212,6 +212,7 @@ data Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
+  | TopVar Type Ident
   -- | See https://golang.org/ref/spec#OperandName
   | Var Type
         VarIndex
@@ -363,6 +364,7 @@ instance Convert Expr T.Expr where
   convert (Binary _ t op e1 e2) =
     T.Binary (convert t) op (convert e1) (convert e2)
   convert (Lit lit) = T.Lit lit
+  convert (TopVar t i) = T.Var (convert t) (convert i)
   convert (Var t i) = T.Var (convert t) (convert i)
   convert (AppendExpr t e1 e2) =
     T.AppendExpr (convert t) (convert e1) (convert e2)
