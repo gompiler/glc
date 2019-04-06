@@ -19,7 +19,7 @@ import           Data.Either        (isLeft)
 import           Data.Functor       (($>))
 
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
-import           Data.Maybe         (catMaybes)
+import           Data.Maybe         (catMaybes, listToMaybe)
 
 import           Base
 import qualified CheckedData        as T
@@ -361,7 +361,8 @@ checkIds ::
   -> String
   -> Identifiers
   -> ST s (Maybe ErrorMessage')
-checkIds st s pfix idl = maybeJ <$> mapM (checkId st s pfix) (toList idl)
+checkIds st s pfix idl =
+  listToMaybe . catMaybes <$> mapM (checkId st s pfix) (toList idl)
 
 -- | Check that we can declare this identifier
 checkId ::
@@ -494,17 +495,20 @@ instance Symbolize SimpleStmt T.SimpleStmt where
          (do l1 <- mapM (recurse st) (toList el1)
              l2 <- mapM (recurse st) (toList el2)
              case mop of
-               Nothing ->
-                 mapM sameType (zip (toList el1) (toList el2)) $>
-                 (T.Assign (T.AssignOp Nothing) . fromList <$$> zip <$>
-                  sequence l1 <*>
-                  sequence l2)
-               Just op ->
-                 mapM
-                   (infer st . aop2e (Arithm op))
-                   (zip (toList el1) (toList el2)) $>
-                 (T.Assign (aop2aop' aop) . fromList <$$> zip <$> sequence l1 <*>
-                  sequence l2))
+               Nothing -> do
+                 ee <- mapM sameType (zip (toList el1) (toList el2))
+                 return $ sequence ee *>
+                   (T.Assign (T.AssignOp Nothing) . fromList <$$> zip <$>
+                    sequence l1 <*>
+                    sequence l2)
+               Just op -> do
+                 el <-
+                   mapM
+                     (infer st . aop2e (Arithm op))
+                     (zip (toList el1) (toList el2))
+                 return $ sequence el *>
+                   (T.Assign (aop2aop' aop) . fromList <$$> zip <$> sequence l1 <*>
+                    sequence l2))
          (return . Left . head)
          (sequence me))
       (sequence ets)
@@ -888,11 +892,11 @@ instance Symbolize Expr T.Expr where
   recurse st ec@(LenExpr _ e) = do
     ect' <- infer st ec
     ee' <- recurse st e
-    either (return . Left) (const $ return $ T.LenExpr <$> ee') ect'
+    return $ ect' *> (T.LenExpr <$> ee')
   recurse st ec@(CapExpr _ e) = do
     ect' <- infer st ec
     ee' <- recurse st e
-    either (return . Left) (const $ return $ T.CapExpr <$> ee') ect'
+    return $ ect' *> (T.CapExpr <$> ee')
   recurse st ec@(Selector _ e (Identifier _ vname)) = do
     ect' <- infer st ec
     ets' <- infer st e -- Get the struct type
@@ -924,8 +928,7 @@ instance Symbolize Expr T.Expr where
       -- Remove casts as we resolve things to base types
       -- The use of head here is okay because if ec is inferred without error, then el is one expression
       -- See TypeInference.infer' Arguments case
-      Just (_, SType _) ->
-        either (return . Left) (const $ return $ head <$> eel') ect'
+      Just (_, SType _) -> return $ ect' *> (head <$> eel')
       _ ->
         return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> eel'
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
@@ -944,13 +947,6 @@ intTypeToInt (IntLit _ t s) =
     Hexadecimal -> Just $ read s
     Octal       -> Just $ fst $ head $ readOct s
 intTypeToInt _ = Nothing
-
--- | List of maybes, return first Just or nothing if all nothing
-maybeJ :: [Maybe b] -> Maybe b
-maybeJ l =
-  if null (catMaybes l)
-    then Nothing
-    else Just $ head $ catMaybes l
 
 data SymbolError
   = AlreadyDecl String
