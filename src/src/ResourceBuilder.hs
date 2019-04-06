@@ -42,7 +42,7 @@ class Converter a b where
 instance Converter T.Program Program where
   convert rc T.Program {T.package, T.topLevels} = do
     topLevels' <- mapM (convert rc) topLevels
-    structs <- RC.getAllStructs rc
+    structs <- RC.allStructs rc
     return $
       Program
         { package = package
@@ -122,7 +122,7 @@ instance Converter T.CType Type where
       T.SliceType t -> SliceType <$> ct (C.set type' t)
       T.StructType fields ->
         let cfields = zip (repeat type') fields
-         in StructType <$> (RC.getStructName rc =<< mapM (convert rc) cfields)
+         in StructType <$> (RC.structName rc =<< mapM (convert rc) cfields)
       T.TypeMap t -> ct t
       T.PInt -> return PInt
       T.PFloat64 -> return PFloat64
@@ -149,7 +149,7 @@ instance Converter T.Expr Expr where
     case expr of
       T.Unary t op e -> Unary <$> ct t <*-> op <*> ce e
       T.Binary t op e1 e2 ->
-        Binary <$> RC.getNewLabel rc <*> ct t <*-> op <*> ce e1 <*> ce e2
+        Binary <$> RC.newLabel rc <*> ct t <*-> op <*> ce e1 <*> ce e2
       T.Lit lit -> return $ Lit lit
       T.Var t i -> Var <$> ct t <*> RC.getVarIndex rc i
       T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
@@ -192,10 +192,10 @@ instance Converter T.Stmt Stmt
       T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
       T.SimpleStmt s -> SimpleStmt <$> css s
       T.If se s1 s2 ->
-        wrap $ If <$> RC.getNewLabel rc <*> cse se <*> wrap (cs s1) <*> wrap (cs s2)
+        wrap $ If <$> RC.newLabel rc <*> cse se <*> wrap (cs s1) <*> wrap (cs s2)
       T.Switch s e cases ->
         wrap $
-        Switch <$> RC.getNewLabel rc <*> css s <*>
+        Switch <$> RC.newLabel rc <*> css s <*>
         maybe (return $ Lit $ T.BoolLit True) ce e <*>
         fmap catMaybes (mapM convertSwitchCase cases) <*>
         -- Note that we find a list of all defaults
@@ -206,9 +206,9 @@ instance Converter T.Stmt Stmt
           (fromMaybe (SimpleStmt EmptyStmt) . listToMaybe . catMaybes)
           (mapM convertDefaultCase cases)
       T.For clause s ->
-        wrap $ For <$> RC.getNewLoopLabel rc <*> convertForClause clause <*> wrap (cs s)
-      T.Break -> Break <$> RC.getCurrentLoopLabel rc
-      T.Continue -> Continue <$> RC.getCurrentLoopLabel rc
+        wrap $ For <$> RC.newLoopLabel rc <*> convertForClause clause <*> wrap (cs s)
+      T.Break -> Break <$> RC.currentLoopLabel rc
+      T.Continue -> Continue <$> RC.currentLoopLabel rc
         -- TODO ensure blockstmt doesn't end up adding scopes for this case
       T.Declare decl -> BlockStmt <$> convert rc decl
       T.Print exprs -> Print <$> mapM ce exprs
