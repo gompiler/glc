@@ -70,11 +70,9 @@ instance Converter T.TopDecl TopLevel where
 
 instance Converter T.FuncDecl FuncDecl where
   convert rc (T.FuncDecl (T.ScopedIdent _ i) sig body) =
-    RC.wrap rc $ do
-      sig' <- convert rc sig
-      RC.wrap rc $ do
-        body' <- convert rc body
-        return $ FuncDecl i sig' body'
+    wrap $ FuncDecl <$-> i <*> convert rc sig <*> wrap (convert rc body)
+    where
+      wrap = RC.wrap rc
 
 instance Converter T.Signature Signature where
   convert rc (T.Signature params retType) =
@@ -97,7 +95,7 @@ instance Converter T.Decl [TopVarDecl] where
     where
       convertVarDecl :: T.VarDecl' -> ST s TopVarDecl
       convertVarDecl (T.VarDecl' (T.ScopedIdent _ i) t expr) =
-        TopVarDecl <$> pure i <*> convert rc t <*>
+        TopVarDecl <$-> i <*> convert rc t <*>
         maybe (return Nothing) (Just <$$> convert rc) expr
       convertTypeDecl :: T.TypeDef' -> ST s ()
       convertTypeDecl _ = return ()
@@ -233,10 +231,7 @@ instance Converter T.Stmt Stmt
         css post
       convertSwitchCase :: T.SwitchCase -> ST s (Maybe SwitchCase)
       convertSwitchCase (T.Case exprs s) =
-        wrap $ do
-          exprs' <- mapM ce exprs
-          s' <- wrap $ cs s
-          return $ Just $ Case exprs' s'
+        wrap $ Just <$$> Case <$> mapM ce exprs <*> wrap (cs s)
       convertSwitchCase _ = return Nothing
       convertDefaultCase :: T.SwitchCase -> ST s (Maybe Stmt)
       convertDefaultCase (T.Default s) = Just <$> wrap (cs s)
