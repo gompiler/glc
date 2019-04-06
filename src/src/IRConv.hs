@@ -113,7 +113,7 @@ instance IRRep T.Stmt where
   toIR T.Continue = iri [Goto "loop_todo"] -- TODO: MAKE SURE POST-STMT IS DONE?
   toIR (T.VarDecl idx t me) =
     case me of
-      Just e -> toIR e ++ iri [Store (astToIRType t) idx]
+      Just e -> toIR e ++ iri [Store (typeToIRType t) idx]
       _      -> [] -- TODO: Get default and store?
   toIR (T.Print el) = concatMap printIR el
   toIR (T.Println el) =
@@ -217,7 +217,7 @@ instance IRRep T.Expr where
         MethodRef stringBuilder "append" [JClass jString] (JClass stringBuilder)
   toIR (T.Binary _ _ (D.Arithm D.BitClear) _ _) = undefined
   toIR (T.Binary _ t (D.Arithm aop) e1 e2) =
-    case astToIRPrim t of
+    case typeToIRPrim t of
       Just t' -> binary e1 e2 (opToInst t')
       Nothing -> error "Cannot do op on non-primitive (non-numeric) types"
     where
@@ -275,7 +275,7 @@ instance IRRep T.Expr where
           T.GEQ -> IRData.GE
           _     -> undefined -- Handled above
   toIR (T.Lit l) = toIR l
-  toIR (T.Var t vi) = iri [Load (astToIRType t) vi] -- TODO (also bool?)
+  toIR (T.Var t vi) = iri [Load (typeToIRType t) vi] -- TODO (also bool?)
   toIR T.AppendExpr {} = undefined -- TODO
   toIR (T.LenExpr e) =
     case exprType e of
@@ -294,7 +294,7 @@ instance IRRep T.Expr where
   toIR (T.Index t e1 e2) =
     case exprType e1 of
       T.ArrayType _ _ -> -- TODO: CHECK LENGTH HERE?
-        toIR e1 ++ toIR e2 ++ iri [ArrayLoad (astToIRType t)]
+        toIR e1 ++ toIR e2 ++ iri [ArrayLoad (typeToIRType t)]
       T.SliceType {} -> undefined -- TODO
       _              -> undefined -- Cannot index any other type
   toIR (T.Arguments t (D.Ident aid) args) =
@@ -330,18 +330,18 @@ exprType (T.Selector t _ _)   = t
 exprType (T.Index t _ _)      = t
 exprType (T.Arguments t _ _)  = t
 
-astToIRType :: T.Type -> IRType
-astToIRType t = maybe Object Prim (astToIRPrim t)
+typeToIRType :: T.Type -> IRType
+typeToIRType t = maybe Object Prim (typeToIRPrim t)
 
-astToIRPrim :: T.Type -> Maybe IRPrimitive
-astToIRPrim T.PInt     = Just IRInt
-astToIRPrim T.PFloat64 = Just IRFloat
-astToIRPrim T.PRune    = Just IRInt
-astToIRPrim T.PBool    = Just IRInt
-astToIRPrim _          = Nothing
+typeToIRPrim :: T.Type -> Maybe IRPrimitive
+typeToIRPrim T.PInt     = Just IRInt
+typeToIRPrim T.PFloat64 = Just IRFloat
+typeToIRPrim T.PRune    = Just IRInt
+typeToIRPrim T.PBool    = Just IRInt
+typeToIRPrim _          = Nothing
 
 exprIRType :: T.Expr -> IRType
-exprIRType = astToIRType . exprType
+exprIRType = typeToIRType . exprType
 
 exprJType :: T.Expr -> JType
 exprJType = typeToJType . exprType
