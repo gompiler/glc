@@ -160,9 +160,9 @@ instance IRRep T.SimpleStmt where
         MethodRef (CRef (ClassRef "Main")) aid (map exprJType args) JVoid
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
-  toIR T.Increment {} = undefined -- iinc for int, otherwise load/save + 1
-  toIR T.Decrement {} = undefined -- iinc for int (-1), otherwise "
-  toIR (T.Assign (T.AssignOp _) _) = undefined -- store IRType
+  toIR T.Increment {} = undefined -- TODO iinc for int, otherwise load/save + 1
+  toIR T.Decrement {} = undefined -- TODO iinc for int (-1), otherwise "
+  toIR (T.Assign (T.AssignOp _) _) = undefined -- TODO store IRType
   toIR (T.ShortDeclare iExps) =
     exprInsts ++ map expStore (zip idxs stTypes)
     where
@@ -225,7 +225,7 @@ instance IRRep T.Expr where
       sbAppend :: MethodRef
       sbAppend =
         MethodRef (CRef stringBuilder) "append" [JClass jString] (JClass stringBuilder)
-  toIR (T.Binary _ _ (D.Arithm D.BitClear) _ _) = undefined
+  toIR (T.Binary _ _ (D.Arithm D.BitClear) _ _) = undefined -- TODO
   toIR (T.Binary _ t (D.Arithm aop) e1 e2) =
     case typeToIRPrim t of
       Just t' -> binary e1 e2 (opToInst t')
@@ -275,7 +275,7 @@ instance IRRep T.Expr where
         case exprIRType e1 of
           Prim IRInt   -> iri [IfICmp irCmp trueLabel]
           Prim IRFloat -> iri [FCmpG, If irCmp trueLabel]
-          Object       -> undefined
+          Object       -> undefined -- TODO: String comparisons?
       irCmp :: IRCmp
       irCmp =
         case op of
