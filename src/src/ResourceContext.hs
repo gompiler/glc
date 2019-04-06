@@ -7,7 +7,9 @@ module ResourceContext
   , getStructName
   , getVarIndex
   , getAllStructs
-  , getLabel
+  , getNewLabel
+  , getNewLoopLabel
+  , getCurrentLoopLabel
   ) where
 
 import           Base
@@ -31,6 +33,7 @@ data ResourceContext_ s = RC
   , structMap    :: StructTable s
   , varScopes    :: [ResourceScope s]
   , labelCounter :: Int
+  , lastLoopLabel :: Int
   }
 
 data ResourceScope s =
@@ -81,6 +84,7 @@ new = do
       , varScopes = []
       , structMap = structMap'
       , labelCounter = 0
+      , lastLoopLabel = 0
       }
 
 -- | Create a new resource scope
@@ -141,12 +145,26 @@ getVarIndex st si = do
       return $! index <?> size
 
 -- | Returns a label id that is unique across the entire program
-getLabel :: ResourceContext s -> ST s LabelIndex
-getLabel st = do
+getNewLabel :: ResourceContext s -> ST s LabelIndex
+getNewLabel st = do
   rc <- readRef st
   let i = labelCounter rc
   writeRef st $! rc {labelCounter = i + 1}
   return $ LabelIndex i
+
+-- | Returns a label id that is unique across the entire program
+-- We will also store it as the last loop label,
+-- as it will be used for things like 'break' and 'continue'
+getNewLoopLabel :: ResourceContext s -> ST s LabelIndex
+getNewLoopLabel st = do
+  rc <- readRef st
+  let i = labelCounter rc
+  writeRef st $! rc {labelCounter = i + 1, lastLoopLabel = i}
+  return $ LabelIndex i
+
+-- | Returns the last label created
+getCurrentLoopLabel :: ResourceContext s -> ST s LabelIndex
+getCurrentLoopLabel st = LabelIndex . lastLoopLabel <$> readRef st
 
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type

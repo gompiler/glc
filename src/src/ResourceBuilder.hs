@@ -149,7 +149,7 @@ instance Converter T.Expr Expr where
     case expr of
       T.Unary t op e -> Unary <$> ct t <*-> op <*> ce e
       T.Binary t op e1 e2 ->
-        Binary <$> RC.getLabel rc <*> ct t <*-> op <*> ce e1 <*> ce e2
+        Binary <$> RC.getNewLabel rc <*> ct t <*-> op <*> ce e1 <*> ce e2
       T.Lit lit -> return $ Lit lit
       T.Var t i -> Var <$> ct t <*> RC.getVarIndex rc i
       T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
@@ -192,10 +192,10 @@ instance Converter T.Stmt Stmt
       T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
       T.SimpleStmt s -> SimpleStmt <$> css s
       T.If se s1 s2 ->
-        wrap $ If <$> label <*> cse se <*> wrap (cs s1) <*> wrap (cs s2)
+        wrap $ If <$> RC.getNewLabel rc <*> cse se <*> wrap (cs s1) <*> wrap (cs s2)
       T.Switch s e cases ->
         wrap $
-        Switch <$> label <*> css s <*>
+        Switch <$> RC.getNewLabel rc <*> css s <*>
         maybe (return $ Lit $ T.BoolLit True) ce e <*>
         fmap catMaybes (mapM convertSwitchCase cases) <*>
         -- Note that we find a list of all defaults
@@ -206,16 +206,15 @@ instance Converter T.Stmt Stmt
           (fromMaybe (SimpleStmt EmptyStmt) . listToMaybe . catMaybes)
           (mapM convertDefaultCase cases)
       T.For clause s ->
-        wrap $ For <$> label <*> convertForClause clause <*> wrap (cs s)
-      T.Break -> return Break
-      T.Continue -> return Continue
+        wrap $ For <$> RC.getNewLoopLabel rc <*> convertForClause clause <*> wrap (cs s)
+      T.Break -> Break <$> RC.getCurrentLoopLabel rc
+      T.Continue -> Continue <$> RC.getCurrentLoopLabel rc
         -- TODO ensure blockstmt doesn't end up adding scopes for this case
       T.Declare decl -> BlockStmt <$> convert rc decl
       T.Print exprs -> Print <$> mapM ce exprs
       T.Println exprs -> Println <$> mapM ce exprs
       T.Return e -> Return <$> maybe (return Nothing) (Just <$$> ce) e
     where
-      label = RC.getLabel rc
       wrap = RC.wrap rc
       cse :: (T.SimpleStmt, T.Expr) -> ST s (SimpleStmt, Expr)
       cse (s, e) = (,) <$> css s <*> ce e
