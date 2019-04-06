@@ -196,6 +196,7 @@ instance Converter T.Stmt Stmt
       T.If se s1 s2 ->
         wrap $ If <$> label <*> cse se <*> wrap (cs s1) <*> wrap (cs s2)
       T.Switch s e cases ->
+        wrap $
         Switch <$> label <*> css s <*>
         maybe (return $ Lit $ T.BoolLit True) ce e <*>
         fmap catMaybes (mapM convertSwitchCase cases) <*>
