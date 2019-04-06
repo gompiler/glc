@@ -77,7 +77,8 @@ instance Show MethodRef where
   show (MethodRef (CRef (ClassRef cn)) mn tl t) =
     "Method " ++ cn ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
   show (MethodRef (ARef jt) mn tl t) =
-    "Method [" ++ show jt ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
+    "Method [" ++
+    show jt ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
 
 data JType
   = JClass ClassRef -- Lwhatever;
@@ -147,8 +148,10 @@ data Instruction
   | IAnd
   | IOr
   | IXOr
-  | If IRCmp LabelName
-  | IfICmp IRCmp LabelName
+  | If IRCmp
+       LabelName
+  | IfICmp IRCmp
+           LabelName
   | LDC LDCType -- pushes an int/float/string value onto the stack
   | IConstM1 -- -1
   | IConst0 -- 0
