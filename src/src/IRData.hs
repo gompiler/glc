@@ -137,20 +137,18 @@ data Instruction
   | Dup
   | Goto LabelName
   | Add IRPrimitive
-  | Div IRPrimitive -- TODO: Turn into Op instruction?
+  | Div IRPrimitive
   | Mul IRPrimitive
   | Neg IRPrimitive
   | Sub IRPrimitive
   | IRem
   | IShL
   | IShR
-  | IALoad
   | IAnd
-  | IAStore
-  | If IRCmp LabelName
-  | IfICmp IRCmp LabelName
   | IOr
   | IXOr
+  | If IRCmp LabelName
+  | IfICmp IRCmp LabelName
   | LDC LDCType -- pushes an int/float/string value onto the stack
   | IConstM1 -- -1
   | IConst0 -- 0
