@@ -42,7 +42,7 @@ instance Bytecode Method where
     B.concat
       [ bstrM
           [ ".method "
-          , "public "
+          , "public static "
           , mn
           , " : ()V" -- No args and return is void until Method implements signature
           , "\n"
