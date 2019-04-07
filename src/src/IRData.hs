@@ -181,6 +181,8 @@ data Instruction
               JType -- field spec, descriptor
   | GetField FieldRef
              JType
+  | PutStatic FieldRef
+              JType
   | PutField FieldRef
              JType
   | InvokeSpecial MethodRef -- method spec

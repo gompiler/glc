@@ -237,6 +237,10 @@ instance IRRep T.SimpleStmt where
                 setUpOps ++
                 iri [Load (typeToIRType t) idx] ++
                 afterLoadOps ++ toIR ve ++ finalOps
+              T.TopVar t (T.Ident tvi) ->
+                setUpOps ++
+                iri [GetStatic (FieldRef cMain tvi) (typeToJType t)] ++
+                afterLoadOps ++ toIR ve ++ finalOps
               T.Selector t eo (T.Ident fid) ->
                 case exprJType eo of
                   JClass cr ->
@@ -290,6 +294,8 @@ instance IRRep T.SimpleStmt where
       getStore (e, _) =
         case e of
           T.Var t idx -> iri [Store (typeToIRType t) idx]
+          T.TopVar t (T.Ident tvi) ->
+            iri [PutStatic (FieldRef cMain tvi) (typeToJType t)]
           T.Selector t eo (T.Ident fid) ->
             case exprJType eo of
               JClass cr ->
@@ -471,7 +477,6 @@ instance IRRep T.Expr where
       T.SliceType {} -> undefined -- TODO
       _ -> error "Cannot index non-array/slice"
   toIR (T.Arguments t (D.Ident aid) args) =
-    iri [Load Object (T.VarIndex 0)] ++ -- this object
     concatMap toIR args ++
     iri
       [ InvokeStatic $
@@ -594,6 +599,7 @@ stackDelta Pop = -1 -- ..., v -> ...
 stackDelta Swap = 0 -- ..., v, w -> ..., w, v
 stackDelta GetStatic {} = 1 -- ... -> ..., v
 stackDelta GetField {} = 0 -- ..., o -> ..., v
+stackDelta PutStatic {} = -1 -- ..., v -> ...
 stackDelta PutField {} = -2 -- ..., o, v -> ...
 stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
 stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
