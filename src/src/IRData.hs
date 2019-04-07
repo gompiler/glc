@@ -84,7 +84,7 @@ data JType
   = JClass ClassRef -- Lwhatever;
   | JArray JType -- [ as a prefix, ex. [I
   | JInt -- I
-  | JFloat -- F
+  | JDouble -- D
   | JBool -- Z
   | JVoid -- V
   deriving (Eq)
@@ -93,7 +93,7 @@ instance Show JType where
   show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
   show (JArray jt)            = "[" ++ show jt
   show JInt                   = "I"
-  show JFloat                 = "F"
+  show JDouble                = "D"
   show JBool                  = "Z"
   show JVoid                  = "V"
 
@@ -104,7 +104,7 @@ data IRItem
 
 data IRPrimitive
   = IRInt -- Integers, booleans, runes
-  | IRFloat -- Float64s
+  | IRDouble -- Float64s
   deriving (Show, Eq)
 
 data IRType
@@ -131,7 +131,7 @@ instance Show IRCmp where
 
 data LDCType
   = LDCInt Int -- Integers, booleans, runes
-  | LDCFloat Float -- Float64s
+  | LDCDouble Float -- Float64s
   | LDCString String -- Strings
   deriving (Show, Eq)
 
@@ -161,7 +161,7 @@ data Instruction
        LabelName
   | IfICmp IRCmp
            LabelName
-  | LDC LDCType -- pushes an int/float/string value onto the stack
+  | LDC LDCType -- pushes an int/double/string value onto the stack
   | IConstM1 -- -1
   | IConst0 -- 0
   | IConst1 -- 1
