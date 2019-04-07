@@ -184,7 +184,7 @@ instance IRRep T.SimpleStmt where
     case e of
       T.Var _ _ -> undefined -- TODO
       T.Selector {} -> undefined -- TODO
-      T.Index t ea ei ->
+      T.Index _ ea ei ->
         case exprType ea of
           T.ArrayType {} ->
             case irType of
