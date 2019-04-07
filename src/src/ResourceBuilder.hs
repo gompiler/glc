@@ -18,15 +18,15 @@ module ResourceBuilder
   ) where
 
 import           Base
-import qualified CheckedData      as T
+import qualified CheckedData        as T
 import           Control.Monad.ST
-import qualified Cyclic           as C
-import           Data.Maybe       (catMaybes, fromMaybe, listToMaybe)
-import           Prelude          hiding (init)
-import qualified ResourceContext  as RC
+import qualified Cyclic             as C
+import           Data.List.NonEmpty (NonEmpty (..))
+import           Data.Maybe         (catMaybes, fromMaybe, listToMaybe)
+import           Prelude            hiding (init)
+import qualified ResourceContext    as RC
 import           ResourceData
-import           Data.List.NonEmpty (NonEmpty(..))
-import           SymbolTable      (typecheckGen)
+import           SymbolTable        (typecheckGen)
 
 resourceGen :: String -> Glc Program
 resourceGen p = convertProgram <$> typecheckGen p
@@ -49,14 +49,21 @@ instance Converter T.Program Program where
         { package = package
         , structs = structs
         , topVars = concat [vars | TVar vars <- topLevels']
-        , init = [stmt | TInit stmt <- topLevels']
+        , init = collectInit [(body, limit) | TInit body limit <- topLevels']
         , functions = [func | TFunc func <- topLevels']
         }
+    where
+      collectInit :: [(Stmt, LocalLimit)] -> InitDecl
+      collectInit inits =
+        let body = BlockStmt $ map fst inits
+            limit = foldl max (LocalLimit 0) $ map snd inits
+         in InitDecl body limit
 
 data TopLevel
   = TVar [TopVarDecl]
   | TFunc FuncDecl
   | TInit Stmt
+          LocalLimit
 
 instance Converter T.TopDecl TopLevel where
   convert rc topDecl =
@@ -65,13 +72,15 @@ instance Converter T.TopDecl TopLevel where
       T.TopFuncDecl decl -> funcDecl <$> convert rc decl
     where
       funcDecl :: FuncDecl -> TopLevel
-      funcDecl (FuncDecl (T.Ident "init") (Signature (Parameters []) Nothing) body) =
-        TInit body
+      funcDecl (FuncDecl (T.Ident "init") (Signature (Parameters []) Nothing) body limit) =
+        TInit body limit
       funcDecl d = TFunc d
 
 instance Converter T.FuncDecl FuncDecl where
   convert rc (T.FuncDecl (T.ScopedIdent _ i) sig body) =
-    wrap $ FuncDecl <$-> i <*> convert rc sig <*> wrap (convert rc body)
+    wrap $
+    FuncDecl <$-> i <*> convert rc sig <*> wrap (convert rc body) <*>
+    RC.localLimit rc
     where
       wrap = RC.wrap rc
 
@@ -186,9 +195,11 @@ instance Converter T.SimpleStmt SimpleStmt where
       ce :: T.Expr -> ST s Expr
       ce = convert rc
       inc2assn :: Expr -> SimpleStmt
-      inc2assn e = Assign (T.AssignOp $ Just T.Add) ((e, Lit $ T.IntLit 1) :| [])
+      inc2assn e =
+        Assign (T.AssignOp $ Just T.Add) ((e, Lit $ T.IntLit 1) :| [])
       dec2assn :: Expr -> SimpleStmt
-      dec2assn e = Assign (T.AssignOp $ Just T.Subtract) ((e, Lit $ T.IntLit 1) :| [])
+      dec2assn e =
+        Assign (T.AssignOp $ Just T.Subtract) ((e, Lit $ T.IntLit 1) :| [])
 
 instance Converter T.Stmt Stmt
   -- | TODO check if block stmt should become a scoped block (for temp gen)
@@ -199,7 +210,8 @@ instance Converter T.Stmt Stmt
       T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
       T.SimpleStmt s -> SimpleStmt <$> css s
       T.If se s1 s2 ->
-        wrap $ If <$> RC.newLabel rc <*> cse se <*> wrap (cs s1) <*> wrap (cs s2)
+        wrap $
+        If <$> RC.newLabel rc <*> cse se <*> wrap (cs s1) <*> wrap (cs s2)
       T.Switch s e cases ->
         wrap $
         Switch <$> RC.newLabel rc <*> css s <*>
@@ -213,7 +225,8 @@ instance Converter T.Stmt Stmt
           (fromMaybe (SimpleStmt EmptyStmt) . listToMaybe . catMaybes)
           (mapM convertDefaultCase cases)
       T.For clause s ->
-        wrap $ For <$> RC.newLoopLabel rc <*> convertForClause clause <*> wrap (cs s)
+        wrap $
+        For <$> RC.newLoopLabel rc <*> convertForClause clause <*> wrap (cs s)
       T.Break -> Break <$> RC.currentLoopLabel rc
       T.Continue -> Continue <$> RC.currentLoopLabel rc
         -- TODO ensure blockstmt doesn't end up adding scopes for this case
