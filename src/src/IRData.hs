@@ -122,11 +122,11 @@ data IRCmp
   deriving (Eq)
 
 instance Show IRCmp where
-  show LT = "lt"
+  show IRData.LT = "lt"
   show LE = "le"
-  show GT = "gt"
+  show IRData.GT = "gt"
   show GE = "ge"
-  show EQ = "eq"
+  show IRData.EQ = "eq"
   show NE = "ne"
 
 data LDCType
