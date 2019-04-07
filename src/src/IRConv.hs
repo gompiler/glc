@@ -163,7 +163,7 @@ instance IRRep T.Stmt where
   toIR (T.Print el) = concatMap printIR el
   toIR (T.Println el) =
     intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++
-    printIR (T.Lit $ D.StringLit "\n") -- TODO: Double check escape char here
+    printIR (T.Lit $ D.StringLit "\n")
   toIR (T.Return me) =
     maybe
       (iri [Return Nothing])
