@@ -54,8 +54,12 @@ instance Converter T.Program Program where
       Program
         { package = package
         , structs = structs
+        -- Returns all declared top vars
         , topVars = concat vars
+        -- Contains a single function that calls each of the original
+        -- init functions, in the same order
         , init = createInit $ map funcName initFuncs
+        -- Provides the main function if one is declared, or an empty one otherwise
         , main = createMain mains
         -- Functions contain the list of inits (renamed), and the list of functions, excluding main
         , functions = initFuncs ++ funcs
