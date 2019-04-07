@@ -50,6 +50,7 @@ toClasses (T.Program _ scts tfs is mf tms) =
             iri
               [ InvokeStatic (MethodRef (CRef cMain) "glc_init" emptySpec)
               , InvokeStatic (MethodRef (CRef cMain) "glc_main" emptySpec)
+              , Return Nothing
               ] -- TODO: Field Initialization
         } :
       toMethods tms
