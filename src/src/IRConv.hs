@@ -118,10 +118,12 @@ instance IRRep T.Stmt where
             iri [If IRData.EQ $ "case_" ++ show cIdx ++ "_" ++ show idx] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
   toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =
     toIR lstmt ++
-    IRLabel ("loop_" ++ show idx) : toIR cond ++
+    IRLabel ("loop_" ++ show idx) :
+    toIR cond ++
     iri [If IRData.LE ("end_loop_" ++ show idx)] ++
     toIR fbody ++
-    IRLabel ("post_loop_" ++ show idx) : toIR rstmt ++
+    IRLabel ("post_loop_" ++ show idx) :
+    toIR rstmt ++
     [ IRInst (Goto $ "loop_" ++ show idx)
     , IRLabel ("end_loop_" ++ show idx)
     , IRInst NOp
