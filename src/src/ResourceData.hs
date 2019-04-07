@@ -58,6 +58,7 @@ data Program = Program
   , structs   :: [StructType]
   , topVars   :: [TopVarDecl]
   , init      :: [Stmt]
+  , main      :: [Stmt]
   , functions :: [FuncDecl]
   } deriving (Show, Eq)
 
