@@ -217,7 +217,6 @@ instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
   toIR (T.VoidExprStmt (D.Ident aid) args) -- Akin to Argument without a type
    =
-    iri [Load Object (T.VarIndex 0)] ++ -- this object TODO: SHOULD IT BE STATIC?
     concatMap toIR args ++
     iri
       [ InvokeStatic $
