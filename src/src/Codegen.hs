@@ -44,15 +44,17 @@ instance Bytecode Method where
           [ ".method "
           , "public "
           , mn
-          , "()V" -- No args and return is void until Method implements signature
+          , " : ()V" -- No args and return is void until Method implements signature
           , "\n"
           , "\t.limit stack "
           , show sl
           , "\n"
           , "\t.limit locals "
           , show ll
+          , "\n\n"
           ]
       , B.concat $ map (tab . toBC) bod
+      , bstr ".end method\n"
       ]
 
 instance Bytecode IRItem where
