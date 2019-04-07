@@ -12,6 +12,7 @@ module ResourceData
   , FuncDecl(..)
   , Ident(..)
   , InitDecl(..)
+  , MainDecl(..)
   , Literal(..)
   , ParameterDecl(..)
   , Parameters(..)
@@ -60,6 +61,7 @@ data Program = Program
   , structs   :: [StructType]
   , topVars   :: [TopVarDecl]
   , init      :: InitDecl
+  , main      :: MainDecl
   , functions :: [FuncDecl]
   } deriving (Show, Eq)
 
@@ -76,7 +78,14 @@ newtype LocalLimit =
   LocalLimit Int
   deriving (Show, Eq, Ord)
 
-data InitDecl = InitDecl FuncBody LocalLimit
+data InitDecl =
+  InitDecl FuncBody
+           LocalLimit
+  deriving (Show, Eq)
+
+data MainDecl =
+  MainDecl FuncBody
+           LocalLimit
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -301,14 +310,12 @@ instance Convert Program T.Program where
     T.Program {T.package = package, T.topLevels = topLevels}
     where
       initFunc :: InitDecl -> FuncDecl
-      initFunc (InitDecl body limit)=
-        FuncDecl
-          (Ident "init")
-          (Signature (Parameters []) Nothing)
-          body limit
+      initFunc (InitDecl body limit) =
+        FuncDecl (Ident "init") (Signature (Parameters []) Nothing) body limit
       topLevels =
         convert structs ++
-        convert topVars ++ map T.TopFuncDecl (convert $ initFunc init : functions)
+        convert topVars ++
+        map T.TopFuncDecl (convert $ initFunc init : functions)
 
 instance Convert StructType T.TopDecl where
   convert t = T.TopDecl $ T.TypeDef [convert t]
