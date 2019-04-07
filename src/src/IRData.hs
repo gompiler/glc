@@ -185,6 +185,7 @@ data Instruction
              JType
   | InvokeSpecial MethodRef -- method spec
   | InvokeVirtual MethodRef -- method spec
+  | InvokeStatic MethodRef
   | Debug String -- TODO: remove
   deriving (Show, Eq)
 
@@ -210,7 +211,7 @@ stringBuilder :: ClassRef
 stringBuilder = ClassRef "java/lang/StringBuilder"
 
 sbInit :: MethodRef
-sbInit = MethodRef (CRef stringBuilder) "<init>" (MethodSpec ([], JVoid))
+sbInit = MethodRef (CRef stringBuilder) "<init>" emptySpec
 
 sbAppend :: MethodRef
 sbAppend =
@@ -225,6 +226,12 @@ sbToString =
 
 jObject :: ClassRef
 jObject = ClassRef "java/lang/Object"
+
+emptySpec :: MethodSpec
+emptySpec = MethodSpec ([], JVoid)
+
+cMain :: ClassRef
+cMain = ClassRef "Main"
 
 -- Custom-defined methods
 glcUtils :: ClassRef

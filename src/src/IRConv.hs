@@ -19,7 +19,7 @@ genIR :: String -> Glc [Class]
 genIR code = toClasses . convertProgram <$> S.typecheckGen code
 
 toClasses :: T.Program -> [Class]
-toClasses (T.Program _ scts tfs is tms) =
+toClasses (T.Program _ scts tfs is mf tms) =
   Class {cname = "Main", fields = cFields, methods = cMethods} :
   map structClass scts -- TODO
   where
@@ -28,18 +28,40 @@ toClasses (T.Program _ scts tfs is tms) =
     cMethods :: [Method]
     cMethods =
       Method
-        { mname = "glc_fn__init"
-        , stackLimit = maxStack
-        , localsLimit = 25
-        , spec = MethodSpec ([], JVoid)
+        { mname = "glc_init"
+        , stackLimit = maxStackInit
+        , localsLimit = 25 -- TODO
+        , spec = emptySpec
         , body = irBody
+        } :
+      Method
+        { mname = "glc_main"
+        , stackLimit = maxStackMain
+        , localsLimit = 25 -- TODO
+        , spec = emptySpec
+        , body = mfBody
+        } :
+      Method
+        { mname = "main"
+        , stackLimit = 25 -- TODO
+        , localsLimit = 25 -- TODO
+        , spec = MethodSpec ([JArray (JClass jString)], JVoid)
+        , body =
+            iri
+              [ InvokeStatic (MethodRef (CRef cMain) "glc_init" emptySpec)
+              , InvokeStatic (MethodRef (CRef cMain) "glc_main" emptySpec)
+              ] -- TODO: Field Initialization
         } :
       toMethods tms
       where
         irBody :: [IRItem]
         irBody = concatMap toIR is
-        maxStack :: Int
-        maxStack = maxStackSize irBody 0
+        maxStackInit :: Int
+        maxStackInit = maxStackSize irBody 0
+        mfBody :: [IRItem]
+        mfBody = concatMap toIR mf
+        maxStackMain :: Int
+        maxStackMain = maxStackSize mfBody 0
     vdToField :: T.TopVarDecl -> Field
     vdToField (T.TopVarDecl fi t _) =
       Field
@@ -198,11 +220,8 @@ instance IRRep T.SimpleStmt where
     iri [Load Object (T.VarIndex 0)] ++ -- this object TODO: SHOULD IT BE STATIC?
     concatMap toIR args ++
     iri
-      [ InvokeVirtual $
-        MethodRef
-          (CRef (ClassRef "Main"))
-          aid
-          (MethodSpec (map exprJType args, JVoid))
+      [ InvokeStatic $
+        MethodRef (CRef cMain) aid (MethodSpec (map exprJType args, JVoid))
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR (T.Assign (T.AssignOp mAop) pairs) =
@@ -430,7 +449,7 @@ instance IRRep T.Expr where
   toIR (T.Lit l) = toIR l
   toIR (T.Var t vi) = iri [Load (typeToIRType t) vi]
   toIR (T.TopVar t tvi) =
-    iri [GetField (FieldRef (ClassRef "Main") (tVarStr tvi)) (typeToJType t)]
+    iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
   toIR T.AppendExpr {} = undefined -- TODO
   toIR (T.LenExpr e) =
     case exprType e of
@@ -456,9 +475,9 @@ instance IRRep T.Expr where
     iri [Load Object (T.VarIndex 0)] ++ -- this object
     concatMap toIR args ++
     iri
-      [ InvokeVirtual $
+      [ InvokeStatic $
         MethodRef
-          (CRef (ClassRef "Main"))
+          (CRef cMain)
           aid
           (MethodSpec (map exprJType args, typeToJType t))
       ]
@@ -579,6 +598,7 @@ stackDelta GetField {} = 0 -- ..., o -> ..., v
 stackDelta PutField {} = -2 -- ..., o, v -> ...
 stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
 stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
+stackDelta (InvokeStatic (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) + 1 -- ..., a1, .., an -> r
 stackDelta Debug {} = 0
 
 maxStackSize :: [IRItem] -> Int -> Int
