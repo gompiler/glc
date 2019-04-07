@@ -307,8 +307,8 @@ instance IRRep T.Expr where
       _          -> undefined -- Cannot take negative of other types
     where
       intPattern :: [IRItem]
-      intPattern = toIR e ++ iri [LDC (LDCInt (-1)), Mul IRInt]
-  toIR (T.Unary _ D.Not e) = toIR e ++ iri [LDC (LDCInt 1), IXOr] -- !i is equivalent to i XOR 1
+      intPattern = toIR e ++ iri [IConstM1, Mul IRInt]
+  toIR (T.Unary _ D.Not e) = toIR e ++ iri [IConst1, IXOr] -- !i is equivalent to i XOR 1
   toIR (T.Unary _ D.BitComplement e) = toIR e ++ iri [IConstM1, IXOr] -- all ones, XOR
   toIR (T.Binary _ t (D.Arithm D.Add) e1 e2) =
     case t of
