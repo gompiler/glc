@@ -7,6 +7,7 @@
 -- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
 -- http://www.cs.sjsu.edu/~pearce/modules/lectures/co/jvm/jasmin/demos/demos.html
 -- http://homepages.inf.ed.ac.uk/kwxm/JVM/fcmpg.html
+-- https://stackoverflow.com/questions/43782187/why-does-go-have-a-bit-clear-and-not-operator
 module IRData where
 
 import           ResourceData (VarIndex)
@@ -84,7 +85,7 @@ data JType
   = JClass ClassRef -- Lwhatever;
   | JArray JType -- [ as a prefix, ex. [I
   | JInt -- I
-  | JFloat -- F
+  | JDouble -- D
   | JBool -- Z
   | JVoid -- V
   deriving (Eq)
@@ -93,7 +94,7 @@ instance Show JType where
   show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
   show (JArray jt)            = "[" ++ show jt
   show JInt                   = "I"
-  show JFloat                 = "F"
+  show JDouble                = "D"
   show JBool                  = "Z"
   show JVoid                  = "V"
 
@@ -104,7 +105,7 @@ data IRItem
 
 data IRPrimitive
   = IRInt -- Integers, booleans, runes
-  | IRFloat -- Float64s
+  | IRDouble -- Float64s
   deriving (Show, Eq)
 
 data IRType
@@ -123,15 +124,15 @@ data IRCmp
 
 instance Show IRCmp where
   show IRData.LT = "lt"
-  show LE = "le"
+  show LE        = "le"
   show IRData.GT = "gt"
-  show GE = "ge"
+  show GE        = "ge"
   show IRData.EQ = "eq"
-  show NE = "ne"
+  show NE        = "ne"
 
 data LDCType
   = LDCInt Int -- Integers, booleans, runes
-  | LDCFloat Float -- Float64s
+  | LDCDouble Float -- Float64s
   | LDCString String -- Strings
   deriving (Show, Eq)
 
@@ -161,7 +162,7 @@ data Instruction
        LabelName
   | IfICmp IRCmp
            LabelName
-  | LDC LDCType -- pushes an int/float/string value onto the stack
+  | LDC LDCType -- pushes an int/double/string value onto the stack
   | IConstM1 -- -1
   | IConst0 -- 0
   | IConst1 -- 1
@@ -176,6 +177,8 @@ data Instruction
               JType -- field spec, descriptor
   | GetField FieldRef
              JType
+  | PutField FieldRef
+             JType
   | InvokeSpecial MethodRef -- method spec
   | InvokeVirtual MethodRef -- method spec
   | Debug String -- TODO: remove
@@ -185,14 +188,31 @@ data Instruction
 systemOut :: FieldRef
 systemOut = FieldRef (ClassRef "java/lang/System") "out"
 
+jString :: ClassRef
+jString = ClassRef "java/lang/String"
+
+stringCompare :: MethodRef
+stringCompare = MethodRef (CRef jString) "compareTo" [JClass jString] JInt
+
 printStream :: ClassRef
 printStream = ClassRef "java/io/PrintStream"
 
 stringBuilder :: ClassRef
 stringBuilder = ClassRef "java/lang/StringBuilder"
 
-jString :: ClassRef
-jString = ClassRef "java/lang/String"
+sbInit :: MethodRef
+sbInit = MethodRef (CRef stringBuilder) "<init>" [] JVoid
+
+sbAppend :: MethodRef
+sbAppend =
+  MethodRef
+    (CRef stringBuilder)
+    "append"
+    [JClass jString]
+    (JClass stringBuilder)
+
+sbToString :: MethodRef
+sbToString = MethodRef (CRef stringBuilder) "toString" [] (JClass jString)
 
 jObject :: ClassRef
 jObject = ClassRef "java/lang/Object"
