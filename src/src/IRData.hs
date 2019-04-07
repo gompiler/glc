@@ -33,6 +33,10 @@ instance Show FieldAccess where
   show FVolatile  = "volatile"
   show FTransient = "transient"
 
+newtype MethodSpec =
+  MethodSpec ([JType], JType)
+  deriving (Show, Eq)
+
 data Field = Field
   { access     :: FieldAccess
   , fname      :: String
@@ -50,6 +54,7 @@ data Method = Method
   { mname       :: String
   , stackLimit  :: Int
   , localsLimit :: Int
+  , spec        :: MethodSpec
   , body        :: [IRItem]
   } deriving (Show, Eq)
 
@@ -70,14 +75,13 @@ data FieldRef =
 data MethodRef =
   MethodRef ClassOrArrayRef
             String
-            [JType]
-            JType
+            MethodSpec
   deriving (Eq)
 
 instance Show MethodRef where
-  show (MethodRef (CRef (ClassRef cn)) mn tl t) =
+  show (MethodRef (CRef (ClassRef cn)) mn (MethodSpec (tl, t))) =
     "Method " ++ cn ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
-  show (MethodRef (ARef jt) mn tl t) =
+  show (MethodRef (ARef jt) mn (MethodSpec (tl, t))) =
     "Method [" ++
     show jt ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
 
@@ -181,6 +185,7 @@ data Instruction
              JType
   | InvokeSpecial MethodRef -- method spec
   | InvokeVirtual MethodRef -- method spec
+  | InvokeStatic MethodRef
   | Debug String -- TODO: remove
   deriving (Show, Eq)
 
@@ -191,8 +196,13 @@ systemOut = FieldRef (ClassRef "java/lang/System") "out"
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
 
+stringEquals :: MethodRef
+stringEquals =
+  MethodRef (CRef jString) "equals" (MethodSpec ([JClass jString], JBool))
+
 stringCompare :: MethodRef
-stringCompare = MethodRef (CRef jString) "compareTo" [JClass jString] JInt
+stringCompare =
+  MethodRef (CRef jString) "compareTo" (MethodSpec ([JClass jString], JInt))
 
 printStream :: ClassRef
 printStream = ClassRef "java/io/PrintStream"
@@ -201,21 +211,27 @@ stringBuilder :: ClassRef
 stringBuilder = ClassRef "java/lang/StringBuilder"
 
 sbInit :: MethodRef
-sbInit = MethodRef (CRef stringBuilder) "<init>" [] JVoid
+sbInit = MethodRef (CRef stringBuilder) "<init>" emptySpec
 
 sbAppend :: MethodRef
 sbAppend =
   MethodRef
     (CRef stringBuilder)
     "append"
-    [JClass jString]
-    (JClass stringBuilder)
+    (MethodSpec ([JClass jString], JClass stringBuilder))
 
 sbToString :: MethodRef
-sbToString = MethodRef (CRef stringBuilder) "toString" [] (JClass jString)
+sbToString =
+  MethodRef (CRef stringBuilder) "toString" (MethodSpec ([], JClass jString))
 
 jObject :: ClassRef
 jObject = ClassRef "java/lang/Object"
+
+emptySpec :: MethodSpec
+emptySpec = MethodSpec ([], JVoid)
+
+cMain :: ClassRef
+cMain = ClassRef "Main"
 
 -- Custom-defined methods
 glcUtils :: ClassRef

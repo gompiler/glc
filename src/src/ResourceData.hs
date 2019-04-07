@@ -58,6 +58,7 @@ data Program = Program
   , structs   :: [StructType]
   , topVars   :: [TopVarDecl]
   , init      :: [Stmt]
+  , main      :: [Stmt]
   , functions :: [FuncDecl]
   } deriving (Show, Eq)
 
@@ -121,9 +122,6 @@ data SimpleStmt
   | ExprStmt Expr
   | VoidExprStmt Ident
                  [Expr]
-  -- | See https://golang.org/ref/spec#IncDecStmt
-  | Increment Expr
-  | Decrement Expr
   -- | See https://golang.org/ref/spec#Assignments
   | Assign AssignOp
            (NonEmpty (Expr, Expr))
@@ -212,6 +210,7 @@ data Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
+  | TopVar Type Ident
   -- | See https://golang.org/ref/spec#OperandName
   | Var Type
         VarIndex
@@ -327,8 +326,6 @@ instance Convert SimpleStmt T.SimpleStmt where
   convert EmptyStmt              = T.EmptyStmt
   convert (ExprStmt e)           = T.ExprStmt $ convert e
   convert (VoidExprStmt i exprs) = T.VoidExprStmt i $ convert exprs
-  convert (Increment e)          = T.Increment $ convert e
-  convert (Decrement e)          = T.Decrement $ convert e
   convert (Assign op eltup)      = T.Assign op (convert eltup)
   convert (ShortDeclare ideltup) = T.ShortDeclare (convert ideltup)
 
@@ -363,6 +360,7 @@ instance Convert Expr T.Expr where
   convert (Binary _ t op e1 e2) =
     T.Binary (convert t) op (convert e1) (convert e2)
   convert (Lit lit) = T.Lit lit
+  convert (TopVar t i) = T.Var (convert t) (convert i)
   convert (Var t i) = T.Var (convert t) (convert i)
   convert (AppendExpr t e1 e2) =
     T.AppendExpr (convert t) (convert e1) (convert e2)

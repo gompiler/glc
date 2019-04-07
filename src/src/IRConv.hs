@@ -19,7 +19,7 @@ genIR :: String -> Glc [Class]
 genIR code = toClasses . convertProgram <$> S.typecheckGen code
 
 toClasses :: T.Program -> [Class]
-toClasses (T.Program _ scts tfs is tms) =
+toClasses (T.Program _ scts tfs is mf tms) =
   Class {cname = "Main", fields = cFields, methods = cMethods} :
   map structClass scts -- TODO
   where
@@ -28,22 +28,45 @@ toClasses (T.Program _ scts tfs is tms) =
     cMethods :: [Method]
     cMethods =
       Method
-        { mname = "glc_fn__init"
-        , stackLimit = maxStack
-        , localsLimit = 25
+        { mname = "glc_init"
+        , stackLimit = maxStackInit
+        , localsLimit = 25 -- TODO
+        , spec = emptySpec
         , body = irBody
+        } :
+      Method
+        { mname = "glc_main"
+        , stackLimit = maxStackMain
+        , localsLimit = 25 -- TODO
+        , spec = emptySpec
+        , body = mfBody
+        } :
+      Method
+        { mname = "main"
+        , stackLimit = 25 -- TODO
+        , localsLimit = 25 -- TODO
+        , spec = MethodSpec ([JArray (JClass jString)], JVoid)
+        , body =
+            iri
+              [ InvokeStatic (MethodRef (CRef cMain) "glc_init" emptySpec)
+              , InvokeStatic (MethodRef (CRef cMain) "glc_main" emptySpec)
+              ] -- TODO: Field Initialization
         } :
       toMethods tms
       where
         irBody :: [IRItem]
         irBody = concatMap toIR is
-        maxStack :: Int
-        maxStack = maxStackSize irBody 0
+        maxStackInit :: Int
+        maxStackInit = maxStackSize irBody 0
+        mfBody :: [IRItem]
+        mfBody = concatMap toIR mf
+        maxStackMain :: Int
+        maxStackMain = maxStackSize mfBody 0
     vdToField :: T.TopVarDecl -> Field
-    vdToField (T.TopVarDecl (D.Ident fi) t _) =
+    vdToField (T.TopVarDecl fi t _) =
       Field
         { access = FProtected
-        , fname = "glc_fd__" ++ fi
+        , fname = tVarStr fi
         , descriptor = typeToJType t
       -- , value = Nothing
         }
@@ -51,11 +74,12 @@ toClasses (T.Program _ scts tfs is tms) =
     toMethods = map fdToMethod
       where
         fdToMethod :: T.FuncDecl -> Method
-        fdToMethod (T.FuncDecl (D.Ident fni) _ fb) =
+        fdToMethod (T.FuncDecl (D.Ident fni) sig fb) =
           Method
             { mname = "glc_fn__" ++ fni
             , stackLimit = maxStack
             , localsLimit = 25 -- TODO
+            , spec = sigToSpec sig
             , body = irBody
             }
           where
@@ -63,6 +87,13 @@ toClasses (T.Program _ scts tfs is tms) =
             irBody = toIR fb
             maxStack :: Int
             maxStack = maxStackSize irBody 0
+            sigToSpec :: T.Signature -> MethodSpec
+            sigToSpec (T.Signature (T.Parameters pdl) mr) =
+              MethodSpec (map (typeToJType . pdToType) pdl, mrToJType mr)
+            pdToType :: T.ParameterDecl -> T.Type
+            pdToType (T.ParameterDecl _ t) = t
+            mrToJType :: Maybe T.Type -> JType
+            mrToJType mr = maybe JVoid typeToJType mr
     structClass :: T.StructType -> Class
     structClass (T.Struct (D.Ident sid) fdls) =
       Class
@@ -101,8 +132,7 @@ instance IRRep T.Stmt where
       -- duplicate expression for case statement expressions in lists
     where
       irCase :: (Int, T.SwitchCase) -> [IRItem]
-      irCase (cIdx, T.Case exprs stmt) -- concat $ map (toIR . some equality check) exprs
-       =
+      irCase (cIdx, T.Case exprs stmt) =
         concat (NE.map toCaseHeader exprs) ++
         [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
         toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
@@ -154,21 +184,33 @@ printIR e =
     printLoad = iri [GetStatic systemOut (JClass printStream)]
     intPrint :: [IRItem]
     intPrint =
-      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JInt] JVoid]
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef printStream) "print" (MethodSpec ([JInt], JVoid))
+        ]
     floatPrint :: [IRItem]
     floatPrint =
-      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JDouble] JVoid]
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef printStream) "print" (MethodSpec ([JDouble], JVoid))
+        ]
     stringPrint :: [IRItem]
     stringPrint =
       iri
         [ InvokeVirtual $
-          MethodRef (CRef printStream) "print" [JClass jString] JVoid
+          MethodRef
+            (CRef printStream)
+            "print"
+            (MethodSpec ([JClass jString], JVoid))
         ]
     boolToString :: [IRItem]
     boolToString =
       iri
         [ InvokeVirtual $
-          MethodRef (CRef glcUtils) "boolStr" [JInt] (JClass jString)
+          MethodRef
+            (CRef glcUtils)
+            "boolStr"
+            (MethodSpec ([JInt], JClass jString))
         ]
 
 instance IRRep T.SimpleStmt where
@@ -178,28 +220,10 @@ instance IRRep T.SimpleStmt where
     iri [Load Object (T.VarIndex 0)] ++ -- this object TODO: SHOULD IT BE STATIC?
     concatMap toIR args ++
     iri
-      [ InvokeVirtual $
-        MethodRef (CRef (ClassRef "Main")) aid (map exprJType args) JVoid
+      [ InvokeStatic $
+        MethodRef (CRef cMain) aid (MethodSpec (map exprJType args, JVoid))
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
-  toIR (T.Increment e) = incDec e irType addValue
-    where
-      irType :: IRType
-      irType = exprIRType e
-      addValue :: IRPrimitive -> Instruction
-      addValue p =
-        case p of
-          IRInt    -> IConst1
-          IRDouble -> LDC (LDCDouble 1.0)
-  toIR (T.Decrement e) = incDec e irType addValue
-    where
-      irType :: IRType
-      irType = exprIRType e
-      addValue :: IRPrimitive -> Instruction
-      addValue p =
-        case p of
-          IRInt    -> IConstM1
-          IRDouble -> LDC (LDCDouble $ -1.0)
   toIR (T.Assign (T.AssignOp mAop) pairs) =
     concatMap getValue (NE.toList pairs) ++
     concatMap getStore (reverse $ NE.toList pairs)
@@ -261,7 +285,7 @@ instance IRRep T.SimpleStmt where
                       (T.BitAnd, Prim _) -> iri [IAnd]
                       (T.BitOr, Prim _) -> iri [IAnd]
                       (T.BitXor, Prim _) -> iri [IXOr]
-                      (T.BitClear, Prim _) -> undefined -- TODO: HOW?
+                      (T.BitClear, Prim _) -> iri [IConstM1, IXOr, IAnd]
                       _ -> error "Invalid operation on non-primitive"
       getStore :: (T.Expr, T.Expr) -> [IRItem]
       getStore (e, _) =
@@ -277,7 +301,7 @@ instance IRRep T.SimpleStmt where
               T.ArrayType {} -> iri [ArrayStore irType] -- matched with above
               T.SliceType {} -> undefined -- TODO
               _              -> error "Cannot index non-array/slice"
-          _ -> undefined -- TODO: Index, Selector
+          _ -> error "Cannot assign to non-addressable value"
         where
           irType :: IRType
           irType = exprIRType e
@@ -304,7 +328,7 @@ instance IRRep T.Expr where
       T.PInt     -> intPattern
       T.PFloat64 -> toIR e ++ iri [LDC (LDCDouble (-1.0)), Mul IRDouble]
       T.PRune    -> intPattern
-      _          -> undefined -- Cannot take negative of other types
+      _          -> error "Cannot negate non-numeric types"
     where
       intPattern :: [IRItem]
       intPattern = toIR e ++ iri [IConstM1, Mul IRInt]
@@ -342,13 +366,53 @@ instance IRRep T.Expr where
           D.Add       -> undefined -- handled above
   toIR (T.Binary (T.LabelIndex idx) _ T.Or e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.NE ("true_ne_" ++ show idx), Pop] ++
-    toIR e2 ++ [IRLabel ("true_ne_" ++ show idx)]
+    iri [Dup, If IRData.NE ("true_or_" ++ show idx), Pop] ++
+    toIR e2 ++ [IRLabel ("true_or_" ++ show idx)]
   toIR (T.Binary (T.LabelIndex idx) _ T.And e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.EQ ("false_eq_" ++ show idx), Pop] ++
-    toIR e2 ++ [IRLabel ("false_eq_" ++ show idx)]
-  toIR (T.Binary _ _ T.EQ _ _) = undefined -- TODO
+    iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
+    toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
+  toIR (T.Binary (T.LabelIndex idx) t T.EQ e1 e2) =
+    case t of
+      T.ArrayType {} -> undefined -- TODO
+      T.PString ->
+        toIR e1 ++
+        toIR e2 ++
+        iri
+          [ InvokeVirtual stringEquals
+          , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
+          , Goto ("stop_eq_" ++ show idx)
+          ] ++
+        eqPostfix
+      (T.StructType (D.Ident _)) -> undefined -- TODO
+      T.PFloat64 ->
+        toIR e1 ++
+        toIR e2 ++
+        iri
+          [ DCmpG
+          , If IRData.EQ ("true_eq_" ++ show idx) -- dcmpg is 0, they're equal
+          , Goto ("stop_eq_" ++ show idx)
+          ] ++
+        eqPostfix
+      T.SliceType {} -> error "Cannot compare slice equality"
+      _
+        -- Integer types
+       ->
+        toIR e1 ++
+        toIR e2 ++
+        iri
+          [ IfICmp IRData.EQ ("true_eq_" ++ show idx)
+          , IConst0
+          , Goto ("stop_eq_" ++ show idx)
+          ] ++
+        eqPostfix
+    where
+      eqPostfix :: [IRItem]
+      eqPostfix =
+        [ IRLabel ("true_eq_" ++ show idx)
+        , IRInst IConst1
+        , IRLabel ("stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
+        ]
   toIR (T.Binary idx t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary idx t T.EQ e1 e2)) -- != is =, !
   toIR (T.Binary (T.LabelIndex idx) _ op e1 e2) -- comparisons
@@ -373,7 +437,7 @@ instance IRRep T.Expr where
           JDouble -> iri [DCmpG, If irCmp trueLabel]
           JClass (ClassRef "java/lang/String") ->
             iri [InvokeVirtual stringCompare, If irCmp trueLabel]
-          _ -> undefined -- Comparisons not defined for anything else
+          _ -> error "Cannot compare non-comparable types"
       irCmp :: IRCmp
       irCmp =
         case op of
@@ -384,12 +448,14 @@ instance IRRep T.Expr where
           _     -> undefined -- Handled above
   toIR (T.Lit l) = toIR l
   toIR (T.Var t vi) = iri [Load (typeToIRType t) vi]
+  toIR (T.TopVar t tvi) =
+    iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
   toIR T.AppendExpr {} = undefined -- TODO
   toIR (T.LenExpr e) =
     case exprType e of
       T.ArrayType l _ -> iri [LDC (LDCInt l)] -- fixed at compile time
       T.SliceType _   -> undefined -- TODO
-      _               -> undefined -- Can't take length of anything else
+      _               -> error "Cannot get length of non-array/slice"
   toIR T.CapExpr {} = undefined -- TODO
   toIR (T.Selector t e (T.Ident fid)) =
     toIR e ++ iri [GetField fr (typeToJType t)]
@@ -398,23 +464,22 @@ instance IRRep T.Expr where
       fr =
         case exprJType e of
           JClass cref -> FieldRef cref fid
-          _           -> undefined -- Can't get field on non-class
+          _           -> error "Cannot get field of non-object"
   toIR (T.Index t e1 e2) =
     case exprType e1 of
       T.ArrayType _ _ -- TODO: CHECK LENGTH HERE?
        -> toIR e1 ++ toIR e2 ++ iri [ArrayLoad (typeToIRType t)]
       T.SliceType {} -> undefined -- TODO
-      _ -> undefined -- Cannot index any other type
+      _ -> error "Cannot index non-array/slice"
   toIR (T.Arguments t (D.Ident aid) args) =
     iri [Load Object (T.VarIndex 0)] ++ -- this object
     concatMap toIR args ++
     iri
-      [ InvokeVirtual $
+      [ InvokeStatic $
         MethodRef
-          (CRef (ClassRef "Main"))
+          (CRef cMain)
           aid
-          (map exprJType args)
-          (typeToJType t)
+          (MethodSpec (map exprJType args, typeToJType t))
       ]
 
 instance IRRep D.Literal where
@@ -430,40 +495,22 @@ iri = map IRInst
 binary :: T.Expr -> T.Expr -> [Instruction] -> [IRItem]
 binary e1 e2 insts = toIR e1 ++ toIR e2 ++ iri insts
 
-incDec :: T.Expr -> IRType -> (IRPrimitive -> Instruction) -> [IRItem]
-incDec e irType addValue =
-  case (e, irType) of
-    (_, Object) -> error "Cannot increment object"
-    (T.Var _ idx, Prim p) ->
-      iri [Load irType idx, addValue p, Add p, Store irType idx]
-    (T.Selector t eo (T.Ident fid), Prim _) ->
-      case exprJType eo of
-        JClass cr ->
-          toIR eo ++ iri [GetField (FieldRef cr fid) (typeToJType t)] -- TODO: NEED TO STORE AGAIN!
-        _ -> error "Cannot get field of non-object"
-    (T.Index _ ea ei, Prim p) ->
-      case exprType ea of
-        T.ArrayType {} ->
-          toIR ea ++
-          toIR ei ++
-          iri
-            [ Dup2 -- Duplicate addressable and index at the same time
-            , ArrayLoad irType
-            , addValue p
-            , Add p
-            , ArrayStore irType
-            ]
-        T.SliceType {} -> undefined -- TODO
-        _ -> error "Cannot index non-array/slice"
-    _ -> undefined -- Cannot increment non-addressable value
+tVarStr :: T.Ident -> String
+tVarStr (T.Ident tvs) = "glc_fd__" ++ tvs
 
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
   case exprJType e of
     JClass cr ->
-      iri [InvokeVirtual $ MethodRef (CRef cr) "clone" [] (JClass jObject)]
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
+        ]
     JArray jt ->
-      iri [InvokeVirtual $ MethodRef (ARef jt) "clone" [] (JClass jObject)]
+      iri
+        [ InvokeVirtual $
+          MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
+        ]
     _ -> [] -- Primitives and strings are not clonable
 
 exprType :: T.Expr -> T.Type
@@ -471,6 +518,7 @@ exprType (T.Unary t _ _)      = t
 exprType (T.Binary _ t _ _ _) = t
 exprType (T.Lit l)            = getLiteralType l
 exprType (T.Var t _)          = t
+exprType (T.TopVar t _)       = t
 exprType (T.AppendExpr t _ _) = t
 exprType (T.LenExpr _)        = T.PInt
 exprType (T.CapExpr _)        = T.PInt
@@ -503,7 +551,7 @@ getLiteralType (D.StringLit _) = T.PString
 
 typeToJType :: T.Type -> JType
 typeToJType (T.ArrayType _ t) = JArray (typeToJType t)
-typeToJType T.SliceType {} = undefined -- TODO
+typeToJType T.SliceType {} = undefined -- TODO: JClass (...)
 typeToJType T.PInt = JInt
 typeToJType T.PFloat64 = JDouble
 typeToJType T.PRune = JInt
@@ -513,44 +561,45 @@ typeToJType (T.StructType (D.Ident sid)) =
   JClass (ClassRef $ "GlcStruct__" ++ sid)
 
 stackDelta :: Instruction -> Int
-stackDelta Load {}                             = 1 -- ... -> ..., v
-stackDelta ArrayLoad {}                        = -1 -- ..., o, i -> v
-stackDelta Store {}                            = -1 -- ..., v -> ...
-stackDelta ArrayStore {}                       = -3 -- ..., o, i, v -> ...
-stackDelta (Return m)                          = maybe 0 (const $ -1) m
-stackDelta Dup                                 = 1 -- ..., v -> ..., v, v
-stackDelta Dup2                                = 2 -- ..., v, w -> ..., v, w, v, w
-stackDelta Goto {}                             = 0
-stackDelta Add {}                              = -1 -- ..., v, w -> ..., r
-stackDelta Div {}                              = -1 -- ..., v, w -> ..., r
-stackDelta Mul {}                              = -1 -- ..., v, w -> ..., r
-stackDelta Neg {}                              = -1 -- ..., v, w -> ..., r
-stackDelta Sub {}                              = -1 -- ..., v, w -> ..., r
-stackDelta IRem                                = -1 -- ..., v, w -> ..., r
-stackDelta IShL                                = -1 -- ..., v, w -> ..., r
-stackDelta IShR                                = -1 -- ..., v, w -> ..., r
-stackDelta IAnd                                = -1 -- ..., v, w -> ..., r
-stackDelta IOr                                 = -1 -- ..., v, w -> ..., r
-stackDelta IXOr                                = -1 -- ..., v, w -> ..., r
-stackDelta If {}                               = -1 -- ..., v -> ...
-stackDelta IfICmp {}                           = -2 -- ..., v, w -> ...
-stackDelta LDC {}                              = 1 -- ... -> ..., v
-stackDelta IConstM1                            = 1 -- ... -> ..., -1
-stackDelta IConst0                             = 1 -- ... -> ..., 0
-stackDelta IConst1                             = 1 -- ... -> ..., 1
-stackDelta DCmpG                               = 1 -- ..., v1, v2 -> ..., r
-stackDelta New {}                              = 1 -- ... -> ..., o
-stackDelta ANewArray {}                        = 0 -- ..., c -> ..., o
-stackDelta NewArray {}                         = 0 -- ..., c -> ..., o
-stackDelta NOp                                 = 0
-stackDelta Pop                                 = -1 -- ..., v -> ...
-stackDelta Swap                                = 0 -- ..., v, w -> ..., w, v
-stackDelta GetStatic {}                        = 1 -- ... -> ..., v
-stackDelta GetField {}                         = 0 -- ..., o -> ..., v
-stackDelta PutField {}                         = -2 -- ..., o, v -> ...
-stackDelta (InvokeSpecial (MethodRef _ _ a _)) = -(length a) -- ..., o, a1, .., an -> r
-stackDelta (InvokeVirtual (MethodRef _ _ a _)) = -(length a) -- ..., o, a1, .., an -> r
-stackDelta Debug {}                            = 0
+stackDelta Load {} = 1 -- ... -> ..., v
+stackDelta ArrayLoad {} = -1 -- ..., o, i -> v
+stackDelta Store {} = -1 -- ..., v -> ...
+stackDelta ArrayStore {} = -3 -- ..., o, i, v -> ...
+stackDelta (Return m) = maybe 0 (const $ -1) m
+stackDelta Dup = 1 -- ..., v -> ..., v, v
+stackDelta Dup2 = 2 -- ..., v, w -> ..., v, w, v, w
+stackDelta Goto {} = 0
+stackDelta Add {} = -1 -- ..., v, w -> ..., r
+stackDelta Div {} = -1 -- ..., v, w -> ..., r
+stackDelta Mul {} = -1 -- ..., v, w -> ..., r
+stackDelta Neg {} = -1 -- ..., v, w -> ..., r
+stackDelta Sub {} = -1 -- ..., v, w -> ..., r
+stackDelta IRem = -1 -- ..., v, w -> ..., r
+stackDelta IShL = -1 -- ..., v, w -> ..., r
+stackDelta IShR = -1 -- ..., v, w -> ..., r
+stackDelta IAnd = -1 -- ..., v, w -> ..., r
+stackDelta IOr = -1 -- ..., v, w -> ..., r
+stackDelta IXOr = -1 -- ..., v, w -> ..., r
+stackDelta If {} = -1 -- ..., v -> ...
+stackDelta IfICmp {} = -2 -- ..., v, w -> ...
+stackDelta LDC {} = 1 -- ... -> ..., v
+stackDelta IConstM1 = 1 -- ... -> ..., -1
+stackDelta IConst0 = 1 -- ... -> ..., 0
+stackDelta IConst1 = 1 -- ... -> ..., 1
+stackDelta DCmpG = 1 -- ..., v1, v2 -> ..., r
+stackDelta New {} = 1 -- ... -> ..., o
+stackDelta ANewArray {} = 0 -- ..., c -> ..., o
+stackDelta NewArray {} = 0 -- ..., c -> ..., o
+stackDelta NOp = 0
+stackDelta Pop = -1 -- ..., v -> ...
+stackDelta Swap = 0 -- ..., v, w -> ..., w, v
+stackDelta GetStatic {} = 1 -- ... -> ..., v
+stackDelta GetField {} = 0 -- ..., o -> ..., v
+stackDelta PutField {} = -2 -- ..., o, v -> ...
+stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
+stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
+stackDelta (InvokeStatic (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) + 1 -- ..., a1, .., an -> r
+stackDelta Debug {} = 0
 
 maxStackSize :: [IRItem] -> Int -> Int
 maxStackSize irs current =
