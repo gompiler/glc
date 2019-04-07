@@ -90,7 +90,7 @@ instance Bytecode Instruction where
       suffix lt' = bstrM $ case lt' of
                             LDCInt i -> [" ", show i]
                             LDCFloat f -> ["2_w ", show f] -- Check if this is in the right format
-                            LDCString s -> ["_w ", s]
+                            LDCString s -> ["_w ", show s]
   toBC IConstM1 = bstr "iconst_m1\n"
   toBC IConst0 = bstr "iconst_0\n"
   toBC IConst1 = bstr "iconst_1\n"
