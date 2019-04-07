@@ -182,24 +182,6 @@ instance IRRep T.SimpleStmt where
         MethodRef (CRef (ClassRef "Main")) aid (map exprJType args) JVoid
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
-  toIR (T.Increment e) = incDec e irType addValue
-    where
-      irType :: IRType
-      irType = exprIRType e
-      addValue :: IRPrimitive -> Instruction
-      addValue p =
-        case p of
-          IRInt    -> IConst1
-          IRDouble -> LDC (LDCDouble 1.0)
-  toIR (T.Decrement e) = incDec e irType addValue
-    where
-      irType :: IRType
-      irType = exprIRType e
-      addValue :: IRPrimitive -> Instruction
-      addValue p =
-        case p of
-          IRInt    -> IConstM1
-          IRDouble -> LDC (LDCDouble $ -1.0)
   toIR (T.Assign (T.AssignOp mAop) pairs) =
     concatMap getValue (NE.toList pairs) ++
     concatMap getStore (reverse $ NE.toList pairs)
@@ -471,33 +453,6 @@ iri = map IRInst
 
 binary :: T.Expr -> T.Expr -> [Instruction] -> [IRItem]
 binary e1 e2 insts = toIR e1 ++ toIR e2 ++ iri insts
-
-incDec :: T.Expr -> IRType -> (IRPrimitive -> Instruction) -> [IRItem]
-incDec e irType addValue =
-  case (e, irType) of
-    (_, Object) -> error "Cannot increment object"
-    (T.Var _ idx, Prim p) ->
-      iri [Load irType idx, addValue p, Add p, Store irType idx]
-    (T.Selector t eo (T.Ident fid), Prim _) ->
-      case exprJType eo of
-        JClass cr ->
-          toIR eo ++ iri [GetField (FieldRef cr fid) (typeToJType t)] -- TODO: NEED TO STORE AGAIN!
-        _ -> error "Cannot get field of non-object"
-    (T.Index _ ea ei, Prim p) ->
-      case exprType ea of
-        T.ArrayType {} ->
-          toIR ea ++
-          toIR ei ++
-          iri
-            [ Dup2 -- Duplicate addressable and index at the same time
-            , ArrayLoad irType
-            , addValue p
-            , Add p
-            , ArrayStore irType
-            ]
-        T.SliceType {} -> undefined -- TODO
-        _ -> error "Cannot index non-array/slice"
-    _ -> error "Cannot increment non-addressable value"
 
 tVarStr :: T.Ident -> String
 tVarStr (T.Ident tvs) = "glc_fd__" ++ tvs
