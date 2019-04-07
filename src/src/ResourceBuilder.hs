@@ -47,26 +47,26 @@ instance Converter T.Program Program where
       Program
         { package = package
         , structs = structs
-        , topVars = concat [vars | TopVar vars <- topLevels']
-        , init = [stmt | TopInit stmt <- topLevels']
-        , functions = [func | TopFunc func <- topLevels']
+        , topVars = concat [vars | TVar vars <- topLevels']
+        , init = [stmt | TInit stmt <- topLevels']
+        , functions = [func | TFunc func <- topLevels']
         }
 
 data TopLevel
-  = TopVar [TopVarDecl]
-  | TopFunc FuncDecl
-  | TopInit Stmt
+  = TVar [TopVarDecl]
+  | TFunc FuncDecl
+  | TInit Stmt
 
 instance Converter T.TopDecl TopLevel where
   convert rc topDecl =
     case topDecl of
-      T.TopDecl decl     -> TopVar <$> convert rc decl
+      T.TopDecl decl     -> TVar <$> convert rc decl
       T.TopFuncDecl decl -> funcDecl <$> convert rc decl
     where
       funcDecl :: FuncDecl -> TopLevel
       funcDecl (FuncDecl (T.Ident "init") (Signature (Parameters []) Nothing) body) =
-        TopInit body
-      funcDecl d = TopFunc d
+        TInit body
+      funcDecl d = TFunc d
 
 instance Converter T.FuncDecl FuncDecl where
   convert rc (T.FuncDecl (T.ScopedIdent _ i) sig body) =
@@ -151,6 +151,8 @@ instance Converter T.Expr Expr where
       T.Binary t op e1 e2 ->
         Binary <$> RC.newLabel rc <*> ct t <*-> op <*> ce e1 <*> ce e2
       T.Lit lit -> return $ Lit lit
+      -- Global vars are accessed by field names vs indices
+      T.Var t (T.ScopedIdent (T.Scope 2) i) -> TopVar <$> ct t <*-> i
       T.Var t i -> Var <$> ct t <*> RC.getVarIndex rc i
       T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
       T.LenExpr e -> LenExpr <$> ce e
