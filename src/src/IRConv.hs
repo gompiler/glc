@@ -144,7 +144,7 @@ printIR e =
     T.PInt     -> printLoad ++ toIR e ++ intPrint
     T.PFloat64 -> printLoad ++ toIR e ++ floatPrint
     T.PRune    -> printLoad ++ toIR e ++ intPrint
-    T.PBool    -> printLoad ++ toIR e ++ boolToString ++ stringPrint -- TODO: PRINT true/false
+    T.PBool    -> printLoad ++ toIR e ++ boolToString ++ stringPrint
     T.PString  -> printLoad ++ toIR e ++ stringPrint
     _          -> undefined -- TODO
   where
@@ -173,14 +173,43 @@ instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
   toIR (T.VoidExprStmt (D.Ident aid) args) -- Akin to Argument without a type
    =
-    iri [Load Object (T.VarIndex 0)] ++ -- this object
+    iri [Load Object (T.VarIndex 0)] ++ -- this object TODO: SHOULD IT BE STATIC?
     concatMap toIR args ++
     iri
       [ InvokeVirtual $
         MethodRef (CRef (ClassRef "Main")) aid (map exprJType args) JVoid
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
-  toIR T.Increment {} = undefined -- TODO iinc for int, otherwise load/save + 1
+  toIR (T.Increment e) =
+    case e of
+      T.Var _ _ -> undefined -- TODO
+      T.Selector {} -> undefined -- TODO
+      T.Index t ea ei ->
+        case exprType ea of
+          T.ArrayType {} ->
+            case irType of
+              Prim p ->
+                toIR ea ++
+                toIR ei ++
+                iri
+                  [ Dup2 -- Duplicate addressable and index at the same time
+                  , ArrayLoad irType
+                  , addValue p
+                  , Add p
+                  , ArrayStore irType
+                  ]
+              Object -> error "Cannot increment object"
+          T.SliceType {} -> undefined -- TODO
+          _ -> error "Cannot index non-array/slice"
+      _ -> undefined -- Cannot increment non-addressable value
+    where
+      irType :: IRType
+      irType = exprIRType e
+      addValue :: IRPrimitive -> Instruction
+      addValue p =
+        case p of
+          IRInt   -> IConst1
+          IRFloat -> LDC (LDCFloat 1.0) -- TODO: IS THIS A REAL CASE?
   toIR T.Decrement {} = undefined -- TODO iinc for int (-1), otherwise "
   toIR (T.Assign (T.AssignOp _) _) = undefined -- TODO store IRType
   toIR (T.ShortDeclare iExps) =
@@ -415,6 +444,7 @@ stackDelta Store {}                            = -1 -- ..., v -> ...
 stackDelta ArrayStore {}                       = -3 -- ..., o, i, v -> ...
 stackDelta (Return m)                          = maybe 0 (const $ -1) m
 stackDelta Dup                                 = 1 -- ..., v -> ..., v, v
+stackDelta Dup2                                = 2 -- ..., v, w -> ..., v, w, v, w
 stackDelta Goto {}                             = 0
 stackDelta Add {}                              = -1 -- ..., v, w -> ..., r
 stackDelta Div {}                              = -1 -- ..., v, w -> ..., r

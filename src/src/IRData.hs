@@ -136,6 +136,7 @@ data Instruction
   | ArrayStore IRType -- consumes an object reference and an index
   | Return (Maybe IRType)
   | Dup
+  | Dup2 -- ..., v, w -> ..., v, w, v, w
   | Goto LabelName
   | Add IRPrimitive
   | Div IRPrimitive
