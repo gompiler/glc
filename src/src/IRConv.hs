@@ -92,16 +92,16 @@ instance IRRep T.Stmt where
   toIR (T.If (T.LabelIndex idx) (sstmt, expr) ifs elses) =
     toIR sstmt ++
     toIR expr ++
-    iri [If IRData.EQ ("else_" ++ show idx)] ++ -- TODO: PROPER EQUALITY CHECK
+    iri [If IRData.EQ ("else_" ++ show idx)] ++
     toIR ifs ++
     [IRInst (Goto ("end_if_" ++ show idx)), IRLabel ("else_" ++ show idx)] ++
-    toIR elses ++ [IRLabel ("end_if_" ++ show idx)]
+    toIR elses ++ [IRLabel ("end_if_" ++ show idx), IRInst NOp]
   toIR (T.Switch (T.LabelIndex idx) sstmt e scs dstmt) =
     toIR sstmt ++
     toIR e ++
     concatMap irCase (zip [1 ..] scs) ++
     IRLabel ("default_" ++ show idx) :
-    toIR dstmt ++ IRLabel ("end_sc_" ++ show idx) : iri [NOp]
+    toIR dstmt ++ [IRLabel ("end_sc_" ++ show idx), IRInst NOp]
       -- duplicate expression for case statement expressions in lists
     where
       irCase :: (Int, T.SwitchCase) -> [IRItem]
