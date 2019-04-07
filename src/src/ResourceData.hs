@@ -121,9 +121,6 @@ data SimpleStmt
   | ExprStmt Expr
   | VoidExprStmt Ident
                  [Expr]
-  -- | See https://golang.org/ref/spec#IncDecStmt
-  | Increment Expr
-  | Decrement Expr
   -- | See https://golang.org/ref/spec#Assignments
   | Assign AssignOp
            (NonEmpty (Expr, Expr))
@@ -327,8 +324,6 @@ instance Convert SimpleStmt T.SimpleStmt where
   convert EmptyStmt              = T.EmptyStmt
   convert (ExprStmt e)           = T.ExprStmt $ convert e
   convert (VoidExprStmt i exprs) = T.VoidExprStmt i $ convert exprs
-  convert (Increment e)          = T.Increment $ convert e
-  convert (Decrement e)          = T.Decrement $ convert e
   convert (Assign op eltup)      = T.Assign op (convert eltup)
   convert (ShortDeclare ideltup) = T.ShortDeclare (convert ideltup)
 
