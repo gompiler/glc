@@ -56,7 +56,8 @@ instance Converter T.Program Program where
         , structs = structs
         , topVars = concat vars
         , init = createInit $ map funcName initFuncs
-        , main = collectMain mains
+        , main = createMain mains
+        -- Functions contain the list of inits (renamed), and the list of functions, excluding main
         , functions = initFuncs ++ funcs
         }
     where
@@ -64,8 +65,8 @@ instance Converter T.Program Program where
       funcName (FuncDecl i _ _ _) = i
       -- | From previous AST's, we have at most one main function
       -- We therefore return it if it exists, and default to a blank main func
-      collectMain :: [(Stmt, LocalLimit)] -> MainDecl
-      collectMain mains =
+      createMain :: [(Stmt, LocalLimit)] -> MainDecl
+      createMain mains =
         uncurry MainDecl $
         fromMaybe (Return Nothing, LocalLimit 0) (listToMaybe mains)
       -- | Given collection of init identifiers,
