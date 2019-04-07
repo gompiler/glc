@@ -29,11 +29,16 @@ toClasses (T.Program _ scts tfs is tms) =
     cMethods =
       Method
         { mname = "glc_fn__init"
-        , stackLimit = 25
+        , stackLimit = maxStack
         , localsLimit = 25
-        , body = concatMap toIR is
+        , body = irBody
         } :
       toMethods tms
+      where
+        irBody :: [IRItem]
+        irBody = concatMap toIR is
+        maxStack :: Int
+        maxStack = maxStackSize irBody 0
     vdToField :: T.TopVarDecl -> Field
     vdToField (T.TopVarDecl (D.Ident fi) t _) =
       Field
@@ -58,15 +63,6 @@ toClasses (T.Program _ scts tfs is tms) =
             irBody = toIR fb
             maxStack :: Int
             maxStack = maxStackSize irBody 0
-            maxStackSize :: [IRItem] -> Int -> Int
-            maxStackSize irs current =
-              case irs of
-                [] -> current
-                IRLabel _:xs -> max current (maxStackSize xs current)
-                IRInst inst:xs ->
-                  max
-                    (current + stackDelta inst)
-                    (maxStackSize xs (current + stackDelta inst))
     structClass :: T.StructType -> Class
     structClass (T.Struct (D.Ident sid) fdls) =
       Class
@@ -497,3 +493,13 @@ stackDelta GetField {}                         = 0 -- ..., o -> ..., v
 stackDelta (InvokeSpecial (MethodRef _ _ a _)) = -(length a) -- ..., o, a1, .., an -> r
 stackDelta (InvokeVirtual (MethodRef _ _ a _)) = -(length a) -- ..., o, a1, .., an -> r
 stackDelta Debug {}                            = 0
+
+maxStackSize :: [IRItem] -> Int -> Int
+maxStackSize irs current =
+  case irs of
+    [] -> current
+    IRLabel _:xs -> max current (maxStackSize xs current)
+    IRInst inst:xs ->
+      max
+        (current + stackDelta inst)
+        (maxStackSize xs (current + stackDelta inst))
