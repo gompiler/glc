@@ -89,7 +89,7 @@ instance Bytecode Instruction where
       suffix :: LDCType -> ByteString
       suffix lt' = bstrM $ case lt' of
                             LDCInt i -> [" ", show i]
-                            LDCFloat f -> ["2_w ", show f] -- Check if this is in the right format
+                            LDCDouble f -> ["2_w ", show f] -- Check if this is in the right format
                             LDCString s -> ["_w ", show s]
   toBC IConstM1 = bstr "iconst_m1\n"
   toBC IConst0 = bstr "iconst_0\n"
@@ -100,13 +100,14 @@ instance Bytecode Instruction where
     where
       typename :: IRPrimitive -> String
       typename IRInt = "int"
-      typename IRFloat = "double"
+      typename IRDouble = "double"
   toBC (New (ClassRef cn)) = bstrM ["new ", cn, "\n"]
   toBC NOp = bstr "nop\n"
   toBC Pop = bstr "pop\n"
   toBC Swap = bstr "swap\n"
   toBC (GetStatic (FieldRef (ClassRef cn) fn) jt) = bstrM ["getstatic Field ", cn, " ", fn, " ", show jt, "\n"]
   toBC (GetField (FieldRef (ClassRef cn) fn) jt) = bstrM ["getfield Field ", cn, " ", fn, " ", show jt, "\n"]
+  toBC (PutField (FieldRef (ClassRef cn) fn) jt) = bstrM ["putfield Field ", cn, " ", fn, " ", show jt, "\n"]
   toBC (InvokeSpecial mr) = bstrM ["invokespecial ", show mr, "\n"]
   toBC (InvokeVirtual mr) = bstrM ["invokevirtual ", show mr, "\n"]
   toBC (Debug _) = undefined
@@ -116,13 +117,13 @@ instance Bytecode Instruction where
 typePrefix :: IRType -> String
 typePrefix t = case t of
                  Prim IRInt -> "i"
-                 Prim IRFloat -> "d" -- double
+                 Prim IRDouble -> "d" -- double
                  Object -> "a"
 
 typePrefix' :: IRPrimitive -> String
 typePrefix' t = case t of
                   IRInt -> "i"
-                  IRFloat -> "d"
+                  IRDouble -> "d"
 
 -- | Helper to convert a string to ASCII lazy ByteString
 bstr :: String -> ByteString
