@@ -191,6 +191,9 @@ systemOut = FieldRef (ClassRef "java/lang/System") "out"
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
 
+stringEquals :: MethodRef
+stringEquals = MethodRef (CRef jString) "equals" [JClass jString] JBool
+
 stringCompare :: MethodRef
 stringCompare = MethodRef (CRef jString) "compareTo" [JClass jString] JInt
 

@@ -351,7 +351,15 @@ instance IRRep T.Expr where
   toIR (T.Binary (T.LabelIndex idx) t T.EQ e1 e2) =
     case t of
       T.ArrayType {} -> undefined -- TODO
-      T.PString -> undefined -- TODO
+      T.PString ->
+        toIR e1 ++
+        toIR e2 ++
+        iri
+          [ InvokeVirtual stringEquals
+          , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
+          , Goto ("stop_eq_" ++ show idx)
+          ] ++
+        eqPostfix
       (T.StructType (D.Ident _)) -> undefined -- TODO
       T.PFloat64 ->
         toIR e1 ++
