@@ -1,5 +1,7 @@
-//~4 +6.700000e+000 101
-//~3 +5.700000e+000 100
+//~4 +6.700000e+000
+//~101
+//~3 +5.700000e+000
+//~100
 //~exec pret 0
 //~exec pret 1
 //~exec pret 2
@@ -19,11 +21,13 @@ func main() {
 	a++
 	b++
 	c++
-	println(a, b, c)
+	println(a, b)
+	println(c)
 	a--
 	b--
 	c--
-	println(a, b, c)
+	println(a, b)
+	println(c)
 	{
 		var a []int
 		var b [4]int
