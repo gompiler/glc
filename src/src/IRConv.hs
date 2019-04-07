@@ -187,30 +187,7 @@ instance IRRep T.SimpleStmt where
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR (T.Increment e) =
-    case (e, irType) of
-      (_, Object) -> error "Cannot increment object"
-      (T.Var _ idx, Prim p) ->
-        iri [Load irType idx, addValue p, Add p, Store irType idx]
-      (T.Selector t eo (T.Ident fid), Prim _) ->
-        case exprJType eo of
-          JClass cr ->
-            toIR eo ++ iri [GetField (FieldRef cr fid) (typeToJType t)]
-          _ -> error "Cannot get field of non-object"
-      (T.Index _ ea ei, Prim p) ->
-        case exprType ea of
-          T.ArrayType {} ->
-            toIR ea ++
-            toIR ei ++
-            iri
-              [ Dup2 -- Duplicate addressable and index at the same time
-              , ArrayLoad irType
-              , addValue p
-              , Add p
-              , ArrayStore irType
-              ]
-          T.SliceType {} -> undefined -- TODO
-          _ -> error "Cannot index non-array/slice"
-      _ -> undefined -- Cannot increment non-addressable value
+    incDec e irType addValue
     where
       irType :: IRType
       irType = exprIRType e
@@ -219,7 +196,16 @@ instance IRRep T.SimpleStmt where
         case p of
           IRInt   -> IConst1
           IRFloat -> LDC (LDCFloat 1.0) -- TODO: IS THIS A REAL CASE?
-  toIR T.Decrement {} = undefined -- TODO iinc for int (-1), otherwise "
+  toIR (T.Decrement e) =
+    incDec e irType addValue
+    where
+      irType :: IRType
+      irType = exprIRType e
+      addValue :: IRPrimitive -> Instruction
+      addValue p =
+        case p of
+          IRInt   -> IConstM1
+          IRFloat -> LDC (LDCFloat $ -1.0) -- TODO: IS THIS A REAL CASE?
   toIR (T.Assign (T.AssignOp _) _) = undefined -- TODO store IRType
   toIR (T.ShortDeclare iExps) =
     exprInsts ++ zipWith (curry expStore) idxs stTypes
@@ -399,6 +385,33 @@ iri = map IRInst
 
 binary :: T.Expr -> T.Expr -> Instruction -> [IRItem]
 binary e1 e2 inst = toIR e1 ++ toIR e2 ++ iri [inst]
+
+incDec :: T.Expr -> IRType -> (IRPrimitive -> Instruction) -> [IRItem]
+incDec e irType addValue =
+  case (e, irType) of
+    (_, Object) -> error "Cannot increment object"
+    (T.Var _ idx, Prim p) ->
+      iri [Load irType idx, addValue p, Add p, Store irType idx]
+    (T.Selector t eo (T.Ident fid), Prim _) ->
+      case exprJType eo of
+        JClass cr ->
+          toIR eo ++ iri [GetField (FieldRef cr fid) (typeToJType t)]
+        _ -> error "Cannot get field of non-object"
+    (T.Index _ ea ei, Prim p) ->
+      case exprType ea of
+        T.ArrayType {} ->
+          toIR ea ++
+          toIR ei ++
+          iri
+            [ Dup2 -- Duplicate addressable and index at the same time
+            , ArrayLoad irType
+            , addValue p
+            , Add p
+            , ArrayStore irType
+            ]
+        T.SliceType {} -> undefined -- TODO
+        _ -> error "Cannot index non-array/slice"
+    _ -> undefined -- Cannot increment non-addressable value
 
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
