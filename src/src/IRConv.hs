@@ -161,7 +161,7 @@ printIR e =
       iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JInt] JVoid]
     floatPrint :: [IRItem]
     floatPrint =
-      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JFloat] JVoid]
+      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JDouble] JVoid]
     stringPrint :: [IRItem]
     stringPrint =
       iri
@@ -194,8 +194,8 @@ instance IRRep T.SimpleStmt where
       addValue :: IRPrimitive -> Instruction
       addValue p =
         case p of
-          IRInt   -> IConst1
-          IRFloat -> LDC (LDCFloat 1.0) -- TODO: IS THIS A REAL CASE?
+          IRInt    -> IConst1
+          IRDouble -> LDC (LDCDouble 1.0) -- TODO: IS THIS A REAL CASE?
   toIR (T.Decrement e) =
     incDec e irType addValue
     where
@@ -204,8 +204,8 @@ instance IRRep T.SimpleStmt where
       addValue :: IRPrimitive -> Instruction
       addValue p =
         case p of
-          IRInt   -> IConstM1
-          IRFloat -> LDC (LDCFloat $ -1.0) -- TODO: IS THIS A REAL CASE?
+          IRInt    -> IConstM1
+          IRDouble -> LDC (LDCDouble $ -1.0) -- TODO: IS THIS A REAL CASE?
   toIR (T.Assign (T.AssignOp _) _) = undefined -- TODO store IRType
   toIR (T.ShortDeclare iExps) =
     exprInsts ++ zipWith (curry expStore) idxs stTypes
@@ -243,7 +243,7 @@ instance IRRep T.Expr where
   toIR (T.Unary t D.Neg e) =
     case t of
       T.PInt     -> intPattern
-      T.PFloat64 -> toIR e ++ iri [LDC (LDCFloat (-1.0)), Mul IRFloat]
+      T.PFloat64 -> toIR e ++ iri [LDC (LDCDouble (-1.0)), Mul IRDouble]
       T.PRune    -> intPattern
       _          -> undefined -- Cannot take negative of other types
     where
@@ -254,7 +254,7 @@ instance IRRep T.Expr where
   toIR (T.Binary _ t (D.Arithm D.Add) e1 e2) =
     case t of
       T.PInt -> binary e1 e2 (Add IRInt)
-      T.PFloat64 -> binary e1 e2 (Add IRFloat)
+      T.PFloat64 -> binary e1 e2 (Add IRDouble)
       T.PRune -> binary e1 e2 (Add IRInt)
       T.PString ->
         iri
@@ -327,9 +327,9 @@ instance IRRep T.Expr where
       cmpIR :: [IRItem]
       cmpIR =
         case exprIRType e1 of
-          Prim IRInt   -> iri [IfICmp irCmp trueLabel]
-          Prim IRFloat -> iri [DCmpG, If irCmp trueLabel]
-          Object       -> undefined -- TODO: String comparisons?
+          Prim IRInt    -> iri [IfICmp irCmp trueLabel]
+          Prim IRDouble -> iri [DCmpG, If irCmp trueLabel]
+          Object        -> undefined -- TODO: String comparisons?
       irCmp :: IRCmp
       irCmp =
         case op of
@@ -376,7 +376,7 @@ instance IRRep T.Expr where
 instance IRRep D.Literal where
   toIR (D.BoolLit i)   = iri [LDC (LDCInt $ fromBool i)]
   toIR (D.IntLit i)    = iri [LDC (LDCInt i)]
-  toIR (D.FloatLit f)  = iri [LDC (LDCFloat f)]
+  toIR (D.FloatLit f)  = iri [LDC (LDCDouble f)]
   toIR (D.RuneLit r)   = iri [LDC (LDCInt $ ord r)]
   toIR (D.StringLit s) = iri [LDC (LDCString s)]
 
@@ -430,7 +430,7 @@ typeToIRType t = maybe Object Prim (typeToIRPrim t)
 
 typeToIRPrim :: T.Type -> Maybe IRPrimitive
 typeToIRPrim T.PInt     = Just IRInt
-typeToIRPrim T.PFloat64 = Just IRFloat
+typeToIRPrim T.PFloat64 = Just IRDouble
 typeToIRPrim T.PRune    = Just IRInt
 typeToIRPrim T.PBool    = Just IRInt
 typeToIRPrim _          = Nothing
@@ -452,7 +452,7 @@ typeToJType :: T.Type -> JType
 typeToJType (T.ArrayType _ t) = JArray (typeToJType t)
 typeToJType T.SliceType {} = undefined -- TODO
 typeToJType T.PInt = JInt
-typeToJType T.PFloat64 = JFloat
+typeToJType T.PFloat64 = JDouble
 typeToJType T.PRune = JInt
 typeToJType T.PBool = JBool
 typeToJType T.PString = JClass jString
