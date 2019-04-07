@@ -119,7 +119,15 @@ data IRCmp
   | GE
   | EQ
   | NE
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show IRCmp where
+  show LT = "lt"
+  show LE = "le"
+  show GT = "gt"
+  show GE = "ge"
+  show EQ = "eq"
+  show NE = "ne"
 
 data LDCType
   = LDCInt Int -- Integers, booleans, runes
