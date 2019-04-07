@@ -212,11 +212,15 @@ instance IRRep T.SimpleStmt where
           Nothing -> toIR ve
           Just op ->
             case se of
-              T.Var t idx -> iri [Load (typeToIRType t) idx] ++ stackOps
+              T.Var t idx ->
+                iri [Load (typeToIRType t) idx] ++
+                toIR ve ++ stackOps
               T.Selector t eo (T.Ident fid) ->
                 case exprJType eo of
                   JClass cr ->
-                    toIR eo ++ iri [GetField (FieldRef cr fid) (typeToJType t)]
+                    toIR eo ++
+                    iri [GetField (FieldRef cr fid) (typeToJType t)] ++
+                    toIR ve ++ stackOps
                   _ -> error "Cannot get field of non-object"
               T.Index _ ea ei ->
                 case exprType ea of
@@ -224,7 +228,7 @@ instance IRRep T.SimpleStmt where
                     toIR ea ++
                     toIR ei ++
                     iri [Dup2, ArrayLoad irType] ++ -- Duplicate addr. and index at the same time
-                    stackOps
+                    toIR ve ++ stackOps
                   T.SliceType {} -> undefined -- TODO
                   _ -> error "Cannot index non-array/slice"
               _ -> error "Cannot assign to non-addressable value"
@@ -233,18 +237,20 @@ instance IRRep T.SimpleStmt where
               irType = exprIRType ve
               stackOps :: [IRItem]
               stackOps = -- TODO: CLONE!!!!!!!!!!!!!!!!!!
-                case op of
-                  T.Add       -> undefined -- TODO, with strings (immut)!
-                  T.Subtract  -> undefined -- TODO
-                  T.BitOr     -> undefined -- TODO
-                  T.BitXor    -> undefined -- TODO
-                  T.Multiply  -> undefined -- TODO
-                  T.Divide    -> undefined -- TODO
-                  T.Remainder -> undefined -- TODO
-                  T.ShiftL    -> undefined -- TODO
-                  T.ShiftR    -> undefined -- TODO
-                  T.BitAnd    -> undefined -- TODO
-                  T.BitClear  -> undefined -- TODO
+                case (op, irType) of
+                  (T.Add, Object)       -> undefined -- TODO: string add
+                  (T.Add, Prim p)       -> iri [Add p]
+                  (T.Subtract, Prim p)  -> iri [Sub p]
+                  (T.Multiply, Prim p)  -> iri [Mul p]
+                  (T.Divide, Prim p)    -> iri [Div p]
+                  (T.Remainder, Prim _) -> iri [IRem]
+                  (T.ShiftL, Prim _)    -> iri [IShL]
+                  (T.ShiftR, Prim _)    -> iri [IShR]
+                  (T.BitAnd, Prim _)    -> iri [IAnd]
+                  (T.BitOr, Prim _)     -> iri [IAnd]
+                  (T.BitXor, Prim _)    -> iri [IXOr]
+                  (T.BitClear, Prim _)  -> undefined -- TODO
+                  _ -> error "Invalid operation on non-primitive"
       getStore :: (T.Expr, T.Expr) -> [IRItem]
       getStore (e, _) =
         case e of
