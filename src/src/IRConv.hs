@@ -50,6 +50,7 @@ toClasses (T.Program _ scts tfs is mf tms) =
             iri
               [ InvokeStatic (MethodRef (CRef cMain) "glc_init" emptySpec)
               , InvokeStatic (MethodRef (CRef cMain) "glc_main" emptySpec)
+              , Return Nothing
               ] -- TODO: Field Initialization
         } :
       toMethods tms
@@ -163,7 +164,7 @@ instance IRRep T.Stmt where
   toIR (T.Print el) = concatMap printIR el
   toIR (T.Println el) =
     intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++
-    printIR (T.Lit $ D.StringLit "\n") -- TODO: Double check escape char here
+    printIR (T.Lit $ D.StringLit "\n")
   toIR (T.Return me) =
     maybe
       (iri [Return Nothing])
@@ -217,7 +218,6 @@ instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
   toIR (T.VoidExprStmt (D.Ident aid) args) -- Akin to Argument without a type
    =
-    iri [Load Object (T.VarIndex 0)] ++ -- this object TODO: SHOULD IT BE STATIC?
     concatMap toIR args ++
     iri
       [ InvokeStatic $
@@ -237,6 +237,10 @@ instance IRRep T.SimpleStmt where
               T.Var t idx ->
                 setUpOps ++
                 iri [Load (typeToIRType t) idx] ++
+                afterLoadOps ++ toIR ve ++ finalOps
+              T.TopVar t (T.Ident tvi) ->
+                setUpOps ++
+                iri [GetStatic (FieldRef cMain tvi) (typeToJType t)] ++
                 afterLoadOps ++ toIR ve ++ finalOps
               T.Selector t eo (T.Ident fid) ->
                 case exprJType eo of
@@ -291,6 +295,8 @@ instance IRRep T.SimpleStmt where
       getStore (e, _) =
         case e of
           T.Var t idx -> iri [Store (typeToIRType t) idx]
+          T.TopVar t (T.Ident tvi) ->
+            iri [PutStatic (FieldRef cMain tvi) (typeToJType t)]
           T.Selector t eo (T.Ident fid) ->
             case exprJType eo of
               JClass cr ->
@@ -472,7 +478,6 @@ instance IRRep T.Expr where
       T.SliceType {} -> undefined -- TODO
       _ -> error "Cannot index non-array/slice"
   toIR (T.Arguments t (D.Ident aid) args) =
-    iri [Load Object (T.VarIndex 0)] ++ -- this object
     concatMap toIR args ++
     iri
       [ InvokeStatic $
@@ -595,6 +600,7 @@ stackDelta Pop = -1 -- ..., v -> ...
 stackDelta Swap = 0 -- ..., v, w -> ..., w, v
 stackDelta GetStatic {} = 1 -- ... -> ..., v
 stackDelta GetField {} = 0 -- ..., o -> ..., v
+stackDelta PutStatic {} = -1 -- ..., v -> ...
 stackDelta PutField {} = -2 -- ..., o, v -> ...
 stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
 stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
