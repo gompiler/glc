@@ -187,14 +187,22 @@ data Instruction
 systemOut :: FieldRef
 systemOut = FieldRef (ClassRef "java/lang/System") "out"
 
+jString :: ClassRef
+jString = ClassRef "java/lang/String"
+
 printStream :: ClassRef
 printStream = ClassRef "java/io/PrintStream"
 
 stringBuilder :: ClassRef
 stringBuilder = ClassRef "java/lang/StringBuilder"
 
-jString :: ClassRef
-jString = ClassRef "java/lang/String"
+sbAppend :: MethodRef
+sbAppend =
+  MethodRef
+    (CRef stringBuilder)
+    "append"
+    [JClass jString]
+    (JClass stringBuilder)
 
 jObject :: ClassRef
 jObject = ClassRef "java/lang/Object"

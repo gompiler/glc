@@ -201,41 +201,69 @@ instance IRRep T.SimpleStmt where
           IRInt    -> IConstM1
           IRDouble -> LDC (LDCDouble $ -1.0) -- TODO: IS THIS A REAL CASE?
   toIR (T.Assign (T.AssignOp mAop) pairs) =
-    concatMap getValue (NE.toList pairs) ++ -- get values TODO CLONE
+    concatMap getValue (NE.toList pairs) ++
     concatMap getStore (reverse $ NE.toList pairs)
     where
       getValue :: (T.Expr, T.Expr) -> [IRItem]
       getValue (se, ve) =
         case mAop of
-          Nothing -> toIR ve -- TODO: CLONE IF NEEDED
+          Nothing -> toIR ve ++ cloneIfNeeded ve
           Just op ->
             case se of
               T.Var t idx ->
-                iri [Load (typeToIRType t) idx] ++ toIR ve ++ stackOps
+                setUpOps ++
+                iri [Load (typeToIRType t) idx] ++
+                afterLoadOps ++
+                toIR ve ++
+                finalOps
               T.Selector t eo (T.Ident fid) ->
                 case exprJType eo of
                   JClass cr ->
+                    setUpOps ++
                     toIR eo ++
                     iri [GetField (FieldRef cr fid) (typeToJType t)] ++
-                    toIR ve ++ stackOps
+                    afterLoadOps ++
+                    toIR ve ++ finalOps
                   _ -> error "Cannot get field of non-object"
               T.Index _ ea ei ->
                 case exprType ea of
                   T.ArrayType {} ->
+                    setUpOps ++
                     toIR ea ++
                     toIR ei ++
                     iri [Dup2, ArrayLoad irType] ++ -- Duplicate addr. and index at the same time
-                    toIR ve ++ stackOps
+                    afterLoadOps ++
+                    toIR ve ++ finalOps
                   T.SliceType {} -> undefined -- TODO
                   _ -> error "Cannot index non-array/slice"
               _ -> error "Cannot assign to non-addressable value"
             where
               irType :: IRType
               irType = exprIRType ve
-              stackOps :: [IRItem]
-              stackOps =
+              setUpOps :: [IRItem]
+              setUpOps =
                 case (op, irType) of
-                  (T.Add, Object)       -> undefined -- TODO: string add
+                  (T.Add, Object) ->
+                    iri
+                      [ New stringBuilder
+                      , Dup
+                      , InvokeSpecial (MethodRef (CRef stringBuilder) "<init>" [] JVoid)
+                      ]
+                  _ -> []
+              afterLoadOps :: [IRItem]
+              afterLoadOps =
+                case (op, irType) of
+                  (T.Add, Object) ->
+                    iri [InvokeVirtual sbAppend]
+                  _ -> []
+              finalOps :: [IRItem]
+              finalOps =
+                case (op, irType) of
+                  (T.Add, Object) ->
+                    iri
+                      [ InvokeVirtual sbAppend
+                      , InvokeVirtual (MethodRef (CRef stringBuilder) "toString" [] (JClass jString))
+                      ]
                   (T.Add, Prim p)       -> iri [Add p]
                   (T.Subtract, Prim p)  -> iri [Sub p]
                   (T.Multiply, Prim p)  -> iri [Mul p]
@@ -280,22 +308,7 @@ instance IRRep T.SimpleStmt where
       expStore :: (T.VarIndex, IRType) -> IRItem
       expStore (idx, t) = IRInst (Load t idx)
       maybeClone :: T.Expr -> [IRItem]
-      maybeClone e = toIR e ++ cloneInsts
-        where
-          cloneInsts :: [IRItem]
-          cloneInsts =
-            case exprJType e of
-              JClass cr ->
-                iri
-                  [ InvokeVirtual $
-                    MethodRef (CRef cr) "clone" [] (JClass jObject)
-                  ]
-              JArray jt ->
-                iri
-                  [ InvokeVirtual $
-                    MethodRef (ARef jt) "clone" [] (JClass jObject)
-                  ]
-              _ -> [] -- Primitives and strings are not clonable
+      maybeClone e = toIR e ++ cloneIfNeeded e
 
 instance IRRep T.Expr where
   toIR (T.Unary _ D.Pos e) = toIR e -- unary pos is identity function after typecheck
@@ -330,14 +343,6 @@ instance IRRep T.Expr where
               (MethodRef (CRef stringBuilder) "toString" [] (JClass jString))
           ]
       _ -> iri [Debug $ show t] -- undefined
-    where
-      sbAppend :: MethodRef
-      sbAppend =
-        MethodRef
-          (CRef stringBuilder)
-          "append"
-          [JClass jString]
-          (JClass stringBuilder)
   toIR (T.Binary _ _ (D.Arithm D.BitClear) _ _) = undefined -- TODO
   toIR (T.Binary _ t (D.Arithm aop) e1 e2) =
     case typeToIRPrim t of
@@ -471,6 +476,21 @@ incDec e irType addValue =
         T.SliceType {} -> undefined -- TODO
         _ -> error "Cannot index non-array/slice"
     _ -> undefined -- Cannot increment non-addressable value
+
+cloneIfNeeded :: T.Expr -> [IRItem]
+cloneIfNeeded e =
+  case exprJType e of
+    JClass cr ->
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef cr) "clone" [] (JClass jObject)
+        ]
+    JArray jt ->
+      iri
+        [ InvokeVirtual $
+          MethodRef (ARef jt) "clone" [] (JClass jObject)
+        ]
+    _ -> [] -- Primitives and strings are not clonable
 
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
