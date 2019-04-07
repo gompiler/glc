@@ -182,8 +182,7 @@ instance IRRep T.SimpleStmt where
         MethodRef (CRef (ClassRef "Main")) aid (map exprJType args) JVoid
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
-  toIR (T.Increment e) =
-    incDec e irType addValue
+  toIR (T.Increment e) = incDec e irType addValue
     where
       irType :: IRType
       irType = exprIRType e
@@ -192,8 +191,7 @@ instance IRRep T.SimpleStmt where
         case p of
           IRInt    -> IConst1
           IRDouble -> LDC (LDCDouble 1.0) -- TODO: IS THIS A REAL CASE?
-  toIR (T.Decrement e) =
-    incDec e irType addValue
+  toIR (T.Decrement e) = incDec e irType addValue
     where
       irType :: IRType
       irType = exprIRType e
@@ -213,8 +211,7 @@ instance IRRep T.SimpleStmt where
           Just op ->
             case se of
               T.Var t idx ->
-                iri [Load (typeToIRType t) idx] ++
-                toIR ve ++ stackOps
+                iri [Load (typeToIRType t) idx] ++ toIR ve ++ stackOps
               T.Selector t eo (T.Ident fid) ->
                 case exprJType eo of
                   JClass cr ->
@@ -264,8 +261,8 @@ instance IRRep T.SimpleStmt where
             case exprType ea of
               T.ArrayType {} -> iri [ArrayStore irType] -- matched with above
               T.SliceType {} -> undefined -- TODO
-              _ -> error "Cannot index non-array/slice"
-          _           -> undefined -- TODO: Index, Selector
+              _              -> error "Cannot index non-array/slice"
+          _ -> undefined -- TODO: Index, Selector
         where
           irType :: IRType
           irType = exprIRType e
