@@ -79,11 +79,7 @@ instance Converter T.TopDecl TopLevel where
     where
       funcDecl :: FuncDecl -> TopLevel
       funcDecl (FuncDecl (T.Ident "init") (Signature (Parameters []) Nothing) body) =
-        TInit (injectRet body)
-        where
-          injectRet :: Stmt -> Stmt
-          injectRet (BlockStmt sl) = BlockStmt $ sl ++ [Return Nothing]
-          injectRet s              = s
+        TInit body
       funcDecl d = TFunc d
 
 instance Converter T.FuncDecl FuncDecl where
