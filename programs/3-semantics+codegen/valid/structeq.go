@@ -1,6 +1,9 @@
 //~true
+//~false
 //~true
 //~false
+//~false
+//~true
 //~true
 //~true
 //~true
@@ -11,11 +14,14 @@ func main() {
 	var a1 struct { _ int; }
 	var a2 struct { _ int; }
 	println(a1 == a2)
+	println(a1 != a2)
 	var a3 struct { a int; }
 	var a4 struct { a int; }
 	println(a3 == a4)
+	println(a3 != a4)
 	a3.a = 5
 	println(a3 == a4)
+	println(a3 != a4)
 	var a5 struct { a struct { _ struct { _ int; }; }; }
 	var a6 struct { a struct { _ struct { _ int; }; }; }
 	println(a5 == a6)

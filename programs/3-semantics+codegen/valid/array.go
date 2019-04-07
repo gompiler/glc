@@ -1,7 +1,11 @@
 //~true
 //~false
+//~false
+//~true
 //~true
 //~false
+//~false
+//~true
 package main
 
 func main() {
@@ -12,12 +16,16 @@ func main() {
 		b[i] = i
 	}
 	println(a == b)
+	println(a != b)
 	b[2] = 7
 	println(a == b)
+	println(a != b)
 
 	var as1 [2]struct { a int; }
 	var as2 [2]struct { a int; }
 	println(as1 == as2)
+	println(as1 != as2)
 	as1[1].a = 3
 	println(as1 == as2)
+	println(as1 != as2)
 }
