@@ -40,10 +40,10 @@ toClasses (T.Program _ scts tfs is tms) =
         maxStack :: Int
         maxStack = maxStackSize irBody 0
     vdToField :: T.TopVarDecl -> Field
-    vdToField (T.TopVarDecl (D.Ident fi) t _) =
+    vdToField (T.TopVarDecl fi t _) =
       Field
         { access = FProtected
-        , fname = "glc_fd__" ++ fi
+        , fname = tVarStr fi
         , descriptor = typeToJType t
       -- , value = Nothing
         }
@@ -424,6 +424,8 @@ instance IRRep T.Expr where
           _     -> undefined -- Handled above
   toIR (T.Lit l) = toIR l
   toIR (T.Var t vi) = iri [Load (typeToIRType t) vi]
+  toIR (T.TopVar t tvi) =
+    iri [GetField (FieldRef (ClassRef "Main") (tVarStr tvi)) (typeToJType t)]
   toIR T.AppendExpr {} = undefined -- TODO
   toIR (T.LenExpr e) =
     case exprType e of
@@ -497,6 +499,9 @@ incDec e irType addValue =
         _ -> error "Cannot index non-array/slice"
     _ -> error "Cannot increment non-addressable value"
 
+tVarStr :: T.Ident -> String
+tVarStr (T.Ident tvs) = "glc_fd__" ++ tvs
+
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
   case exprJType e of
@@ -511,6 +516,7 @@ exprType (T.Unary t _ _)      = t
 exprType (T.Binary _ t _ _ _) = t
 exprType (T.Lit l)            = getLiteralType l
 exprType (T.Var t _)          = t
+exprType (T.TopVar t _)       = t
 exprType (T.AppendExpr t _ _) = t
 exprType (T.LenExpr _)        = T.PInt
 exprType (T.CapExpr _)        = T.PInt
