@@ -137,7 +137,7 @@ instance IRRep T.Stmt where
   toIR (T.Print el) = concatMap printIR el
   toIR (T.Println el) =
     intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++
-    printIR (T.Lit $ D.StringLit "\n") -- TODO
+    printIR (T.Lit $ D.StringLit "\n") -- TODO: Double check escape char here
   toIR (T.Return me) =
     maybe
       (iri [Return Nothing])
@@ -191,7 +191,11 @@ instance IRRep T.SimpleStmt where
       (_, Object) -> error "Cannot increment object"
       (T.Var _ idx, Prim p) ->
         iri [Load irType idx, addValue p, Add p, Store irType idx]
-      (T.Selector {}, Prim _) -> undefined -- TODO
+      (T.Selector t eo (T.Ident fid), Prim _) ->
+        case exprJType eo of
+          JClass cr ->
+            toIR eo ++ iri [GetField (FieldRef cr fid) (typeToJType t)]
+          _ -> error "Cannot get field of non-object"
       (T.Index _ ea ei, Prim p) ->
         case exprType ea of
           T.ArrayType {} ->
