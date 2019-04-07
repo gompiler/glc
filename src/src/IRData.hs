@@ -165,7 +165,7 @@ data Instruction
   | IConstM1 -- -1
   | IConst0 -- 0
   | IConst1 -- 1
-  | FCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
+  | DCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
   | New ClassRef -- class
   | ANewArray ClassRef
   | NewArray IRPrimitive

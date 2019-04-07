@@ -328,7 +328,7 @@ instance IRRep T.Expr where
       cmpIR =
         case exprIRType e1 of
           Prim IRInt   -> iri [IfICmp irCmp trueLabel]
-          Prim IRFloat -> iri [FCmpG, If irCmp trueLabel]
+          Prim IRFloat -> iri [DCmpG, If irCmp trueLabel]
           Object       -> undefined -- TODO: String comparisons?
       irCmp :: IRCmp
       irCmp =
@@ -485,7 +485,7 @@ stackDelta LDC {}                              = 1 -- ... -> ..., v
 stackDelta IConstM1                            = 1 -- ... -> ..., -1
 stackDelta IConst0                             = 1 -- ... -> ..., 0
 stackDelta IConst1                             = 1 -- ... -> ..., 1
-stackDelta FCmpG                               = 1 -- ..., v1, v2 -> ..., r
+stackDelta DCmpG                               = 1 -- ..., v1, v2 -> ..., r
 stackDelta New {}                              = 1 -- ... -> ..., o
 stackDelta ANewArray {}                        = 0 -- ..., c -> ..., o
 stackDelta NewArray {}                         = 0 -- ..., c -> ..., o
