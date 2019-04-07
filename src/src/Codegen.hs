@@ -34,7 +34,7 @@ instance Bytecode Field where
    = bstrM [".field ", show acc, " ", fn, " ", show desc, "\n"]
 
 instance Bytecode Method where
-  toBC (Method mn sl ll bod)
+  toBC (Method mn sl ll (MethodSpec (jtl, jt)) bod)
     -- .method public $(methodname)$(signature)
     -- ex.
     -- public int main() ->
@@ -45,7 +45,12 @@ instance Bytecode Method where
           [ ".method "
           , "public static "
           , mn
-          , " : ()V" -- No args and return is void until Method implements signature
+          , " : ("
+          ]
+      , bstrM (map show jtl)
+      ,  bstrM
+         [ ")"
+          , show jt
           , "\n"
           , "\t.limit stack "
           , show sl
@@ -116,6 +121,7 @@ instance Bytecode Instruction where
     bstrM ["putfield Field ", cn, " ", fn, " ", show jt, "\n"]
   toBC (InvokeSpecial mr) = bstrM ["invokespecial ", show mr, "\n"]
   toBC (InvokeVirtual mr) = bstrM ["invokevirtual ", show mr, "\n"]
+  toBC (InvokeStatic mr) = bstrM ["invokestatic ", show mr, "\n"]
   toBC (Debug _) = undefined
 
 -- | Get type prefix for things like load
