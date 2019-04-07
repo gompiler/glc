@@ -277,7 +277,7 @@ instance IRRep T.SimpleStmt where
               T.ArrayType {} -> iri [ArrayStore irType] -- matched with above
               T.SliceType {} -> undefined -- TODO
               _              -> error "Cannot index non-array/slice"
-          _ -> undefined -- TODO: Index, Selector
+          _ -> error "Cannot assign to non-addressable value"
         where
           irType :: IRType
           irType = exprIRType e
@@ -543,7 +543,7 @@ getLiteralType (D.StringLit _) = T.PString
 
 typeToJType :: T.Type -> JType
 typeToJType (T.ArrayType _ t) = JArray (typeToJType t)
-typeToJType T.SliceType {} = undefined -- TODO
+typeToJType T.SliceType {} = undefined -- TODO: JClass (...)
 typeToJType T.PInt = JInt
 typeToJType T.PFloat64 = JDouble
 typeToJType T.PRune = JInt
