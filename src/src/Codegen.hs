@@ -61,10 +61,13 @@ instance Bytecode IRItem where
 
 instance Bytecode Instruction where
   toBC (Load t i) = bstrM [typePrefix t, "load ", show i, "\n"]
+  toBC (ArrayLoad t) = bstrM [typePrefix t, "aload\n"]
   toBC (Store t i) = bstrM [typePrefix t, "istore ", show i, "\n"]
+  toBC (ArrayStore t) = bstrM [typePrefix t, "astore\n"]
   toBC (Return (Just t)) = bstrM [typePrefix t, "return\n"]
   toBC (Return Nothing) = bstr "return\n"
   toBC Dup = bstr "dup\n"
+  toBC Dup2 = bstr "dup2\n"
   toBC (Goto label) = bstrM ["goto ", label, "\n"]
   toBC (Add t) = bstrM [typePrefix' t, "add\n"]
   toBC (Div t) = bstrM [typePrefix' t, "div\n"]
@@ -74,10 +77,9 @@ instance Bytecode Instruction where
   toBC IRem = bstr "irem\n"
   toBC IShL = bstr "ishl\n"
   toBC IShR = bstr "ishr\n"
-  toBC IALoad = bstr "iaload\n"
   toBC IAnd = bstr "iand\n"
-  toBC IAStore = bstr "iastore\n"
-  toBC (IfEq label) = bstrM ["ifeq ", label, "\n"]
+  toBC (If cmp label) = bstrM ["if", show cmp, " ", label, "\n"]
+  toBC (IfICmp cmp label) = bstrM ["if_icmp", show cmp, " ", label, "\n"]
   toBC IOr = bstr "ior\n"
   toBC IXOr = bstr "ixor\n"
   toBC (LDC lt) = B.concat [bstr "ldc", suffix lt, nl]
@@ -87,14 +89,25 @@ instance Bytecode Instruction where
                             LDCInt i -> [" ", show i]
                             LDCFloat f -> ["2_w ", show f] -- Check if this is in the right format
                             LDCString s -> ["_w ", s]
+  toBC IConstM1 = bstr "iconst_m1\n"
+  toBC IConst0 = bstr "iconst_0\n"
+  toBC IConst1 = bstr "iconst_1\n"
+  toBC DCmpG = bstr "dcmpg\n"
+  toBC (ANewArray (ClassRef cn)) = bstrM ["anewarray ", cn, "\n"]
+  toBC (NewArray prim) = bstrM ["newarray ", typename prim, "\n"]
+    where
+      typename :: IRPrimitive -> String
+      typename IRInt = "int"
+      typename IRFloat = "double"
   toBC (New (ClassRef cn)) = bstrM ["new ", cn, "\n"]
   toBC NOp = bstr "nop\n"
   toBC Pop = bstr "pop\n"
   toBC Swap = bstr "swap\n"
-  toBC (GetStatic (FieldRef (ClassRef cn1) fn) (ClassRef cn2)) = bstrM ["getstatic Field ", cn1, " ", fn, " ", cn2, "\n"]
+  toBC (GetStatic (FieldRef (ClassRef cn) fn) jt) = bstrM ["getstatic Field ", cn, " ", fn, " ", show jt, "\n"]
+  toBC (GetField (FieldRef (ClassRef cn) fn) jt) = bstrM ["getfield Field ", cn, " ", fn, " ", show jt, "\n"]
   toBC (InvokeSpecial mr) = bstrM ["invokespecial ", show mr, "\n"]
   toBC (InvokeVirtual mr) = bstrM ["invokevirtual ", show mr, "\n"]
-  toBC _ = undefined
+  toBC (Debug _) = undefined
 
 
 -- | Get type prefix for things like load
