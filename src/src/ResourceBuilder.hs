@@ -26,6 +26,7 @@ import           Data.Maybe       (catMaybes, fromMaybe, listToMaybe)
 import           Prelude          hiding (init)
 import qualified ResourceContext  as RC
 import           ResourceData
+import           Data.List.NonEmpty (NonEmpty(..))
 import           SymbolTable      (typecheckGen)
 
 resourceGen :: String -> Glc Program
@@ -48,13 +49,13 @@ instance Converter T.Program Program where
     let (fdl, main) =
           partition
             (\(FuncDecl (Ident ident) _ _) -> ident /= "main")
-            [func | TopFunc func <- topLevels']
+            [func | TFunc func <- topLevels']
     return $
       Program
         { package = package
         , structs = structs
-        , topVars = concat [vars | TopVar vars <- topLevels']
-        , init = [stmt | TopInit stmt <- topLevels']
+        , topVars = concat [vars | TVar vars <- topLevels']
+        , init = [stmt | TInit stmt <- topLevels']
         , main = injectMain main
         , functions = fdl
         }
@@ -66,24 +67,24 @@ instance Converter T.Program Program where
           _                             -> [Return Nothing]
 
 data TopLevel
-  = TopVar [TopVarDecl]
-  | TopFunc FuncDecl
-  | TopInit Stmt
+  = TVar [TopVarDecl]
+  | TFunc FuncDecl
+  | TInit Stmt
 
 instance Converter T.TopDecl TopLevel where
   convert rc topDecl =
     case topDecl of
-      T.TopDecl decl     -> TopVar <$> convert rc decl
+      T.TopDecl decl     -> TVar <$> convert rc decl
       T.TopFuncDecl decl -> funcDecl <$> convert rc decl
     where
       funcDecl :: FuncDecl -> TopLevel
       funcDecl (FuncDecl (T.Ident "init") (Signature (Parameters []) Nothing) body) =
-        TopInit (injectRet body)
+        TInit (injectRet body)
         where
           injectRet :: Stmt -> Stmt
           injectRet (BlockStmt sl) = BlockStmt $ sl ++ [Return Nothing]
           injectRet s              = s
-      funcDecl d = TopFunc d
+      funcDecl d = TFunc d
 
 instance Converter T.FuncDecl FuncDecl where
   convert rc (T.FuncDecl (T.ScopedIdent _ i) sig body) =
@@ -177,6 +178,8 @@ instance Converter T.Expr Expr where
       T.Binary t op e1 e2 ->
         Binary <$> RC.newLabel rc <*> ct t <*-> op <*> ce e1 <*> ce e2
       T.Lit lit -> return $ Lit lit
+      -- Global vars are accessed by field names vs indices
+      T.Var t (T.ScopedIdent (T.Scope 2) i) -> TopVar <$> ct t <*-> i
       T.Var t i -> Var <$> ct t <*> RC.getVarIndex rc i
       T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
       T.LenExpr e -> LenExpr <$> ce e
@@ -197,8 +200,8 @@ instance Converter T.SimpleStmt SimpleStmt where
       T.EmptyStmt           -> return EmptyStmt
       T.ExprStmt e          -> ExprStmt <$> ce e
       T.VoidExprStmt idt el -> VoidExprStmt idt <$> mapM ce el
-      T.Increment e         -> Increment <$> ce e
-      T.Decrement e         -> Decrement <$> ce e
+      T.Increment e         -> inc2assn <$> ce e
+      T.Decrement e         -> dec2assn <$> ce e
       T.Assign op exprs     -> Assign op <$> mapM convertAssign exprs
       T.ShortDeclare decls  -> ShortDeclare <$> mapM convertShortDecl decls
     where
@@ -208,6 +211,10 @@ instance Converter T.SimpleStmt SimpleStmt where
       convertShortDecl (i, e) = (,) <$> RC.getVarIndex rc i <*> ce e
       ce :: T.Expr -> ST s Expr
       ce = convert rc
+      inc2assn :: Expr -> SimpleStmt
+      inc2assn e = Assign (T.AssignOp $ Just T.Add) ((e, Lit $ T.IntLit 1) :| [])
+      dec2assn :: Expr -> SimpleStmt
+      dec2assn e = Assign (T.AssignOp $ Just T.Subtract) ((e, Lit $ T.IntLit 1) :| [])
 
 instance Converter T.Stmt Stmt
   -- | TODO check if block stmt should become a scoped block (for temp gen)
