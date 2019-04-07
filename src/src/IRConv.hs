@@ -31,6 +31,7 @@ toClasses (T.Program _ scts tfs is tms) =
         { mname = "glc_fn__init"
         , stackLimit = maxStack
         , localsLimit = 25
+        , spec = MethodSpec ([], JVoid)
         , body = irBody
         } :
       toMethods tms
@@ -51,11 +52,12 @@ toClasses (T.Program _ scts tfs is tms) =
     toMethods = map fdToMethod
       where
         fdToMethod :: T.FuncDecl -> Method
-        fdToMethod (T.FuncDecl (D.Ident fni) _ fb) =
+        fdToMethod (T.FuncDecl (D.Ident fni) sig fb) =
           Method
             { mname = "glc_fn__" ++ fni
             , stackLimit = maxStack
             , localsLimit = 25 -- TODO
+            , spec = sigToSpec sig
             , body = irBody
             }
           where
@@ -63,6 +65,13 @@ toClasses (T.Program _ scts tfs is tms) =
             irBody = toIR fb
             maxStack :: Int
             maxStack = maxStackSize irBody 0
+            sigToSpec :: T.Signature -> MethodSpec
+            sigToSpec (T.Signature (T.Parameters pdl) mr) =
+              MethodSpec (map (typeToJType . pdToType) pdl, mrToJType mr)
+            pdToType :: T.ParameterDecl -> T.Type
+            pdToType (T.ParameterDecl _ t) = t
+            mrToJType :: Maybe T.Type -> JType
+            mrToJType mr = maybe JVoid typeToJType mr
     structClass :: T.StructType -> Class
     structClass (T.Struct (D.Ident sid) fdls) =
       Class
@@ -101,8 +110,7 @@ instance IRRep T.Stmt where
       -- duplicate expression for case statement expressions in lists
     where
       irCase :: (Int, T.SwitchCase) -> [IRItem]
-      irCase (cIdx, T.Case exprs stmt)
-       =
+      irCase (cIdx, T.Case exprs stmt) =
         concat (NE.map toCaseHeader exprs) ++
         [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
         toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
@@ -154,21 +162,33 @@ printIR e =
     printLoad = iri [GetStatic systemOut (JClass printStream)]
     intPrint :: [IRItem]
     intPrint =
-      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JInt] JVoid]
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef printStream) "print" (MethodSpec ([JInt], JVoid))
+        ]
     floatPrint :: [IRItem]
     floatPrint =
-      iri [InvokeVirtual $ MethodRef (CRef printStream) "print" [JDouble] JVoid]
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef printStream) "print" (MethodSpec ([JDouble], JVoid))
+        ]
     stringPrint :: [IRItem]
     stringPrint =
       iri
         [ InvokeVirtual $
-          MethodRef (CRef printStream) "print" [JClass jString] JVoid
+          MethodRef
+            (CRef printStream)
+            "print"
+            (MethodSpec ([JClass jString], JVoid))
         ]
     boolToString :: [IRItem]
     boolToString =
       iri
         [ InvokeVirtual $
-          MethodRef (CRef glcUtils) "boolStr" [JInt] (JClass jString)
+          MethodRef
+            (CRef glcUtils)
+            "boolStr"
+            (MethodSpec ([JInt], JClass jString))
         ]
 
 instance IRRep T.SimpleStmt where
@@ -179,7 +199,10 @@ instance IRRep T.SimpleStmt where
     concatMap toIR args ++
     iri
       [ InvokeVirtual $
-        MethodRef (CRef (ClassRef "Main")) aid (map exprJType args) JVoid
+        MethodRef
+          (CRef (ClassRef "Main"))
+          aid
+          (MethodSpec (map exprJType args, JVoid))
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR (T.Assign (T.AssignOp mAop) pairs) =
@@ -437,8 +460,7 @@ instance IRRep T.Expr where
         MethodRef
           (CRef (ClassRef "Main"))
           aid
-          (map exprJType args)
-          (typeToJType t)
+          (MethodSpec (map exprJType args, typeToJType t))
       ]
 
 instance IRRep D.Literal where
@@ -461,9 +483,15 @@ cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
   case exprJType e of
     JClass cr ->
-      iri [InvokeVirtual $ MethodRef (CRef cr) "clone" [] (JClass jObject)]
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
+        ]
     JArray jt ->
-      iri [InvokeVirtual $ MethodRef (ARef jt) "clone" [] (JClass jObject)]
+      iri
+        [ InvokeVirtual $
+          MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
+        ]
     _ -> [] -- Primitives and strings are not clonable
 
 exprType :: T.Expr -> T.Type
@@ -514,44 +542,44 @@ typeToJType (T.StructType (D.Ident sid)) =
   JClass (ClassRef $ "GlcStruct__" ++ sid)
 
 stackDelta :: Instruction -> Int
-stackDelta Load {}                             = 1 -- ... -> ..., v
-stackDelta ArrayLoad {}                        = -1 -- ..., o, i -> v
-stackDelta Store {}                            = -1 -- ..., v -> ...
-stackDelta ArrayStore {}                       = -3 -- ..., o, i, v -> ...
-stackDelta (Return m)                          = maybe 0 (const $ -1) m
-stackDelta Dup                                 = 1 -- ..., v -> ..., v, v
-stackDelta Dup2                                = 2 -- ..., v, w -> ..., v, w, v, w
-stackDelta Goto {}                             = 0
-stackDelta Add {}                              = -1 -- ..., v, w -> ..., r
-stackDelta Div {}                              = -1 -- ..., v, w -> ..., r
-stackDelta Mul {}                              = -1 -- ..., v, w -> ..., r
-stackDelta Neg {}                              = -1 -- ..., v, w -> ..., r
-stackDelta Sub {}                              = -1 -- ..., v, w -> ..., r
-stackDelta IRem                                = -1 -- ..., v, w -> ..., r
-stackDelta IShL                                = -1 -- ..., v, w -> ..., r
-stackDelta IShR                                = -1 -- ..., v, w -> ..., r
-stackDelta IAnd                                = -1 -- ..., v, w -> ..., r
-stackDelta IOr                                 = -1 -- ..., v, w -> ..., r
-stackDelta IXOr                                = -1 -- ..., v, w -> ..., r
-stackDelta If {}                               = -1 -- ..., v -> ...
-stackDelta IfICmp {}                           = -2 -- ..., v, w -> ...
-stackDelta LDC {}                              = 1 -- ... -> ..., v
-stackDelta IConstM1                            = 1 -- ... -> ..., -1
-stackDelta IConst0                             = 1 -- ... -> ..., 0
-stackDelta IConst1                             = 1 -- ... -> ..., 1
-stackDelta DCmpG                               = 1 -- ..., v1, v2 -> ..., r
-stackDelta New {}                              = 1 -- ... -> ..., o
-stackDelta ANewArray {}                        = 0 -- ..., c -> ..., o
-stackDelta NewArray {}                         = 0 -- ..., c -> ..., o
-stackDelta NOp                                 = 0
-stackDelta Pop                                 = -1 -- ..., v -> ...
-stackDelta Swap                                = 0 -- ..., v, w -> ..., w, v
-stackDelta GetStatic {}                        = 1 -- ... -> ..., v
-stackDelta GetField {}                         = 0 -- ..., o -> ..., v
-stackDelta PutField {}                         = -2 -- ..., o, v -> ...
-stackDelta (InvokeSpecial (MethodRef _ _ a _)) = -(length a) -- ..., o, a1, .., an -> r
-stackDelta (InvokeVirtual (MethodRef _ _ a _)) = -(length a) -- ..., o, a1, .., an -> r
-stackDelta Debug {}                            = 0
+stackDelta Load {} = 1 -- ... -> ..., v
+stackDelta ArrayLoad {} = -1 -- ..., o, i -> v
+stackDelta Store {} = -1 -- ..., v -> ...
+stackDelta ArrayStore {} = -3 -- ..., o, i, v -> ...
+stackDelta (Return m) = maybe 0 (const $ -1) m
+stackDelta Dup = 1 -- ..., v -> ..., v, v
+stackDelta Dup2 = 2 -- ..., v, w -> ..., v, w, v, w
+stackDelta Goto {} = 0
+stackDelta Add {} = -1 -- ..., v, w -> ..., r
+stackDelta Div {} = -1 -- ..., v, w -> ..., r
+stackDelta Mul {} = -1 -- ..., v, w -> ..., r
+stackDelta Neg {} = -1 -- ..., v, w -> ..., r
+stackDelta Sub {} = -1 -- ..., v, w -> ..., r
+stackDelta IRem = -1 -- ..., v, w -> ..., r
+stackDelta IShL = -1 -- ..., v, w -> ..., r
+stackDelta IShR = -1 -- ..., v, w -> ..., r
+stackDelta IAnd = -1 -- ..., v, w -> ..., r
+stackDelta IOr = -1 -- ..., v, w -> ..., r
+stackDelta IXOr = -1 -- ..., v, w -> ..., r
+stackDelta If {} = -1 -- ..., v -> ...
+stackDelta IfICmp {} = -2 -- ..., v, w -> ...
+stackDelta LDC {} = 1 -- ... -> ..., v
+stackDelta IConstM1 = 1 -- ... -> ..., -1
+stackDelta IConst0 = 1 -- ... -> ..., 0
+stackDelta IConst1 = 1 -- ... -> ..., 1
+stackDelta DCmpG = 1 -- ..., v1, v2 -> ..., r
+stackDelta New {} = 1 -- ... -> ..., o
+stackDelta ANewArray {} = 0 -- ..., c -> ..., o
+stackDelta NewArray {} = 0 -- ..., c -> ..., o
+stackDelta NOp = 0
+stackDelta Pop = -1 -- ..., v -> ...
+stackDelta Swap = 0 -- ..., v, w -> ..., w, v
+stackDelta GetStatic {} = 1 -- ... -> ..., v
+stackDelta GetField {} = 0 -- ..., o -> ..., v
+stackDelta PutField {} = -2 -- ..., o, v -> ...
+stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
+stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
+stackDelta Debug {} = 0
 
 maxStackSize :: [IRItem] -> Int -> Int
 maxStackSize irs current =
