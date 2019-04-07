@@ -101,7 +101,7 @@ instance IRRep T.Stmt where
       -- duplicate expression for case statement expressions in lists
     where
       irCase :: (Int, T.SwitchCase) -> [IRItem]
-      irCase (cIdx, T.Case exprs stmt) -- concat $ map (toIR . some equality check) exprs
+      irCase (cIdx, T.Case exprs stmt)
        =
         concat (NE.map toCaseHeader exprs) ++
         [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
@@ -261,7 +261,7 @@ instance IRRep T.SimpleStmt where
                       (T.BitAnd, Prim _) -> iri [IAnd]
                       (T.BitOr, Prim _) -> iri [IAnd]
                       (T.BitXor, Prim _) -> iri [IXOr]
-                      (T.BitClear, Prim _) -> undefined -- TODO: HOW?
+                      (T.BitClear, Prim _) -> iri [IConstM1, IXOr, IAnd]
                       _ -> error "Invalid operation on non-primitive"
       getStore :: (T.Expr, T.Expr) -> [IRItem]
       getStore (e, _) =
