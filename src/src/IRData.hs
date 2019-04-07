@@ -123,11 +123,11 @@ data IRCmp
 
 instance Show IRCmp where
   show IRData.LT = "lt"
-  show LE = "le"
+  show LE        = "le"
   show IRData.GT = "gt"
-  show GE = "ge"
+  show GE        = "ge"
   show IRData.EQ = "eq"
-  show NE = "ne"
+  show NE        = "ne"
 
 data LDCType
   = LDCInt Int -- Integers, booleans, runes
@@ -196,6 +196,9 @@ printStream = ClassRef "java/io/PrintStream"
 stringBuilder :: ClassRef
 stringBuilder = ClassRef "java/lang/StringBuilder"
 
+sbInit :: MethodRef
+sbInit = MethodRef (CRef stringBuilder) "<init>" [] JVoid
+
 sbAppend :: MethodRef
 sbAppend =
   MethodRef
@@ -203,6 +206,9 @@ sbAppend =
     "append"
     [JClass jString]
     (JClass stringBuilder)
+
+sbToString :: MethodRef
+sbToString = MethodRef (CRef stringBuilder) "toString" [] (JClass jString)
 
 jObject :: ClassRef
 jObject = ClassRef "java/lang/Object"

@@ -239,12 +239,7 @@ instance IRRep T.SimpleStmt where
                   setUpOps =
                     case (op, irType) of
                       (T.Add, Object) ->
-                        iri
-                          [ New stringBuilder
-                          , Dup
-                          , InvokeSpecial
-                              (MethodRef (CRef stringBuilder) "<init>" [] JVoid)
-                          ]
+                        iri [New stringBuilder, Dup, InvokeSpecial sbInit]
                       _ -> []
                   afterLoadOps :: [IRItem]
                   afterLoadOps =
@@ -255,15 +250,7 @@ instance IRRep T.SimpleStmt where
                   finalOps =
                     case (op, irType) of
                       (T.Add, Object) ->
-                        iri
-                          [ InvokeVirtual sbAppend
-                          , InvokeVirtual
-                              (MethodRef
-                                 (CRef stringBuilder)
-                                 "toString"
-                                 []
-                                 (JClass jString))
-                          ]
+                        iri [InvokeVirtual sbAppend, InvokeVirtual sbToString]
                       (T.Add, Prim p) -> iri [Add p]
                       (T.Subtract, Prim p) -> iri [Sub p]
                       (T.Multiply, Prim p) -> iri [Mul p]
@@ -329,19 +316,10 @@ instance IRRep T.Expr where
       T.PFloat64 -> binary e1 e2 (Add IRDouble)
       T.PRune -> binary e1 e2 (Add IRInt)
       T.PString ->
-        iri
-          [ New stringBuilder
-          , Dup
-          , InvokeSpecial (MethodRef (CRef stringBuilder) "<init>" [] JVoid)
-          ] ++
+        iri [New stringBuilder, Dup, InvokeSpecial sbInit] ++
         toIR e1 ++
         iri [InvokeVirtual sbAppend] ++
-        toIR e2 ++
-        iri [InvokeVirtual sbAppend] ++
-        iri
-          [ InvokeVirtual
-              (MethodRef (CRef stringBuilder) "toString" [] (JClass jString))
-          ]
+        toIR e2 ++ iri [InvokeVirtual sbAppend, InvokeVirtual sbToString]
       _ -> iri [Debug $ show t] -- undefined
   toIR (T.Binary _ _ (D.Arithm D.BitClear) _ _) = undefined -- TODO
   toIR (T.Binary _ t (D.Arithm aop) e1 e2) =
