@@ -25,6 +25,7 @@ import           Data.Maybe       (catMaybes, fromMaybe, listToMaybe)
 import           Prelude          hiding (init)
 import qualified ResourceContext  as RC
 import           ResourceData
+import           Data.List.NonEmpty (NonEmpty(..))
 import           SymbolTable      (typecheckGen)
 
 resourceGen :: String -> Glc Program
@@ -171,8 +172,8 @@ instance Converter T.SimpleStmt SimpleStmt where
       T.EmptyStmt           -> return EmptyStmt
       T.ExprStmt e          -> ExprStmt <$> ce e
       T.VoidExprStmt idt el -> VoidExprStmt idt <$> mapM ce el
-      T.Increment e         -> Increment <$> ce e
-      T.Decrement e         -> Decrement <$> ce e
+      T.Increment e         -> inc2assn <$> ce e
+      T.Decrement e         -> dec2assn <$> ce e
       T.Assign op exprs     -> Assign op <$> mapM convertAssign exprs
       T.ShortDeclare decls  -> ShortDeclare <$> mapM convertShortDecl decls
     where
@@ -182,6 +183,10 @@ instance Converter T.SimpleStmt SimpleStmt where
       convertShortDecl (i, e) = (,) <$> RC.getVarIndex rc i <*> ce e
       ce :: T.Expr -> ST s Expr
       ce = convert rc
+      inc2assn :: Expr -> SimpleStmt
+      inc2assn e = Assign (T.AssignOp $ Just T.Add) ((e, Lit $ T.IntLit 1) :| [])
+      dec2assn :: Expr -> SimpleStmt
+      dec2assn e = Assign (T.AssignOp $ Just T.Subtract) ((e, Lit $ T.IntLit 1) :| [])
 
 instance Converter T.Stmt Stmt
   -- | TODO check if block stmt should become a scoped block (for temp gen)
