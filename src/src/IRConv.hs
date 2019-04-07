@@ -181,24 +181,23 @@ instance IRRep T.SimpleStmt where
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR (T.Increment e) =
-    case e of
-      T.Var _ _ -> undefined -- TODO
-      T.Selector {} -> undefined -- TODO
-      T.Index _ ea ei ->
+    case (e, irType) of
+      (_, Object) -> error "Cannot increment object"
+      (T.Var _ idx, Prim p) ->
+        iri [Load irType idx, addValue p, Add p, Store irType idx]
+      (T.Selector {}, Prim _) -> undefined -- TODO
+      (T.Index _ ea ei, Prim p) ->
         case exprType ea of
           T.ArrayType {} ->
-            case irType of
-              Prim p ->
-                toIR ea ++
-                toIR ei ++
-                iri
-                  [ Dup2 -- Duplicate addressable and index at the same time
-                  , ArrayLoad irType
-                  , addValue p
-                  , Add p
-                  , ArrayStore irType
-                  ]
-              Object -> error "Cannot increment object"
+            toIR ea ++
+            toIR ei ++
+            iri
+              [ Dup2 -- Duplicate addressable and index at the same time
+              , ArrayLoad irType
+              , addValue p
+              , Add p
+              , ArrayStore irType
+              ]
           T.SliceType {} -> undefined -- TODO
           _ -> error "Cannot index non-array/slice"
       _ -> undefined -- Cannot increment non-addressable value
