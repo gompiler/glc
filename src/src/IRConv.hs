@@ -213,17 +213,14 @@ instance IRRep T.SimpleStmt where
               T.Var t idx ->
                 setUpOps ++
                 iri [Load (typeToIRType t) idx] ++
-                afterLoadOps ++
-                toIR ve ++
-                finalOps
+                afterLoadOps ++ toIR ve ++ finalOps
               T.Selector t eo (T.Ident fid) ->
                 case exprJType eo of
                   JClass cr ->
                     setUpOps ++
                     toIR eo ++
                     iri [GetField (FieldRef cr fid) (typeToJType t)] ++
-                    afterLoadOps ++
-                    toIR ve ++ finalOps
+                    afterLoadOps ++ toIR ve ++ finalOps
                   _ -> error "Cannot get field of non-object"
               T.Index _ ea ei ->
                 case exprType ea of
@@ -232,50 +229,53 @@ instance IRRep T.SimpleStmt where
                     toIR ea ++
                     toIR ei ++
                     iri [Dup2, ArrayLoad irType] ++ -- Duplicate addr. and index at the same time
-                    afterLoadOps ++
-                    toIR ve ++ finalOps
+                    afterLoadOps ++ toIR ve ++ finalOps
                   T.SliceType {} -> undefined -- TODO
                   _ -> error "Cannot index non-array/slice"
               _ -> error "Cannot assign to non-addressable value"
-            where
-              irType :: IRType
-              irType = exprIRType ve
-              setUpOps :: [IRItem]
-              setUpOps =
-                case (op, irType) of
-                  (T.Add, Object) ->
-                    iri
-                      [ New stringBuilder
-                      , Dup
-                      , InvokeSpecial (MethodRef (CRef stringBuilder) "<init>" [] JVoid)
-                      ]
-                  _ -> []
-              afterLoadOps :: [IRItem]
-              afterLoadOps =
-                case (op, irType) of
-                  (T.Add, Object) ->
-                    iri [InvokeVirtual sbAppend]
-                  _ -> []
-              finalOps :: [IRItem]
-              finalOps =
-                case (op, irType) of
-                  (T.Add, Object) ->
-                    iri
-                      [ InvokeVirtual sbAppend
-                      , InvokeVirtual (MethodRef (CRef stringBuilder) "toString" [] (JClass jString))
-                      ]
-                  (T.Add, Prim p)       -> iri [Add p]
-                  (T.Subtract, Prim p)  -> iri [Sub p]
-                  (T.Multiply, Prim p)  -> iri [Mul p]
-                  (T.Divide, Prim p)    -> iri [Div p]
-                  (T.Remainder, Prim _) -> iri [IRem]
-                  (T.ShiftL, Prim _)    -> iri [IShL]
-                  (T.ShiftR, Prim _)    -> iri [IShR]
-                  (T.BitAnd, Prim _)    -> iri [IAnd]
-                  (T.BitOr, Prim _)     -> iri [IAnd]
-                  (T.BitXor, Prim _)    -> iri [IXOr]
-                  (T.BitClear, Prim _)  -> undefined -- TODO: HOW?
-                  _ -> error "Invalid operation on non-primitive"
+            where irType :: IRType
+                  irType = exprIRType ve
+                  setUpOps :: [IRItem]
+                  setUpOps =
+                    case (op, irType) of
+                      (T.Add, Object) ->
+                        iri
+                          [ New stringBuilder
+                          , Dup
+                          , InvokeSpecial
+                              (MethodRef (CRef stringBuilder) "<init>" [] JVoid)
+                          ]
+                      _ -> []
+                  afterLoadOps :: [IRItem]
+                  afterLoadOps =
+                    case (op, irType) of
+                      (T.Add, Object) -> iri [InvokeVirtual sbAppend]
+                      _               -> []
+                  finalOps :: [IRItem]
+                  finalOps =
+                    case (op, irType) of
+                      (T.Add, Object) ->
+                        iri
+                          [ InvokeVirtual sbAppend
+                          , InvokeVirtual
+                              (MethodRef
+                                 (CRef stringBuilder)
+                                 "toString"
+                                 []
+                                 (JClass jString))
+                          ]
+                      (T.Add, Prim p) -> iri [Add p]
+                      (T.Subtract, Prim p) -> iri [Sub p]
+                      (T.Multiply, Prim p) -> iri [Mul p]
+                      (T.Divide, Prim p) -> iri [Div p]
+                      (T.Remainder, Prim _) -> iri [IRem]
+                      (T.ShiftL, Prim _) -> iri [IShL]
+                      (T.ShiftR, Prim _) -> iri [IShR]
+                      (T.BitAnd, Prim _) -> iri [IAnd]
+                      (T.BitOr, Prim _) -> iri [IAnd]
+                      (T.BitXor, Prim _) -> iri [IXOr]
+                      (T.BitClear, Prim _) -> undefined -- TODO: HOW?
+                      _ -> error "Invalid operation on non-primitive"
       getStore :: (T.Expr, T.Expr) -> [IRItem]
       getStore (e, _) =
         case e of
@@ -481,15 +481,9 @@ cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
   case exprJType e of
     JClass cr ->
-      iri
-        [ InvokeVirtual $
-          MethodRef (CRef cr) "clone" [] (JClass jObject)
-        ]
+      iri [InvokeVirtual $ MethodRef (CRef cr) "clone" [] (JClass jObject)]
     JArray jt ->
-      iri
-        [ InvokeVirtual $
-          MethodRef (ARef jt) "clone" [] (JClass jObject)
-        ]
+      iri [InvokeVirtual $ MethodRef (ARef jt) "clone" [] (JClass jObject)]
     _ -> [] -- Primitives and strings are not clonable
 
 exprType :: T.Expr -> T.Type
