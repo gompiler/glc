@@ -55,20 +55,34 @@ instance Converter T.Program Program where
         { package = package
         , structs = structs
         , topVars = concat vars
-        , init = createInits $ map funcName initFuncs
+        , init = createInit $ map funcName initFuncs
         , main = collectMain mains
         , functions = initFuncs ++ funcs
         }
     where
       funcName :: FuncDecl -> T.Ident
       funcName (FuncDecl i _ _ _) = i
-      createInits :: [T.Ident] -> InitDecl
-      createInits = undefined
+      -- | From previous AST's, we have at most one main function
+      -- We therefore return it if it exists, and default to a blank main func
       collectMain :: [(Stmt, LocalLimit)] -> MainDecl
-      collectMain []                = MainDecl (Return Nothing) (LocalLimit 0)
-      collectMain ((body, limit):_) = MainDecl body limit
+      collectMain mains =
+        uncurry MainDecl $
+        fromMaybe (Return Nothing, LocalLimit 0) (listToMaybe mains)
+      -- | Given collection of init identifiers,
+      -- Create an init declaration that calls each function in the provided order
+      createInit :: [T.Ident] -> InitDecl
+      createInit funcs =
+        InitDecl
+          (BlockStmt $ map (\i -> SimpleStmt $ VoidExprStmt i []) funcs)
+          (LocalLimit 0)
+      -- | Given init contents, convert to function
       renameInits :: [(Stmt, LocalLimit)] -> [FuncDecl]
-      renameInits = undefined
+      renameInits = zipWith createInitFunc (map initIdent [0 ..])
+      createInitFunc :: T.Ident -> (Stmt, LocalLimit) -> FuncDecl
+      createInitFunc i (body, limit) =
+        FuncDecl i (Signature (Parameters []) Nothing) body limit
+      initIdent :: Int -> T.Ident
+      initIdent i = T.Ident $ "__glc$init__" ++ show i
 
 data TopLevel
   = TVar [TopVarDecl]
