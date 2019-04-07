@@ -33,8 +33,8 @@ resourceGen p = convertProgram <$> typecheckGen p
 convertProgram :: T.Program -> Program
 convertProgram p =
   runST $ do
-    rc <- RC.new
-    convert rc p
+  rc <- RC.new
+  convert rc p
 
 class Converter a b where
   convert :: forall s. RC.ResourceContext s -> a -> ST s b
@@ -65,7 +65,11 @@ instance Converter T.TopDecl TopLevel where
     where
       funcDecl :: FuncDecl -> TopLevel
       funcDecl (FuncDecl (T.Ident "init") (Signature (Parameters []) Nothing) body) =
-        TopInit body
+        TopInit (injectRet body)
+        where
+          injectRet :: Stmt -> Stmt
+          injectRet (BlockStmt sl) = BlockStmt $ sl ++ [Return Nothing]
+          injectRet s = s
       funcDecl d = TopFunc d
 
 instance Converter T.FuncDecl FuncDecl where
