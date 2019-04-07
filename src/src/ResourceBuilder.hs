@@ -152,7 +152,7 @@ instance Converter T.Expr Expr where
         Binary <$> RC.newLabel rc <*> ct t <*-> op <*> ce e1 <*> ce e2
       T.Lit lit -> return $ Lit lit
       -- Global vars are accessed by field names vs indices
-      T.Var t (T.ScopedIdent (T.Scope 0) i) -> TopVar <$> ct t <*-> i
+      T.Var t (T.ScopedIdent (T.Scope 2) i) -> TopVar <$> ct t <*-> i
       T.Var t i -> Var <$> ct t <*> RC.getVarIndex rc i
       T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
       T.LenExpr e -> LenExpr <$> ce e
