@@ -115,6 +115,8 @@ instance Bytecode Instruction where
   toBC Swap = bstr "swap\n"
   toBC (GetStatic (FieldRef (ClassRef cn) fn) jt) =
     bstrM ["getstatic Field ", cn, " ", fn, " ", show jt, "\n"]
+  toBC (PutStatic (FieldRef (ClassRef cn) fn) jt) =
+    bstrM ["putstatic Field ", cn, " ", fn, " ", show jt, "\n"]
   toBC (GetField (FieldRef (ClassRef cn) fn) jt) =
     bstrM ["getfield Field ", cn, " ", fn, " ", show jt, "\n"]
   toBC (PutField (FieldRef (ClassRef cn) fn) jt) =
