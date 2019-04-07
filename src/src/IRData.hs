@@ -176,6 +176,8 @@ data Instruction
               JType -- field spec, descriptor
   | GetField FieldRef
              JType
+  | PutField FieldRef
+             JType
   | InvokeSpecial MethodRef -- method spec
   | InvokeVirtual MethodRef -- method spec
   | Debug String -- TODO: remove

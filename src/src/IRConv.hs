@@ -202,30 +202,67 @@ instance IRRep T.SimpleStmt where
         case p of
           IRInt    -> IConstM1
           IRDouble -> LDC (LDCDouble $ -1.0) -- TODO: IS THIS A REAL CASE?
-  toIR (T.Assign (T.AssignOp aop) pairs) =
-    concatMap (getValue . snd) (NE.toList pairs) ++ -- get values TODO CLONE
-    concatMap (getStore . fst) (reverse $ NE.toList pairs)
+  toIR (T.Assign (T.AssignOp mAop) pairs) =
+    concatMap getValue (NE.toList pairs) ++ -- get values TODO CLONE
+    concatMap getStore (reverse $ NE.toList pairs)
     where
-      getValue :: T.Expr -> [IRItem]
-      getValue e =
-        case aop of
-          Nothing        -> toIR e
-          Just T.Add       -> undefined -- TODO
-          Just T.Subtract  -> undefined -- TODO
-          Just T.BitOr     -> undefined -- TODO
-          Just T.BitXor    -> undefined -- TODO
-          Just T.Multiply  -> undefined -- TODO
-          Just T.Divide    -> undefined -- TODO
-          Just T.Remainder -> undefined -- TODO
-          Just T.ShiftL    -> undefined -- TODO
-          Just T.ShiftR    -> undefined -- TODO
-          Just T.BitAnd    -> undefined -- TODO
-          Just T.BitClear  -> undefined -- TODO
-      getStore :: T.Expr -> [IRItem]
-      getStore e = -- TODO: CLONE!!!!!!!!!!!!!!!!!!
+      getValue :: (T.Expr, T.Expr) -> [IRItem]
+      getValue (se, ve) =
+        case mAop of
+          Nothing -> toIR ve
+          Just op ->
+            case se of
+              T.Var t idx -> iri [Load (typeToIRType t) idx] ++ stackOps
+              T.Selector t eo (T.Ident fid) ->
+                case exprJType eo of
+                  JClass cr ->
+                    toIR eo ++ iri [GetField (FieldRef cr fid) (typeToJType t)]
+                  _ -> error "Cannot get field of non-object"
+              T.Index _ ea ei ->
+                case exprType ea of
+                  T.ArrayType {} ->
+                    toIR ea ++
+                    toIR ei ++
+                    iri [Dup2, ArrayLoad irType] ++ -- Duplicate addr. and index at the same time
+                    stackOps
+                  T.SliceType {} -> undefined -- TODO
+                  _ -> error "Cannot index non-array/slice"
+              _ -> error "Cannot assign to non-addressable value"
+            where
+              irType :: IRType
+              irType = exprIRType ve
+              stackOps :: [IRItem]
+              stackOps = -- TODO: CLONE!!!!!!!!!!!!!!!!!!
+                case op of
+                  T.Add       -> undefined -- TODO, with strings (immut)!
+                  T.Subtract  -> undefined -- TODO
+                  T.BitOr     -> undefined -- TODO
+                  T.BitXor    -> undefined -- TODO
+                  T.Multiply  -> undefined -- TODO
+                  T.Divide    -> undefined -- TODO
+                  T.Remainder -> undefined -- TODO
+                  T.ShiftL    -> undefined -- TODO
+                  T.ShiftR    -> undefined -- TODO
+                  T.BitAnd    -> undefined -- TODO
+                  T.BitClear  -> undefined -- TODO
+      getStore :: (T.Expr, T.Expr) -> [IRItem]
+      getStore (e, _) =
         case e of
           T.Var t idx -> iri [Store (typeToIRType t) idx]
+          T.Selector t eo (T.Ident fid) ->
+            case exprJType eo of
+              JClass cr ->
+                toIR eo ++ iri [PutField (FieldRef cr fid) (typeToJType t)]
+              _ -> error "Cannot get field of non-object"
+          T.Index _ ea _ ->
+            case exprType ea of
+              T.ArrayType {} -> iri [ArrayStore irType] -- matched with above
+              T.SliceType {} -> undefined -- TODO
+              _ -> error "Cannot index non-array/slice"
           _           -> undefined -- TODO: Index, Selector
+        where
+          irType :: IRType
+          irType = exprIRType e
   toIR (T.ShortDeclare iExps) =
     exprInsts ++ zipWith (curry expStore) idxs stTypes
     where
@@ -414,7 +451,7 @@ incDec e irType addValue =
     (T.Selector t eo (T.Ident fid), Prim _) ->
       case exprJType eo of
         JClass cr ->
-          toIR eo ++ iri [GetField (FieldRef cr fid) (typeToJType t)]
+          toIR eo ++ iri [GetField (FieldRef cr fid) (typeToJType t)] -- TODO: NEED TO STORE AGAIN!
         _ -> error "Cannot get field of non-object"
     (T.Index _ ea ei, Prim p) ->
       case exprType ea of
@@ -513,6 +550,7 @@ stackDelta Pop                                 = -1 -- ..., v -> ...
 stackDelta Swap                                = 0 -- ..., v, w -> ..., w, v
 stackDelta GetStatic {}                        = 1 -- ... -> ..., v
 stackDelta GetField {}                         = 0 -- ..., o -> ..., v
+stackDelta PutField {}                         = -2 -- ..., o, v -> ...
 stackDelta (InvokeSpecial (MethodRef _ _ a _)) = -(length a) -- ..., o, a1, .., an -> r
 stackDelta (InvokeVirtual (MethodRef _ _ a _)) = -(length a) -- ..., o, a1, .., an -> r
 stackDelta Debug {}                            = 0
