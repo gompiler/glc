@@ -21,6 +21,7 @@ import           Base
 import qualified CheckedData      as T
 import           Control.Monad.ST
 import qualified Cyclic           as C
+import           Data.List        (partition)
 import           Data.Maybe       (catMaybes, fromMaybe, listToMaybe)
 import           Prelude          hiding (init)
 import qualified ResourceContext  as RC
@@ -32,28 +33,10 @@ resourceGen p = convertProgram <$> typecheckGen p
 
 convertProgram :: T.Program -> Program
 convertProgram p =
-  injectMain $
   runST $ do
     rc <- RC.new
     convert rc p
       -- Add a main function if one is not declared
-  where
-    injectMain :: Program -> Program
-    injectMain (Program pkg strcs tvs sl fdl) =
-      Program pkg strcs tvs sl injectMain'
-      where
-        injectMain' :: [FuncDecl]
-        injectMain' =
-          if "main" `elem` toFns
-            then fdl
-            else fdl ++
-                 [ FuncDecl
-                     (Ident "main")
-                     (Signature (Parameters []) Nothing)
-                     (BlockStmt [Return Nothing])
-                 ]
-        toFns :: [String]
-        toFns = map (\(FuncDecl (Ident ident) _ _) -> ident) fdl
 
 class Converter a b where
   convert :: forall s. RC.ResourceContext s -> a -> ST s b
@@ -62,14 +45,25 @@ instance Converter T.Program Program where
   convert rc T.Program {T.package, T.topLevels} = do
     topLevels' <- mapM (convert rc) topLevels
     structs <- RC.allStructs rc
+    let (fdl, main) =
+          partition
+            (\(FuncDecl (Ident ident) _ _) -> ident /= "main")
+            [func | TopFunc func <- topLevels']
     return $
       Program
         { package = package
         , structs = structs
         , topVars = concat [vars | TopVar vars <- topLevels']
         , init = [stmt | TopInit stmt <- topLevels']
-        , functions = [func | TopFunc func <- topLevels']
+        , main = injectMain main
+        , functions = fdl
         }
+    where
+      injectMain :: [FuncDecl] -> [Stmt]
+      injectMain main =
+        case main of
+          [FuncDecl _ _ (BlockStmt sl)] -> sl
+          _                             -> [Return Nothing]
 
 data TopLevel
   = TopVar [TopVarDecl]
