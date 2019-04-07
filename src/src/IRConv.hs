@@ -207,7 +207,7 @@ instance IRRep T.SimpleStmt where
       getValue :: (T.Expr, T.Expr) -> [IRItem]
       getValue (se, ve) =
         case mAop of
-          Nothing -> toIR ve
+          Nothing -> toIR ve -- TODO: CLONE IF NEEDED
           Just op ->
             case se of
               T.Var t idx ->
@@ -233,7 +233,7 @@ instance IRRep T.SimpleStmt where
               irType :: IRType
               irType = exprIRType ve
               stackOps :: [IRItem]
-              stackOps = -- TODO: CLONE!!!!!!!!!!!!!!!!!!
+              stackOps =
                 case (op, irType) of
                   (T.Add, Object)       -> undefined -- TODO: string add
                   (T.Add, Prim p)       -> iri [Add p]
@@ -246,7 +246,7 @@ instance IRRep T.SimpleStmt where
                   (T.BitAnd, Prim _)    -> iri [IAnd]
                   (T.BitOr, Prim _)     -> iri [IAnd]
                   (T.BitXor, Prim _)    -> iri [IXOr]
-                  (T.BitClear, Prim _)  -> undefined -- TODO
+                  (T.BitClear, Prim _)  -> undefined -- TODO: HOW?
                   _ -> error "Invalid operation on non-primitive"
       getStore :: (T.Expr, T.Expr) -> [IRItem]
       getStore (e, _) =
