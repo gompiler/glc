@@ -371,7 +371,7 @@ instance IRRep T.Expr where
           JInt -> iri [IfICmp irCmp trueLabel]
           JBool -> iri [IfICmp irCmp trueLabel]
           JDouble -> iri [DCmpG, If irCmp trueLabel]
-          JClass (jString) ->
+          JClass (ClassRef "java/lang/String") ->
             iri [InvokeVirtual stringCompare, If irCmp trueLabel]
           _ -> undefined -- Comparisons not defined for anything else
       irCmp :: IRCmp
