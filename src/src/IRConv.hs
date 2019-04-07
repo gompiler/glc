@@ -202,7 +202,30 @@ instance IRRep T.SimpleStmt where
         case p of
           IRInt    -> IConstM1
           IRDouble -> LDC (LDCDouble $ -1.0) -- TODO: IS THIS A REAL CASE?
-  toIR (T.Assign (T.AssignOp _) _) = undefined -- TODO store IRType
+  toIR (T.Assign (T.AssignOp aop) pairs) =
+    concatMap (getValue . snd) (NE.toList pairs) ++ -- get values TODO CLONE
+    concatMap (getStore . fst) (reverse $ NE.toList pairs)
+    where
+      getValue :: T.Expr -> [IRItem]
+      getValue e =
+        case aop of
+          Nothing        -> toIR e
+          Just T.Add       -> undefined -- TODO
+          Just T.Subtract  -> undefined -- TODO
+          Just T.BitOr     -> undefined -- TODO
+          Just T.BitXor    -> undefined -- TODO
+          Just T.Multiply  -> undefined -- TODO
+          Just T.Divide    -> undefined -- TODO
+          Just T.Remainder -> undefined -- TODO
+          Just T.ShiftL    -> undefined -- TODO
+          Just T.ShiftR    -> undefined -- TODO
+          Just T.BitAnd    -> undefined -- TODO
+          Just T.BitClear  -> undefined -- TODO
+      getStore :: T.Expr -> [IRItem]
+      getStore e = -- TODO: CLONE!!!!!!!!!!!!!!!!!!
+        case e of
+          T.Var t idx -> iri [Store (typeToIRType t) idx]
+          _           -> undefined -- TODO: Index, Selector
   toIR (T.ShortDeclare iExps) =
     exprInsts ++ zipWith (curry expStore) idxs stTypes
     where
