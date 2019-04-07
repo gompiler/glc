@@ -309,38 +309,37 @@ instance IRRep T.Expr where
       intPattern :: [IRItem]
       intPattern = toIR e ++ iri [LDC (LDCInt (-1)), Mul IRInt]
   toIR (T.Unary _ D.Not e) = toIR e ++ iri [LDC (LDCInt 1), IXOr] -- !i is equivalent to i XOR 1
-  toIR (T.Unary _ D.BitComplement _) = undefined -- TODO: how to do this?
+  toIR (T.Unary _ D.BitComplement e) = toIR e ++ iri [IConstM1, IXOr] -- all ones, XOR
   toIR (T.Binary _ t (D.Arithm D.Add) e1 e2) =
     case t of
-      T.PInt -> binary e1 e2 (Add IRInt)
-      T.PFloat64 -> binary e1 e2 (Add IRDouble)
-      T.PRune -> binary e1 e2 (Add IRInt)
+      T.PInt -> binary e1 e2 [Add IRInt]
+      T.PFloat64 -> binary e1 e2 [Add IRDouble]
+      T.PRune -> binary e1 e2 [Add IRInt]
       T.PString ->
         iri [New stringBuilder, Dup, InvokeSpecial sbInit] ++
         toIR e1 ++
         iri [InvokeVirtual sbAppend] ++
         toIR e2 ++ iri [InvokeVirtual sbAppend, InvokeVirtual sbToString]
       _ -> iri [Debug $ show t] -- undefined
-  toIR (T.Binary _ _ (D.Arithm D.BitClear) _ _) = undefined -- TODO
   toIR (T.Binary _ t (D.Arithm aop) e1 e2) =
     case typeToIRPrim t of
-      Just t' -> binary e1 e2 (opToInst t')
+      Just t' -> binary e1 e2 (opToInsts t')
       Nothing -> error "Cannot do op on non-primitive (non-numeric) types"
     where
-      opToInst :: IRPrimitive -> Instruction
-      opToInst ip =
+      opToInsts :: IRPrimitive -> [Instruction]
+      opToInsts ip =
         case aop of
-          D.Subtract  -> Sub ip
-          D.Multiply  -> Mul ip
-          D.Divide    -> Div ip
-          D.BitOr     -> IOr
-          D.BitXor    -> IXOr
-          D.Remainder -> IRem
-          D.ShiftL    -> IShL
-          D.ShiftR    -> IShR
-          D.BitAnd    -> IAnd
+          D.Subtract  -> [Sub ip]
+          D.Multiply  -> [Mul ip]
+          D.Divide    -> [Div ip]
+          D.BitOr     -> [IOr]
+          D.BitXor    -> [IXOr]
+          D.Remainder -> [IRem]
+          D.ShiftL    -> [IShL]
+          D.ShiftR    -> [IShR]
+          D.BitAnd    -> [IAnd]
+          D.BitClear  -> [IConstM1, IXOr, IAnd] -- in GoLite (vs. Go), x &^ y === x & ^y
           D.Add       -> undefined -- handled above
-          D.BitClear  -> undefined -- handled above TODO
   toIR (T.Binary (T.LabelIndex idx) _ T.Or e1 e2) =
     toIR e1 ++
     iri [Dup, If IRData.NE ("true_ne_" ++ show idx), Pop] ++
@@ -425,8 +424,8 @@ instance IRRep D.Literal where
 iri :: [Instruction] -> [IRItem]
 iri = map IRInst
 
-binary :: T.Expr -> T.Expr -> Instruction -> [IRItem]
-binary e1 e2 inst = toIR e1 ++ toIR e2 ++ iri [inst]
+binary :: T.Expr -> T.Expr -> [Instruction] -> [IRItem]
+binary e1 e2 insts = toIR e1 ++ toIR e2 ++ iri insts
 
 incDec :: T.Expr -> IRType -> (IRPrimitive -> Instruction) -> [IRItem]
 incDec e irType addValue =

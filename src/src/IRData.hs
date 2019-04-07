@@ -7,6 +7,7 @@
 -- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
 -- http://www.cs.sjsu.edu/~pearce/modules/lectures/co/jvm/jasmin/demos/demos.html
 -- http://homepages.inf.ed.ac.uk/kwxm/JVM/fcmpg.html
+-- https://stackoverflow.com/questions/43782187/why-does-go-have-a-bit-clear-and-not-operator
 module IRData where
 
 import           ResourceData (VarIndex)
