@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+
 module Codegen where
 
 import           Data.ByteString.Builder (string7, toLazyByteString)
@@ -58,7 +59,7 @@ instance Bytecode Method where
       ]
 
 instance Bytecode IRItem where
-  toBC (IRInst inst) = toBC inst
+  toBC (IRInst inst)   = toBC inst
   toBC (IRLabel label) = bstrM [label, ":\n"]
 
 instance Bytecode Instruction where
@@ -87,10 +88,12 @@ instance Bytecode Instruction where
   toBC (LDC lt) = B.concat [bstr "ldc", suffix lt, nl]
     where
       suffix :: LDCType -> ByteString
-      suffix lt' = bstrM $ case lt' of
-                            LDCInt i -> [" ", show i]
-                            LDCDouble f -> ["2_w ", show f] -- Check if this is in the right format
-                            LDCString s -> ["_w ", show s]
+      suffix lt' =
+        bstrM $
+        case lt' of
+          LDCInt i    -> [" ", show i]
+          LDCDouble f -> ["2_w ", show f] -- Check if this is in the right format
+          LDCString s -> ["_w ", show s]
   toBC IConstM1 = bstr "iconst_m1\n"
   toBC IConst0 = bstr "iconst_0\n"
   toBC IConst1 = bstr "iconst_1\n"
@@ -99,31 +102,35 @@ instance Bytecode Instruction where
   toBC (NewArray prim) = bstrM ["newarray ", typename prim, "\n"]
     where
       typename :: IRPrimitive -> String
-      typename IRInt = "int"
+      typename IRInt    = "int"
       typename IRDouble = "double"
   toBC (New (ClassRef cn)) = bstrM ["new ", cn, "\n"]
   toBC NOp = bstr "nop\n"
   toBC Pop = bstr "pop\n"
   toBC Swap = bstr "swap\n"
-  toBC (GetStatic (FieldRef (ClassRef cn) fn) jt) = bstrM ["getstatic Field ", cn, " ", fn, " ", show jt, "\n"]
-  toBC (GetField (FieldRef (ClassRef cn) fn) jt) = bstrM ["getfield Field ", cn, " ", fn, " ", show jt, "\n"]
-  toBC (PutField (FieldRef (ClassRef cn) fn) jt) = bstrM ["putfield Field ", cn, " ", fn, " ", show jt, "\n"]
+  toBC (GetStatic (FieldRef (ClassRef cn) fn) jt) =
+    bstrM ["getstatic Field ", cn, " ", fn, " ", show jt, "\n"]
+  toBC (GetField (FieldRef (ClassRef cn) fn) jt) =
+    bstrM ["getfield Field ", cn, " ", fn, " ", show jt, "\n"]
+  toBC (PutField (FieldRef (ClassRef cn) fn) jt) =
+    bstrM ["putfield Field ", cn, " ", fn, " ", show jt, "\n"]
   toBC (InvokeSpecial mr) = bstrM ["invokespecial ", show mr, "\n"]
   toBC (InvokeVirtual mr) = bstrM ["invokevirtual ", show mr, "\n"]
   toBC (Debug _) = undefined
 
-
 -- | Get type prefix for things like load
 typePrefix :: IRType -> String
-typePrefix t = case t of
-                 Prim IRInt -> "i"
-                 Prim IRDouble -> "d" -- double
-                 Object -> "a"
+typePrefix t =
+  case t of
+    Prim IRInt    -> "i"
+    Prim IRDouble -> "d" -- double
+    Object        -> "a"
 
 typePrefix' :: IRPrimitive -> String
-typePrefix' t = case t of
-                  IRInt -> "i"
-                  IRDouble -> "d"
+typePrefix' t =
+  case t of
+    IRInt    -> "i"
+    IRDouble -> "d"
 
 -- | Helper to convert a string to ASCII lazy ByteString
 bstr :: String -> ByteString
