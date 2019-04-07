@@ -342,13 +342,45 @@ instance IRRep T.Expr where
           D.Add       -> undefined -- handled above
   toIR (T.Binary (T.LabelIndex idx) _ T.Or e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.NE ("true_ne_" ++ show idx), Pop] ++
-    toIR e2 ++ [IRLabel ("true_ne_" ++ show idx)]
+    iri [Dup, If IRData.NE ("true_or_" ++ show idx), Pop] ++
+    toIR e2 ++ [IRLabel ("true_or_" ++ show idx)]
   toIR (T.Binary (T.LabelIndex idx) _ T.And e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.EQ ("false_eq_" ++ show idx), Pop] ++
-    toIR e2 ++ [IRLabel ("false_eq_" ++ show idx)]
-  toIR (T.Binary _ _ T.EQ _ _) = undefined -- TODO
+    iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
+    toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
+  toIR (T.Binary (T.LabelIndex idx) t T.EQ e1 e2) =
+    case t of
+      T.ArrayType {} -> undefined -- TODO
+      T.PString -> undefined -- TODO
+      (T.StructType (D.Ident _)) -> undefined -- TODO
+      T.PFloat64 ->
+        toIR e1 ++
+        toIR e2 ++
+        iri
+          [ DCmpG
+          , If IRData.EQ ("true_eq_" ++ show idx) -- dcmpg is 0, they're equal
+          , Goto ("stop_eq_" ++ show idx)
+          ] ++
+        eqPostfix
+      T.SliceType {} -> error "Cannot compare slice equality"
+      _
+        -- Integer types
+       ->
+        toIR e1 ++
+        toIR e2 ++
+        iri
+          [ IfICmp IRData.EQ ("true_eq_" ++ show idx)
+          , IConst0
+          , Goto ("stop_eq_" ++ show idx)
+          ] ++
+        eqPostfix
+    where
+      eqPostfix :: [IRItem]
+      eqPostfix =
+        [ IRLabel ("true_eq_" ++ show idx)
+        , IRInst IConst1
+        , IRLabel ("stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
+        ]
   toIR (T.Binary idx t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary idx t T.EQ e1 e2)) -- != is =, !
   toIR (T.Binary (T.LabelIndex idx) _ op e1 e2) -- comparisons
