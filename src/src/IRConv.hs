@@ -304,7 +304,7 @@ instance IRRep T.Expr where
       T.PInt     -> intPattern
       T.PFloat64 -> toIR e ++ iri [LDC (LDCDouble (-1.0)), Mul IRDouble]
       T.PRune    -> intPattern
-      _          -> undefined -- Cannot take negative of other types
+      _          -> error "Cannot negate non-numeric types"
     where
       intPattern :: [IRItem]
       intPattern = toIR e ++ iri [IConstM1, Mul IRInt]
@@ -413,7 +413,7 @@ instance IRRep T.Expr where
           JDouble -> iri [DCmpG, If irCmp trueLabel]
           JClass (ClassRef "java/lang/String") ->
             iri [InvokeVirtual stringCompare, If irCmp trueLabel]
-          _ -> undefined -- Comparisons not defined for anything else
+          _ -> error "Cannot compare non-comparable types"
       irCmp :: IRCmp
       irCmp =
         case op of
@@ -429,7 +429,7 @@ instance IRRep T.Expr where
     case exprType e of
       T.ArrayType l _ -> iri [LDC (LDCInt l)] -- fixed at compile time
       T.SliceType _   -> undefined -- TODO
-      _               -> undefined -- Can't take length of anything else
+      _               -> error "Cannot get length of non-array/slice"
   toIR T.CapExpr {} = undefined -- TODO
   toIR (T.Selector t e (T.Ident fid)) =
     toIR e ++ iri [GetField fr (typeToJType t)]
@@ -438,13 +438,13 @@ instance IRRep T.Expr where
       fr =
         case exprJType e of
           JClass cref -> FieldRef cref fid
-          _           -> undefined -- Can't get field on non-class
+          _           -> error "Cannot get field of non-object"
   toIR (T.Index t e1 e2) =
     case exprType e1 of
       T.ArrayType _ _ -- TODO: CHECK LENGTH HERE?
        -> toIR e1 ++ toIR e2 ++ iri [ArrayLoad (typeToIRType t)]
       T.SliceType {} -> undefined -- TODO
-      _ -> undefined -- Cannot index any other type
+      _ -> error "Cannot index non-array/slice"
   toIR (T.Arguments t (D.Ident aid) args) =
     iri [Load Object (T.VarIndex 0)] ++ -- this object
     concatMap toIR args ++
@@ -495,7 +495,7 @@ incDec e irType addValue =
             ]
         T.SliceType {} -> undefined -- TODO
         _ -> error "Cannot index non-array/slice"
-    _ -> undefined -- Cannot increment non-addressable value
+    _ -> error "Cannot increment non-addressable value"
 
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
