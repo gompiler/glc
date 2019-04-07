@@ -190,7 +190,7 @@ instance IRRep T.SimpleStmt where
       addValue p =
         case p of
           IRInt    -> IConst1
-          IRDouble -> LDC (LDCDouble 1.0) -- TODO: IS THIS A REAL CASE?
+          IRDouble -> LDC (LDCDouble 1.0)
   toIR (T.Decrement e) = incDec e irType addValue
     where
       irType :: IRType
@@ -199,7 +199,7 @@ instance IRRep T.SimpleStmt where
       addValue p =
         case p of
           IRInt    -> IConstM1
-          IRDouble -> LDC (LDCDouble $ -1.0) -- TODO: IS THIS A REAL CASE?
+          IRDouble -> LDC (LDCDouble $ -1.0)
   toIR (T.Assign (T.AssignOp mAop) pairs) =
     concatMap getValue (NE.toList pairs) ++
     concatMap getStore (reverse $ NE.toList pairs)
@@ -320,7 +320,7 @@ instance IRRep T.Expr where
         toIR e1 ++
         iri [InvokeVirtual sbAppend] ++
         toIR e2 ++ iri [InvokeVirtual sbAppend, InvokeVirtual sbToString]
-      _ -> iri [Debug $ show t] -- undefined
+      _ -> error "Addition is not defined for non-numeric/string type"
   toIR (T.Binary _ t (D.Arithm aop) e1 e2) =
     case typeToIRPrim t of
       Just t' -> binary e1 e2 (opToInsts t')
@@ -367,10 +367,13 @@ instance IRRep T.Expr where
       endLabel = "end_" ++ labelOp ++ "_" ++ show idx
       cmpIR :: [IRItem]
       cmpIR =
-        case exprIRType e1 of
-          Prim IRInt    -> iri [IfICmp irCmp trueLabel]
-          Prim IRDouble -> iri [DCmpG, If irCmp trueLabel]
-          Object        -> undefined -- TODO: String comparisons?
+        case exprJType e1 of
+          JInt -> iri [IfICmp irCmp trueLabel]
+          JBool -> iri [IfICmp irCmp trueLabel]
+          JDouble -> iri [DCmpG, If irCmp trueLabel]
+          JClass (jString) ->
+            iri [InvokeVirtual stringCompare, If irCmp trueLabel]
+          _ -> undefined -- Comparisons not defined for anything else
       irCmp :: IRCmp
       irCmp =
         case op of
@@ -380,7 +383,7 @@ instance IRRep T.Expr where
           T.GEQ -> IRData.GE
           _     -> undefined -- Handled above
   toIR (T.Lit l) = toIR l
-  toIR (T.Var t vi) = iri [Load (typeToIRType t) vi] -- TODO (also bool?)
+  toIR (T.Var t vi) = iri [Load (typeToIRType t) vi]
   toIR T.AppendExpr {} = undefined -- TODO
   toIR (T.LenExpr e) =
     case exprType e of
