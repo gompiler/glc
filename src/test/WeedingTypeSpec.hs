@@ -7,7 +7,7 @@ module WeedingTypeSpec
 import           TestBase
 import           WeedingTypes
 
-expectWeedFailNoMain :: Stringable s => [s] -> SpecWith ()
+expectWeedFailNoMain :: Stringable s => [s] -> Spec
 expectWeedFailNoMain =
   expectBase
     "weed types fail"

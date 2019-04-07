@@ -6,6 +6,7 @@
 -- https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
 -- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
 -- http://www.cs.sjsu.edu/~pearce/modules/lectures/co/jvm/jasmin/demos/demos.html
+-- http://homepages.inf.ed.ac.uk/kwxm/JVM/fcmpg.html
 module IRData where
 
 import           ResourceData (VarIndex)
@@ -55,24 +56,33 @@ newtype ClassRef =
   ClassRef String
   deriving (Show, Eq)
 
+data ClassOrArrayRef
+  = CRef ClassRef
+  | ARef JType
+  deriving (Show, Eq)
+
 data FieldRef =
   FieldRef ClassRef
            String
   deriving (Show, Eq)
 
 data MethodRef =
-  MethodRef ClassRef
+  MethodRef ClassOrArrayRef
             String
             [JType]
             JType
   deriving (Eq)
 
 instance Show MethodRef where
-  show (MethodRef (ClassRef cn) mn tl t) =
+  show (MethodRef (CRef (ClassRef cn)) mn tl t) =
     "Method " ++ cn ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
+  show (MethodRef (ARef jt) mn tl t) =
+    "Method [" ++
+    show jt ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
 
 data JType
   = JClass ClassRef -- Lwhatever;
+  | JArray JType -- [ as a prefix, ex. [I
   | JInt -- I
   | JFloat -- F
   | JBool -- Z
@@ -81,6 +91,7 @@ data JType
 
 instance Show JType where
   show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
+  show (JArray jt)            = "[" ++ show jt
   show JInt                   = "I"
   show JFloat                 = "F"
   show JBool                  = "Z"
@@ -101,6 +112,23 @@ data IRType
   | Object -- String, array, struct, slice
   deriving (Show, Eq)
 
+data IRCmp
+  = LT
+  | LE
+  | GT
+  | GE
+  | EQ
+  | NE
+  deriving (Eq)
+
+instance Show IRCmp where
+  show IRData.LT = "lt"
+  show LE = "le"
+  show IRData.GT = "gt"
+  show GE = "ge"
+  show IRData.EQ = "eq"
+  show NE = "ne"
+
 data LDCType
   = LDCInt Int -- Integers, booleans, runes
   | LDCFloat Float -- Float64s
@@ -110,26 +138,34 @@ data LDCType
 data Instruction
   = Load IRType
          VarIndex
+  | ArrayLoad IRType -- consumes an object reference and an index
   | Store IRType
           VarIndex
+  | ArrayStore IRType -- consumes an object reference and an index
   | Return (Maybe IRType)
   | Dup
+  | Dup2 -- ..., v, w -> ..., v, w, v, w
   | Goto LabelName
   | Add IRPrimitive
-  | Div IRPrimitive -- TODO: Turn into Op instruction?
+  | Div IRPrimitive
   | Mul IRPrimitive
   | Neg IRPrimitive
   | Sub IRPrimitive
   | IRem
   | IShL
   | IShR
-  | IALoad
   | IAnd
-  | IAStore
-  | IfEq LabelName
   | IOr
   | IXOr
+  | If IRCmp
+       LabelName
+  | IfICmp IRCmp
+           LabelName
   | LDC LDCType -- pushes an int/float/string value onto the stack
+  | IConstM1 -- -1
+  | IConst0 -- 0
+  | IConst1 -- 1
+  | DCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
   | New ClassRef -- class
   | ANewArray ClassRef
   | NewArray IRPrimitive
@@ -137,7 +173,9 @@ data Instruction
   | Pop
   | Swap
   | GetStatic FieldRef
-              ClassRef -- field spec, descriptor
+              JType -- field spec, descriptor
+  | GetField FieldRef
+             JType
   | InvokeSpecial MethodRef -- method spec
   | InvokeVirtual MethodRef -- method spec
   | Debug String -- TODO: remove
@@ -155,6 +193,9 @@ stringBuilder = ClassRef "java/lang/StringBuilder"
 
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
+
+jObject :: ClassRef
+jObject = ClassRef "java/lang/Object"
 
 -- Custom-defined methods
 glcUtils :: ClassRef

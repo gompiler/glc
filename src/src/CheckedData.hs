@@ -1,7 +1,45 @@
-module CheckedData where
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
+module CheckedData
+  ( ArithmOp(..)
+  , AssignOp(..)
+  , BinaryOp(..)
+  , CType
+  , Decl(..)
+  , Expr(..)
+  , FieldDecl(..)
+  , ForClause(..)
+  , FuncDecl(..)
+  , Ident(..)
+  , Literal(..)
+  , ParameterDecl(..)
+  , Parameters(..)
+  , Program(..)
+  , Scope(..)
+  , ScopedIdent(..)
+  , Signature(..)
+  , SimpleStmt(..)
+  , Stmt(..)
+  , SwitchCase(..)
+  , TopDecl(..)
+  , Type(..)
+  , TypeDef'(..)
+  , UnaryOp(..)
+  , VarDecl'(..)
+  ) where
+
+import           Base
+import           Converter
+import qualified Cyclic             as C
+import           Data               (ArithmOp (..), AssignOp (..),
+                                     BinaryOp (..), UnaryOp (..))
+import qualified Data               as T
 import           Data.List.NonEmpty (NonEmpty (..))
-import qualified Cyclic as C
+import qualified Data.List.NonEmpty as NE (unzip)
+import qualified Data.Maybe         as Maybe (mapMaybe)
+import           Prettify
 
 data ScopedIdent =
   ScopedIdent Scope
@@ -56,7 +94,9 @@ data VarDecl' =
 -- | Placeholder, no typedefs
 -- This is here since generating this new AST at typecheck is a one to one map
 data TypeDef' =
-  NoDef
+  TypeDef' ScopedIdent
+           CType
+  | NoDef
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -108,7 +148,8 @@ data SimpleStmt
   -- | See https://golang.org/ref/spec#Expression_statements
   -- Note that expr must be some function
   | ExprStmt Expr
-  | VoidExprStmt Ident [Expr] -- For void calls only as they don't have a return type
+  | VoidExprStmt Ident
+                 [Expr] -- For void calls only as they don't have a return type
   -- | See https://golang.org/ref/spec#IncDecStmt
   | Increment Expr
   | Decrement Expr
@@ -194,7 +235,8 @@ data Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
   -- | See https://golang.org/ref/spec#OperandName
-  | Var CType ScopedIdent
+  | Var CType
+        ScopedIdent
   -- | Golite spec
   -- See https://golang.org/ref/spec#Appending_and_copying_slices
   -- First expr should be a slice
@@ -236,70 +278,21 @@ data Literal
   | StringLit String
   deriving (Show, Eq)
 
--- | See https://golang.org/ref/spec#binary_op
--- & See https://golang.org/ref/spec#rel_op
-data BinaryOp
-  = Or -- ||
-  | And -- &&
-  | Arithm ArithmOp
-  | EQ -- ==
-  | NEQ -- !=
-  | LT -- <
-  | LEQ -- <=
-  | GT -- >
-  | GEQ -- >=
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#add_op
--- & See https://golang.org/ref/spec#mul_op
--- We make no distinction between addop and mulop
--- As they are separated in the specs purely to show the order of operations
-data ArithmOp
-  --- Add Ops
-  = Add -- +
-  | Subtract -- -
-  | BitOr -- |
-  | BitXor -- ^
-  --- Mul Ops
-  | Multiply -- *
-  | Divide -- /
-  | Remainder -- %
-  | ShiftL -- <<
-  | ShiftR -- >>
-  | BitAnd -- &
-  | BitClear -- &^
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#unary_op
--- Golite only supports the four ops below
-data UnaryOp
-  = Pos -- +
-  | Neg -- -
-  | Not -- !
-  | BitComplement -- ^
-  deriving (Show, Eq)
-
--- | See https://golang.org/ref/spec#assign_op
--- Symbol is the arithm op followed by '='
-newtype AssignOp =
-  AssignOp (Maybe ArithmOp)
-  deriving (Show, Eq)
-
 type CType = C.CyclicContainer Type
 
 instance C.Cyclic Type where
   isRoot Cycle = True
   isRoot _     = False
-  hasRoot Cycle           = True
-  hasRoot (ArrayType _ t)     = C.hasRoot t
-  hasRoot (SliceType t)       = C.hasRoot t
+  hasRoot Cycle = True
+  hasRoot (ArrayType _ t) = C.hasRoot t
+  hasRoot (SliceType t) = C.hasRoot t
   hasRoot (StructType fields) = any hasRoot' fields
     where
-          hasRoot' :: FieldDecl -> Bool
-          hasRoot' (FieldDecl _ t) = C.hasRoot t
+      hasRoot' :: FieldDecl -> Bool
+      hasRoot' (FieldDecl _ t) = C.hasRoot t
   -- Note that an infer within another typemap is no longer the same
   -- root as the current cycle. We therefore also mark it as false
-  hasRoot _               = False
+  hasRoot _ = False
 
 -- Use Type for base type resolution instead
 -- | See https://golang.org/ref/spec#Types
@@ -326,8 +319,8 @@ data Type
   -- While we can represent it with an infinite data structure,
   -- It makes modification more difficult
   -- TODO check if we actually want to support this
-   | Cycle
-   | TypeMap CType
+  | Cycle
+  | TypeMap CType
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#FieldDecl
@@ -337,3 +330,139 @@ data FieldDecl =
   FieldDecl Ident
             Type
   deriving (Show, Eq)
+
+------------------------------------------------------------------------
+-- Converter logic
+-- The following maps CheckedData to Data,
+-- allowing us to derive Prettify
+------------------------------------------------------------------------
+o :: Offset
+o = Offset 0
+
+instance Convert Ident T.Identifier where
+  convert (Ident vname) = T.Identifier o vname
+
+instance Convert ScopedIdent T.Identifier where
+  convert (ScopedIdent _ i) = convert i
+
+instance Convert Ident ScopedIdent where
+  convert = ScopedIdent (Scope 0)
+
+-- | Scoped identifier to non empty idents with offsets
+instance Convert ScopedIdent T.Identifiers where
+  convert si = convert si :| []
+
+instance Convert Program T.Program where
+  convert (Program i tl) = T.Program (convert i) (convert tl)
+
+instance Convert TopDecl T.TopDecl where
+  convert (TopDecl d)      = T.TopDecl (convert d)
+  convert (TopFuncDecl fd) = T.TopFuncDecl (convert fd)
+
+instance Convert Decl T.Decl where
+  convert (VarDecl vdl) = T.VarDecl (convert vdl)
+  convert (TypeDef tdl) = T.TypeDef (Maybe.mapMaybe convert tdl)
+
+instance Convert VarDecl' T.VarDecl' where
+  convert (VarDecl' si t (Just e)) =
+    T.VarDecl' (convert si) (Left (convert t, [convert e]))
+  convert (VarDecl' si t Nothing) =
+    T.VarDecl' (convert si) (Left (convert t, []))
+
+instance Convert TypeDef' (Maybe T.TypeDef') where
+  convert (TypeDef' si t) = Just $ T.TypeDef' (convert si) (convert t)
+  convert NoDef = Nothing
+
+instance Convert FuncDecl T.FuncDecl where
+  convert (FuncDecl si sig fb) =
+    T.FuncDecl (convert si) (convert sig) (convert fb)
+
+instance Convert ParameterDecl T.ParameterDecl where
+  convert (ParameterDecl si t) = T.ParameterDecl (convert si) (convert t)
+
+instance Convert Parameters T.Parameters where
+  convert (Parameters pdl) = T.Parameters (convert pdl)
+
+instance Convert Signature T.Signature where
+  convert (Signature params t) = T.Signature (convert params) (convert t)
+
+instance Convert SimpleStmt T.SimpleStmt where
+  convert EmptyStmt = T.EmptyStmt
+  convert (ExprStmt e) = T.ExprStmt (convert e)
+  convert (VoidExprStmt i el) =
+    T.ExprStmt (T.Arguments o (T.Var $ convert i) (convert el))
+  convert (Increment e) = T.Increment o (convert e)
+  convert (Decrement e) = T.Decrement o (convert e)
+  convert (Assign op eltup) = uncurry (T.Assign o op) (convert $ NE.unzip eltup)
+  convert (ShortDeclare ideltup) =
+    uncurry T.ShortDeclare (convert $ NE.unzip ideltup)
+
+instance Convert Stmt T.Stmt where
+  convert (BlockStmt sl) = T.BlockStmt (convert sl)
+  convert (SimpleStmt ss) = T.SimpleStmt (convert ss)
+  convert (If (ss, e) s1 s2) =
+    T.If (convert ss, convert e) (convert s1) (convert s2)
+  convert (Switch ss e scl) = T.Switch (convert ss) (convert e) (convert scl)
+  convert (For fcl s) = T.For (convert fcl) (convert s)
+  convert Break = T.Break o
+  convert Continue = T.Continue o
+  convert (Declare d) = T.Declare (convert d)
+  convert (Print el) = T.Print (convert el)
+  convert (Println el) = T.Println (convert el)
+  convert (Return e) = T.Return o (convert e)
+
+instance Convert SwitchCase T.SwitchCase where
+  convert (Case nle s) = T.Case o (convert nle) (convert s)
+  convert (Default s)  = T.Default o (convert s)
+
+instance Convert ForClause T.ForClause where
+  convert (ForClause pre e post) =
+    T.ForClause (convert pre) (convert e) (convert post)
+
+instance Convert Expr T.Expr where
+  convert (Unary _ op e) = T.Unary o op (convert e)
+  convert (Binary _ op e1 e2) = T.Binary o op (convert e1) (convert e2)
+  convert (Lit lit) = either T.Lit id (convert lit)
+  convert (Var _ si) = T.Var (convert si)
+  convert (AppendExpr _ e1 e2) = T.AppendExpr o (convert e1) (convert e2)
+  convert (LenExpr e) = T.LenExpr o (convert e)
+  convert (CapExpr e) = T.CapExpr o (convert e)
+  convert (Selector _ _ e i) = T.Selector o (convert e) (convert i)
+  convert (Index _ e1 e2) = T.Index o (convert e1) (convert e2)
+  convert (Arguments _ i el) = T.Arguments o (T.Var (convert i)) (convert el)
+
+instance Convert Literal (Either T.Literal T.Expr) where
+  convert (IntLit i) = Left $ T.IntLit o T.Decimal (show i)
+  convert (FloatLit f) = Left $ T.FloatLit o (show f)
+  convert (RuneLit c) = Left $ T.RuneLit o (show c)
+  convert (StringLit s) = Left $ T.StringLit o T.Interpreted $ "\"" ++ s ++ "\""
+  convert (BoolLit True) = Right $ T.Var (convert $ Ident "true")
+  convert (BoolLit False) = Right $ T.Var (convert $ Ident "false")
+
+instance Convert CType T.Type where
+  convert = convert . C.get
+
+instance Convert CType T.Type' where
+  convert t = (o, convert t)
+
+instance Convert Type T.Type' where
+  convert t = (o, convert t)
+
+instance Convert Type T.Type where
+  convert (ArrayType i t) =
+    T.ArrayType (T.Lit (T.IntLit o T.Decimal (show i))) (convert t)
+  convert (SliceType t) = T.SliceType (convert t)
+  convert (StructType fdl) = T.StructType (convert fdl)
+  convert PInt = T.Type (convert $ Ident "int")
+  convert PFloat64 = T.Type (convert $ Ident "float64")
+  convert PBool = T.Type (convert $ Ident "bool")
+  convert PRune = T.Type (convert $ Ident "rune")
+  convert PString = T.Type (convert $ Ident "string")
+  convert Cycle = T.Type (convert $ Ident "cycle")
+  convert (TypeMap t) = convert t -- TODO verify
+
+instance Convert FieldDecl T.FieldDecl where
+  convert (FieldDecl i t) = T.FieldDecl (convert i :| []) (convert t)
+
+instance Prettify Program where
+  prettify' p = prettify' (convert p :: T.Program)

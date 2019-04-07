@@ -206,9 +206,9 @@ spec = do
                     break
             }
             a := 0334523475
-            (a)++
-            (a)--
-            if (a)--; (b < a) {
+            a++
+            a--
+            if a--; (b < a) {
                 println("A")
             }
             if (a < b) {
@@ -218,7 +218,7 @@ spec = do
                 println("a")
                 println(`b`)
             }
-            for i := 0; (i < 10); (i)++ {
+            for i := 0; (i < 10); i++ {
                 println("b")
                 function()
             }

@@ -4,9 +4,12 @@ module ResourceContext
   ( ResourceContext
   , new
   , wrap
-  , getStructName
+  , structName
   , getVarIndex
-  , getAllStructs
+  , allStructs
+  , newLabel
+  , newLoopLabel
+  , currentLoopLabel
   ) where
 
 import           Base
@@ -26,9 +29,11 @@ newtype ResourceContext s =
 -- While we only need to store a counter,
 -- this makes it easier to fetch the ordered struct list
 data ResourceContext_ s = RC
-  { allStructs :: [StructType]
-  , structMap  :: StructTable s
-  , varScopes  :: [ResourceScope s]
+  { structTypes   :: [StructType]
+  , structMap     :: StructTable s
+  , varScopes     :: [ResourceScope s]
+  , labelCounter  :: Int
+  , lastLoopLabel :: Int
   }
 
 data ResourceScope s =
@@ -73,7 +78,14 @@ readRef (ResourceContext ref) = readSTRef ref
 new :: ST s (ResourceContext s)
 new = do
   structMap' <- HT.new
-  newRef $ RC {allStructs = [], varScopes = [], structMap = structMap'}
+  newRef $
+    RC
+      { structTypes = []
+      , varScopes = []
+      , structMap = structMap'
+      , labelCounter = 0
+      , lastLoopLabel = 0
+      }
 
 -- | Create a new resource scope
 newScope :: ST s (ResourceScope s)
@@ -132,11 +144,33 @@ getVarIndex st si = do
       index <- HT.lookup varTable key
       return $! index <?> size
 
+-- | Returns a label id that is unique across the entire program
+newLabel :: ResourceContext s -> ST s LabelIndex
+newLabel st = do
+  rc <- readRef st
+  let i = labelCounter rc
+  writeRef st $! rc {labelCounter = i + 1}
+  return $ LabelIndex i
+
+-- | Returns a label id that is unique across the entire program
+-- We will also store it as the last loop label,
+-- as it will be used for things like 'break' and 'continue'
+newLoopLabel :: ResourceContext s -> ST s LabelIndex
+newLoopLabel st = do
+  rc <- readRef st
+  let i = labelCounter rc
+  writeRef st $! rc {labelCounter = i + 1, lastLoopLabel = i}
+  return $ LabelIndex i
+
+-- | Returns the last label created
+currentLoopLabel :: ResourceContext s -> ST s LabelIndex
+currentLoopLabel st = LabelIndex . lastLoopLabel <$> readRef st
+
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type
 -- But in different orders are technically the same
-getStructName :: forall s. ResourceContext s -> [FieldDecl] -> ST s C.Ident
-getStructName st fields = do
+structName :: forall s. ResourceContext s -> [FieldDecl] -> ST s C.Ident
+structName st fields = do
   let key = StructKey fields
   rc <- readRef st
   let m = structMap rc
@@ -147,16 +181,16 @@ getStructName st fields = do
       -- Create the new StructType, save it in the hashmap,
       -- and update our struct list
      -> do
-      let name = structName $ length (allStructs rc) + 1
+      let name = structName' $ length (structTypes rc) + 1
           value = Struct name fields
-          allStructs' = value : allStructs rc
+          structTypes' = value : structTypes rc
       _ <- HT.insert m key value
-      writeRef st $! rc {allStructs = allStructs'}
+      writeRef st $! rc {structTypes = structTypes'}
       return $! name
   where
-    structName :: Int -> C.Ident
-    structName i = C.Ident $ "GlcStruct" ++ show i
+    structName' :: Int -> C.Ident
+    structName' i = C.Ident $ "GlcStruct" ++ show i
 
 -- | Returns a list of unique structs, ordered by creation
-getAllStructs :: ResourceContext s -> ST s [StructType]
-getAllStructs st = reverse . allStructs <$> readRef st
+allStructs :: ResourceContext s -> ST s [StructType]
+allStructs st = reverse . structTypes <$> readRef st

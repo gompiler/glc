@@ -19,7 +19,7 @@ import           Data.Either        (isLeft)
 import           Data.Functor       (($>))
 
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
-import           Data.Maybe         (catMaybes)
+import           Data.Maybe         (catMaybes, listToMaybe)
 
 import           Base
 import qualified CheckedData        as T
@@ -194,8 +194,7 @@ instance Typify Type where
   -- This last array case should never happen, this is here for exhaustive pattern matching
   -- if we want to remove this then we have to change ArrayType to only take in literal ints in the AST
   -- if we expand to support Go later, then we'll change this to support actual expressions
-  toType' _ _ (ArrayType e _) _ =
-    return $ Left $ createError e ArrayNonIntLit
+  toType' _ _ (ArrayType e _) _ = return $ Left $ createError e ArrayNonIntLit
 
 instance Symbolize Program T.Program where
   recurse st (Program (Identifier _ pkg) tdl)
@@ -210,9 +209,7 @@ instance Symbolize TopDecl T.TopDecl
 
 -- | Helper for a list of top declarations, does the same thing as above except we use mapM and sequence the results (i.e. if we have a Left in any of the results, we'll just use that because we have an error)
 instance Symbolize [TopDecl] [T.TopDecl] where
-  recurse st vdl = do
-    el <- mapM (recurse st) vdl
-    return (sequence el)
+  recurse st vdl = sequence <$> mapM (recurse st) vdl
 
 instance Symbolize FuncDecl T.FuncDecl
   -- Check if function (ident) is declared in current scope (top scope)
@@ -313,8 +310,8 @@ instance Symbolize FuncDecl T.FuncDecl
       getAllIdents = concatMap (\(ParameterDecl nidl _) -> toList nidl) pdl
       checkParams :: [ParameterDecl] -> ST s (Glc' [(Param, SymbolInfo)])
       checkParams pdl' =
-        checkDup st getAllIdents DuplicateParam $
-        concat <$$> mapS checkParam pdl'
+        checkDup st getAllIdents DuplicateParam $ concat <$$>
+        mapS checkParam pdl'
       checkParam :: ParameterDecl -> ST s (Glc' [(Param, SymbolInfo)])
       checkParam (ParameterDecl idl (_, t')) = do
         et <- toType st Nothing t' -- Remove ST
@@ -322,7 +319,7 @@ instance Symbolize FuncDecl T.FuncDecl
           (return . Left)
           (\t2 -> do
              einfo <- checkIds' t2 idl
-                                   -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
+             -- Alternatively we can add messages at the checkId level instead of making the ParamInfo type
              either
                (\e -> S.disableMessages st $> Left e)
                (return . Right)
@@ -342,19 +339,20 @@ instance Symbolize FuncDecl T.FuncDecl
       p2pd :: S.Scope -> Param -> Glc' T.ParameterDecl
       p2pd scope (s, t') =
         T.ParameterDecl (mkSIdStr scope s) <$> toBase (Var ident) t'
-      -- The argument to toBase above isn't really the right "expression", it should be the original parameter with its offset, but that will require rewriting most of this logic to pass that over
+      -- The argument to toBase above isn't really the right "expression";
+      -- it should be the original parameter with its offset,
+      -- but that will require rewriting most of this logic to pass that over
       func2sig :: S.Scope -> ([Param], CType) -> Glc' T.Signature
       func2sig scope (pl, t') =
         (\pl2 ->
-           if t' == void then Right $ T.Signature (T.Parameters pl2) Nothing
-           else T.Signature (T.Parameters pl2) . Just <$> toBase (Var ident) t') =<<
+           if t' == void
+             then Right $ T.Signature (T.Parameters pl2) Nothing
+             else T.Signature (T.Parameters pl2) . Just <$>
+                  toBase (Var ident) t') =<<
         mapM (p2pd scope) pl
   recurse st (FuncDecl idents sig stmt) =
     recurse st (FuncDecl idents sig (BlockStmt [stmt]))
 
---               do
---                 _ <- S.addMessage st2 Nothing -- Signal error so we don't print symbols beyond this
---                 return $ Left e
 -- This will never happen but we do this for exhaustive matching on the FuncBody of a FuncDecl even though it is always a block stmt
 -- | checkId over a list of identifiers, keep first error or return nothing
 checkIds ::
@@ -363,7 +361,8 @@ checkIds ::
   -> String
   -> Identifiers
   -> ST s (Maybe ErrorMessage')
-checkIds st s pfix idl = maybeJ <$> mapM (checkId st s pfix) (toList idl)
+checkIds st s pfix idl =
+  listToMaybe . catMaybes <$> mapM (checkId st s pfix) (toList idl)
 
 -- | Check that we can declare this identifier
 checkId ::
@@ -453,12 +452,15 @@ instance Symbolize SimpleStmt T.SimpleStmt where
     res <- S.lookup st vname
     case res of
       Just (_, Func _ t) ->
-        if t == void then
-          either (return . Left) (const $ T.VoidExprStmt (T.Ident vname) <$$> (sequence <$> (mapM (recurse st) el))) =<< (infer' st e)
+        if t == void
+          then either
+                 (return . Left)
+                 (const $ T.VoidExprStmt (T.Ident vname) <$$>
+                  (sequence <$> mapM (recurse st) el)) =<<
+               infer' st e
           -- Infer' because we allow void
           -- Use this to make sure the function call is valid
-        else
-          T.ExprStmt <$$> recurse st e -- Verify that expr only uses things that are defined
+          else T.ExprStmt <$$> recurse st e -- Verify that expr only uses things that are defined
       _ -> return $ Left $ createError e ESNotFunc
   recurse st (ExprStmt e) = T.ExprStmt <$$> recurse st e -- If the above case isn't matched, then we pass to here which will fail because func call isn't on an identifier
   recurse st (Increment _ e) = do
@@ -495,42 +497,18 @@ instance Symbolize SimpleStmt T.SimpleStmt where
              case mop of
                Nothing -> do
                  ee <- mapM sameType (zip (toList el1) (toList el2))
-                 either
-                   (return . Left)
-                   (const $
-                    either
-                      (return . Left)
-                      (\l1' ->
-                         either
-                           (return . Left)
-                           (return .
-                            Right .
-                            T.Assign (T.AssignOp Nothing) . fromList . zip l1')
-                           (sequence l2))
-                      (sequence l1))
-                   (sequence ee)
+                 return $ sequence ee *>
+                   (T.Assign (T.AssignOp Nothing) . fromList <$$> zip <$>
+                    sequence l1 <*>
+                    sequence l2)
                Just op -> do
                  el <-
                    mapM
                      (infer st . aop2e (Arithm op))
                      (zip (toList el1) (toList el2))
-                 either
-                   (return . Left)
-                   (const
-                      (either
-                         (return . Left)
-                         (\l1' ->
-                            either
-                              (return . Left)
-                              (\l2' ->
-                                 return $
-                                 Right $
-                                 T.Assign
-                                   (aop2aop' aop)
-                                   (fromList $ zip l1' l2'))
-                              (sequence l2))
-                         (sequence l1)))
-                   (sequence el))
+                 return $ sequence el *>
+                   (T.Assign (aop2aop' aop) . fromList <$$> zip <$> sequence l1 <*>
+                    sequence l2))
          (return . Left . head)
          (sequence me))
       (sequence ets)
@@ -672,8 +650,7 @@ instance Symbolize Stmt T.Stmt where
     et <- getRet o st
     et' <- infer st e
     ee' <- recurse st e
-    return $
-      join $
+    return $ join $
       (\retType t' e' ->
          if C.get retType == Void
            then Left $ createError e VoidRet
@@ -748,8 +725,7 @@ instance Symbolize VarDecl' [T.VarDecl'] where
       checkDec t2 me ident@(Identifier _ vname) = do
         scope <- S.scopeLevel st
         maybe
-          (return $
-           (\t' -> T.VarDecl' (mkSIdStr scope vname) t' Nothing) <$>
+          (return $ (\t' -> T.VarDecl' (mkSIdStr scope vname) t' Nothing) <$>
            toBase (Var ident) t2)
           (\e -> do
              et' <- infer st e
@@ -759,8 +735,8 @@ instance Symbolize VarDecl' [T.VarDecl'] where
                   if t2 == t'
                     then (do ee' <- recurse st e
                              return $ createVarD scope <$> toBase e t' <*> ee')
-                    else return $
-                         Left $ createError e (TypeMismatch2 ident t' t2))
+                    else return $ Left $
+                         createError e (TypeMismatch2 ident t' t2))
                et')
           me
         where
@@ -800,10 +776,15 @@ instance Symbolize TypeDef' T.TypeDef' where
       (return . Left)
       (\t' -> do
          me <- checkId st (SType t') "Type " ident
-         return $ maybe
-           (Right T.NoDef)
-           Left
-           me)
+         return $
+           maybe
+             (case C.get t' -- Ignore all types except for structs, as structs will be the only types we will have to define
+               -- Here we wrap the ident in a var just to pass offset to toBase in case of error
+                    of
+                Struct _ -> T.TypeDef' sident <$> toBase (Var ident) t'
+                _        -> Right T.NoDef)
+             Left
+             me)
       et
 
 instance Symbolize Expr T.Expr where
@@ -846,18 +827,14 @@ instance Symbolize Expr T.Expr where
         int <- intTypeToInt lit <?> createError (Offset 0) "Invalid index" -- TODO add actual offset
         Right $ T.Lit $ T.IntLit int
       FloatLit _ fs ->
-        Right $
-        T.Lit $
-        T.FloatLit $
-        read $
+        Right $ T.Lit $ T.FloatLit $ read $
         case break (== '.') fs -- Separate by String by . and check if any side is empty
               of
           (_, ['.'])  -> fs ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
           ([], '.':_) -> '0' : fs -- Prepend 0 because .1 is not a valid Float
           (_, _)      -> fs
       RuneLit o cs ->
-        T.Lit .
-        T.RuneLit <$>
+        T.Lit . T.RuneLit <$>
         case cs !! 1 of
           '\\' ->
             case cs !! 2 of
@@ -870,17 +847,20 @@ instance Symbolize Expr T.Expr where
               'v'  -> Right '\v'
               '\'' -> Right '\''
               '\\' -> Right '\\'
-              c    ->  Left $ createError o (RuneInvalidEsc c)-- Should never happen because scanner guarantees these escape characters
+              c    -> Left $ createError o (RuneInvalidEsc c) -- Should never happen because scanner guarantees these escape characters
           c -> Right c
-      StringLit o Interpreted s -> T.Lit . T.StringLit <$> (stripQuotes s o)
-      StringLit o Raw s -> T.Lit . T.StringLit . esc <$> (stripQuotes s o)
-        where
+      StringLit o Interpreted s -> T.Lit . T.StringLit <$> stripQuotes s o
+      StringLit o Raw s -> T.Lit . T.StringLit . esc <$> stripQuotes s o
           -- Escape all things that need to be escaped so that we can
           -- transform a raw string to an interpreted string
-          esc :: String -> String
-          esc s' = concat (map (\c -> if c == '\\' then "\\\\"
-                                      else if c == '"' then "\\\""
-                                           else [c]) s')
+        where esc :: String -> String
+              esc =
+                concatMap
+                  (\c ->
+                     case c of
+                       '\\' -> "\\\\"
+                       '"'  -> "\\\""
+                       _    -> [c])
   recurse st e@(Var ident@(Identifier o vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname
@@ -900,8 +880,7 @@ instance Symbolize Expr T.Expr where
               _       -> Left $ createError o InvalidCBool
           Variable stype ->
             (\t' -> T.Var t' (mkSIdStr scope vname)) <$> toBase e stype
-          _ ->
-            Left $ createError o NotAVar
+          _ -> Left $ createError o NotAVar
   recurse st e@(AppendExpr _ e1 e2) = do
     et' <- infer st e
     ee1' <- recurse st e1
@@ -913,21 +892,23 @@ instance Symbolize Expr T.Expr where
   recurse st ec@(LenExpr _ e) = do
     ect' <- infer st ec
     ee' <- recurse st e
-    either (return . Left) (const $ return $ T.LenExpr <$> ee') ect'
+    return $ ect' *> (T.LenExpr <$> ee')
   recurse st ec@(CapExpr _ e) = do
     ect' <- infer st ec
     ee' <- recurse st e
-    either (return . Left) (const $ return $ T.CapExpr <$> ee') ect'
+    return $ ect' *> (T.CapExpr <$> ee')
   recurse st ec@(Selector _ e (Identifier _ vname)) = do
     ect' <- infer st ec
     ets' <- infer st e -- Get the struct type
     ee' <- recurse st e
-    return $ createSel <$> ee' <*> (toBase e =<< ect') <*> (structFields =<< (toBase e =<< ets'))
+    return $ createSel <$> ee' <*> (toBase e =<< ect') <*>
+      (structFields =<< (toBase e =<< ets'))
     where
       structFields :: T.CType -> Glc' [T.FieldDecl]
-      structFields t = case C.get t of
-                         T.StructType fdl -> Right fdl
-                         _ -> Left $ createError ec SelectNotStruct
+      structFields t =
+        case C.get t of
+          T.StructType fdl -> Right fdl
+          _                -> Left $ createError ec SelectNotStruct
       createSel :: T.Expr -> T.CType -> [T.FieldDecl] -> T.Expr
       createSel e' t' fdl' = T.Selector t' fdl' e' (T.Ident vname)
   recurse st e@(Index _ e1 e2) = do
@@ -947,16 +928,17 @@ instance Symbolize Expr T.Expr where
       -- Remove casts as we resolve things to base types
       -- The use of head here is okay because if ec is inferred without error, then el is one expression
       -- See TypeInference.infer' Arguments case
-      Just (_, SType _) -> either (return . Left) (const $ return $ head <$> eel') ect'
-      _ -> return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> eel'
+      Just (_, SType _) -> return $ ect' *> (head <$> eel')
+      _ ->
+        return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> eel'
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
 
 -- | Strip first and last character of a string
 stripQuotes :: String -> Offset -> Glc' String
-stripQuotes s off = if length s < 2 then
-                  Left $ createError off NoQuotes
-                else
-                  Right $ tail $ init s
+stripQuotes s off =
+  if length s < 2
+    then Left $ createError off NoQuotes
+    else Right $ tail $ init s
 
 intTypeToInt :: Literal -> Maybe Int
 intTypeToInt (IntLit _ t s) =
@@ -965,13 +947,6 @@ intTypeToInt (IntLit _ t s) =
     Hexadecimal -> Just $ read s
     Octal       -> Just $ fst $ head $ readOct s
 intTypeToInt _ = Nothing
-
--- | List of maybes, return first Just or nothing if all nothing
-maybeJ :: [Maybe b] -> Maybe b
-maybeJ l =
-  if null (catMaybes l)
-    then Nothing
-    else Just $ head $ catMaybes l
 
 data SymbolError
   = AlreadyDecl String
@@ -1039,30 +1014,36 @@ instance ErrorEntry TypeCheckError where
   errorMessage c =
     case c of
       TypeMismatch1 t1 t2 e ->
-        "Expression resolves to different type " ++
-        show t1 ++
-        " than type " ++ show t2 ++ " of " ++ prettify e ++ " in assignment"
+        "Expression resolves to different type " ++ show t1 ++ " than type " ++
+        show t2 ++
+        " of " ++
+        prettify e ++
+        " in assignment"
       TypeMismatch2 (Identifier _ vname) t1 t2 ->
-        "Expression resolves to type " ++
-        show t1 ++ " in assignment to " ++ vname ++ " of type " ++ show t2
+        "Expression resolves to type " ++ show t1 ++ " in assignment to " ++
+        vname ++
+        " of type " ++
+        show t2
       CondBool e t ->
-        "Condition " ++
-        prettify e ++ " resolves to " ++ show t ++ ", expecting a bool"
+        "Condition " ++ prettify e ++ " resolves to " ++ show t ++
+        ", expecting a bool"
       NonNumeric e s ->
         prettify e ++ " is a non numeric type and cannot be " ++ s
       NotCompSw t ->
-        "Switch statement expression resolves to type " ++
-        show t ++ " and is not comparable"
+        "Switch statement expression resolves to type " ++ show t ++
+        " and is not comparable"
       NotComp t1 t2 ->
-        "Cannot compare expression of type " ++
-        show t1 ++ " with type " ++ show t2 ++ " (type of switch expression)"
+        "Cannot compare expression of type " ++ show t1 ++ " with type " ++
+        show t2 ++
+        " (type of switch expression)"
       NonBaseP t ->
-        "Expression resolves to non base type" ++
-        show t ++ " and cannot be printed"
+        "Expression resolves to non base type" ++ show t ++
+        " and cannot be printed"
       VoidRet -> "Cannot return expression from void function"
       RetMismatch t1 t2 ->
-        "Return expression resolves to type " ++
-        show t1 ++ " but function return type is " ++ show t2
+        "Return expression resolves to type " ++ show t1 ++
+        " but function return type is " ++
+        show t2
       NonLVal e -> prettify e ++ " is not an lvalue and cannot be assigned to"
       RetOut -> "Return expression outside of function context"
       NotFunc -> "Trying to get return value of a symbol that isn't a function"
@@ -1072,10 +1053,13 @@ instance ErrorEntry TypeCheckError where
       BaseVoid -> "Void cannot be converted to base type"
       InvalidCBool -> "Invalid constant bool value"
       NotAVar -> "Cannot get type of non-const/var identifier"
-      SelectNotStruct -> "Selector operator cannot be used on something that isn't a struct"
-      RuneInvalidEsc c' -> "Invalid escape character " ++ show c' ++ " in rune literal"
+      SelectNotStruct ->
+        "Selector operator cannot be used on something that isn't a struct"
+      RuneInvalidEsc c' ->
+        "Invalid escape character " ++ show c' ++ " in rune literal"
       NoQuotes -> "String has no quotes"
-      ArrayNonIntLit -> "Trying to convert type of an ArrayType with non literal int as length"
+      ArrayNonIntLit ->
+        "Trying to convert type of an ArrayType with non literal int as length"
 
 -- | Get the first duplicate in a list, for checking if fields of a struct are all unique
 getFirstDuplicate :: Eq a => [a] -> Maybe a
@@ -1109,10 +1093,10 @@ toBase e = C.fmapContainer toBase'
       where
         f2fd :: Field -> Glc' T.FieldDecl
         f2fd (s, t) = T.FieldDecl (T.Ident s) <$> toBase' t
-    toBase' (TypeMap _ t) = if C.hasRoot t then
-                              T.TypeMap <$> toBase e t
-                            else
-                              C.get <$> toBase e t
+    toBase' (TypeMap _ t) =
+      if C.hasRoot t
+        then T.TypeMap <$> toBase e t
+        else C.get <$> toBase e t
     toBase' PInt = Right T.PInt
     toBase' PFloat64 = Right T.PFloat64
     toBase' PBool = Right T.PBool
@@ -1190,11 +1174,7 @@ sl2str (em, sl) = (em, sl2str' sl (S.Scope 0) "")
     sl2str' [] (S.Scope scope) acc =
       sl2str' [] (S.Scope (scope - 1)) (acc ++ tabs (scope - 1) ++ "}\n")
     sl2str' ((key, sym, S.Scope scope):tl) (S.Scope pScope) acc =
-      sl2str' tl (S.Scope scope) $
-      acc ++
-      br pScope scope ++
-      tabs scope ++
-      key ++
+      sl2str' tl (S.Scope scope) $ acc ++ br pScope scope ++ tabs scope ++ key ++
       (case sym of
          Base -> " [type] = " ++ key
          ConstantBool -> " [constant] = bool"
@@ -1218,11 +1198,9 @@ typecheckP s = either putExit (const $ putSucc "OK") (typecheckGen s)
 
 typecheckGen :: String -> Glc T.Program
 typecheckGen code =
-  either
-    Left
-    (either (\e -> Left $ e code `withPrefix` "Typecheck error at ") Right .
-     typecheckGen')
-    (weedT code)
+  either (\e -> Left $ e code `withPrefix` "Typecheck error at ") Right .
+  typecheckGen' =<<
+  weedT code
 
 -- | Generate new AST from Program
 typecheckGen' :: Program -> Glc' T.Program
@@ -1254,8 +1232,7 @@ pTable code =
 
 pTable' :: Program -> (Maybe ErrorMessage', String)
 pTable' p =
-  sl2str $
-  runST $ do
+  sl2str $ runST $ do
     st <- new -- Create new symbol table with base types
     res <- recurse @Program @T.Program st p -- Traverse, generating symbol table modifications and typechecking (don't care about typecheck errors here)
     syml <- S.getMessages st -- Get inserted symbols
