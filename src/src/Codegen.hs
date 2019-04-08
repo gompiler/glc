@@ -187,6 +187,7 @@ utils :: ByteString
 utils =
   B.concat
     [ B.fromStrict $(embedFile "glcgutils/Utils.j")
+    , nl
     , B.fromStrict $(embedFile "glcgutils/Slice.j")
     ]
 
