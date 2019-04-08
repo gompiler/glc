@@ -1,21 +1,22 @@
 module Main where
 
 import           Base
-import           IRConv                  (displayIR)
+import           Codegen             (codegen)
+import           IRConv              (displayIR)
 import qualified Options.Applicative as Op
 import           ParseCLI
 import           Prettify            (checkPrettifyInvariance, prettify)
 import           Scanner             (putExit, putSucc, scanC, scanP)
-import           SymbolTable         (symbol, typecheckP, typecheckGen)
+import           SymbolTable         (symbol, typecheckGen, typecheckP)
 import           Weeding             (weed)
-import           Codegen             (codegen)
 
 main :: IO ()
 main = do
-  cmdi@(CI cmd inp) <- Op.customExecParser (Op.prefs Op.showHelpOnEmpty) cmdParser
+  cmdi@(CI cmd inp) <-
+    Op.customExecParser (Op.prefs Op.showHelpOnEmpty) cmdParser
   case cmdi
     -- Special case, match on file only
-    of
+        of
     CI Codegen (FileInp f) -> codegen f
     _ ->
       inpToIOStr inp >>=

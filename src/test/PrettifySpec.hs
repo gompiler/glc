@@ -1,13 +1,13 @@
-{-# LANGUAGE QuasiQuotes          #-}
-{-# LANGUAGE TypeApplications     #-}
+{-# LANGUAGE QuasiQuotes      #-}
+{-# LANGUAGE TypeApplications #-}
 
 module PrettifySpec
   ( spec
   ) where
 
-import           TestBase
 import           Data
 import           Prettify (tabS)
+import           TestBase
 
 spec :: Spec
 spec = do

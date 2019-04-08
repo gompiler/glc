@@ -1,4 +1,4 @@
-{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module TokensSpec
   ( spec
@@ -13,8 +13,8 @@ module TokensSpec
   , genRString
   ) where
 
-import           TestBase
 import           Scanner
+import           TestBase
 
 spec :: Spec
 spec = do

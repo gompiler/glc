@@ -4,9 +4,9 @@ module SymbolTableSpec
   ( spec
   ) where
 
-import           TestBase        (Stringable (..), expectBase, text, toString)
 import           SymbolTable (pTable, typecheckGen)
 import           Test.Hspec
+import           TestBase    (Stringable (..), expectBase, text, toString)
 
 expectSymPass :: Stringable s => [s] -> Spec
 expectSymPass =

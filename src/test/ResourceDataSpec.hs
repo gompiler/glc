@@ -1,5 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-
 module ResourceDataSpec
   ( spec
   ) where
@@ -10,7 +8,6 @@ import           TestBase
 spec :: Spec
 spec = todoSpec
 --spec = prettifySpec
-
 --prettifySpec :: Spec
 --prettifySpec =
 --  expectPrettyMatch

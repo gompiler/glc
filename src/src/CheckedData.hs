@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
 
 module CheckedData
   ( ArithmOp(..)
@@ -93,9 +92,9 @@ data VarDecl' =
 
 -- | Placeholder, no typedefs
 -- This is here since generating this new AST at typecheck is a one to one map
-data TypeDef' =
-  TypeDef' ScopedIdent
-           CType
+data TypeDef'
+  = TypeDef' ScopedIdent
+             CType
   | NoDef
   deriving (Show, Eq)
 
@@ -371,7 +370,7 @@ instance Convert VarDecl' T.VarDecl' where
 
 instance Convert TypeDef' (Maybe T.TypeDef') where
   convert (TypeDef' si t) = Just $ T.TypeDef' (convert si) (convert t)
-  convert NoDef = Nothing
+  convert NoDef           = Nothing
 
 instance Convert FuncDecl T.FuncDecl where
   convert (FuncDecl si sig fb) =

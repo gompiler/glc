@@ -1,15 +1,15 @@
-{-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE TypeApplications  #-}
+{-# LANGUAGE QuasiQuotes      #-}
+{-# LANGUAGE TypeApplications #-}
 
 module ParserSpec
   ( spec
   ) where
 
-import           TestBase
 import           Data               as D
 import           Data.List.NonEmpty (fromList)
 import           Data.List.Split    (splitOn)
 import           Parser
+import           TestBase
 import           Token              (InnerToken (..))
 import qualified TokensSpec         as T
 
@@ -178,10 +178,7 @@ spec = do
     intExamples ++ floatExamples ++ map (\s -> "'" ++ s ++ "'") runeExamples
   expectPass @Stmt stmtExamples
   expectFail @Stmt $ map (\s -> "{" ++ s ++ "}") ["/*", "/**", "/* /* */ */"]
-  expectFail @Stmt
-    [ "a, b := 1"
-    , "a := 1, 2"
-    ]
+  expectFail @Stmt ["a, b := 1", "a := 1, 2"]
   expectPass
     @Signature
     [ "(a int)"
