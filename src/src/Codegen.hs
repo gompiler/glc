@@ -61,7 +61,7 @@ instance Bytecode Method where
           , show ll
           , "\n\n"
           ]
-      , B.concat $ map (tab . toBC) bod
+      , B.concat $ map (tab . toBC') bod
       , bstr ".end method"
       ]
 
