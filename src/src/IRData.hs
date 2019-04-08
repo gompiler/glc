@@ -5,7 +5,12 @@
 -- https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html
 -- https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
 -- https://www.guardsquare.com/en/blog/string-concatenation-java-9-untangling-invokedynamic
+-- http://www.cs.sjsu.edu/~pearce/modules/lectures/co/jvm/jasmin/demos/demos.html
+-- http://homepages.inf.ed.ac.uk/kwxm/JVM/fcmpg.html
+-- https://stackoverflow.com/questions/43782187/why-does-go-have-a-bit-clear-and-not-operator
 module IRData where
+
+import           ResourceData (VarIndex)
 
 type LabelName = String
 
@@ -13,25 +18,22 @@ data FieldAccess
   = FPublic
   | FPrivate
   | FProtected
-  | FStatic
-  | FFinal
-  | FVolatile
-  | FTransient
   deriving (Eq)
 
 instance Show FieldAccess where
   show FPublic    = "public"
   show FPrivate   = "private"
   show FProtected = "protected"
-  show FStatic    = "static"
-  show FFinal     = "final"
-  show FVolatile  = "volatile"
-  show FTransient = "transient"
+
+newtype MethodSpec =
+  MethodSpec ([JType], JType)
+  deriving (Show, Eq)
 
 data Field = Field
   { access     :: FieldAccess
+  , static     :: Bool
   , fname      :: String
-  , descriptor :: String
+  , descriptor :: JType
   -- , value :: LDCType TODO?
   } deriving (Show, Eq)
 
@@ -45,11 +47,17 @@ data Method = Method
   { mname       :: String
   , stackLimit  :: Int
   , localsLimit :: Int
+  , spec        :: MethodSpec
   , body        :: [IRItem]
   } deriving (Show, Eq)
 
 newtype ClassRef =
   ClassRef String
+  deriving (Show, Eq)
+
+data ClassOrArrayRef
+  = CRef ClassRef
+  | ARef JType
   deriving (Show, Eq)
 
 data FieldRef =
@@ -58,28 +66,32 @@ data FieldRef =
   deriving (Show, Eq)
 
 data MethodRef =
-  MethodRef ClassRef
+  MethodRef ClassOrArrayRef
             String
-            [JType]
-            JType
+            MethodSpec
   deriving (Eq)
 
 instance Show MethodRef where
-  show (MethodRef (ClassRef cn) mn tl t) =
+  show (MethodRef (CRef (ClassRef cn)) mn (MethodSpec (tl, t))) =
     "Method " ++ cn ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
+  show (MethodRef (ARef jt) mn (MethodSpec (tl, t))) =
+    "Method [" ++
+    show jt ++ " " ++ mn ++ " (" ++ concatMap show tl ++ ")" ++ show t
 
 data JType
   = JClass ClassRef -- Lwhatever;
+  | JArray JType -- [ as a prefix, ex. [I
   | JInt -- I
-  | JFloat -- F
+  | JDouble -- D
   | JBool -- Z
   | JVoid -- V
   deriving (Eq)
 
 instance Show JType where
   show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
+  show (JArray jt)            = "[" ++ show jt
   show JInt                   = "I"
-  show JFloat                 = "F"
+  show JDouble                = "D"
   show JBool                  = "Z"
   show JVoid                  = "V"
 
@@ -90,7 +102,7 @@ data IRItem
 
 data IRPrimitive
   = IRInt -- Integers, booleans, runes
-  | IRFloat -- Float64s
+  | IRDouble -- Float64s
   deriving (Show, Eq)
 
 data IRType
@@ -98,43 +110,77 @@ data IRType
   | Object -- String, array, struct, slice
   deriving (Show, Eq)
 
+data IRCmp
+  = LT
+  | LE
+  | GT
+  | GE
+  | EQ
+  | NE
+  deriving (Eq)
+
+instance Show IRCmp where
+  show IRData.LT = "lt"
+  show LE        = "le"
+  show IRData.GT = "gt"
+  show GE        = "ge"
+  show IRData.EQ = "eq"
+  show NE        = "ne"
+
 data LDCType
   = LDCInt Int -- Integers, booleans, runes
-  | LDCFloat Float -- Float64s
+  | LDCDouble Float -- Float64s
   | LDCString String -- Strings
   deriving (Show, Eq)
 
 data Instruction
   = Load IRType
-         Int
+         VarIndex
+  | ArrayLoad IRType -- consumes an object reference and an index
   | Store IRType
-          Int
+          VarIndex
+  | ArrayStore IRType -- consumes an object reference and an index
   | Return (Maybe IRType)
   | Dup
+  | Dup2 -- ..., v, w -> ..., v, w, v, w
   | Goto LabelName
   | Add IRPrimitive
-  | Div IRPrimitive -- TODO: Turn into Op instruction?
+  | Div IRPrimitive
   | Mul IRPrimitive
   | Neg IRPrimitive
   | Sub IRPrimitive
   | IRem
   | IShL
   | IShR
-  | IALoad
   | IAnd
-  | IAStore
-  | IfEq LabelName
   | IOr
   | IXOr
-  | LDC LDCType -- pushes an int/float/string value onto the stack
+  | If IRCmp
+       LabelName
+  | IfICmp IRCmp
+           LabelName
+  | LDC LDCType -- pushes an int/double/string value onto the stack
+  | IConstM1 -- -1
+  | IConst0 -- 0
+  | IConst1 -- 1
+  | DCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
   | New ClassRef -- class
+  | ANewArray ClassRef
+  | NewArray IRPrimitive
   | NOp
   | Pop
   | Swap
   | GetStatic FieldRef
-              ClassRef -- field spec, descriptor
+              JType -- field spec, descriptor
+  | GetField FieldRef
+             JType
+  | PutStatic FieldRef
+              JType
+  | PutField FieldRef
+             JType
   | InvokeSpecial MethodRef -- method spec
   | InvokeVirtual MethodRef -- method spec
+  | InvokeStatic MethodRef
   | Debug String -- TODO: remove
   deriving (Show, Eq)
 
@@ -142,11 +188,46 @@ data Instruction
 systemOut :: FieldRef
 systemOut = FieldRef (ClassRef "java/lang/System") "out"
 
+jString :: ClassRef
+jString = ClassRef "java/lang/String"
+
+stringEquals :: MethodRef
+stringEquals =
+  MethodRef (CRef jString) "equals" (MethodSpec ([JClass jString], JBool))
+
+stringCompare :: MethodRef
+stringCompare =
+  MethodRef (CRef jString) "compareTo" (MethodSpec ([JClass jString], JInt))
+
 printStream :: ClassRef
 printStream = ClassRef "java/io/PrintStream"
 
 stringBuilder :: ClassRef
 stringBuilder = ClassRef "java/lang/StringBuilder"
 
-jString :: ClassRef
-jString = ClassRef "java/lang/String"
+sbInit :: MethodRef
+sbInit = MethodRef (CRef stringBuilder) "<init>" emptySpec
+
+sbAppend :: MethodRef
+sbAppend =
+  MethodRef
+    (CRef stringBuilder)
+    "append"
+    (MethodSpec ([JClass jString], JClass stringBuilder))
+
+sbToString :: MethodRef
+sbToString =
+  MethodRef (CRef stringBuilder) "toString" (MethodSpec ([], JClass jString))
+
+jObject :: ClassRef
+jObject = ClassRef "java/lang/Object"
+
+emptySpec :: MethodSpec
+emptySpec = MethodSpec ([], JVoid)
+
+cMain :: ClassRef
+cMain = ClassRef "Main"
+
+-- Custom-defined methods
+glcUtils :: ClassRef
+glcUtils = ClassRef "glcgutils/Utils"

@@ -78,7 +78,8 @@ instance Converter T.Program Program where
       createInit :: [T.Ident] -> InitDecl
       createInit funcs =
         InitDecl
-          (BlockStmt $ map (\i -> SimpleStmt $ VoidExprStmt i []) funcs)
+          (BlockStmt $
+           map (\i -> SimpleStmt $ VoidExprStmt i []) funcs ++ [Return Nothing])
           (LocalLimit 0)
       -- | Given init contents, convert to function
       renameInits :: [(Stmt, LocalLimit)] -> [FuncDecl]
@@ -87,7 +88,7 @@ instance Converter T.Program Program where
       createInitFunc i (body, limit) =
         FuncDecl i (Signature (Parameters []) Nothing) body limit
       initIdent :: Int -> T.Ident
-      initIdent i = T.Ident $ "__glc$init__" ++ show i
+      initIdent i = T.Ident $ "init$" ++ show i
 
 data TopLevel
   = TVar [TopVarDecl]

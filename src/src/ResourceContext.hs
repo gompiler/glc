@@ -119,8 +119,8 @@ wrap rc action = do
 localLimit :: ResourceContext s -> ST s LocalLimit
 localLimit st = do
   rc <- readRef st
-  let scope = head $ varScopes rc
-  return $ LocalLimit $ max (varLimit scope) (varCounter scope)
+  let scope = head $! varScopes rc
+  return $! LocalLimit $! max (varLimit scope) (varCounter scope)
 
 -- | Create a new scope level
 enterScope :: ResourceContext s -> ST s ()
@@ -143,7 +143,7 @@ exitScope st = do
   where
     exitScope' :: [ResourceScope s] -> [ResourceScope s]
     exitScope' (curr:parent:vars) =
-      let varLimit' = max (varLimit curr) (varLimit parent)
+      let varLimit' = maximum [varLimit curr, varCounter curr, varLimit parent]
        in parent {varLimit = varLimit'} : vars
     exitScope' (_:vars) = vars
     -- Note that this should never happen, given that we
