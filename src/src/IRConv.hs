@@ -596,19 +596,31 @@ typeToJType (T.StructType (D.Ident sid)) =
   JClass (ClassRef $ "GlcStruct__" ++ sid)
 
 stackDelta :: Instruction -> Int
+stackDelta (Load (Prim IRDouble) _) = 2 -- ... -> ..., v (double-wide)
 stackDelta Load {} = 1 -- ... -> ..., v
+stackDelta (ArrayLoad (Prim IRDouble)) = 0 -- ..., o, i -> v (double-wide)
 stackDelta ArrayLoad {} = -1 -- ..., o, i -> v
+stackDelta (Store (Prim IRDouble) _) = -2 -- ..., v -> ... (double-wide)
 stackDelta Store {} = -1 -- ..., v -> ...
+stackDelta (ArrayStore (Prim IRDouble)) = -4 -- ..., o, i, v2 -> ...
 stackDelta ArrayStore {} = -3 -- ..., o, i, v -> ...
-stackDelta (Return m) = maybe 0 (const $ -1) m
+stackDelta (Return m) =
+  case m of
+    Nothing              -> 0
+    Just (Prim IRDouble) -> -2
+    Just _               -> -1
 stackDelta Dup = 1 -- ..., v -> ..., v, v
 stackDelta Dup2 = 2 -- ..., v, w -> ..., v, w, v, w
 stackDelta Goto {} = 0
-stackDelta Add {} = -1 -- ..., v, w -> ..., r
-stackDelta Div {} = -1 -- ..., v, w -> ..., r
-stackDelta Mul {} = -1 -- ..., v, w -> ..., r
-stackDelta Neg {} = -1 -- ..., v, w -> ..., r
-stackDelta Sub {} = -1 -- ..., v, w -> ..., r
+stackDelta (Add IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
+stackDelta (Add IRInt) = -1 -- ..., v, w -> ..., r
+stackDelta (Div IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
+stackDelta (Div IRInt) = -1 -- ..., v, w -> ..., r
+stackDelta (Mul IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
+stackDelta (Mul IRInt) = -1 -- ..., v, w -> ..., r
+stackDelta (Sub IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
+stackDelta (Sub IRInt) = -1 -- ..., v, w -> ..., r
+stackDelta Neg {} = 0 -- ..., v -> ..., r (double-wide or not)
 stackDelta IRem = -1 -- ..., v, w -> ..., r
 stackDelta IShL = -1 -- ..., v, w -> ..., r
 stackDelta IShR = -1 -- ..., v, w -> ..., r
@@ -617,20 +629,25 @@ stackDelta IOr = -1 -- ..., v, w -> ..., r
 stackDelta IXOr = -1 -- ..., v, w -> ..., r
 stackDelta If {} = -1 -- ..., v -> ...
 stackDelta IfICmp {} = -2 -- ..., v, w -> ...
+stackDelta (LDC (LDCDouble _)) = 2 -- ... -> ..., v (double-wide)
 stackDelta LDC {} = 1 -- ... -> ..., v
 stackDelta IConstM1 = 1 -- ... -> ..., -1
 stackDelta IConst0 = 1 -- ... -> ..., 0
 stackDelta IConst1 = 1 -- ... -> ..., 1
-stackDelta DCmpG = 1 -- ..., v1, v2 -> ..., r
+stackDelta DCmpG = -3 -- ..., v1, v2 -> ..., r
 stackDelta New {} = 1 -- ... -> ..., o
 stackDelta ANewArray {} = 0 -- ..., c -> ..., o
 stackDelta NewArray {} = 0 -- ..., c -> ..., o
 stackDelta NOp = 0
 stackDelta Pop = -1 -- ..., v -> ...
 stackDelta Swap = 0 -- ..., v, w -> ..., w, v
+stackDelta (GetStatic _ JDouble) = 2 -- ... -> ..., v (double-wide)
 stackDelta GetStatic {} = 1 -- ... -> ..., v
+stackDelta (GetField _ JDouble) = 1 -- ..., o -> ..., v (double-wide)
 stackDelta GetField {} = 0 -- ..., o -> ..., v
+stackDelta (PutStatic _ JDouble) = -2 -- ..., v -> ... (double-wide)
 stackDelta PutStatic {} = -1 -- ..., v -> ...
+stackDelta (PutField _ JDouble) = -3 -- ..., o, v -> ... (double-wide)
 stackDelta PutField {} = -2 -- ..., o, v -> ...
 stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, rt))))
   -- ..., o, a1, .., an -> r (or void)
