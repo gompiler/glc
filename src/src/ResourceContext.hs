@@ -1,4 +1,5 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE RankNTypes     #-}
 
 module ResourceContext
   ( ResourceContext
@@ -10,14 +11,15 @@ module ResourceContext
   , newLabel
   , newLoopLabel
   , currentLoopLabel
+  , localLimit
   ) where
 
 import           Base
 import qualified CheckedData             as C
 import           Control.Monad.ST
-import           Data.Either             (partitionEithers)
 import           Data.Hashable
 import qualified Data.HashTable.ST.Basic as HT
+import           Data.Maybe              (catMaybes, listToMaybe)
 import           Data.STRef
 import           Prelude                 hiding (lookup)
 import           ResourceData
@@ -36,9 +38,19 @@ data ResourceContext_ s = RC
   , lastLoopLabel :: Int
   }
 
-data ResourceScope s =
-  RS (VarTable s)
-     Int
+-- | Scope, with its own set of declared variables and offset values
+data ResourceScope s = RS
+  { varTable   :: VarTable s
+  -- | Scope's counter size
+  -- Each varCounter starts at the value of the previous scope,
+  -- or 0 if the scope is global.
+  -- To create a new index, we use the current counter, then increment the value
+  , varCounter :: Int
+  -- | Max varCounter within current scope
+  -- This is propagated from all children's varCounters, where only
+  -- the max value is kept
+  , varLimit   :: Int
+  }
 
 newtype VarKey =
   VarKey C.ScopedIdent
@@ -88,10 +100,14 @@ new = do
       }
 
 -- | Create a new resource scope
-newScope :: ST s (ResourceScope s)
-newScope = do
+newScope :: [ResourceScope s] -> ST s (ResourceScope s)
+newScope scopes = do
   m <- HT.new
-  return $ RS m 0
+  return $ RS {varTable = m, varCounter = varCounter' scopes, varLimit = 0}
+  where
+    varCounter' :: [ResourceScope s] -> Int
+    varCounter' []                  = 0
+    varCounter' (RS {varCounter}:_) = varCounter
 
 wrap :: ResourceContext s -> ST s a -> ST s a
 wrap rc action = do
@@ -100,11 +116,17 @@ wrap rc action = do
   exitScope rc
   return a
 
+localLimit :: ResourceContext s -> ST s LocalLimit
+localLimit st = do
+  rc <- readRef st
+  let scope = head $ varScopes rc
+  return $ LocalLimit $ max (varLimit scope) (varCounter scope)
+
 -- | Create a new scope level
 enterScope :: ResourceContext s -> ST s ()
 enterScope st = do
   rc <- readRef st
-  scope <- newScope
+  scope <- newScope $ varScopes rc
   let vars = scope : varScopes rc
   writeRef st $! rc {varScopes = vars}
 
@@ -114,8 +136,20 @@ enterScope st = do
 exitScope :: ResourceContext s -> ST s ()
 exitScope st = do
   rc <- readRef st
-  let (_:vars) = varScopes rc
-  writeRef st $! rc {varScopes = vars}
+  let varScopes' = exitScope' $ varScopes rc
+  writeRef st $! rc {varScopes = varScopes'}
+    -- | Remove current scope, and update parent's limit with current counter
+    -- if it exists
+  where
+    exitScope' :: [ResourceScope s] -> [ResourceScope s]
+    exitScope' (curr:parent:vars) =
+      let varLimit' = max (varLimit curr) (varLimit parent)
+       in parent {varLimit = varLimit'} : vars
+    exitScope' (_:vars) = vars
+    -- Note that this should never happen, given that we
+    -- don't expose enter and exit for public use.
+    -- Each exit only occurs with an enter
+    exitScope' [] = []
 
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
@@ -125,24 +159,23 @@ getVarIndex st si = do
   let key = VarKey si
   rc <- readRef st
   candidates <- mapM (getVarIndex' key) $ varScopes rc
-  let (counts, indices) = partitionEithers candidates
-  if null indices
-    -- Not found; add the new var index and return it
-    then let value = (VarIndex $ sum counts + 1)
-             (v:vars) = varScopes rc
-          in do v' <- setVarIndex' v key value
-                writeRef st $! rc {varScopes = v' : vars} -- Replace current scope
-                return value
-    else return $! head indices
+  case listToMaybe $ catMaybes candidates of
+    Just index -> return index
+    Nothing -> do
+      let (v:vars) = varScopes rc
+      (value, v') <- setVarIndex' v key
+      writeRef st $! rc {varScopes = v' : vars} -- Replace current scope
+      return value
   where
     setVarIndex' ::
-         ResourceScope s -> VarKey -> VarIndex -> ST s (ResourceScope s)
-    setVarIndex' (RS varTable size) key value =
-      HT.insert varTable key value $> RS varTable (size + 1)
-    getVarIndex' :: VarKey -> ResourceScope s -> ST s (Either Int VarIndex)
-    getVarIndex' key (RS varTable size) = do
-      index <- HT.lookup varTable key
-      return $! index <?> size
+         ResourceScope s -> VarKey -> ST s (VarIndex, ResourceScope s)
+    setVarIndex' rs@RS {varTable, varCounter} key =
+      let value = VarIndex varCounter
+       in HT.insert varTable key value $>
+          (value, rs {varCounter = varCounter + 1})
+    -- | Get the index of the provided key, or return the size of the current scope
+    getVarIndex' :: VarKey -> ResourceScope s -> ST s (Maybe VarIndex)
+    getVarIndex' key RS {varTable} = HT.lookup varTable key
 
 -- | Returns a label id that is unique across the entire program
 newLabel :: ResourceContext s -> ST s LabelIndex
