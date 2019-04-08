@@ -323,6 +323,11 @@ spec = do
       }
       |]
     , [text|
+      func init() {
+        return
+      }
+      |]
+    , [text|
       func a() int {
         return 0
       }
