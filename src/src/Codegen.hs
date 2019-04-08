@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Codegen
   ( codegen
@@ -6,7 +7,8 @@ module Codegen
 
 import           Data.ByteString.Builder (string7, toLazyByteString)
 import           Data.ByteString.Lazy    (ByteString, append)
-import qualified Data.ByteString.Lazy    as B (concat, writeFile)
+import qualified Data.ByteString.Lazy    as B (concat, writeFile, fromStrict)
+import           Data.FileEmbed          (embedFile)
 import           IRConv
 import           IRData
 import qualified ResourceData            as T
@@ -181,8 +183,11 @@ b1 `app` b2 = append b1 b2
 fileJ :: String -> String
 fileJ file = dropExtension file ++ ".j"
 
+utils :: ByteString
+utils = B.fromStrict $(embedFile "glcgutils/Utils.j")
+
 codegen :: String -> IO ()
 codegen file =
   readFile file >>=
-  either putExit (\ir -> B.writeFile (fileJ file) (toBC ir) >> putSucc "OK") .
+  either putExit (\ir -> B.writeFile (fileJ file) (B.concat [utils, nl, toBC ir]) >> putSucc "OK") .
   genIR

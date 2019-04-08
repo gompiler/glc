@@ -36,6 +36,7 @@ dependencies:
 - extra
 - bytestring
 - filepath
+- file-embed
 
 library:
   source-dirs: [src, src/generated]
