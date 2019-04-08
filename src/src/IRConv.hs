@@ -141,43 +141,43 @@ instance IRRep T.Stmt where
   toIR (T.If (T.LabelIndex idx) (sstmt, expr) ifs elses) =
     toIR sstmt ++
     toIR expr ++
-    iri [If IRData.EQ ("else_" ++ show idx)] ++
+    iri [If IRData.EQ ("Lelse_" ++ show idx)] ++
     toIR ifs ++
-    [IRInst (Goto ("end_if_" ++ show idx)), IRLabel ("else_" ++ show idx)] ++
+    [IRInst (Goto ("Lend_if_" ++ show idx)), IRLabel ("Lelse_" ++ show idx)] ++
     toIR elses ++ [IRLabel ("end_if_" ++ show idx), IRInst NOp]
   toIR (T.Switch (T.LabelIndex idx) sstmt e scs dstmt) =
     toIR sstmt ++
     toIR e ++
     concatMap irCase (zip [1 ..] scs) ++
-    IRLabel ("default_" ++ show idx) :
-    toIR dstmt ++ [IRLabel ("end_sc_" ++ show idx), IRInst NOp]
+    IRLabel ("Ldefault_" ++ show idx) :
+    toIR dstmt ++ [IRLabel ("Lend_sc_" ++ show idx), IRInst NOp]
       -- duplicate expression for case statement expressions in lists
     where
       irCase :: (Int, T.SwitchCase) -> [IRItem]
       irCase (cIdx, T.Case exprs stmt) =
         concat (NE.map toCaseHeader exprs) ++
-        [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
-        toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
+        [IRLabel $ "Lcase_" ++ show cIdx ++ "_" ++ show idx] ++
+        toIR stmt ++ iri [Goto ("Lend_sc_" ++ show idx)]
         where
           toCaseHeader :: T.Expr -> [IRItem]
           toCaseHeader ce =
             IRInst Dup :
             toIR ce ++
-            iri [If IRData.EQ $ "case_" ++ show cIdx ++ "_" ++ show idx] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
+            iri [If IRData.EQ $ "Lcase_" ++ show cIdx ++ "_" ++ show idx] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
   toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =
     toIR lstmt ++
-    IRLabel ("loop_" ++ show idx) :
+    IRLabel ("Lloop_" ++ show idx) :
     toIR cond ++
-    iri [If IRData.LE ("end_loop_" ++ show idx)] ++
+    iri [If IRData.LE ("Lend_loop_" ++ show idx)] ++
     toIR fbody ++
-    IRLabel ("post_loop_" ++ show idx) :
+    IRLabel ("Lpost_loop_" ++ show idx) :
     toIR rstmt ++
-    [ IRInst (Goto $ "loop_" ++ show idx)
-    , IRLabel ("end_loop_" ++ show idx)
+    [ IRInst (Goto $ "Lloop_" ++ show idx)
+    , IRLabel ("Lend_loop_" ++ show idx)
     , IRInst NOp
     ]
-  toIR (T.Break (T.LabelIndex idx)) = iri [Goto ("end_loop_" ++ show idx)]
-  toIR (T.Continue (T.LabelIndex idx)) = iri [Goto ("post_loop_" ++ show idx)]
+  toIR (T.Break (T.LabelIndex idx)) = iri [Goto ("Lend_loop_" ++ show idx)]
+  toIR (T.Continue (T.LabelIndex idx)) = iri [Goto ("Lpost_loop_" ++ show idx)]
   toIR (T.VarDecl idx t me) =
     case me of
       Just e -> toIR e ++ iri [Store (typeToIRType t) idx]
@@ -396,12 +396,12 @@ instance IRRep T.Expr where
           D.Add       -> undefined -- handled above
   toIR (T.Binary (T.LabelIndex idx) _ T.Or e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.NE ("true_or_" ++ show idx), Pop] ++
-    toIR e2 ++ [IRLabel ("true_or_" ++ show idx)]
+    iri [Dup, If IRData.NE ("Ltrue_or_" ++ show idx), Pop] ++
+    toIR e2 ++ [IRLabel ("Ltrue_or_" ++ show idx)]
   toIR (T.Binary (T.LabelIndex idx) _ T.And e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
-    toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
+    iri [Dup, If IRData.EQ ("Lfalse_and_" ++ show idx), Pop] ++
+    toIR e2 ++ [IRLabel ("Lfalse_and_" ++ show idx)]
   toIR (T.Binary (T.LabelIndex idx) t T.EQ e1 e2) =
     case t of
       T.ArrayType {} -> undefined -- TODO
@@ -410,8 +410,8 @@ instance IRRep T.Expr where
         toIR e2 ++
         iri
           [ InvokeVirtual stringEquals
-          , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
-          , Goto ("stop_eq_" ++ show idx)
+          , If IRData.GT ("Ltrue_eq_" ++ show idx) -- 1 > 0, i.e. true
+          , Goto ("Lstop_eq_" ++ show idx)
           ] ++
         eqPostfix
       (T.StructType (D.Ident _)) -> undefined -- TODO
@@ -420,8 +420,8 @@ instance IRRep T.Expr where
         toIR e2 ++
         iri
           [ DCmpG
-          , If IRData.EQ ("true_eq_" ++ show idx) -- dcmpg is 0, they're equal
-          , Goto ("stop_eq_" ++ show idx)
+          , If IRData.EQ ("Ltrue_eq_" ++ show idx) -- dcmpg is 0, they're equal
+          , Goto ("Lstop_eq_" ++ show idx)
           ] ++
         eqPostfix
       T.SliceType {} -> error "Cannot compare slice equality"
@@ -431,17 +431,17 @@ instance IRRep T.Expr where
         toIR e1 ++
         toIR e2 ++
         iri
-          [ IfICmp IRData.EQ ("true_eq_" ++ show idx)
+          [ IfICmp IRData.EQ ("Ltrue_eq_" ++ show idx)
           , IConst0
-          , Goto ("stop_eq_" ++ show idx)
+          , Goto ("Lstop_eq_" ++ show idx)
           ] ++
         eqPostfix
     where
       eqPostfix :: [IRItem]
       eqPostfix =
-        [ IRLabel ("true_eq_" ++ show idx)
+        [ IRLabel ("Ltrue_eq_" ++ show idx)
         , IRInst IConst1
-        , IRLabel ("stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
+        , IRLabel ("Lstop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
         ]
   toIR (T.Binary idx t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary idx t T.EQ e1 e2)) -- != is =, !
@@ -456,9 +456,9 @@ instance IRRep T.Expr where
       labelOp :: String
       labelOp = map toLower (show op)
       trueLabel :: LabelName
-      trueLabel = "true_" ++ labelOp ++ "_" ++ show idx
+      trueLabel = "Ltrue_" ++ labelOp ++ "_" ++ show idx
       endLabel :: LabelName
-      endLabel = "end_" ++ labelOp ++ "_" ++ show idx
+      endLabel = "Lend_" ++ labelOp ++ "_" ++ show idx
       cmpIR :: [IRItem]
       cmpIR =
         case exprJType e1 of
