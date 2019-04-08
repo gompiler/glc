@@ -75,9 +75,9 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
     toMethods = map fdToMethod
       where
         fdToMethod :: T.FuncDecl -> Method
-        fdToMethod (T.FuncDecl (D.Ident fni) sig fb fll) =
+        fdToMethod (T.FuncDecl fni sig fb fll) =
           Method
-            { mname = "__glc$fn__" ++ fni
+            { mname = tFnStr fni
             , stackLimit = maxStack
             , localsLimit = getLim fll
             , spec = sigToSpec sig
@@ -216,12 +216,15 @@ printIR e =
 
 instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
-  toIR (T.VoidExprStmt (D.Ident aid) args) -- Akin to Argument without a type
+  toIR (T.VoidExprStmt aid args) -- Akin to Argument without a type
    =
     concatMap toIR args ++
     iri
       [ InvokeStatic $
-        MethodRef (CRef cMain) aid (MethodSpec (map exprJType args, JVoid))
+        MethodRef
+          (CRef cMain)
+          (tFnStr aid)
+          (MethodSpec (map exprJType args, JVoid))
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR (T.Assign (T.AssignOp mAop) pairs) =
@@ -503,6 +506,9 @@ binary e1 e2 insts = toIR e1 ++ toIR e2 ++ iri insts
 tVarStr :: T.Ident -> String
 tVarStr (T.Ident tvs) = "__glc$fd__" ++ tvs
 
+tFnStr :: T.Ident -> String
+tFnStr (T.Ident tfs) = "__glc$fn__" ++ tfs
+
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
   case exprJType e of
@@ -602,9 +608,24 @@ stackDelta GetStatic {} = 1 -- ... -> ..., v
 stackDelta GetField {} = 0 -- ..., o -> ..., v
 stackDelta PutStatic {} = -1 -- ..., v -> ...
 stackDelta PutField {} = -2 -- ..., o, v -> ...
-stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
-stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) -- ..., o, a1, .., an -> r
-stackDelta (InvokeStatic (MethodRef _ _ (MethodSpec (a, _)))) = -(length a) + 1 -- ..., a1, .., an -> r
+stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, rt))))
+  -- ..., o, a1, .., an -> r (or void)
+ =
+  case rt of
+    JVoid -> -(length a) - 1
+    _     -> -(length a)
+stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, rt))))
+  -- ..., o, a1, .., an -> r (or void)
+ =
+  case rt of
+    JVoid -> -(length a) - 1
+    _     -> -(length a)
+stackDelta (InvokeStatic (MethodRef _ _ (MethodSpec (a, rt))))
+  -- ..., a1, .., an -> r
+ =
+  case rt of
+    JVoid -> -(length a)
+    _     -> -(length a) + 1
 stackDelta Debug {} = 0
 
 maxStackSize :: [IRItem] -> Int -> Int

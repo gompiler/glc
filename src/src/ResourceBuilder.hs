@@ -88,7 +88,7 @@ instance Converter T.Program Program where
       createInitFunc i (body, limit) =
         FuncDecl i (Signature (Parameters []) Nothing) body limit
       initIdent :: Int -> T.Ident
-      initIdent i = T.Ident $ "__glc$init__" ++ show i
+      initIdent i = T.Ident $ "init$" ++ show i
 
 data TopLevel
   = TVar [TopVarDecl]
