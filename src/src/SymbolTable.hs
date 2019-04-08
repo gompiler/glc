@@ -709,11 +709,9 @@ instance Symbolize VarDecl' [T.VarDecl'] where
           (sequence ets)
       Right nel -> do
         ets <- mapM (infer st) (toList nel) -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
-        me <- checkIds st tempVar "Variable " neIdl
         either
           (return . Left)
-          (const $
-           maybe (checkDeclI (toList neIdl) (toList nel)) (return . Left) me)
+          (const $ checkDeclI (toList neIdl) (toList nel))
           (sequence ets)
     where
       checkDecl :: CType -> [Identifier] -> [Expr] -> ST s (Glc' [T.VarDecl'])
@@ -750,14 +748,15 @@ instance Symbolize VarDecl' [T.VarDecl'] where
         edl <- mapM (\(i, ex) -> checkDecI ex i) (zip idl el')
         return $ sequence edl
       checkDecI :: Expr -> Identifier -> ST s (Glc' T.VarDecl')
-      checkDecI e (Identifier _ vname) = do
+      checkDecI e ident@(Identifier _ vname) = do
         et' <- infer st e
         either
           (return . Left)
           (\t' -> do
+             me <- checkId st tempVar "Variable " ident
              scope <- S.insert st vname (Variable t') -- Update type of variable
              ee' <- recurse st e
-             return $ createVarD scope <$> toBase e t' <*> ee')
+             return $ maybe (createVarD scope <$> toBase e t' <*> ee') Left me)
           et'
         where
           createVarD :: S.Scope -> T.CType -> T.Expr -> T.VarDecl'
