@@ -216,7 +216,7 @@ instance Symbolize FuncDecl T.FuncDecl
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
   recurse :: forall s. SymbolTable s -> FuncDecl -> ST s (Glc' T.FuncDecl)
-  recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
+  recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) =
     if vname == "init"
       then addInit
       else addFunc
@@ -230,7 +230,12 @@ instance Symbolize FuncDecl T.FuncDecl
         rtm <- retType
         either
           (return . Just)
-          (\rt -> S.insert st vname (Func [] rt) $> Nothing)
+          -- Don't insert if blank identifier
+          (\rt ->
+             (if vname /= "_"
+                then S.insert st vname (Func [] rt)
+                else S.scopeLevel st) $>
+             Nothing)
           rtm
       -- Add any function that is not init to symbol table
       addFunc :: ST s (Glc' T.FuncDecl)
@@ -271,7 +276,10 @@ instance Symbolize FuncDecl T.FuncDecl
                (([Param], CType), [SymbolInfo]) -> ST s (Glc' T.FuncDecl)
           insertFunc (ftup, sil) =
             let f = funcSym ftup
-             in do scope <- S.insert st vname f
+             in do scope <-
+                     if vname /= "_"
+                       then S.insert st vname f
+                       else S.scopeLevel st
                    _ <- S.addMessage st (vname, f, scope)
                    S.wrap'
                      st
@@ -291,21 +299,23 @@ instance Symbolize FuncDecl T.FuncDecl
       addInit :: ST s (Glc' T.FuncDecl)
       addInit =
         maybe
-          (do scope <- S.scopeLevel st -- Should be 1
-              _ <- S.addMessage st (vname, Func [] void, scope)
-              recurseBody scope)
+          (do let f = Func [] void
+              scope <- S.scopeLevel st -- Should be 1
+              _ <- S.addMessage st (vname, f, scope)
+              S.wrap' st f $ recurseSl scope)
           (\(_, t') -> do
              et2 <- toType st Nothing t'
              _ <- S.disableMessages st
              return $ (Left . createError ident . InitNVoid) =<< et2)
           t
         where
-          recurseBody :: S.Scope -> ST s (Glc' T.FuncDecl)
-          recurseBody scope' =
+          recurseSl :: S.Scope -> ST s (Glc' T.FuncDecl)
+          recurseSl scope' =
             T.FuncDecl
               (mkSIdStr scope' vname)
-              (T.Signature (T.Parameters []) Nothing) <$$>
-            recurse st body
+              (T.Signature (T.Parameters []) Nothing) .
+            T.BlockStmt <$$>
+            (sequence <$> mapM (recurse st) sl)
       getAllIdents :: [Identifier]
       getAllIdents = concatMap (\(ParameterDecl nidl _) -> toList nidl) pdl
       checkParams :: [ParameterDecl] -> ST s (Glc' [(Param, SymbolInfo)])
@@ -707,11 +717,9 @@ instance Symbolize VarDecl' [T.VarDecl'] where
           (sequence ets)
       Right nel -> do
         ets <- mapM (infer st) (toList nel) -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
-        me <- checkIds st tempVar "Variable " neIdl
         either
           (return . Left)
-          (const $
-           maybe (checkDeclI (toList neIdl) (toList nel)) (return . Left) me)
+          (const $ checkDeclI (toList neIdl) (toList nel))
           (sequence ets)
     where
       checkDecl :: CType -> [Identifier] -> [Expr] -> ST s (Glc' [T.VarDecl'])
@@ -748,14 +756,15 @@ instance Symbolize VarDecl' [T.VarDecl'] where
         edl <- mapM (\(i, ex) -> checkDecI ex i) (zip idl el')
         return $ sequence edl
       checkDecI :: Expr -> Identifier -> ST s (Glc' T.VarDecl')
-      checkDecI e (Identifier _ vname) = do
+      checkDecI e ident@(Identifier _ vname) = do
         et' <- infer st e
         either
           (return . Left)
           (\t' -> do
+             me <- checkId st tempVar "Variable " ident
              scope <- S.insert st vname (Variable t') -- Update type of variable
              ee' <- recurse st e
-             return $ createVarD scope <$> toBase e t' <*> ee')
+             return $ maybe (createVarD scope <$> toBase e t' <*> ee') Left me)
           et'
         where
           createVarD :: S.Scope -> T.CType -> T.Expr -> T.VarDecl'
@@ -1071,16 +1080,16 @@ getFirstDuplicate (x:xs) =
 
 -- | Wrapper for check duplicate that will do an action if no duplicate found
 checkDup ::
-     (Eq a, ErrorBreakpoint a)
-  => SymbolTable s
-  -> [a]
-  -> (a -> SymbolError)
+     SymbolTable s
+  -> [Identifier]
+  -> (Identifier -> SymbolError)
   -> ST s (Glc' b)
   -> ST s (Glc' b)
 checkDup st l err stres =
-  case getFirstDuplicate l of
-    Nothing  -> stres
-    Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
+  let noblankl = filter (\(Identifier _ vname) -> vname /= "_") l
+   in case getFirstDuplicate noblankl of
+        Nothing -> stres
+        Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
 
 -- | Convert SType to base type, aka Type from CheckedData
 toBase :: Expr -> CType -> Glc' T.CType
@@ -1179,7 +1188,7 @@ sl2str (em, sl) = (em, sl2str' sl (S.Scope 0) "")
          Base -> " [type] = " ++ key
          ConstantBool -> " [constant] = bool"
          Func {} ->
-           if key == "init"
+           if key == "init" || key == "_"
              then " [function] = <unmapped>"
              else show sym
          _ -> show sym) ++
