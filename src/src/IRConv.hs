@@ -506,7 +506,7 @@ instance IRRep T.Expr where
       T.SliceType {} -> undefined -- TODO
       _ -> error "Cannot index non-array/slice"
   toIR (T.Arguments t (D.Ident aid) args) =
-    concatMap toIR args ++
+    concatMap (\e -> toIR e ++ cloneIfNeeded e) args ++
     iri
       [ InvokeStatic $
         MethodRef
