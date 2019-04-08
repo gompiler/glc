@@ -1,4 +1,4 @@
-COMPILE_FLAGS = --pedantic
+COMPILE_FLAGS = --pedantic --coverage
 
 .PHONY: all
 all: glc
@@ -6,6 +6,7 @@ all: glc
 .PHONY: clean
 clean:
 	stack clean --allow-different-user --full
+	@rm -f glc.tix
 
 .PHONY: cleangen
 cleangen:
@@ -31,6 +32,7 @@ src/generated/ParserGen.hs: golite.y
 
 glc: build
 	@rm -f glc
+	@rm -f glc.tix
 	@ln -s .stack-work/*/*/*/*/bin/glc $@
 
 # Continuous build, builds at every file modification, for development purposes only
@@ -41,7 +43,7 @@ cbuild:
 # Run hspec tests
 .PHONY: test
 test: gen
-	stack test --allow-different-user --coverage $(COMPILE_FLAGS)
+	stack test --allow-different-user $(COMPILE_FLAGS)
 
 .PHONY: ctest
 ctest: gen

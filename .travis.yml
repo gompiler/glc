@@ -1,22 +1,21 @@
 language: generic
 cache:
   directories:
-  - "$HOME/.stack"
+  - $HOME/.stack
 addons:
   apt:
     packages:
     - libgmp-dev
+services:
+- docker
+before_cache:
+- sudo chown -R travis $HOME/.stack
 before_install:
-- mkdir -p ~/.local/bin
-- export PATH=$HOME/.local/bin:$PATH
-- travis_retry curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar
-  xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-install:
-- cd src && stack --no-terminal --install-ghc test --only-dependencies --pedantic
+- docker build -t gompiler .
+- docker volume create -o device=$HOME/.stack -o o=bind stack
 script:
 - cd $TRAVIS_BUILD_DIR
-- chmod +x ./travis_test.sh
-- ./travis_test.sh
+- docker run -v stack:/root/.stack gompiler
 notifications:
   email: false
   slack:
