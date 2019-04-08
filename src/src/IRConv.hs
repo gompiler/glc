@@ -19,7 +19,7 @@ genIR :: String -> Glc [Class]
 genIR code = toClasses . convertProgram <$> S.typecheckGen code
 
 toClasses :: T.Program -> [Class]
-toClasses (T.Program _ scts tfs is mf tms) =
+toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
   Class {cname = "Main", fields = cFields, methods = cMethods} :
   map structClass scts -- TODO
   where
@@ -28,39 +28,39 @@ toClasses (T.Program _ scts tfs is mf tms) =
     cMethods :: [Method]
     cMethods =
       Method
-        { mname = "glc_init"
+        { mname = "__glc$init__"
         , stackLimit = maxStackInit
-        , localsLimit = 25 -- TODO
+        , localsLimit = getLim ill
         , spec = emptySpec
         , body = irBody
         } :
       Method
-        { mname = "glc_main"
+        { mname = "__glc$main__"
         , stackLimit = maxStackMain
-        , localsLimit = 25 -- TODO
+        , localsLimit = getLim mll
         , spec = emptySpec
         , body = mfBody
         } :
       Method
         { mname = "main"
-        , stackLimit = 25 -- TODO
-        , localsLimit = 25 -- TODO
+        , stackLimit = 0
+        , localsLimit = 1
         , spec = MethodSpec ([JArray (JClass jString)], JVoid)
         , body =
             iri
-              [ InvokeStatic (MethodRef (CRef cMain) "glc_init" emptySpec)
-              , InvokeStatic (MethodRef (CRef cMain) "glc_main" emptySpec)
+              [ InvokeStatic (MethodRef (CRef cMain) "__glc$init__" emptySpec)
+              , InvokeStatic (MethodRef (CRef cMain) "__glc$main__" emptySpec)
               , Return Nothing
               ] -- TODO: Field Initialization
         } :
       toMethods tms
       where
         irBody :: [IRItem]
-        irBody = concatMap toIR is
+        irBody = toIR ifb
         maxStackInit :: Int
         maxStackInit = maxStackSize irBody 0
         mfBody :: [IRItem]
-        mfBody = concatMap toIR mf
+        mfBody = toIR mfb
         maxStackMain :: Int
         maxStackMain = maxStackSize mfBody 0
     vdToField :: T.TopVarDecl -> Field
@@ -75,11 +75,11 @@ toClasses (T.Program _ scts tfs is mf tms) =
     toMethods = map fdToMethod
       where
         fdToMethod :: T.FuncDecl -> Method
-        fdToMethod (T.FuncDecl (D.Ident fni) sig fb) =
+        fdToMethod (T.FuncDecl (D.Ident fni) sig fb fll) =
           Method
-            { mname = "glc_fn__" ++ fni
+            { mname = "__glc$fn__" ++ fni
             , stackLimit = maxStack
-            , localsLimit = 25 -- TODO
+            , localsLimit = getLim fll
             , spec = sigToSpec sig
             , body = irBody
             }
@@ -98,7 +98,7 @@ toClasses (T.Program _ scts tfs is mf tms) =
     structClass :: T.StructType -> Class
     structClass (T.Struct (D.Ident sid) fdls) =
       Class
-        { cname = "GlcStruct__" ++ sid
+        { cname = "__Glc$Struct__" ++ sid
         , fields = map sfToF fdls
         , methods = [] -- TODO: EQUALITY CHECKS?
         }
@@ -501,7 +501,7 @@ binary :: T.Expr -> T.Expr -> [Instruction] -> [IRItem]
 binary e1 e2 insts = toIR e1 ++ toIR e2 ++ iri insts
 
 tVarStr :: T.Ident -> String
-tVarStr (T.Ident tvs) = "glc_fd__" ++ tvs
+tVarStr (T.Ident tvs) = "__glc$fd__" ++ tvs
 
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
@@ -616,3 +616,6 @@ maxStackSize irs current =
       max
         (current + stackDelta inst)
         (maxStackSize xs (current + stackDelta inst))
+
+getLim :: T.LocalLimit -> Int
+getLim (T.LocalLimit i) = i
