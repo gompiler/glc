@@ -181,7 +181,17 @@ instance IRRep T.Stmt where
   toIR (T.VarDecl idx t me) =
     case me of
       Just e -> toIR e ++ iri [Store (typeToIRType t) idx]
-      _      -> [] -- TODO: Get default and store?
+      _ -> -- Get default and store
+        case t of
+          (T.ArrayType _ _) -> undefined -- TODO: Multidimensional...
+          T.SliceType {} ->
+            iri [New cSlice, Dup, InvokeSpecial sliceInit, Store Object idx]
+          T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
+          T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
+          T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
+          T.PBool -> iri [IConst0, Store (Prim IRInt) idx]
+          T.PString -> iri [LDC (LDCString ""), Store Object idx]
+          (T.StructType (D.Ident _)) -> undefined -- TODO
   toIR (T.Print el) = concatMap printIR el
   toIR (T.Println el) =
     intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++

@@ -252,6 +252,9 @@ cMain = ClassRef "Main"
 cSlice :: ClassRef
 cSlice = ClassRef "Slice"
 
+sliceInit :: MethodRef
+sliceInit = MethodRef (CRef cSlice) "<init>" emptySpec
+
 sliceAppend :: MethodRef
 sliceAppend =
   MethodRef
