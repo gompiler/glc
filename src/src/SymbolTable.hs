@@ -1072,16 +1072,16 @@ getFirstDuplicate (x:xs) =
 
 -- | Wrapper for check duplicate that will do an action if no duplicate found
 checkDup ::
-     (Eq a, ErrorBreakpoint a)
-  => SymbolTable s
-  -> [a]
-  -> (a -> SymbolError)
+  SymbolTable s
+  -> [Identifier]
+  -> (Identifier -> SymbolError)
   -> ST s (Glc' b)
   -> ST s (Glc' b)
 checkDup st l err stres =
-  case getFirstDuplicate l of
-    Nothing  -> stres
-    Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
+  let noblankl = filter (\(Identifier _ vname) -> vname /= "_") l in
+    case getFirstDuplicate noblankl of
+      Nothing  -> stres
+      Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
 
 -- | Convert SType to base type, aka Type from CheckedData
 toBase :: Expr -> CType -> Glc' T.CType

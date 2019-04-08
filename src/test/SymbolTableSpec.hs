@@ -134,6 +134,13 @@ spec = do
     , "for i:=0;;{var i = 3;}"
     , "if i:=0; true {var i = 3;}"
     , "if i:=true; i {}"
+    , "{var a = 3; {var a = a; var b int = a;};}"
+    , "var a = 3; {var a = a; var b int; b, c := a, a;}"
+    , "{var a = 3; {var a int = a; var b int = a;};}"
+    , "var a = 3; {var a int = a; var b int; b, c := a, a;}"
+    , "var _, a, _ int"
+    , "var _, a, _ = 0, 0, 3.5"
+    , "a, _, _ := 0, 0, 3.5"
     ]
   expectTypecheckFail
     -- Assignment ops
@@ -316,6 +323,8 @@ spec = do
     , "func a ()int { for a:=0;;a++ {};}"
     , "func a ()int { var a = 3; for ;;a=0 {};}"
     , "func a () {}; func main () { a(); }"
+    , "func a (_, _ int, _ int){}"
+    , "type a struct {_, _ int; _ int;}"
     ]
   expectTypecheckPassNoMain
     [ [text|
