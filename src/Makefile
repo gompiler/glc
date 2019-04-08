@@ -43,11 +43,13 @@ cbuild:
 # Run hspec tests
 .PHONY: test
 test: gen
+	@rm -f glc.tix
 	stack test --allow-different-user $(COMPILE_FLAGS)
 
 .PHONY: ctest
 ctest: gen
-	stack test --allow-different-user --coverage --file-watch $(COMPILE_FLAGS)
+	@rm -f glc.tix
+	stack test --allow-different-user --file-watch $(COMPILE_FLAGS)
 
 # Refactor code using hlint, hindent and stylish-haskell
 .PHONY: refactor

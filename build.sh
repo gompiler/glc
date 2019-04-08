@@ -18,3 +18,5 @@ else
 fi
 # Skip clean when running locally
 make -C src
+rm -f glc.tix
+rm -f src/glc.tix
