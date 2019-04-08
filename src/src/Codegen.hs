@@ -80,7 +80,7 @@ instance Bytecode Method where
 
 instance Bytecode IRItem where
   toBC' (IRInst inst)   = tab $ toBC' inst
-  toBC' (IRLabel label) = bstrM [label, ":"]
+  toBC' (IRLabel label) = bstrM ["L", label, ":"]
 
 instance Bytecode Instruction where
   toBC' ins = bstrM (toBCStr ins)
@@ -94,7 +94,7 @@ instance Bytecode Instruction where
       toBCStr (Return Nothing) = ["return"]
       toBCStr Dup = ["dup"]
       toBCStr Dup2 = ["dup2"]
-      toBCStr (Goto label) = ["goto ", label]
+      toBCStr (Goto label) = ["goto L", label]
       toBCStr (Add t) = [typePrefix' t, "add"]
       toBCStr (Div t) = [typePrefix' t, "div"]
       toBCStr (Mul t) = [typePrefix' t, "mul"]
