@@ -191,6 +191,21 @@ systemOut = FieldRef (ClassRef "java/lang/System") "out"
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
 
+jInteger :: ClassRef
+jInteger = ClassRef "java/lang/Integer"
+
+jIntInit :: MethodRef
+jIntInit = MethodRef (CRef jInteger) "<init>" (MethodSpec ([JInt], JVoid))
+
+jDouble :: ClassRef
+jDouble = ClassRef "java/lang/Double"
+
+jDoubleInit :: MethodRef
+jDoubleInit = MethodRef (CRef jDouble) "<init>" (MethodSpec ([JDouble], JVoid))
+
+jObject :: ClassRef
+jObject = ClassRef "java/lang/Object"
+
 stringEquals :: MethodRef
 stringEquals =
   MethodRef (CRef jString) "equals" (MethodSpec ([JClass jString], JBool))
@@ -219,9 +234,6 @@ sbToString :: MethodRef
 sbToString =
   MethodRef (CRef stringBuilder) "toString" (MethodSpec ([], JClass jString))
 
-jObject :: ClassRef
-jObject = ClassRef "java/lang/Object"
-
 emptySpec :: MethodSpec
 emptySpec = MethodSpec ([], JVoid)
 
@@ -230,6 +242,13 @@ cMain = ClassRef "Main"
 
 cSlice :: ClassRef
 cSlice = ClassRef "Slice"
+
+sliceAppend :: MethodRef
+sliceAppend =
+  MethodRef
+    (CRef cSlice)
+    "append"
+    (MethodSpec ([JClass jObject], JClass cSlice))
 
 sliceCapacity :: MethodRef
 sliceCapacity = MethodRef (CRef cSlice) "capacity" (MethodSpec ([], JInt))

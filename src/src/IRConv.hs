@@ -480,7 +480,31 @@ instance IRRep T.Expr where
   toIR (T.Var t vi) = iri [Load (typeToIRType t) vi]
   toIR (T.TopVar t tvi) =
     iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
-  toIR T.AppendExpr {} = undefined -- TODO
+  toIR (T.AppendExpr _ e1 e2) =
+    toIR e1 ++ objectRepr e2 ++ iri [InvokeVirtual sliceAppend] -- returns Slice for us
+    where
+      objectRepr :: T.Expr -> [IRItem]
+      objectRepr e =
+        case exprJType e of
+          JClass cr ->
+            toIR e ++
+            iri
+              [ InvokeVirtual $
+                MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
+              ]
+          JArray jt ->
+            toIR e ++
+            iri
+              [ InvokeVirtual $
+                MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
+              ]
+          JInt ->
+            iri [New jInteger, Dup] ++ toIR e ++ iri [InvokeSpecial jIntInit]
+          JDouble ->
+            iri [New jDouble, Dup] ++ toIR e ++ iri [InvokeSpecial jDoubleInit]
+          JBool ->
+            iri [New jInteger, Dup] ++ toIR e ++ iri [InvokeSpecial jIntInit]
+          JVoid -> error "Cannot have slice of void"
   toIR (T.LenExpr e) =
     case exprType e of
       T.ArrayType l _ -> iri [LDC (LDCInt l)] -- fixed at compile time
