@@ -144,7 +144,7 @@ instance IRRep T.Stmt where
     iri [If IRData.EQ ("Lelse_" ++ show idx)] ++
     toIR ifs ++
     [IRInst (Goto ("Lend_if_" ++ show idx)), IRLabel ("Lelse_" ++ show idx)] ++
-    toIR elses ++ [IRLabel ("end_if_" ++ show idx), IRInst NOp]
+    toIR elses ++ [IRLabel ("Lend_if_" ++ show idx), IRInst NOp]
   toIR (T.Switch (T.LabelIndex idx) sstmt e scs dstmt) =
     toIR sstmt ++
     toIR e ++

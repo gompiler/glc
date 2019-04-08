@@ -74,12 +74,12 @@ instance Bytecode Method where
           , show ll
           , "\n\n"
           ]
-      , B.concat $ map (tab . toBC') bod
+      , B.concat $ map toBC bod
       , bstr ".end method"
       ]
 
 instance Bytecode IRItem where
-  toBC' (IRInst inst)   = toBC inst
+  toBC' (IRInst inst)   = tab $ toBC' inst
   toBC' (IRLabel label) = bstrM [label, ":"]
 
 instance Bytecode Instruction where
