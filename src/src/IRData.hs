@@ -228,6 +228,15 @@ emptySpec = MethodSpec ([], JVoid)
 cMain :: ClassRef
 cMain = ClassRef "Main"
 
+cSlice :: ClassRef
+cSlice = ClassRef "Slice"
+
+sliceCapacity :: MethodRef
+sliceCapacity = MethodRef (CRef cSlice) "capacity" (MethodSpec ([], JInt))
+
+sliceLength :: FieldRef
+sliceLength = FieldRef cSlice "length"
+
 -- Custom-defined methods
 glcUtils :: ClassRef
 glcUtils = ClassRef "glcgutils/Utils"
