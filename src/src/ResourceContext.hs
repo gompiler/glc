@@ -136,11 +136,20 @@ enterScope st = do
 exitScope :: ResourceContext s -> ST s ()
 exitScope st = do
   rc <- readRef st
-  let (curr:parent:vars) = varScopes rc
-  -- Remove current scope, and update parent's limit with current counter
-  let varLimit' = max (varLimit curr) (varLimit parent)
-  let varScopes' = parent {varLimit = varLimit'} : vars
+  let varScopes' = exitScope' $ varScopes rc
   writeRef st $! rc {varScopes = varScopes'}
+    -- | Remove current scope, and update parent's limit with current counter
+    -- if it exists
+  where
+    exitScope' :: [ResourceScope s] -> [ResourceScope s]
+    exitScope' (curr:parent:vars) =
+      let varLimit' = max (varLimit curr) (varLimit parent)
+       in parent {varLimit = varLimit'} : vars
+    exitScope' (_:vars) = vars
+    -- Note that this should never happen, given that we
+    -- don't expose enter and exit for public use.
+    -- Each exit only occurs with an enter
+    exitScope' [] = []
 
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
