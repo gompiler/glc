@@ -67,6 +67,7 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
     vdToField (T.TopVarDecl fi t _) =
       Field
         { access = FProtected
+        , static = True
         , fname = tVarStr fi
         , descriptor = typeToJType t
       -- , value = Nothing
@@ -106,6 +107,7 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
     sfToF (T.FieldDecl (D.Ident fid) t) =
       Field
         { access = FPublic
+        , static = False
         , fname = fid
         , descriptor = typeToJType t
         -- , value = Nothing

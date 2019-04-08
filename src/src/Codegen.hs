@@ -33,12 +33,23 @@ instance Bytecode [Class] where
   toBC' cls = B.concat (map toBC cls)
 
 instance Bytecode Field where
-  toBC' (Field acc fn desc)
+  toBC' (Field acc static' fn desc)
     -- .field $(access) $(fieldname) $(signature)
     -- ex.
     -- public int thing; ->
     -- .field public thing I
-   = bstrM [".field ", show acc, " ", fn, " ", show desc]
+   =
+    bstrM
+      [ ".field "
+      , show acc
+      , " "
+      , if static'
+          then "static "
+          else ""
+      , fn
+      , " "
+      , show desc
+      ]
 
 instance Bytecode Method where
   toBC' (Method mn sl ll (MethodSpec (jtl, jt)) bod)

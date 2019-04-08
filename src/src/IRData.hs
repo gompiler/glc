@@ -18,20 +18,12 @@ data FieldAccess
   = FPublic
   | FPrivate
   | FProtected
-  | FStatic
-  | FFinal
-  | FVolatile
-  | FTransient
   deriving (Eq)
 
 instance Show FieldAccess where
   show FPublic    = "public"
   show FPrivate   = "private"
   show FProtected = "protected"
-  show FStatic    = "static"
-  show FFinal     = "final"
-  show FVolatile  = "volatile"
-  show FTransient = "transient"
 
 newtype MethodSpec =
   MethodSpec ([JType], JType)
@@ -39,6 +31,7 @@ newtype MethodSpec =
 
 data Field = Field
   { access     :: FieldAccess
+  , static     :: Bool
   , fname      :: String
   , descriptor :: JType
   -- , value :: LDCType TODO?
