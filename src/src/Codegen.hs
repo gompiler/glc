@@ -7,6 +7,7 @@ import           Data.ByteString.Lazy    (ByteString, append)
 import qualified Data.ByteString.Lazy    as B (concat, writeFile)
 import           IRConv
 import           IRData
+import qualified ResourceData            as T
 import           Scanner                 (putExit, putSucc)
 import           System.FilePath         (dropExtension)
 
@@ -68,9 +69,9 @@ instance Bytecode IRItem where
   toBC (IRLabel label) = bstrM [label, ":\n"]
 
 instance Bytecode Instruction where
-  toBC (Load t i) = bstrM [typePrefix t, "load ", show i, "\n"]
+  toBC (Load t (T.VarIndex i)) = bstrM [typePrefix t, "load ", show i, "\n"]
   toBC (ArrayLoad t) = bstrM [typePrefix t, "aload\n"]
-  toBC (Store t i) = bstrM [typePrefix t, "istore ", show i, "\n"]
+  toBC (Store t (T.VarIndex i)) = bstrM [typePrefix t, "store ", show i, "\n"]
   toBC (ArrayStore t) = bstrM [typePrefix t, "astore\n"]
   toBC (Return (Just t)) = bstrM [typePrefix t, "return\n"]
   toBC (Return Nothing) = bstr "return\n"
