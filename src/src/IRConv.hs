@@ -293,17 +293,6 @@ instance IRRep T.SimpleStmt where
               _ -> error "Cannot assign to non-addressable value"
             where irType :: IRType
                   irType = exprIRType ve
-                  objectDecode :: T.Type -> [IRItem]
-                  objectDecode t = -- TODO: Maybe this should just be IRType
-                    case t of -- TODO: Might need CheckCast
-                      T.ArrayType {} -> [] -- nothing to do
-                      T.SliceType {} -> [] -- nothing to do
-                      T.PInt -> iri [InvokeVirtual jIntValue]
-                      T.PFloat64 -> iri [InvokeVirtual jDoubleValue]
-                      T.PBool -> iri [InvokeVirtual jIntValue]
-                      T.PRune -> iri [InvokeVirtual jIntValue]
-                      T.PString -> [] -- nothing to do
-                      T.StructType _ -> [] -- nothing to do
                   setUpOps :: [IRItem]
                   setUpOps =
                     case (op, irType) of
@@ -525,7 +514,8 @@ instance IRRep T.Expr where
     case exprType e1 of
       T.ArrayType _ _ -- TODO: CHECK LENGTH HERE?
        -> toIR e1 ++ toIR e2 ++ iri [ArrayLoad (typeToIRType t)]
-      T.SliceType {} -> undefined -- TODO
+      T.SliceType {} ->
+        toIR e1 ++ toIR e2 ++ iri [InvokeVirtual sliceGet] ++ objectDecode t
       _ -> error "Cannot index non-array/slice"
   toIR (T.Arguments t (D.Ident aid) args) =
     concatMap (\e -> toIR e ++ cloneIfNeeded e) args ++
@@ -594,6 +584,18 @@ objectRepr t =
     JBool ->
       iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit]
     JVoid -> error "Cannot have slice of void"
+
+objectDecode :: T.Type -> [IRItem]
+objectDecode t = -- TODO: Maybe this should just be IRType
+  case t of -- TODO: Might need CheckCast
+    T.ArrayType {} -> [] -- nothing to do
+    T.SliceType {} -> [] -- nothing to do
+    T.PInt -> iri [InvokeVirtual jIntValue]
+    T.PFloat64 -> iri [InvokeVirtual jDoubleValue]
+    T.PBool -> iri [InvokeVirtual jIntValue]
+    T.PRune -> iri [InvokeVirtual jIntValue]
+    T.PString -> [] -- nothing to do
+    T.StructType _ -> [] -- nothing to do
 
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
