@@ -1,4 +1,4 @@
-{-# LANGUAGE QuasiQuotes       #-}
+{-# LANGUAGE QuasiQuotes #-}
 
 module WeedingTypeSpec
   ( spec
@@ -23,7 +23,7 @@ expectWeedFailNoMain =
     "wrapped stmt"
 
 spec :: Spec
-spec = do
+spec =
   expectWeedFailNoMain
     [ [text|
       func test() int {

@@ -270,7 +270,7 @@ instance BlankWeed SimpleStmt where
     where
       toIdent' :: Expr -> [Identifier]
       toIdent' (Var _) = []
-      toIdent' e@(_)   = toIdent e
+      toIdent' e@_     = toIdent e
   toIdent (ShortDeclare _ el) = toList el >>= toIdent -- Don't care about LHS
   toIdent _ = []
 

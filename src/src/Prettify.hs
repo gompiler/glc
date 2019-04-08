@@ -224,9 +224,9 @@ instance Prettify Expr where
     prettify e ++ "(" ++ unlines' (commaJoin ee) ++ ")" -- TODO remove unlines requirement
     where
       unlines' = rstrip . unlines
-      lstrip:: String -> String
-      lstrip ('\n':xs) = lstrip  xs
-      lstrip s = s
+      lstrip :: String -> String
+      lstrip ('\n':xs) = lstrip xs
+      lstrip s         = s
       rstrip :: String -> String
       rstrip = reverse . lstrip . reverse
   prettify' = prettify''

@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Data where
 
-import           Data.List.NonEmpty (NonEmpty (..))
 import           Base
+import           Data.List.NonEmpty (NonEmpty (..))
 
 -- note that I do not classify blank identifiers as a separate type
 -- because we can easily pattern match it already
@@ -189,7 +189,8 @@ data Stmt
   | Println [Expr]
   -- | See https://golang.org/ref/spec#Return_statements
   -- In golite, at most one expr can be returned
-  | Return Offset (Maybe Expr)
+  | Return Offset
+           (Maybe Expr)
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
@@ -207,10 +208,10 @@ instance ErrorBreakpoint SwitchCase where
 
 -- | See https://golang.org/ref/spec#For_statements
 -- Golite does not support range statement
-data ForClause
-  = ForClause SimpleStmt
-              (Maybe Expr)
-              SimpleStmt
+data ForClause =
+  ForClause SimpleStmt
+            (Maybe Expr)
+            SimpleStmt
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------

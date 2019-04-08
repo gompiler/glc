@@ -50,7 +50,7 @@ returnConstraint (TopFuncDecl fd@(FuncDecl _ (Signature _ mrt) fb)) =
     lastIsReturn (BlockStmt stmts) =
       case reverse stmts of
         st:_ -> lastIsReturn st
-        [] -> Just $ createError fd LastReturn
+        []   -> Just $ createError fd LastReturn
     lastIsReturn (Switch _ _ cl) =
       if all (not . checkForDefault) cl
         then Just $ createError fd ReturnNoDefault
@@ -130,5 +130,5 @@ initMainSignatureVerify program = asum errors
             else Just $ createError o $ SpecialFunctionType fname
         verifyType :: Maybe Type' -> Maybe ErrorMessage'
         verifyType Nothing = Nothing
-        verifyType _ = Just $ createError o $ SpecialFunctionType fname
+        verifyType _       = Just $ createError o $ SpecialFunctionType fname
     miFunctionConstraint _ = Nothing -- Non-function declarations don't matter here
