@@ -4,6 +4,7 @@ import           Base                  (Glc)
 import qualified CheckedData           as D
 import           Data.Char             (ord, toLower)
 import           Data.List             (intercalate)
+import           Data.List.NonEmpty    (NonEmpty (..))
 import qualified Data.List.NonEmpty    as NE (map, toList)
 import           Foreign.Marshal.Utils (fromBool)
 import           IRData
@@ -53,6 +54,13 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
               , Return Nothing
               ] -- TODO: Field Initialization
         } :
+      Method
+        { mname = "<clinit>"
+        , stackLimit = maxStackSize clBody 0
+        , localsLimit = 0
+        , spec = MethodSpec ([], JVoid)
+        , body = clBody
+        } :
       toMethods tms
       where
         irBody :: [IRItem]
@@ -72,6 +80,17 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
         , descriptor = typeToJType t
       -- , value = Nothing
         }
+    clBody :: [IRItem]
+    clBody = vdToIns tfs ++ iri [Return Nothing]
+    vdToIns :: [T.TopVarDecl] -> [IRItem]
+    vdToIns tvdl = concatMap vdToIns' tvdl
+    vdToIns' :: T.TopVarDecl -> [IRItem]
+    vdToIns' (T.TopVarDecl fi t me) =
+      case me of
+        Nothing -> [] -- Default
+      -- Convert declaration to assignments, reuse logic
+        Just e ->
+          toIR (T.Assign (T.AssignOp Nothing) ((T.TopVar t fi, e) :| []))
     toMethods :: [T.FuncDecl] -> [Method]
     toMethods = map fdToMethod
       where
