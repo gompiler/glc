@@ -241,9 +241,9 @@ instance IRRep T.SimpleStmt where
                 setUpOps ++
                 iri [Load (typeToIRType t) idx] ++
                 afterLoadOps ++ toIR ve ++ finalOps
-              T.TopVar t (T.Ident tvi) ->
+              T.TopVar t tvi ->
                 setUpOps ++
-                iri [GetStatic (FieldRef cMain tvi) (typeToJType t)] ++
+                iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)] ++
                 afterLoadOps ++ toIR ve ++ finalOps
               T.Selector t eo (T.Ident fid) ->
                 case exprJType eo of
@@ -298,8 +298,8 @@ instance IRRep T.SimpleStmt where
       getStore (e, _) =
         case e of
           T.Var t idx -> iri [Store (typeToIRType t) idx]
-          T.TopVar t (T.Ident tvi) ->
-            iri [PutStatic (FieldRef cMain tvi) (typeToJType t)]
+          T.TopVar t tvi ->
+            iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
           T.Selector t eo (T.Ident fid) ->
             case exprJType eo of
               JClass cr ->
@@ -505,6 +505,9 @@ binary e1 e2 insts = toIR e1 ++ toIR e2 ++ iri insts
 
 tVarStr :: T.Ident -> String
 tVarStr (T.Ident tvs) = "__glc$fd__" ++ tvs
+
+prependfd :: T.Ident -> T.Ident
+prependfd (T.Ident fn) = T.Ident $ "__glc$fd__" ++ fn
 
 tFnStr :: T.Ident -> String
 tFnStr (T.Ident tfs) = "__glc$fn__" ++ tfs
