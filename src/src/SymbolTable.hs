@@ -230,7 +230,12 @@ instance Symbolize FuncDecl T.FuncDecl
         rtm <- retType
         either
           (return . Just)
-          (\rt -> S.insert st vname (Func [] rt) $> Nothing)
+          -- Don't insert if blank identifier
+          (\rt ->
+             (if vname /= "_"
+                then S.insert st vname (Func [] rt)
+                else S.scopeLevel st) $>
+             Nothing)
           rtm
       -- Add any function that is not init to symbol table
       addFunc :: ST s (Glc' T.FuncDecl)
@@ -271,7 +276,10 @@ instance Symbolize FuncDecl T.FuncDecl
                (([Param], CType), [SymbolInfo]) -> ST s (Glc' T.FuncDecl)
           insertFunc (ftup, sil) =
             let f = funcSym ftup
-             in do scope <- S.insert st vname f
+             in do scope <-
+                     if vname /= "_"
+                       then S.insert st vname f
+                       else S.scopeLevel st
                    _ <- S.addMessage st (vname, f, scope)
                    S.wrap'
                      st
@@ -1072,16 +1080,16 @@ getFirstDuplicate (x:xs) =
 
 -- | Wrapper for check duplicate that will do an action if no duplicate found
 checkDup ::
-  SymbolTable s
+     SymbolTable s
   -> [Identifier]
   -> (Identifier -> SymbolError)
   -> ST s (Glc' b)
   -> ST s (Glc' b)
 checkDup st l err stres =
-  let noblankl = filter (\(Identifier _ vname) -> vname /= "_") l in
-    case getFirstDuplicate noblankl of
-      Nothing  -> stres
-      Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
+  let noblankl = filter (\(Identifier _ vname) -> vname /= "_") l
+   in case getFirstDuplicate noblankl of
+        Nothing -> stres
+        Just dup -> S.disableMessages st $> (Left $ createError dup $ err dup)
 
 -- | Convert SType to base type, aka Type from CheckedData
 toBase :: Expr -> CType -> Glc' T.CType
@@ -1180,7 +1188,7 @@ sl2str (em, sl) = (em, sl2str' sl (S.Scope 0) "")
          Base -> " [type] = " ++ key
          ConstantBool -> " [constant] = bool"
          Func {} ->
-           if key == "init"
+           if key == "init" || key == "_"
              then " [function] = <unmapped>"
              else show sym
          _ -> show sym) ++

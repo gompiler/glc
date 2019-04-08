@@ -141,6 +141,7 @@ spec = do
     , "var _, a, _ int"
     , "var _, a, _ = 0, 0, 3.5"
     , "a, _, _ := 0, 0, 3.5"
+    , "var _ = 5; var _ = 7;"
     ]
   expectTypecheckFail
     -- Assignment ops
@@ -325,6 +326,8 @@ spec = do
     , "func a () {}; func main () { a(); }"
     , "func a (_, _ int, _ int){}"
     , "type a struct {_, _ int; _ int;}"
+    , "func _(){}; func _(){};"
+    , "type _ int; type _ int;"
     ]
   expectTypecheckPassNoMain
     [ [text|
