@@ -78,7 +78,8 @@ instance Converter T.Program Program where
       createInit :: [T.Ident] -> InitDecl
       createInit funcs =
         InitDecl
-          (BlockStmt $ map (\i -> SimpleStmt $ VoidExprStmt i []) funcs ++ [Return Nothing])
+          (BlockStmt $
+           map (\i -> SimpleStmt $ VoidExprStmt i []) funcs ++ [Return Nothing])
           (LocalLimit 0)
       -- | Given init contents, convert to function
       renameInits :: [(Stmt, LocalLimit)] -> [FuncDecl]
