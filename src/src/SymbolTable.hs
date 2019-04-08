@@ -216,7 +216,7 @@ instance Symbolize FuncDecl T.FuncDecl
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
   recurse :: forall s. SymbolTable s -> FuncDecl -> ST s (Glc' T.FuncDecl)
-  recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) body@(BlockStmt sl)) =
+  recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) =
     if vname == "init"
       then addInit
       else addFunc
@@ -291,21 +291,23 @@ instance Symbolize FuncDecl T.FuncDecl
       addInit :: ST s (Glc' T.FuncDecl)
       addInit =
         maybe
-          (do scope <- S.scopeLevel st -- Should be 1
-              _ <- S.addMessage st (vname, Func [] void, scope)
-              recurseBody scope)
+          (do let f = Func [] void
+              scope <- S.scopeLevel st -- Should be 1
+              _ <- S.addMessage st (vname, f, scope)
+              S.wrap' st f $ recurseSl scope)
           (\(_, t') -> do
              et2 <- toType st Nothing t'
              _ <- S.disableMessages st
              return $ (Left . createError ident . InitNVoid) =<< et2)
           t
         where
-          recurseBody :: S.Scope -> ST s (Glc' T.FuncDecl)
-          recurseBody scope' =
+          recurseSl :: S.Scope -> ST s (Glc' T.FuncDecl)
+          recurseSl scope' =
             T.FuncDecl
               (mkSIdStr scope' vname)
-              (T.Signature (T.Parameters []) Nothing) <$$>
-            recurse st body
+              (T.Signature (T.Parameters []) Nothing) .
+            T.BlockStmt <$$>
+            (sequence <$> mapM (recurse st) sl)
       getAllIdents :: [Identifier]
       getAllIdents = concatMap (\(ParameterDecl nidl _) -> toList nidl) pdl
       checkParams :: [ParameterDecl] -> ST s (Glc' [(Param, SymbolInfo)])
