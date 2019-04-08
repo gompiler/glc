@@ -274,7 +274,7 @@ instance IRRep T.SimpleStmt where
                     iri [GetField (FieldRef cr fid) (typeToJType t)] ++
                     afterLoadOps ++ toIR ve ++ finalOps
                   _ -> error "Cannot get field of non-object"
-              T.Index _ ea ei ->
+              T.Index t ea ei ->
                 case exprType ea of
                   T.ArrayType {} ->
                     setUpOps ++
@@ -282,11 +282,28 @@ instance IRRep T.SimpleStmt where
                     toIR ei ++
                     iri [Dup2, ArrayLoad irType] ++ -- Duplicate addr. and index at the same time
                     afterLoadOps ++ toIR ve ++ finalOps
-                  T.SliceType {} -> undefined -- TODO
+                  T.SliceType {} ->
+                    setUpOps ++
+                    toIR ea ++
+                    toIR ei ++
+                    iri [Dup2, InvokeVirtual sliceGet] ++
+                    objectDecode t ++
+                    afterLoadOps ++ toIR ve ++ finalOps
                   _ -> error "Cannot index non-array/slice"
               _ -> error "Cannot assign to non-addressable value"
             where irType :: IRType
                   irType = exprIRType ve
+                  objectDecode :: T.Type -> [IRItem]
+                  objectDecode t = -- TODO: Maybe this should just be IRType
+                    case t of -- TODO: Might need CheckCast
+                      T.ArrayType {} -> [] -- nothing to do
+                      T.SliceType {} -> [] -- nothing to do
+                      T.PInt -> iri [InvokeVirtual jIntValue]
+                      T.PFloat64 -> iri [InvokeVirtual jDoubleValue]
+                      T.PBool -> iri [InvokeVirtual jIntValue]
+                      T.PRune -> iri [InvokeVirtual jIntValue]
+                      T.PString -> [] -- nothing to do
+                      T.StructType _ -> [] -- nothing to do
                   setUpOps :: [IRItem]
                   setUpOps =
                     case (op, irType) of
@@ -326,11 +343,12 @@ instance IRRep T.SimpleStmt where
               JClass cr ->
                 toIR eo ++ iri [PutField (FieldRef cr fid) (typeToJType t)]
               _ -> error "Cannot get field of non-object"
-          T.Index _ ea _ ->
+          T.Index t ea _ ->
             case exprType ea of
               T.ArrayType {} -> iri [ArrayStore irType] -- matched with above
-              T.SliceType {} -> undefined -- TODO
-              _              -> error "Cannot index non-array/slice"
+              T.SliceType {} ->
+                objectRepr (typeToJType t) ++ iri [InvokeVirtual sliceSet]
+              _ -> error "Cannot index non-array/slice"
           _ -> error "Cannot assign to non-addressable value"
         where
           irType :: IRType
@@ -481,30 +499,10 @@ instance IRRep T.Expr where
   toIR (T.TopVar t tvi) =
     iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
   toIR (T.AppendExpr _ e1 e2) =
-    toIR e1 ++ objectRepr e2 ++ iri [InvokeVirtual sliceAppend] -- returns Slice for us
-    where
-      objectRepr :: T.Expr -> [IRItem]
-      objectRepr e =
-        case exprJType e of
-          JClass cr ->
-            toIR e ++
-            iri
-              [ InvokeVirtual $
-                MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
-              ]
-          JArray jt ->
-            toIR e ++
-            iri
-              [ InvokeVirtual $
-                MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
-              ]
-          JInt ->
-            iri [New jInteger, Dup] ++ toIR e ++ iri [InvokeSpecial jIntInit]
-          JDouble ->
-            iri [New jDouble, Dup] ++ toIR e ++ iri [InvokeSpecial jDoubleInit]
-          JBool ->
-            iri [New jInteger, Dup] ++ toIR e ++ iri [InvokeSpecial jIntInit]
-          JVoid -> error "Cannot have slice of void"
+    toIR e1 ++
+    toIR e2 ++
+    objectRepr (exprJType e2) ++
+    iri [InvokeVirtual sliceAppend] -- returns Slice for us
   toIR (T.LenExpr e) =
     case exprType e of
       T.ArrayType l _ -> iri [LDC (LDCInt l)] -- fixed at compile time
@@ -576,6 +574,27 @@ cloneIfNeeded e =
         ]
     _ -> [] -- Primitives and strings are not clonable
 
+objectRepr :: JType -> [IRItem]
+objectRepr t =
+  case t of
+    JClass cr ->
+      iri
+        [ InvokeVirtual $
+          MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
+        ]
+    JArray jt ->
+      iri
+        [ InvokeVirtual $
+          MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
+        ]
+    JInt ->
+      iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit] -- e, o -> o, e, o -> o, o, e -> o
+    JDouble -> -- e1, e2, o -> e1, e2, o, o -> o, o, e1, e2, o, o -> o, o, e1, e2 -> o
+      iri [New jDouble, Dup, Dup2X2, Pop2, InvokeSpecial jDoubleInit]
+    JBool ->
+      iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit]
+    JVoid -> error "Cannot have slice of void"
+
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
 exprType (T.Binary _ t _ _ _) = t
@@ -639,6 +658,8 @@ stackDelta (Return m) =
     Just _               -> -1
 stackDelta Dup = 1 -- ..., v -> ..., v, v
 stackDelta Dup2 = 2 -- ..., v, w -> ..., v, w, v, w
+stackDelta DupX1 = 1 -- ..., v, w -> ..., w, v, w
+stackDelta Dup2X2 = 2 -- ..., v, w, x, y -> ..., x, y, v, w, x, y
 stackDelta Goto {} = 0
 stackDelta (Add IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
 stackDelta (Add IRInt) = -1 -- ..., v, w -> ..., r
@@ -668,6 +689,7 @@ stackDelta ANewArray {} = 0 -- ..., c -> ..., o
 stackDelta NewArray {} = 0 -- ..., c -> ..., o
 stackDelta NOp = 0
 stackDelta Pop = -1 -- ..., v -> ...
+stackDelta Pop2 = -2 -- ..., v, w -> ...
 stackDelta Swap = 0 -- ..., v, w -> ..., w, v
 stackDelta (GetStatic _ JDouble) = 2 -- ... -> ..., v (double-wide)
 stackDelta GetStatic {} = 1 -- ... -> ..., v

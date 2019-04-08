@@ -143,6 +143,8 @@ data Instruction
   | Return (Maybe IRType)
   | Dup
   | Dup2 -- ..., v, w -> ..., v, w, v, w
+  | DupX1
+  | Dup2X2
   | Goto LabelName
   | Add IRPrimitive
   | Div IRPrimitive
@@ -169,6 +171,7 @@ data Instruction
   | NewArray IRPrimitive
   | NOp
   | Pop
+  | Pop2
   | Swap
   | GetStatic FieldRef
               JType -- field spec, descriptor
@@ -197,8 +200,14 @@ jInteger = ClassRef "java/lang/Integer"
 jIntInit :: MethodRef
 jIntInit = MethodRef (CRef jInteger) "<init>" (MethodSpec ([JInt], JVoid))
 
+jIntValue :: MethodRef
+jIntValue = MethodRef (CRef jInteger) "intValue" (MethodSpec ([], JInt))
+
 jDouble :: ClassRef
 jDouble = ClassRef "java/lang/Double"
+
+jDoubleValue :: MethodRef
+jDoubleValue = MethodRef (CRef jDouble) "doubleValue" (MethodSpec ([], JDouble))
 
 jDoubleInit :: MethodRef
 jDoubleInit = MethodRef (CRef jDouble) "<init>" (MethodSpec ([JDouble], JVoid))
@@ -249,6 +258,20 @@ sliceAppend =
     (CRef cSlice)
     "append"
     (MethodSpec ([JClass jObject], JClass cSlice))
+
+sliceGet :: MethodRef
+sliceGet =
+  MethodRef
+    (CRef cSlice)
+    "get"
+    (MethodSpec ([JInt], JClass jObject))
+
+sliceSet :: MethodRef
+sliceSet =
+  MethodRef
+    (CRef cSlice)
+    "set"
+    (MethodSpec ([JInt, JClass jObject], JVoid))
 
 sliceCapacity :: MethodRef
 sliceCapacity = MethodRef (CRef cSlice) "capacity" (MethodSpec ([], JInt))

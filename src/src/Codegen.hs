@@ -94,6 +94,8 @@ instance Bytecode Instruction where
       toBCStr (Return Nothing) = ["return"]
       toBCStr Dup = ["dup"]
       toBCStr Dup2 = ["dup2"]
+      toBCStr DupX1 = ["dup_x1"]
+      toBCStr Dup2X2 = ["dup2_x2"]
       toBCStr (Goto label) = ["goto L", label]
       toBCStr (Add t) = [typePrefix' t, "add"]
       toBCStr (Div t) = [typePrefix' t, "div"]
@@ -129,6 +131,7 @@ instance Bytecode Instruction where
       toBCStr (New (ClassRef cn)) = ["new ", cn]
       toBCStr NOp = ["nop"]
       toBCStr Pop = ["pop"]
+      toBCStr Pop2 = ["pop2"]
       toBCStr Swap = ["swap"]
       toBCStr (GetStatic (FieldRef (ClassRef cn) fn) jt) =
         ["getstatic Field ", cn, " ", fn, " ", show jt]
