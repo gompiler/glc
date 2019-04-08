@@ -1,4 +1,4 @@
-.class public super glcgutils/Utils
+.class public super Utils
 .super java/lang/Object
 
 .method public <init> : ()V

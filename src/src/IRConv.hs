@@ -115,12 +115,14 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
             pdToType (T.ParameterDecl _ t) = t
             mrToJType :: Maybe T.Type -> JType
             mrToJType mr = maybe JVoid typeToJType mr
+    structName :: D.Ident -> String
+    structName (D.Ident fid) = "__Glc$Struct__" ++ fid
     structClass :: T.StructType -> Class
-    structClass (T.Struct (D.Ident sid) fdls) =
+    structClass strc@(T.Struct sid fdls) =
       Class
-        { cname = "__Glc$Struct__" ++ sid
+        { cname = structName sid
         , fields = map sfToF fdls
-        , methods = [] -- TODO: EQUALITY CHECKS?
+        , methods = [checkEq strc] -- TODO: EQUALITY CHECKS?
         }
     sfToF :: T.FieldDecl -> Field
     sfToF (T.FieldDecl (D.Ident fid) t) =
@@ -131,6 +133,57 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
         , descriptor = typeToJType t
         -- , value = Nothing
         }
+    checkEq :: T.StructType -> Method
+    checkEq (T.Struct sid fdls) =
+      Method
+        { mname = "equals"
+        , stackLimit = maxStackSize equalsBody 0
+        , localsLimit = 2 -- One for this and one for argument
+        , spec = MethodSpec ([JClass (ClassRef (structName sid))], JBool)
+        , body = equalsBody
+        }
+      where
+        sn :: String
+        sn = structName sid
+        -- labelGen :: Int -> String
+        -- labelGen i = "L" ++ sn ++ show i
+        equalsBody :: [IRItem]
+        equalsBody =
+          cmpField fdls [] ++
+          (iri
+            -- Add null checks here
+          --   Load Object (T.VarIndex 0)
+          -- , Load Object (T.VarIndex 1)
+          -- , If IRData.NE (labelGen 0)
+          -- , IConst1
+          -- , Return (Just $ Prim IRInt)
+          -- , IRLabel (labelGen 0)
+             [IConst1, Goto "L2_return"] ++
+           [ IRLabel "L1_false"
+           , IRInst IConst0
+           , IRLabel "L2_return"
+           , IRInst $ Return (Just $ Prim IRInt)
+           ])
+        cmpField :: [T.FieldDecl] -> [IRItem] -> [IRItem]
+        -- True if no fields
+        cmpField [] []       = iri [Goto "L2_return"]
+        cmpField [] acc      = acc
+        cmpField (fd:t') acc = cmpField t' (acc ++ createNE fd "L1_false")
+        createNE :: T.FieldDecl -> String -> [IRItem]
+        createNE (T.FieldDecl (D.Ident fid) t) label =
+          let jt = typeToJType t
+           in iri $
+              [ Load Object (T.VarIndex 0)
+              , GetField (FieldRef (ClassRef sn) fid) jt
+              , Load Object (T.VarIndex 1)
+              , GetField (FieldRef (ClassRef sn) fid) jt
+              ] ++
+              (case jt of
+                 JInt -> [IfICmp IRData.NE label]
+                 JDouble -> [DCmpG, If IRData.NE label]
+                 JClass (ClassRef "java/lang/String") ->
+                   [InvokeVirtual stringEquals, If IRData.EQ label]
+                 _ -> undefined)
 
 class IRRep a where
   toIR :: a -> [IRItem]
