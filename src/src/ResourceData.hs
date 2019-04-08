@@ -11,6 +11,8 @@ module ResourceData
   , ForClause(..)
   , FuncDecl(..)
   , Ident(..)
+  , InitDecl(..)
+  , MainDecl(..)
   , Literal(..)
   , ParameterDecl(..)
   , Parameters(..)
@@ -25,6 +27,7 @@ module ResourceData
   , UnaryOp(..)
   , VarIndex(..)
   , LabelIndex(..)
+  , LocalLimit(..)
   ) where
 
 import           CheckedData        (ArithmOp (..), AssignOp (..),
@@ -57,8 +60,8 @@ data Program = Program
   { package   :: Ident
   , structs   :: [StructType]
   , topVars   :: [TopVarDecl]
-  , init      :: [Stmt]
-  , main      :: [Stmt]
+  , init      :: InitDecl
+  , main      :: MainDecl
   , functions :: [FuncDecl]
   } deriving (Show, Eq)
 
@@ -69,6 +72,20 @@ data TopVarDecl =
   TopVarDecl Ident
              Type
              (Maybe Expr)
+  deriving (Show, Eq)
+
+newtype LocalLimit =
+  LocalLimit Int
+  deriving (Show, Eq, Ord)
+
+data InitDecl =
+  InitDecl FuncBody
+           LocalLimit
+  deriving (Show, Eq)
+
+data MainDecl =
+  MainDecl FuncBody
+           LocalLimit
   deriving (Show, Eq)
 
 ----------------------------------------------------------------------
@@ -82,9 +99,10 @@ data TopVarDecl =
 -- * Unnamed input parameters
 -- * Variadic parameters
 data FuncDecl =
-  FuncDecl Ident -- TODO check if we want this
+  FuncDecl Ident
            Signature
            FuncBody
+           LocalLimit
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#ParameterDecl
@@ -142,7 +160,8 @@ data Stmt
   -- however, we already have a representation for an 'empty' simple stmt
   -- Note that the last entry is an optional block or if statement
   -- however, this all falls into our stmt category
-  | If LabelIndex (SimpleStmt, Expr)
+  | If LabelIndex
+       (SimpleStmt, Expr)
        Stmt
        Stmt
   -- | See https://golang.org/ref/spec#Switch_statements
@@ -151,12 +170,14 @@ data Stmt
   -- In this AST, we now separate the default case from the other switch cases
   -- If none exists, we will simply provide an empty statement
   -- The expression also defaults to True if none exists
-  | Switch LabelIndex SimpleStmt
+  | Switch LabelIndex
+           SimpleStmt
            Expr
            [SwitchCase]
            Stmt
   -- | See https://golang.org/ref/spec#For_statements
-  | For LabelIndex ForClause
+  | For LabelIndex
+        ForClause
         Stmt
   -- | See https://golang.org/ref/spec#Break_statements
   -- Labels are not supported in Golite
@@ -204,13 +225,15 @@ data Expr
   = Unary Type
           UnaryOp
           Expr
-  | Binary LabelIndex Type
+  | Binary LabelIndex
+           Type
            BinaryOp
            Expr
            Expr
   -- | See https://golang.org/ref/spec#Operands
   | Lit Literal
-  | TopVar Type Ident
+  | TopVar Type
+           Ident
   -- | See https://golang.org/ref/spec#OperandName
   | Var Type
         VarIndex
@@ -286,15 +309,13 @@ instance Convert Program T.Program where
   convert Program {package, structs, init, topVars, functions} =
     T.Program {T.package = package, T.topLevels = topLevels}
     where
-      initFunc :: FuncDecl
-      initFunc =
-        FuncDecl
-          (Ident "init")
-          (Signature (Parameters []) Nothing)
-          (BlockStmt init)
+      initFunc :: InitDecl -> FuncDecl
+      initFunc (InitDecl body limit) =
+        FuncDecl (Ident "init") (Signature (Parameters []) Nothing) body limit
       topLevels =
         convert structs ++
-        convert topVars ++ map T.TopFuncDecl (convert $ initFunc : functions)
+        convert topVars ++
+        map T.TopFuncDecl (convert $ initFunc init : functions)
 
 instance Convert StructType T.TopDecl where
   convert t = T.TopDecl $ T.TypeDef [convert t]
@@ -308,7 +329,7 @@ instance Convert TopVarDecl T.TopDecl where
     T.TopDecl $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert e)]
 
 instance Convert FuncDecl T.FuncDecl where
-  convert (FuncDecl i sig fb) =
+  convert (FuncDecl i sig fb _) =
     T.FuncDecl (convert i) (convert sig) (convert fb)
 
 instance Convert ParameterDecl T.ParameterDecl where
@@ -340,7 +361,7 @@ instance Convert Stmt T.Stmt where
       (Just (convert e))
       (convert scl ++ [T.Default $ convert d])
   convert (For _ fcl s) = T.For (convert fcl) (convert s)
-  convert (Break _)= T.Break
+  convert (Break _) = T.Break
   convert (Continue _) = T.Continue
   convert (VarDecl i t e) =
     T.Declare $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert e)]
