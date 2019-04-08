@@ -146,7 +146,10 @@ exitScope st = do
       let varLimit' = max (varLimit curr) (varLimit parent)
        in parent {varLimit = varLimit'} : vars
     exitScope' (_:vars) = vars
-    exitScope' [] = error "Cannot exit from global scope"
+    -- Note that this should never happen, given that we
+    -- don't expose enter and exit for public use.
+    -- Each exit only occurs with an enter
+    exitScope' [] = []
 
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
