@@ -635,7 +635,7 @@ getLiteralType (D.StringLit _) = T.PString
 
 typeToJType :: T.Type -> JType
 typeToJType (T.ArrayType _ t) = JArray (typeToJType t)
-typeToJType T.SliceType {} = undefined -- TODO: JClass (...)
+typeToJType T.SliceType {} = JClass cSlice
 typeToJType T.PInt = JInt
 typeToJType T.PFloat64 = JDouble
 typeToJType T.PRune = JInt
