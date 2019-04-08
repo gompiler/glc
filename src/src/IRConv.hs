@@ -486,7 +486,11 @@ instance IRRep T.Expr where
       T.ArrayType l _ -> iri [LDC (LDCInt l)] -- fixed at compile time
       T.SliceType _   -> undefined -- TODO
       _               -> error "Cannot get length of non-array/slice"
-  toIR T.CapExpr {} = undefined -- TODO
+  toIR (T.CapExpr e) =
+    case exprType e of
+      T.ArrayType l _ -> iri [LDC (LDCInt l)]
+      T.SliceType _   -> undefined -- TODO
+      _               -> error "Cannot get capacity of non-array/slice"
   toIR (T.Selector t e (T.Ident fid)) =
     toIR e ++ iri [GetField fr (typeToJType t)]
     where
