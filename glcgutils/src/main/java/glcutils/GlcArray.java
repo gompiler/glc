@@ -2,12 +2,16 @@ package glcutils;
 
 import java.lang.reflect.Array;
 
-class GlcArray<T> {
+public class GlcArray<T> {
     int length;
     T[] array;
     final Class<? extends T> clazz;
 
-    GlcArray(Class<? extends T> clazz, int length, T[] array) {
+    public GlcArray(Class<? extends T> clazz, int length) {
+        this(clazz, length, null);
+    }
+
+    public GlcArray(Class<? extends T> clazz, int length, T[] array) {
         this.length = length;
         this.clazz = clazz;
         this.array = array;

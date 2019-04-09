@@ -20,4 +20,17 @@ public class GlcDataTest {
         s1_2.setStructField(s2);
         assertEquals("Nested struct generation failed", s1_1, s1_2);
     }
+
+
+    @Test
+    public void primitiveArrayEquality() {
+        GlcIntArray a1 = new GlcIntArray(8);
+        GlcIntArray a2 = new GlcIntArray(8);
+        GlcIntArray a3 = new GlcIntArray(5);
+        assertEquals("Reference equality failed", a1, a1);
+        assertEquals("Structural equality failed", a1, a2);
+        assertNotEquals("Length inequality failed", a1, a3);
+        a1.set(3, 3);
+        assertNotEquals("Structural inequality failed", a1, a2);
+    }
 }
