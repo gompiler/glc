@@ -185,7 +185,22 @@ instance IRRep T.Stmt where
         case t of
           (T.ArrayType l at) ->
             case at of -- TODO: Defaults of elements??? or null checks elsewhere?
-              T.ArrayType {} -> undefined -- TODO
+              (T.ArrayType l2 at2) ->
+                loadSizes ++
+                iri
+                  [ MultiANewArray (typeToJType t) (length sizes)
+                  , Store Object idx
+                  ]
+                where
+                  loadSizes :: [IRItem]
+                  loadSizes = map (\s -> IRInst (LDC $ LDCInt s)) sizes
+                  sizes :: [Int]
+                  sizes = getDepth [l2, l] at2
+                  getDepth :: [Int] -> T.Type -> [Int]
+                  getDepth rSizes rt =
+                    case rt of
+                      T.ArrayType rl rrt -> getDepth (rl : rSizes) rrt
+                      _                  -> reverse rSizes -- no more arrays
               T.SliceType {} ->
                 iri [LDC (LDCInt l), ANewArray cSlice, Store Object idx]
               T.PInt ->
@@ -722,6 +737,7 @@ stackDelta IConst1 = 1 -- ... -> ..., 1
 stackDelta DCmpG = -3 -- ..., v1, v2 -> ..., r
 stackDelta New {} = 1 -- ... -> ..., o
 stackDelta ANewArray {} = 0 -- ..., c -> ..., o
+stackDelta (MultiANewArray _ c) = (-c) + 1 -- ..., c -> ..., o
 stackDelta NewArray {} = 0 -- ..., c -> ..., o
 stackDelta NOp = 0
 stackDelta Pop = -1 -- ..., v -> ...

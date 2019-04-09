@@ -168,6 +168,7 @@ data Instruction
   | DCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
   | New ClassRef -- class
   | ANewArray ClassRef
+  | MultiANewArray JType Int
   | NewArray IRPrimitive
   | NOp
   | Pop

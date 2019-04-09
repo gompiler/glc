@@ -122,6 +122,7 @@ instance Bytecode Instruction where
       toBCStr IConst0 = ["iconst_0"]
       toBCStr IConst1 = ["iconst_1"]
       toBCStr DCmpG = ["dcmpg"]
+      toBCStr (MultiANewArray t c) = ["multianewarray ", show t, " ", show c]
       toBCStr (ANewArray (ClassRef cn)) = ["anewarray ", cn]
       toBCStr (NewArray prim) = ["newarray ", typename prim]
         where
