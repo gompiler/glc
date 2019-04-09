@@ -622,6 +622,8 @@ structName (T.Ident sid) = "__Glc$Struct__" ++ sid
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
   case exprJType e of
+    JClass (ClassRef "java/lang/String") -> [] -- Cannot clone strings
+    JClass (ClassRef "java/lang/Object") -> [] -- Cannot clone base objects
     JClass cr ->
       iri
         [ InvokeVirtual $
