@@ -116,9 +116,9 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
             mrToJType :: Maybe T.Type -> JType
             mrToJType mr = maybe JVoid typeToJType mr
     structClass :: T.StructType -> Class
-    structClass (T.Struct (D.Ident sid) fdls) =
+    structClass (T.Struct sid fdls) =
       Class
-        { cname = "__Glc$Struct__" ++ sid
+        { cname = structName sid
         , fields = map sfToF fdls
         , methods = [] -- TODO: EQUALITY CHECKS?
         }
@@ -184,15 +184,16 @@ instance IRRep T.Stmt where
       _ -> -- Get default and store
         case t of
           (T.ArrayType l at) ->
-            case at of
+            case at of -- TODO: Defaults of elements??? or null checks elsewhere?
               T.ArrayType {} -> undefined -- TODO
-              T.SliceType {} -> undefined -- TODO
+              T.SliceType {} -> iri [LDC (LDCInt l), ANewArray cSlice]
               T.PInt -> iri [LDC (LDCInt l), NewArray IRInt]
               T.PFloat64 -> iri [LDC (LDCInt l), NewArray IRDouble]
               T.PBool -> iri [LDC (LDCInt l), NewArray IRInt]
               T.PRune -> iri [LDC (LDCInt l), NewArray IRInt]
               T.PString -> iri [LDC (LDCInt l), ANewArray jString]
-              T.StructType _ -> undefined -- TODO
+              T.StructType sid ->
+                iri [LDC (LDCInt l), ANewArray (ClassRef $ structName sid)]
           T.SliceType {} ->
             iri [New cSlice, Dup, InvokeSpecial sliceInit, Store Object idx]
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
@@ -562,11 +563,11 @@ binary e1 e2 insts = toIR e1 ++ toIR e2 ++ iri insts
 tVarStr :: T.Ident -> String
 tVarStr (T.Ident tvs) = "__glc$fd__" ++ tvs
 
-prependfd :: T.Ident -> T.Ident
-prependfd (T.Ident fn) = T.Ident $ "__glc$fd__" ++ fn
-
 tFnStr :: T.Ident -> String
 tFnStr (T.Ident tfs) = "__glc$fn__" ++ tfs
+
+structName :: T.Ident -> String
+structName (T.Ident sid) = "__Glc$Struct__" ++ sid
 
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
