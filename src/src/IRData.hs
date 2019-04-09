@@ -169,7 +169,8 @@ data Instruction
   | New ClassRef -- class
   | CheckCast ClassOrArrayRef
   | ANewArray ClassRef
-  | MultiANewArray JType Int
+  | MultiANewArray JType
+                   Int
   | NewArray IRPrimitive
   | NOp
   | Pop
@@ -269,18 +270,11 @@ sliceAppend =
     (MethodSpec ([JClass jObject], JClass cSlice))
 
 sliceGet :: MethodRef
-sliceGet =
-  MethodRef
-    (CRef cSlice)
-    "get"
-    (MethodSpec ([JInt], JClass jObject))
+sliceGet = MethodRef (CRef cSlice) "get" (MethodSpec ([JInt], JClass jObject))
 
 sliceSet :: MethodRef
 sliceSet =
-  MethodRef
-    (CRef cSlice)
-    "set"
-    (MethodSpec ([JInt, JClass jObject], JVoid))
+  MethodRef (CRef cSlice) "set" (MethodSpec ([JInt, JClass jObject], JVoid))
 
 sliceCapacity :: MethodRef
 sliceCapacity = MethodRef (CRef cSlice) "capacity" (MethodSpec ([], JInt))

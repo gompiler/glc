@@ -211,36 +211,34 @@ instance IRRep T.VarDecl' where
   toIR (T.VarDecl' idx t me) =
     case me of
       Just e -> toIR e ++ iri [Store (typeToIRType t) idx]
-      _ -> -- Get default and store
+      _ -- Get default and store
+       ->
         case t of
           (T.ArrayType l at) ->
-            case at of -- TODO: Defaults of elements??? or null checks elsewhere?
+            case at -- TODO: Defaults of elements??? or null checks elsewhere?
+                  of
               (T.ArrayType l2 at2) ->
                 loadSizes ++
                 iri
                   [ MultiANewArray (typeToJType t) (length sizes)
                   , Store Object idx
                   ]
-                where
-                  loadSizes :: [IRItem]
-                  loadSizes = map (\s -> IRInst (LDC $ LDCInt s)) sizes
-                  sizes :: [Int]
-                  sizes = getDepth [l2, l] at2
-                  getDepth :: [Int] -> T.Type -> [Int]
-                  getDepth rSizes rt =
-                    case rt of
-                      T.ArrayType rl rrt -> getDepth (rl : rSizes) rrt
-                      _                  -> reverse rSizes -- no more arrays
+                where loadSizes :: [IRItem]
+                      loadSizes = map (\s -> IRInst (LDC $ LDCInt s)) sizes
+                      sizes :: [Int]
+                      sizes = getDepth [l2, l] at2
+                      getDepth :: [Int] -> T.Type -> [Int]
+                      getDepth rSizes rt =
+                        case rt of
+                          T.ArrayType rl rrt -> getDepth (rl : rSizes) rrt
+                          _                  -> reverse rSizes -- no more arrays
               T.SliceType {} ->
                 iri [LDC (LDCInt l), ANewArray cSlice, Store Object idx]
-              T.PInt ->
-                iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
+              T.PInt -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
               T.PFloat64 ->
                 iri [LDC (LDCInt l), NewArray IRDouble, Store Object idx]
-              T.PBool ->
-                iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
-              T.PRune ->
-                iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
+              T.PBool -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
+              T.PRune -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
               T.PString ->
                 iri [LDC (LDCInt l), ANewArray jString, Store Object idx]
               T.StructType sid ->
@@ -259,8 +257,13 @@ instance IRRep T.VarDecl' where
           (T.StructType sid) ->
             iri
               [ New (ClassRef $ structName sid)
-              , InvokeSpecial (MethodRef (CRef $ ClassRef $ structName sid) "<init>" emptySpec)
-              , Store Object idx]
+              , InvokeSpecial
+                  (MethodRef
+                     (CRef $ ClassRef $ structName sid)
+                     "<init>"
+                     emptySpec)
+              , Store Object idx
+              ]
 
 printIR :: T.Expr -> [IRItem]
 printIR e =
@@ -357,40 +360,41 @@ instance IRRep T.SimpleStmt where
                 toIR ea ++
                 toIR ei ++
                 iri [Dup2, InvokeVirtual sliceGet] ++
-                objectDecode t ++
-                afterLoadOps op ++ toIR ve ++ finalOps op
+                objectDecode t ++ afterLoadOps op ++ toIR ve ++ finalOps op
               _ -> error "Cannot index non-array/slice"
           _ -> error "Cannot assign to non-addressable value"
-        where irType :: IRType
-              irType = exprIRType ve
-              setUpOps :: T.ArithmOp -> [IRItem]
-              setUpOps op =
-                case (op, irType) of
-                  (T.Add, Object) ->
-                    iri [New stringBuilder, Dup, InvokeSpecial sbInit]
-                  _ -> []
-              afterLoadOps :: T.ArithmOp -> [IRItem]
-              afterLoadOps op =
-                case (op, irType) of
-                  (T.Add, Object) -> iri [InvokeVirtual sbAppend]
-                  _               -> []
-              finalOps :: T.ArithmOp -> [IRItem]
-              finalOps op = -- TODO: Cloning here????
-                case (op, irType) of
-                  (T.Add, Object) ->
-                    iri [InvokeVirtual sbAppend, InvokeVirtual sbToString]
-                  (T.Add, Prim p) -> iri [Add p]
-                  (T.Subtract, Prim p) -> iri [Sub p]
-                  (T.Multiply, Prim p) -> iri [Mul p]
-                  (T.Divide, Prim p) -> iri [Div p]
-                  (T.Remainder, Prim _) -> iri [IRem]
-                  (T.ShiftL, Prim _) -> iri [IShL]
-                  (T.ShiftR, Prim _) -> iri [IShR]
-                  (T.BitAnd, Prim _) -> iri [IAnd]
-                  (T.BitOr, Prim _) -> iri [IAnd]
-                  (T.BitXor, Prim _) -> iri [IXOr]
-                  (T.BitClear, Prim _) -> iri [IConstM1, IXOr, IAnd]
-                  _ -> error "Invalid operation on non-primitive"
+        where
+          irType :: IRType
+          irType = exprIRType ve
+          setUpOps :: T.ArithmOp -> [IRItem]
+          setUpOps op =
+            case (op, irType) of
+              (T.Add, Object) ->
+                iri [New stringBuilder, Dup, InvokeSpecial sbInit]
+              _ -> []
+          afterLoadOps :: T.ArithmOp -> [IRItem]
+          afterLoadOps op =
+            case (op, irType) of
+              (T.Add, Object) -> iri [InvokeVirtual sbAppend]
+              _               -> []
+          finalOps :: T.ArithmOp -> [IRItem]
+          finalOps op -- TODO: Cloning here????
+           =
+            case (op, irType) of
+              (T.Add, Object) ->
+                iri [InvokeVirtual sbAppend, InvokeVirtual sbToString]
+              (T.Add, Prim p) -> iri [Add p]
+              (T.Subtract, Prim p) -> iri [Sub p]
+              (T.Multiply, Prim p) -> iri [Mul p]
+              (T.Divide, Prim p) -> iri [Div p]
+              (T.Remainder, Prim _) -> iri [IRem]
+              (T.ShiftL, Prim _) -> iri [IShL]
+              (T.ShiftR, Prim _) -> iri [IShR]
+              (T.BitAnd, Prim _) -> iri [IAnd]
+              (T.BitOr, Prim _) -> iri [IAnd]
+              (T.BitXor, Prim _) -> iri [IXOr]
+              (T.BitClear, Prim _) -> iri [IConstM1, IXOr, IAnd]
+              _ -> error "Invalid operation on non-primitive"
       getStore :: (T.Expr, T.Expr) -> [IRItem]
       getStore (e, _) =
         case e of
@@ -655,22 +659,23 @@ objectRepr t =
         ]
     JInt ->
       iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit] -- e, o -> o, e, o -> o, o, e -> o
-    JDouble -> -- e1, e2, o -> e1, e2, o, o -> o, o, e1, e2, o, o -> o, o, e1, e2 -> o
-      iri [New jDouble, Dup, Dup2X2, Pop2, InvokeSpecial jDoubleInit]
-    JBool ->
-      iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit]
+    JDouble -- e1, e2, o -> e1, e2, o, o -> o, o, e1, e2, o, o -> o, o, e1, e2 -> o
+     -> iri [New jDouble, Dup, Dup2X2, Pop2, InvokeSpecial jDoubleInit]
+    JBool -> iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit]
     JVoid -> error "Cannot have slice of void"
 
 objectDecode :: T.Type -> [IRItem]
-objectDecode t = -- TODO: Maybe this should just be IRType
-  case t of -- TODO: Might need CheckCast
+objectDecode t -- TODO: Maybe this should just be IRType
+ =
+  case t -- TODO: Might need CheckCast
+        of
     T.ArrayType {} -> [] -- nothing to do
     T.SliceType {} -> [] -- nothing to do
-    T.PInt -> iri [InvokeVirtual jIntValue]
-    T.PFloat64 -> iri [InvokeVirtual jDoubleValue]
-    T.PBool -> iri [InvokeVirtual jIntValue]
-    T.PRune -> iri [InvokeVirtual jIntValue]
-    T.PString -> [] -- nothing to do
+    T.PInt         -> iri [InvokeVirtual jIntValue]
+    T.PFloat64     -> iri [InvokeVirtual jDoubleValue]
+    T.PBool        -> iri [InvokeVirtual jIntValue]
+    T.PRune        -> iri [InvokeVirtual jIntValue]
+    T.PString      -> [] -- nothing to do
     T.StructType _ -> [] -- nothing to do
 
 exprType :: T.Expr -> T.Type
