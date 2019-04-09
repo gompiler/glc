@@ -1,7 +1,6 @@
 package glcutils;
 
 import java.util.Objects;
-import java.util.function.Supplier;
 
 /**
  * The following is an example
@@ -16,9 +15,6 @@ public class GlcStruct1 {
 
     // Golite never expects a null struct, but we load it lazily
     private GlcStruct2 structField = null;
-
-    // Supplier, which generates a new struct
-    public static Supplier<GlcStruct1> supplier = GlcStruct1::new;
 
     /*
      * All fields have getters and setters
@@ -49,7 +45,7 @@ public class GlcStruct1 {
 
     public GlcStruct2 getStructField() {
         if (this.structField == null) {
-            this.structField = GlcStruct2.supplier.get();
+            this.structField = Utils.newInstance(GlcStruct2.class);
         }
         return this.structField;
     }
@@ -79,11 +75,11 @@ public class GlcStruct1 {
             return true;
         }
         if (s1.structField == null) {
-            // Note that supplier is based on field type
-            s1.structField = GlcStruct2.supplier.get();
+            // Note that new instance is based on field type
+            s1.structField = Utils.newInstance(GlcStruct2.class);
         }
         if (s2.structField == null) {
-            s2.structField = GlcStruct2.supplier.get();
+            s2.structField = Utils.newInstance(GlcStruct2.class);
         }
         return s1.structField.equals(s2.structField);
     }

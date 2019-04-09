@@ -1,16 +1,11 @@
 package glcutils;
 
-import java.util.function.Supplier;
-
 /**
  * The following is an example
  * We need to generate this for each unique class
  */
 public class GlcStruct2 {
     private float floatField = 0f;
-
-    // Supplier, which generates a new struct
-    public static Supplier<GlcStruct2> supplier = GlcStruct2::new;
 
     /*
      * All fields have getters and setters

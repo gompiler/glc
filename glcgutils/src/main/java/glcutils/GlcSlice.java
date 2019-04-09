@@ -1,15 +1,13 @@
 package glcutils;
 
-import java.util.function.Supplier;
-
 class GlcSlice<T> extends GlcArray<T> {
 
-    GlcSlice(Supplier<T> supplier) {
-        this(supplier, 0, supplier.get().getClass(), null);
+    public GlcSlice(Class<? extends T> clazz) {
+        this(clazz, 0, null);
     }
 
-    private GlcSlice(Supplier<T> supplier, int length, Class<?> clazz, T[] array) {
-        super(supplier, length, clazz, array);
+    private GlcSlice(Class<? extends T> clazz, int length, T[] array) {
+        super(clazz, length, array);
     }
 
     /**
@@ -28,11 +26,11 @@ class GlcSlice<T> extends GlcArray<T> {
             }
             newArray[length] = t;
             // Note that we don't modify the current length or array, since this slice is unchanged
-            return new GlcSlice<>(this.supplier, length + 1, this.clazz, newArray);
+            return new GlcSlice<>(this.clazz, length + 1, newArray);
         } else {
             // If array were null, it would not have enough capacity; no need to init here
             array[length] = t;
-            return new GlcSlice<>(this.supplier, length + 1, this.clazz, array);
+            return new GlcSlice<>(this.clazz, length + 1, array);
         }
     }
 

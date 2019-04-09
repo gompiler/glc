@@ -8,4 +8,12 @@ public class Utils {
             return "true";
         }
     }
+
+    public static <T> T newInstance(Class<? extends T> clazz) {
+        try {
+            return clazz.newInstance();
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

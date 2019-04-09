@@ -1,16 +1,13 @@
 package glcutils;
 
 import java.lang.reflect.Array;
-import java.util.function.Supplier;
 
 class GlcArray<T> {
     int length;
     T[] array;
-    final Supplier<T> supplier;
-    final Class<?> clazz;
+    final Class<? extends T> clazz;
 
-    GlcArray(Supplier<T> supplier, int length, Class<?> clazz, T[] array) {
-        this.supplier = supplier;
+    GlcArray(Class<? extends T> clazz, int length, T[] array) {
         this.length = length;
         this.clazz = clazz;
         this.array = array;
@@ -39,7 +36,7 @@ class GlcArray<T> {
      * based on the struct supplier definition
      */
     final T supply() {
-        return supplier.get();
+        return Utils.newInstance(clazz);
     }
 
     /**
