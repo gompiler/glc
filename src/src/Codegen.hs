@@ -106,8 +106,8 @@ instance Bytecode Instruction where
       toBCStr IShL = ["ishl"]
       toBCStr IShR = ["ishr"]
       toBCStr IAnd = ["iand"]
-      toBCStr (If cmp label) = ["if", show cmp, " ", label]
-      toBCStr (IfICmp cmp label) = ["if_icmp", show cmp, " ", label]
+      toBCStr (If cmp label) = ["if", show cmp, " L", label]
+      toBCStr (IfICmp cmp label) = ["if_icmp", show cmp, " L", label]
       toBCStr IOr = ["ior"]
       toBCStr IXOr = ["ixor"]
       toBCStr (LDC lt) = "ldc" : suffix lt

@@ -403,7 +403,7 @@ instance IRRep T.SimpleStmt where
       stTypes :: [IRType]
       stTypes = reverse $ map exprIRType exprs
       expStore :: (T.VarIndex, IRType) -> IRItem
-      expStore (idx, t) = IRInst (Load t idx)
+      expStore (idx, t) = IRInst (Store t idx)
       maybeClone :: T.Expr -> [IRItem]
       maybeClone e = toIR e ++ cloneIfNeeded e
 
