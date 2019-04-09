@@ -838,18 +838,18 @@ instance Symbolize Expr T.Expr where
           (_, _)      -> fs
       RuneLit o cs ->
         T.Lit . T.RuneLit <$>
-        convEsc cs o
+        convEsc cs o 1 -- Starting index is 1 because we ignore '
       StringLit o Interpreted s -> T.Lit . T.StringLit <$> (rmesc =<< stripQuotes s o)
         where rmesc :: String -> Glc' String
               rmesc s' = reverse <$> rmesc' s' ""
               rmesc' :: String -> String -> Glc' String
               rmesc' [] acc = Right $ acc
-              rmesc' (c:[]) acc = Right $ c:acc
               rmesc' (c1:c2:t) acc = if c1 == '\\' then
                                          (\escs-> rmesc' t (escs:acc))
-                                         =<< convEsc (c1:c2:[]) o
+                                         =<< convEsc (c1:c2:[]) o 0 -- Starting index is 0 for strings
                                      else
                                        rmesc' (c2:t) (c1:acc)
+              rmesc' (c:[]) acc = Right $ c:acc
       StringLit o Raw s -> T.Lit . T.StringLit <$> stripQuotes s o
           -- Escape all things that need to be escaped so that we can
           -- transform a raw string to an interpreted string
@@ -926,11 +926,11 @@ instance Symbolize Expr T.Expr where
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
 
 -- Convert literal escapes to actual escapes
-convEsc :: String -> Offset -> Glc' Char
-convEsc cs o =
-  case cs !! 1 of
+convEsc :: String -> Offset -> Int -> Glc' Char
+convEsc cs o start =
+  case cs !! start of
     '\\' ->
-      case cs !! 2 of
+      case cs !! (start + 1) of
         'a'  -> Right '\a'
         'b'  -> Right '\b'
         'f'  -> Right '\f'
@@ -939,6 +939,7 @@ convEsc cs o =
         't'  -> Right '\t'
         'v'  -> Right '\v'
         '\'' -> Right '\''
+        '"'  -> Right '"'
         '\\' -> Right '\\'
         c    -> Left $ createError o (RuneInvalidEsc c) -- Should never happen because scanner guarantees these escape characters
     c -> Right c
