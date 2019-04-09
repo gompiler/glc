@@ -20,7 +20,7 @@ public class GlcArray<T> {
     /**
      * Ensures that array is nonnull
      */
-    void init() {
+    final void init() {
         if (array == null) {
             array = create(length);
         }

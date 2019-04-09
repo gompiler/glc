@@ -18,7 +18,7 @@ public class GlcIntArray {
     /**
      * Ensures that array is nonnull
      */
-    void init() {
+    final void init() {
         if (array == null) {
             array = new int[length];
         }
