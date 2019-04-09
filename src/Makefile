@@ -9,13 +9,16 @@ all: glc
 .PHONY: clean
 clean:
 	stack clean --allow-different-user --full
-	mvn clean -f ../glcgutils
 	@rm -f glc.tix
 
 .PHONY: cleangen
 cleangen:
 	@rm -f src/generated/TokenGen.hs
 	@rm -f src/generated/ParserGen.hs
+
+.PHONY: cleanj
+cleanj:
+	mvn clean -f ../glcgutils
 
 .PHONY: build
 build: gen $(JFILES)
