@@ -1,4 +1,7 @@
-package glcgutils;
+package glcutils;
+
+import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * The following is an example

@@ -1,4 +1,7 @@
-package glcgutils;
+package glcutils;
+
+import java.lang.reflect.Array;
+import java.util.function.Supplier;
 
 class GlcArray<T> {
     int length;

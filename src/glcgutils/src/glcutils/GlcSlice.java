@@ -1,4 +1,6 @@
-package glcgutils;
+package glcutils;
+
+import java.util.function.Supplier;
 
 class GlcSlice<T> extends GlcArray<T> {
 
