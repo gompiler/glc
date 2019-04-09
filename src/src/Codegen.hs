@@ -184,7 +184,16 @@ fileJ :: String -> String
 fileJ file = dropExtension file ++ ".j"
 
 utils :: ByteString
-utils = B.fromStrict $(embedFile "../glcgutils/j/Utils.j")
+utils =
+  B.concat $
+  map
+    B.fromStrict
+    [ $(embedFile "glcutils/Utils.j")
+    , $(embedFile "glcutils/GlcSlice.j")
+    , $(embedFile "glcutils/GlcIntSlice.j")
+    , $(embedFile "glcutils/GlcArray.j")
+    , $(embedFile "glcutils/GlcIntArray.j")
+    ]
 
 codegen :: String -> IO ()
 codegen file =
