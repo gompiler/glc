@@ -23,6 +23,8 @@ module ResourceData
   , StructType(..)
   , SwitchCase(..)
   , TopVarDecl(..)
+  , TopVarDecl'(..)
+  , VarDecl'(..)
   , Type(..)
   , UnaryOp(..)
   , VarIndex(..)
@@ -68,10 +70,14 @@ data Program = Program
 ----------------------------------------------------------------------
 -- Declarations
 -- | See https://golang.org/ref/spec#VarDecl
-data TopVarDecl =
-  TopVarDecl Ident
-             Type
-             (Maybe Expr)
+newtype TopVarDecl =
+  TopVarDecl [TopVarDecl']
+  deriving (Show, Eq)
+
+data TopVarDecl' =
+  TopVarDecl' Ident
+              Type
+              (Maybe Expr)
   deriving (Show, Eq)
 
 newtype LocalLimit =
@@ -190,9 +196,7 @@ data Stmt
   -- | See https://golang.org/ref/spec#Declaration
   -- At this stage, we only have var declarations
   -- If no expr is provided, we will also assign a default
-  | VarDecl VarIndex
-            Type
-            (Maybe Expr)
+  | VarDecl [VarDecl']
   -- Golite exclusive
   | Print [Expr]
   -- Golite exclusive
@@ -200,6 +204,12 @@ data Stmt
   -- | See https://golang.org/ref/spec#Return_statements
   -- In golite, at most one expr can be returned
   | Return (Maybe Expr)
+  deriving (Show, Eq)
+
+data VarDecl' =
+  VarDecl' VarIndex
+           Type
+           (Maybe Expr)
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
@@ -325,8 +335,10 @@ instance Convert StructType T.TypeDef' where
     T.TypeDef' (convert i) (C.new $ T.StructType $ convert fields)
 
 instance Convert TopVarDecl T.TopDecl where
-  convert (TopVarDecl i t e) =
-    T.TopDecl $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert e)]
+  convert (TopVarDecl decls) = T.TopDecl $ T.VarDecl $ convert decls
+
+instance Convert TopVarDecl' T.VarDecl' where
+  convert (TopVarDecl' i t e) = T.VarDecl' (convert i) (convert t) (convert e)
 
 instance Convert FuncDecl T.FuncDecl where
   convert (FuncDecl i sig fb _) =
@@ -363,11 +375,13 @@ instance Convert Stmt T.Stmt where
   convert (For _ fcl s) = T.For (convert fcl) (convert s)
   convert (Break _) = T.Break
   convert (Continue _) = T.Continue
-  convert (VarDecl i t e) =
-    T.Declare $ T.VarDecl [T.VarDecl' (convert i) (convert t) (convert e)]
+  convert (VarDecl decls) = T.Declare $ T.VarDecl $ convert decls
   convert (Print el) = T.Print (convert el)
   convert (Println el) = T.Println (convert el)
   convert (Return e) = T.Return (convert e)
+
+instance Convert VarDecl' T.VarDecl' where
+  convert (VarDecl' i t e) = T.VarDecl' (convert i) (convert t) (convert e)
 
 instance Convert SwitchCase T.SwitchCase where
   convert (Case nle s) = T.Case (convert nle) (convert s)
