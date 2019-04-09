@@ -28,9 +28,6 @@ public class GlcIntArray {
      * Return nonnull struct if index is within bounds
      */
     public final int get(int i) {
-        if (i > length - 1) {
-            throw new IndexOutOfBoundsException();
-        }
         init();
         return array[i];
     }
@@ -39,9 +36,6 @@ public class GlcIntArray {
      * Set new struct value at specified index if it is within bounds
      */
     public final void set(int i, int t) {
-        if (i > length - 1) {
-            throw new IndexOutOfBoundsException();
-        }
         init();
         array[i] = t;
     }

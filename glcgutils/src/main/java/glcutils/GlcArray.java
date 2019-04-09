@@ -47,9 +47,6 @@ public class GlcArray<T> {
      * Return nonnull struct if index is within bounds
      */
     public final T get(int i) {
-        if (i > length - 1) {
-            throw new IndexOutOfBoundsException();
-        }
         init();
         if (array[i] == null) {
             array[i] = supply();
@@ -61,9 +58,6 @@ public class GlcArray<T> {
      * Set new struct value at specified index if it is within bounds
      */
     public final void set(int i, T t) {
-        if (i > length - 1) {
-            throw new IndexOutOfBoundsException();
-        }
         init();
         array[i] = t;
     }
