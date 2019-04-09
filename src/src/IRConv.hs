@@ -25,7 +25,7 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
   map structClass scts -- TODO
   where
     cFields :: [Field]
-    cFields = map vdToField tfs
+    cFields = concatMap vdToFields tfs
     cMethods :: [Method]
     cMethods =
       Method
@@ -71,8 +71,10 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
         mfBody = toIR mfb
         maxStackMain :: Int
         maxStackMain = maxStackSize mfBody 0
-    vdToField :: T.TopVarDecl -> Field
-    vdToField (T.TopVarDecl fi t _) =
+    vdToFields :: T.TopVarDecl -> [Field]
+    vdToFields (T.TopVarDecl vdl) = map vdpToFields vdl
+    vdpToFields :: T.TopVarDecl' -> Field
+    vdpToFields (T.TopVarDecl' fi t _) =
       Field
         { access = FProtected
         , static = True
@@ -83,9 +85,11 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
     clBody :: [IRItem]
     clBody = vdToIns tfs ++ iri [Return Nothing]
     vdToIns :: [T.TopVarDecl] -> [IRItem]
-    vdToIns tvdl = concatMap vdToIns' tvdl
+    vdToIns = concatMap vdToIns'
     vdToIns' :: T.TopVarDecl -> [IRItem]
-    vdToIns' (T.TopVarDecl fi t me) =
+    vdToIns' (T.TopVarDecl vdl) = concatMap vdToIns'' vdl
+    vdToIns'' :: T.TopVarDecl' -> [IRItem]
+    vdToIns'' (T.TopVarDecl' fi t me) =
       case me of
         Nothing -> [] -- Default
       -- Convert declaration to assignments, reuse logic
@@ -178,10 +182,7 @@ instance IRRep T.Stmt where
     ]
   toIR (T.Break (T.LabelIndex idx)) = iri [Goto ("Lend_loop_" ++ show idx)]
   toIR (T.Continue (T.LabelIndex idx)) = iri [Goto ("Lpost_loop_" ++ show idx)]
-  toIR (T.VarDecl idx t me) =
-    case me of
-      Just e -> toIR e ++ iri [Store (typeToIRType t) idx]
-      _      -> [] -- TODO: Get default and store?
+  toIR (T.VarDecl vdl) = concatMap toIR vdl
   toIR (T.Print el) = concatMap printIR el
   toIR (T.Println el) =
     intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++
@@ -191,6 +192,12 @@ instance IRRep T.Stmt where
       (iri [Return Nothing])
       (\e -> toIR e ++ iri [Return $ Just (exprIRType e)])
       me
+
+instance IRRep T.VarDecl' where
+  toIR (T.VarDecl' idx t me) =
+    case me of
+      Just e -> toIR e ++ iri [Store (typeToIRType t) idx]
+      _      -> [] -- TODO: Get default and store?
 
 printIR :: T.Expr -> [IRItem]
 printIR e =
