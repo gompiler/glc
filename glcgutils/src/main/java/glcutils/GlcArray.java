@@ -30,6 +30,7 @@ class GlcArray<T> {
      * Note that each value is null
      */
     final T[] create(int length) {
+        //noinspection unchecked
         return (T[]) Array.newInstance(this.clazz, length);
     }
 
