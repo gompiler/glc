@@ -60,7 +60,7 @@ offsetSpec =
           d := 5
         }
         |]
-      , [(LocalLimit 2, [0, 1, 1]), (LocalLimit 3, [0, 1, 2, 2])])
+      , [(LocalLimit 2, [0, 1, 1]), (LocalLimit 3, [0, 0, 1, 2, 2])])
     ]
 
 type OffsetInfo = [(LocalLimit, [Int])]

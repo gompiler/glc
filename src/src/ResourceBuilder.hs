@@ -55,7 +55,7 @@ instance Converter T.Program Program where
         { package = package
         , structs = structs
         -- Returns all declared top vars
-        , topVars = concat vars
+        , topVars = vars
         -- Contains a single function that calls each of the original
         -- init functions, in the same order
         , init = createInit $ map funcName initFuncs
@@ -91,7 +91,7 @@ instance Converter T.Program Program where
       initIdent i = T.Ident $ "init$" ++ show i
 
 data TopLevel
-  = TVar [TopVarDecl]
+  = TVar TopVarDecl
   | TFunc FuncDecl
   | TInit Stmt
           LocalLimit
@@ -147,30 +147,30 @@ instance Converter T.ParameterDecl ParameterDecl where
 instance Converter T.Parameters Parameters where
   convert rc (T.Parameters params) = Parameters <$> mapM (convert rc) params
 
-instance Converter T.Decl [TopVarDecl] where
-  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [TopVarDecl]
+instance Converter T.Decl TopVarDecl where
+  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s TopVarDecl
   convert rc decl =
     case decl of
-      T.VarDecl decls -> mapM convertVarDecl decls
-      T.TypeDef decls -> mapM_ convertTypeDecl decls $> []
+      T.VarDecl decls -> TopVarDecl <$> mapM convertVarDecl decls
+      T.TypeDef decls -> mapM_ convertTypeDecl decls $> TopVarDecl []
     where
-      convertVarDecl :: T.VarDecl' -> ST s TopVarDecl
+      convertVarDecl :: T.VarDecl' -> ST s TopVarDecl'
       convertVarDecl (T.VarDecl' (T.ScopedIdent _ i) t expr) =
-        TopVarDecl <$-> i <*> convert rc t <*>
+        TopVarDecl' <$-> i <*> convert rc t <*>
         maybe (return Nothing) (Just <$$> convert rc) expr
       convertTypeDecl :: T.TypeDef' -> ST s ()
       convertTypeDecl _ = return ()
 
-instance Converter T.Decl [Stmt] where
-  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s [Stmt]
+instance Converter T.Decl Stmt where
+  convert :: forall s. RC.ResourceContext s -> T.Decl -> ST s Stmt
   convert rc decl =
     case decl of
-      T.VarDecl decls -> mapM convertVarDecl decls
-      T.TypeDef decls -> mapM_ convertTypeDecl decls $> []
+      T.VarDecl decls -> VarDecl <$> mapM convertVarDecl decls
+      T.TypeDef decls -> mapM_ convertTypeDecl decls $> VarDecl []
     where
-      convertVarDecl :: T.VarDecl' -> ST s Stmt
+      convertVarDecl :: T.VarDecl' -> ST s VarDecl'
       convertVarDecl (T.VarDecl' i t expr) =
-        VarDecl <$> RC.getVarIndex rc i <*> convert rc t <*>
+        VarDecl' <$> RC.getVarIndex rc i <*> convert rc t <*>
         maybe (return Nothing) (Just <$$> convert rc) expr
       convertTypeDecl :: T.TypeDef' -> ST s ()
       convertTypeDecl _ = return ()
@@ -252,13 +252,11 @@ instance Converter T.SimpleStmt SimpleStmt where
       dec2assn e =
         Assign (T.AssignOp $ Just T.Subtract) ((e, Lit $ T.IntLit 1) :| [])
 
-instance Converter T.Stmt Stmt
-  -- | TODO check if block stmt should become a scoped block (for temp gen)
-                                                                            where
+instance Converter T.Stmt Stmt where
   convert :: forall s. RC.ResourceContext s -> T.Stmt -> ST s Stmt
   convert rc stmt =
     case stmt of
-      T.BlockStmt stmts -> BlockStmt <$> mapM cs stmts
+      T.BlockStmt stmts -> BlockStmt <$> wrap (mapM cs stmts)
       T.SimpleStmt s -> SimpleStmt <$> css s
       T.If se s1 s2 ->
         wrap $
@@ -280,8 +278,7 @@ instance Converter T.Stmt Stmt
         For <$> RC.newLoopLabel rc <*> convertForClause clause <*> wrap (cs s)
       T.Break -> Break <$> RC.currentLoopLabel rc
       T.Continue -> Continue <$> RC.currentLoopLabel rc
-        -- TODO ensure blockstmt doesn't end up adding scopes for this case
-      T.Declare decl -> BlockStmt <$> convert rc decl
+      T.Declare decl -> convert rc decl
       T.Print exprs -> Print <$> mapM ce exprs
       T.Println exprs -> Println <$> mapM ce exprs
       T.Return e -> Return <$> maybe (return Nothing) (Just <$$> ce) e

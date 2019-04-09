@@ -83,7 +83,7 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
     clBody :: [IRItem]
     clBody = vdToIns tfs ++ iri [Return Nothing]
     vdToIns :: [T.TopVarDecl] -> [IRItem]
-    vdToIns tvdl = concatMap vdToIns' tvdl
+    vdToIns = concatMap vdToIns'
     vdToIns' :: T.TopVarDecl -> [IRItem]
     vdToIns' (T.TopVarDecl fi t me) =
       case me of
