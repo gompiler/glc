@@ -18,7 +18,7 @@ cleangen:
 	@rm -f src/generated/ParserGen.hs
 
 .PHONY: build
-build: gen jutils
+build: gen $(JFILES)
 	stack --allow-different-user build $(COMPILE_FLAGS)
 
 .PHONY: gen
@@ -27,16 +27,11 @@ gen: src/generated/TokenGen.hs src/generated/ParserGen.hs
 .PHONY: report
 report: stack --allow-different-user hpc report glc.tix
 
-.PHONY: jutils
-jutils: $(JFILES)
-
 ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar: ../glcgutils/pom.xml $(JAVAFILES)
 	mvn install -f ../glcgutils
 
-.PHONY: disassemble
-disassemble: ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar
+$(JFILES): ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar
 	python3 ../Krakatau/disassemble.py ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar
-$(JFILES): disassemble
 
 src/generated/TokenGen.hs: golite.x
 	alex $< -g -o $@
@@ -60,12 +55,12 @@ cbuild:
 
 # Run hspec tests
 .PHONY: test
-test: gen jutils
+test: gen $(JFILES)
 	@rm -f glc.tix
 	stack test --allow-different-user $(COMPILE_FLAGS)
 
 .PHONY: ctest
-ctest: gen jutils
+ctest: gen $(JFILES)
 	@rm -f glc.tix
 	stack test --allow-different-user --file-watch $(COMPILE_FLAGS)
 
