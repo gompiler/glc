@@ -20,6 +20,9 @@ build: gen
 .PHONY: gen
 gen: src/generated/TokenGen.hs src/generated/ParserGen.hs
 
+.PHONY: report
+report: stack --allow-different-user hpc report glc.tix
+
 src/generated/TokenGen.hs: golite.x
 	alex $< -g -o $@
 	sed -i.bak 's/\\$$//;/./,/^$$/!d' $@ # Remove consecutive lines of whitespace

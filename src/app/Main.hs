@@ -33,5 +33,7 @@ main = do
         IR -> displayIR
         PrettyTypecheck -> either putExit (putStrLn . prettify) . typecheckGen
         PrettyResource -> either putExit (putStrLn . prettify) . resourceGen
+        CheckedDataP -> either putExit (putStrLn . show) . typecheckGen
+        ResourceDataP -> either putExit (putStrLn . show) . resourceGen
         Codegen ->
           const $ putExit $ createError' "codegen called without filename" -- This should never happen because of case above

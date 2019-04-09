@@ -347,8 +347,10 @@ instance Symbolize FuncDecl T.FuncDecl
           then return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: S.Scope -> Param -> Glc' T.ParameterDecl
-      p2pd scope (s, t') =
-        T.ParameterDecl (mkSIdStr scope s) <$> toBase (Var ident) t'
+      p2pd (S.Scope scope) (s, t') =
+        -- Note that the scope here is the scope of the function declaration
+        -- we add 1 so that the parameters are one scope deeper, i.e. not at the top level
+        T.ParameterDecl (mkSIdStr (S.Scope $ scope + 1) s) <$> toBase (Var ident) t'
       -- The argument to toBase above isn't really the right "expression";
       -- it should be the original parameter with its offset,
       -- but that will require rewriting most of this logic to pass that over
