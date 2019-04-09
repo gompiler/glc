@@ -1,6 +1,7 @@
 **/.DS_Store
 /build
 /out
+/target
 
 # Intellij
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
