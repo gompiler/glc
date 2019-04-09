@@ -1,4 +1,7 @@
 COMPILE_FLAGS = --pedantic --coverage
+JLIBS = Utils GlcSlice GlcIntSlice GlcArray GlcIntArray
+JFILES = $(addsuffix .j,$(addprefix glcutils/,$(JLIBS)))
+JAVAFILES = $(addsuffix .java,$(addprefix ../glcgutils/src/main/java/glcutils/,$(JLIBS)))
 
 .PHONY: all
 all: glc
@@ -13,8 +16,12 @@ cleangen:
 	@rm -f src/generated/TokenGen.hs
 	@rm -f src/generated/ParserGen.hs
 
+.PHONY: cleanj
+cleanj:
+	mvn clean -f ../glcgutils
+
 .PHONY: build
-build: gen
+build: gen $(JFILES)
 	stack --allow-different-user build $(COMPILE_FLAGS)
 
 .PHONY: gen
@@ -22,6 +29,12 @@ gen: src/generated/TokenGen.hs src/generated/ParserGen.hs
 
 .PHONY: report
 report: stack --allow-different-user hpc report glc.tix
+
+../glcgutils/target/glcutils-1.0-SNAPSHOT.jar: ../glcgutils/pom.xml $(JAVAFILES)
+	mvn install -f ../glcgutils
+
+$(JFILES): ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar
+	python3 ../Krakatau/disassemble.py ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar
 
 src/generated/TokenGen.hs: golite.x
 	alex $< -g -o $@
@@ -45,12 +58,12 @@ cbuild:
 
 # Run hspec tests
 .PHONY: test
-test: gen
+test: gen $(JFILES)
 	@rm -f glc.tix
 	stack test --allow-different-user $(COMPILE_FLAGS)
 
 .PHONY: ctest
-ctest: gen
+ctest: gen $(JFILES)
 	@rm -f glc.tix
 	stack test --allow-different-user --file-watch $(COMPILE_FLAGS)
 
