@@ -56,6 +56,13 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
         , spec = MethodSpec ([JClass jString], JClass jString)
         , body = idString
         } :
+      Method -- int -> int identity casts
+        { mname = "__glc$fn__int"
+        , stackLimit = 1
+        , localsLimit = 1
+        , spec = MethodSpec ([JInt], JInt)
+        , body = idInt
+        } :
       Method
         { mname = "main"
         , stackLimit = 0
@@ -97,6 +104,12 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
           iri
             [ Load Object (T.VarIndex 0)
             , Return (Just Object)
+            ]
+        idInt :: [IRItem]
+        idInt =
+          iri
+            [ Load (Prim IRInt) (T.VarIndex 0)
+            , Return (Just $ Prim IRInt)
             ]
     vdToFields :: T.TopVarDecl -> [Field]
     vdToFields (T.TopVarDecl vdl) = map vdpToFields vdl
