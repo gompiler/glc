@@ -26,6 +26,9 @@ data Cmd
   | IR
   | Codegen
   | PrettyTypecheck
+  | PrettyResource
+  | CheckedDataP
+  | ResourceDataP
 
 -- | CmdI: Cmd + Inp
 data CmdI =
@@ -92,6 +95,15 @@ prettyInvarParser =
 prettyTypecheckP :: ParserInfo CmdI
 prettyTypecheckP = info (CI PrettyTypecheck <$> parseSource) briefDesc
 
+prettyResourceP :: ParserInfo CmdI
+prettyResourceP = info (CI PrettyResource <$> parseSource) briefDesc
+
+checkedDataP :: ParserInfo CmdI
+checkedDataP = info (CI CheckedDataP <$> parseSource) briefDesc
+
+resourceDataP :: ParserInfo CmdI
+resourceDataP = info (CI ResourceDataP <$> parseSource) briefDesc
+
 symbolParser :: ParserInfo CmdI
 symbolParser =
   info
@@ -142,7 +154,11 @@ cmdParser =
      hsubparser
        (internal <>
         command "prettyinvar" prettyInvarParser <>
-        command "prettyt" prettyTypecheckP <> command "ir" irParser) <**>
+        command "prettyt" prettyTypecheckP <>
+        command "ir" irParser <>
+        command "prettyr" prettyResourceP <>
+        command "checked" checkedDataP <>
+        command "resource" resourceDataP) <**>
      helper)
     (fullDesc <>
      progDesc "Compiler for goLite" <> header "glc - a compiler for goLite")
