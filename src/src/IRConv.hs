@@ -42,6 +42,13 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
         , spec = emptySpec
         , body = mfBody
         } :
+      Method -- int -> string casts
+        { mname = "__glc$fn__string"
+        , stackLimit = 1
+        , localsLimit = 1
+        , spec = MethodSpec ([JInt], JClass jString)
+        , body = intToString
+        } :
       Method
         { mname = "main"
         , stackLimit = 0
@@ -71,6 +78,13 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
         mfBody = toIR mfb
         maxStackMain :: Int
         maxStackMain = maxStackSize mfBody 0
+        intToString :: [IRItem]
+        intToString =
+          iri
+            [ Load (Prim IRInt) (T.VarIndex 0)
+            , InvokeStatic jIntToString
+            , Return (Just Object)
+            ]
     vdToFields :: T.TopVarDecl -> [Field]
     vdToFields (T.TopVarDecl vdl) = map vdpToFields vdl
     vdpToFields :: T.TopVarDecl' -> Field

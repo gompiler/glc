@@ -205,6 +205,10 @@ jIntInit = MethodRef (CRef jInteger) "<init>" (MethodSpec ([JInt], JVoid))
 jIntValue :: MethodRef
 jIntValue = MethodRef (CRef jInteger) "intValue" (MethodSpec ([], JInt))
 
+jIntToString :: MethodRef
+jIntToString =
+  MethodRef (CRef jInteger) "toString" (MethodSpec ([JInt], JClass jString))
+
 jDouble :: ClassRef
 jDouble = ClassRef "java/lang/Double"
 
