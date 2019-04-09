@@ -458,8 +458,8 @@ instance IRRep T.Expr where
     toIR e1 ++
     iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
     toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
-  toIR (T.Binary (T.LabelIndex idx) t T.EQ e1 e2) =
-    case t of
+  toIR (T.Binary (T.LabelIndex idx) _ T.EQ e1 e2) =
+    case exprType e1 of
       T.ArrayType {} -> undefined -- TODO
       T.PString ->
         toIR e1 ++
