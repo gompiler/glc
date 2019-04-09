@@ -10,6 +10,7 @@ import           Data.List.NonEmpty (toList)
 import           Prelude            hiding (init)
 import           ResourceBuilder
 import           ResourceData
+import           SymbolTable
 import           TestBase
 
 spec :: Spec
@@ -86,7 +87,10 @@ expectOffsetValues =
       input ++
       "\n\nexpected:" ++
       show expected ++
-      "\n but got:" ++ show actual ++ "\n\nAST:\n\n" ++ showProgram program
+      "\n but got:" ++
+      show actual ++
+      "\n\nAST:\n\n" ++
+      showProgram program ++ "\n\n" ++ show (typecheckGen input)
     showProgram :: Program -> String
     showProgram Program {functions} = intercalate "\n" $ map show functions
     programOffsets :: Program -> [(LocalLimit, [Int])]
