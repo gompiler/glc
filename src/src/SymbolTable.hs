@@ -347,8 +347,10 @@ instance Symbolize FuncDecl T.FuncDecl
           then return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: S.Scope -> Param -> Glc' T.ParameterDecl
-      p2pd scope (s, t') =
-        T.ParameterDecl (mkSIdStr scope s) <$> toBase (Var ident) t'
+      p2pd (S.Scope scope) (s, t') =
+        -- Note that the scope here is the scope of the function declaration
+        -- we add 1 so that the parameters are one scope deeper, i.e. not at the top level
+        T.ParameterDecl (mkSIdStr (S.Scope $ scope + 1) s) <$> toBase (Var ident) t'
       -- The argument to toBase above isn't really the right "expression";
       -- it should be the original parameter with its offset,
       -- but that will require rewriting most of this logic to pass that over
@@ -627,30 +629,22 @@ instance Symbolize Stmt T.Stmt where
   recurse st (For (ForClause ss1 me ss2) s) =
     S.wrap st $ do
       ess1' <- recurse st ss1
+      ee' <- condition me
       ess2' <- recurse st ss2
       es' <- recurse st s
-      maybe
-        (return $
-         (\ss1' ->
-            (\ss2' -> (Right . T.For (T.ForClause ss1' Nothing ss2')) =<< es') =<<
-            ess2') =<<
-         ess1')
-        (\e -> do
-           et' <- infer st e
-           either
-             (return . Left)
-             (\t' ->
-                if C.get (resolveCType t') == PBool
-                  then return $
-                       (\ss1' ->
-                          (\ss2' ->
-                             (Right . T.For (T.ForClause ss1' Nothing ss2')) =<<
-                             es') =<<
-                          ess2') =<<
-                       ess1'
-                  else return $ Left $ createError e (CondBool e t'))
-             et')
-        me
+      return $ T.For <$> (T.ForClause <$> ess1' <*> ee' <*> ess2') <*> es'
+    where
+      condition :: Maybe Expr -> ST s (Glc' (Maybe T.Expr))
+      condition Nothing = return $ pure Nothing
+      condition (Just e) = do
+        et' <- infer st e
+        ee' <- recurse st e
+        return $
+          (\t' ->
+             if C.get (resolveCType t') == PBool
+               then Just <$> ee'
+               else Left $ createError e (CondBool e t')) =<<
+          et'
   recurse _ (Break _) = return $ Right T.Break
   recurse _ (Continue _) = return $ Right T.Continue
   recurse st (Declare d) = T.Declare <$$> recurse st d
