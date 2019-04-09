@@ -310,73 +310,76 @@ instance IRRep T.SimpleStmt where
     where
       getValue :: (T.Expr, T.Expr) -> [IRItem]
       getValue (se, ve) =
-        case mAop of
-          Nothing -> toIR ve ++ cloneIfNeeded ve
-          Just op ->
-            case se of
-              T.Var t idx ->
-                setUpOps ++
-                iri [Load (typeToIRType t) idx] ++
-                afterLoadOps ++ toIR ve ++ finalOps
-              T.TopVar t tvi ->
-                setUpOps ++
-                iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)] ++
-                afterLoadOps ++ toIR ve ++ finalOps
-              T.Selector t eo (T.Ident fid) ->
-                case exprJType eo of
-                  JClass cr ->
-                    setUpOps ++
-                    toIR eo ++
-                    iri [GetField (FieldRef cr fid) (typeToJType t)] ++
-                    afterLoadOps ++ toIR ve ++ finalOps
-                  _ -> error "Cannot get field of non-object"
-              T.Index t ea ei ->
-                case exprType ea of
-                  T.ArrayType {} ->
-                    setUpOps ++
-                    toIR ea ++
-                    toIR ei ++
-                    iri [Dup2, ArrayLoad irType] ++ -- Duplicate addr. and index at the same time
-                    afterLoadOps ++ toIR ve ++ finalOps
-                  T.SliceType {} ->
-                    setUpOps ++
-                    toIR ea ++
-                    toIR ei ++
-                    iri [Dup2, InvokeVirtual sliceGet] ++
-                    objectDecode t ++
-                    afterLoadOps ++ toIR ve ++ finalOps
-                  _ -> error "Cannot index non-array/slice"
-              _ -> error "Cannot assign to non-addressable value"
-            where irType :: IRType
-                  irType = exprIRType ve
-                  setUpOps :: [IRItem]
-                  setUpOps =
-                    case (op, irType) of
-                      (T.Add, Object) ->
-                        iri [New stringBuilder, Dup, InvokeSpecial sbInit]
-                      _ -> []
-                  afterLoadOps :: [IRItem]
-                  afterLoadOps =
-                    case (op, irType) of
-                      (T.Add, Object) -> iri [InvokeVirtual sbAppend]
-                      _               -> []
-                  finalOps :: [IRItem]
-                  finalOps =
-                    case (op, irType) of
-                      (T.Add, Object) ->
-                        iri [InvokeVirtual sbAppend, InvokeVirtual sbToString]
-                      (T.Add, Prim p) -> iri [Add p]
-                      (T.Subtract, Prim p) -> iri [Sub p]
-                      (T.Multiply, Prim p) -> iri [Mul p]
-                      (T.Divide, Prim p) -> iri [Div p]
-                      (T.Remainder, Prim _) -> iri [IRem]
-                      (T.ShiftL, Prim _) -> iri [IShL]
-                      (T.ShiftR, Prim _) -> iri [IShR]
-                      (T.BitAnd, Prim _) -> iri [IAnd]
-                      (T.BitOr, Prim _) -> iri [IAnd]
-                      (T.BitXor, Prim _) -> iri [IXOr]
-                      (T.BitClear, Prim _) -> iri [IConstM1, IXOr, IAnd]
-                      _ -> error "Invalid operation on non-primitive"
+        -- case mAop of
+        --   Nothing -> toIR ve ++ cloneIfNeeded ve
+        --   Just op ->
+        case (mAop, se) of
+          (Nothing, T.Index _ ea ei) ->
+            toIR ea ++ toIR ei ++ toIR ve ++ cloneIfNeeded ve
+          (Nothing, _) -> toIR ve ++ cloneIfNeeded ve
+          (Just op, T.Var t idx) ->
+            setUpOps op ++
+            iri [Load (typeToIRType t) idx] ++
+            afterLoadOps op ++ toIR ve ++ finalOps op
+          (Just op, T.TopVar t tvi) ->
+            setUpOps op ++
+            iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)] ++
+            afterLoadOps op ++ toIR ve ++ finalOps op
+          (Just op, T.Selector t eo (T.Ident fid)) ->
+            case exprJType eo of
+              JClass cr ->
+                setUpOps op ++
+                toIR eo ++
+                iri [GetField (FieldRef cr fid) (typeToJType t)] ++
+                afterLoadOps op ++ toIR ve ++ finalOps op
+              _ -> error "Cannot get field of non-object"
+          (Just op, T.Index t ea ei) ->
+            case exprType ea of
+              T.ArrayType {} ->
+                setUpOps op ++
+                toIR ea ++
+                toIR ei ++
+                iri [Dup2, ArrayLoad irType] ++ -- Duplicate addr. and index at the same time
+                afterLoadOps op ++ toIR ve ++ finalOps op
+              T.SliceType {} ->
+                setUpOps op ++
+                toIR ea ++
+                toIR ei ++
+                iri [Dup2, InvokeVirtual sliceGet] ++
+                objectDecode t ++
+                afterLoadOps op ++ toIR ve ++ finalOps op
+              _ -> error "Cannot index non-array/slice"
+          _ -> error "Cannot assign to non-addressable value"
+        where irType :: IRType
+              irType = exprIRType ve
+              setUpOps :: T.ArithmOp -> [IRItem]
+              setUpOps op =
+                case (op, irType) of
+                  (T.Add, Object) ->
+                    iri [New stringBuilder, Dup, InvokeSpecial sbInit]
+                  _ -> []
+              afterLoadOps :: T.ArithmOp -> [IRItem]
+              afterLoadOps op =
+                case (op, irType) of
+                  (T.Add, Object) -> iri [InvokeVirtual sbAppend]
+                  _               -> []
+              finalOps :: T.ArithmOp -> [IRItem]
+              finalOps op = -- TODO: Cloning here????
+                case (op, irType) of
+                  (T.Add, Object) ->
+                    iri [InvokeVirtual sbAppend, InvokeVirtual sbToString]
+                  (T.Add, Prim p) -> iri [Add p]
+                  (T.Subtract, Prim p) -> iri [Sub p]
+                  (T.Multiply, Prim p) -> iri [Mul p]
+                  (T.Divide, Prim p) -> iri [Div p]
+                  (T.Remainder, Prim _) -> iri [IRem]
+                  (T.ShiftL, Prim _) -> iri [IShL]
+                  (T.ShiftR, Prim _) -> iri [IShR]
+                  (T.BitAnd, Prim _) -> iri [IAnd]
+                  (T.BitOr, Prim _) -> iri [IAnd]
+                  (T.BitXor, Prim _) -> iri [IXOr]
+                  (T.BitClear, Prim _) -> iri [IConstM1, IXOr, IAnd]
+                  _ -> error "Invalid operation on non-primitive"
       getStore :: (T.Expr, T.Expr) -> [IRItem]
       getStore (e, _) =
         case e of
@@ -573,13 +576,13 @@ instance IRRep T.Expr where
       T.SliceType {} ->
         toIR e1 ++ toIR e2 ++ iri [InvokeVirtual sliceGet] ++ objectDecode t
       _ -> error "Cannot index non-array/slice"
-  toIR (T.Arguments t (D.Ident aid) args) =
+  toIR (T.Arguments t aid args) =
     concatMap (\e -> toIR e ++ cloneIfNeeded e) args ++
     iri
       [ InvokeStatic $
         MethodRef
           (CRef cMain)
-          aid
+          (tFnStr aid)
           (MethodSpec (map exprJType args, typeToJType t))
       ]
 
