@@ -186,14 +186,24 @@ instance IRRep T.Stmt where
           (T.ArrayType l at) ->
             case at of -- TODO: Defaults of elements??? or null checks elsewhere?
               T.ArrayType {} -> undefined -- TODO
-              T.SliceType {} -> iri [LDC (LDCInt l), ANewArray cSlice]
-              T.PInt -> iri [LDC (LDCInt l), NewArray IRInt]
-              T.PFloat64 -> iri [LDC (LDCInt l), NewArray IRDouble]
-              T.PBool -> iri [LDC (LDCInt l), NewArray IRInt]
-              T.PRune -> iri [LDC (LDCInt l), NewArray IRInt]
-              T.PString -> iri [LDC (LDCInt l), ANewArray jString]
+              T.SliceType {} ->
+                iri [LDC (LDCInt l), ANewArray cSlice, Store Object idx]
+              T.PInt ->
+                iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
+              T.PFloat64 ->
+                iri [LDC (LDCInt l), NewArray IRDouble, Store Object idx]
+              T.PBool ->
+                iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
+              T.PRune ->
+                iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
+              T.PString ->
+                iri [LDC (LDCInt l), ANewArray jString, Store Object idx]
               T.StructType sid ->
-                iri [LDC (LDCInt l), ANewArray (ClassRef $ structName sid)]
+                iri
+                  [ LDC (LDCInt l)
+                  , ANewArray (ClassRef $ structName sid)
+                  , Store Object idx
+                  ]
           T.SliceType {} ->
             iri [New cSlice, Dup, InvokeSpecial sliceInit, Store Object idx]
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
@@ -202,7 +212,10 @@ instance IRRep T.Stmt where
           T.PBool -> iri [IConst0, Store (Prim IRInt) idx]
           T.PString -> iri [LDC (LDCString ""), Store Object idx]
           (T.StructType sid) ->
-            iri [InvokeSpecial $ MethodRef (CRef $ ClassRef $ structName sid) "<init>" emptySpec]
+            iri
+              [ New (ClassRef $ structName sid)
+              , InvokeSpecial (MethodRef (CRef $ ClassRef $ structName sid) "<init>" emptySpec)
+              , Store Object idx]
   toIR (T.Print el) = concatMap printIR el
   toIR (T.Println el) =
     intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++
