@@ -42,7 +42,7 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
         , spec = emptySpec
         , body = mfBody
         } :
-      Method -- int -> string casts
+      Method -- int -> string casts TODO: NEEDS TO CONVERT TO CHAR!!!!
         { mname = "__glc$fn__string"
         , stackLimit = 1
         , localsLimit = 1
