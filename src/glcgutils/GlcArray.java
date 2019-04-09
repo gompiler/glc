@@ -13,20 +13,34 @@ class GlcArray<T> {
         this.array = array;
     }
 
-    final void init() {
+    /**
+     * Ensures that array is nonnull
+     */
+    void init() {
         if (array == null) {
             array = create(length);
         }
     }
 
+    /**
+     * Generates a new array of the provided length
+     * Note that each value is null
+     */
     final T[] create(int length) {
         return (T[]) Array.newInstance(this.clazz, length);
     }
 
+    /**
+     * Generate a new element entry,
+     * based on the struct supplier definition
+     */
     final T supply() {
         return supplier.get();
     }
 
+    /**
+     * Return nonnull struct if index is within bounds
+     */
     public final T get(int i) {
         if (i > length - 1) {
             throw new IndexOutOfBoundsException();
@@ -38,6 +52,9 @@ class GlcArray<T> {
         return array[i];
     }
 
+    /**
+     * Set new struct value at specified index if it is within bounds
+     */
     public final void set(int i, T t) {
         if (i > length - 1) {
             throw new IndexOutOfBoundsException();
@@ -46,14 +63,28 @@ class GlcArray<T> {
         array[i] = t;
     }
 
+    /**
+     * Gets the length of the array, representative of the number of elements
+     * stored
+     */
     public final int length() {
         return length;
     }
 
+    /**
+     * Gets the capacity of the array, representative of the number of elements
+     * that can be stored
+     */
     public final int capacity() {
         return array == null ? 0 : array.length;
     }
 
+    /**
+     * Single level lazy equality check, where null values
+     * are presumed to be equal.
+     * Note that structs should implement deep equals,
+     * so this should result in a deep equal too.
+     */
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
