@@ -65,7 +65,7 @@ prettifySpec =
        func sqrt(f float64) float64 {
            xn := (f / 2.0)
            tol := (f / 1000.0)
-           for i := 0; ; i++ {
+           for i := 0; (i < 10000); i++ {
                poly := ((xn * xn) - f)
                polyprime := (2.0 * xn)
                diff := (poly / polyprime)
@@ -108,7 +108,7 @@ prettifySpec =
        } {
            pivot := pl[max].x
            t := min
-           for i := min; ; i++ {
+           for i := min; (i < max); i++ {
                if (pl[i].x < pivot) {
                    pl[i], pl[t] = pl[t], pl[i]
                    t++
@@ -170,7 +170,7 @@ prettifySpec =
        } {
            pivot := pl[max].y
            t := min
-           for i := min; ; i++ {
+           for i := min; (i < max); i++ {
                if (pl[i].y < pivot) {
                    pl[i], pl[t] = pl[t], pl[i]
                    t++
@@ -250,10 +250,10 @@ prettifySpec =
                y int
            }
            half := (len(pl) / 2)
-           for i := 0; ; i++ {
+           for i := 0; (i < half); i++ {
                pl1 = append(pl1, pl[i])
            }
-           for i := half; ; i++ {
+           for i := half; (i < len(pl)); i++ {
                pl2 = append(pl2, pl[i])
            }
            pll.pl1 = pl1
@@ -353,8 +353,8 @@ prettifySpec =
                    y int
                }
            } = initMin()
-           for i := 0; ; i++ {
-               for j := 0; ; j++ {
+           for i := 0; (i < len(pl)); i++ {
+               for j := 0; (j < len(pl)); j++ {
                    if (i == j) {
                        var pp struct {
                            p1 struct {
@@ -401,8 +401,8 @@ prettifySpec =
            }
        } {
            pl = qsorty(pl, 0, (len(pl) - 1))
-           for i := 0; ; i++ {
-               for j := (i + 1); ; j++ {
+           for i := 0; (i < len(pl)); i++ {
+               for j := (i + 1); ((j < len(pl)) && (float64((pl[i].y - pl[j].y)) < dist(min.p1, min.p2))); j++ {
                    if (dist(pl[i], pl[j]) < dist(min.p1, min.p2)) {
                        min.p1 = pl[i]
                        min.p2 = pl[j]
@@ -480,7 +480,7 @@ prettifySpec =
                    x int
                    y int
                }
-               for i := 0; ; i++ {
+               for i := 0; (i < len(pl)); i++ {
                    if (abs(float64((pl[i].x - midp.x))) < dist(min.p1, min.p2)) {
                        strip = append(strip, pl[i])
                    }
@@ -522,7 +522,7 @@ prettifySpec =
                    x int
                    y int
                }
-               for i := 0; ; i++ {
+               for i := 0; (i < len(pa[0])); i++ {
                    p.x = pa[0][i]
                    p.y = pa[1][i]
                    pl = append(pl, p)
@@ -550,7 +550,7 @@ prettifySpec =
                y int
            }
        ) {
-           for i := 0; ; i++ {
+           for i := 0; (i < len(pl)); i++ {
                printpair(pl[i])
                println()
            }
@@ -559,7 +559,7 @@ prettifySpec =
        func prbsgen(size int, start int) []int {
            var list []int
            n := start
-           for i := 0; ; i++ {
+           for i := 0; (i < size); i++ {
                n += i
                n = ((((n << 1) | (n >> 6)) ^ ((n >> 5) & 1)) & 127)
                list = append(list, n)
@@ -570,11 +570,11 @@ prettifySpec =
        func dubnats(max int, rev bool) []int {
            var list []int
            if rev {
-               for i := max; ; i-- {
+               for i := max; (i > 0); i-- {
                    list = append(list, (i * 5))
                }
            } else {
-               for i := 0; ; i++ {
+               for i := 0; (i < max); i++ {
                    list = append(list, (i * 5))
                }
            }
