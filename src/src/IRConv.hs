@@ -201,7 +201,8 @@ instance IRRep T.Stmt where
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
           T.PBool -> iri [IConst0, Store (Prim IRInt) idx]
           T.PString -> iri [LDC (LDCString ""), Store Object idx]
-          (T.StructType (D.Ident _)) -> undefined -- TODO
+          (T.StructType sid) ->
+            iri [InvokeSpecial $ MethodRef (CRef $ ClassRef $ structName sid) "<init>" emptySpec]
   toIR (T.Print el) = concatMap printIR el
   toIR (T.Println el) =
     intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++
