@@ -7,65 +7,65 @@ import java.util.function.Supplier;
  * The following is an example
  * We need to generate this for each unique class
  */
-class Struct {
+public class GlcStruct1 {
     // Primitive are non lazy
-    int intField = 0;
+    private int intField = 0;
 
     // Strings are special in that they are expected to be null by default
-    String stringField = null;
+    private String stringField = null;
 
     // Golite never expects a null struct, but we load it lazily
-    Struct structField = null;
+    private GlcStruct2 structField = null;
 
     // Supplier, which generates a new struct
-    static Supplier<Struct> supplier = Struct::new;
+    public static Supplier<GlcStruct1> supplier = GlcStruct1::new;
 
     /*
      * All fields have getters and setters
      */
 
-    void setIntField(int o) {
+    public void setIntField(int o) {
         this.intField = o;
     }
 
-    int getIntField() {
+    public int getIntField() {
         return this.intField;
     }
 
-    void setStringField(String o) {
+    public void setStringField(String o) {
         this.stringField = o;
     }
 
     // Still nullable
-    String getStringField() {
+    public String getStringField() {
         return this.stringField;
     }
 
     // Input can technically be null as well,
     // though it won't ever be in practice
-    void setStructField(Struct o) {
+    public void setStructField(GlcStruct2 o) {
         this.structField = o;
     }
 
-    Struct getStructField() {
+    public GlcStruct2 getStructField() {
         if (this.structField == null) {
-            this.structField = supplier.get();
+            this.structField = GlcStruct2.supplier.get();
         }
         return this.structField;
     }
 
     /*
      * All fields must supply equality check
-     * (This can be nonstatic. Not sure what's better)
      */
-    static boolean intFieldEqual(Struct s1, Struct s2) {
+
+    public static boolean intFieldEqual(GlcStruct1 s1, GlcStruct1 s2) {
         return s1.intField == s2.intField;
     }
 
     /*
      * Strings are equal if both are null, or if contents are the same
      */
-    static boolean stringFieldEqual(Struct s1, Struct s2) {
+    public static boolean stringFieldEqual(GlcStruct1 s1, GlcStruct1 s2) {
         return Objects.equals(s1.stringField, s2.stringField);
     }
 
@@ -74,18 +74,16 @@ class Struct {
      * With recursive types, we eventually get to a depth where both structs aren't initialized
      * Therefore, it will halt
      */
-    static boolean structFieldEqual(Struct s1, Struct s2) {
+    public static boolean structFieldEqual(GlcStruct1 s1, GlcStruct1 s2) {
         if (s1.structField == s2.structField) {
             return true;
         }
         if (s1.structField == null) {
-            // Note that supplier is based on field type,
-            // not struct type
-            // It just so happens that the example is recursive
-            s1.structField = Struct.supplier.get();
+            // Note that supplier is based on field type
+            s1.structField = GlcStruct2.supplier.get();
         }
         if (s2.structField == null) {
-            s2.structField = Struct.supplier.get();
+            s2.structField = GlcStruct2.supplier.get();
         }
         return s1.structField.equals(s2.structField);
     }
@@ -95,10 +93,10 @@ class Struct {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof Struct)) {
+        if (!(obj instanceof GlcStruct1)) {
             return false;
         }
-        Struct other = (Struct) obj;
+        GlcStruct1 other = (GlcStruct1) obj;
         // Compare all fields
         return intFieldEqual(this, other) && stringFieldEqual(this, other) && structFieldEqual(this, other);
     }

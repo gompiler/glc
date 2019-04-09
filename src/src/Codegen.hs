@@ -184,7 +184,7 @@ fileJ :: String -> String
 fileJ file = dropExtension file ++ ".j"
 
 utils :: ByteString
-utils = B.fromStrict $(embedFile "glcgutils/Utils.j")
+utils = B.fromStrict $(embedFile "../glcgutils/j/Utils.j")
 
 codegen :: String -> IO ()
 codegen file =
