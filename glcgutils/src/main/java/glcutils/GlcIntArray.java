@@ -68,6 +68,21 @@ public class GlcIntArray {
         if (length != other.length) {
             return false;
         }
+        if (array == other.array) {
+            return true;
+        }
+        init();
+        other.init();
         return Arrays.equals(array, other.array);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(array);
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(array);
     }
 }
