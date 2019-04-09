@@ -61,26 +61,6 @@ public class GlcDataTest {
     }
 
     @Test
-    public void multiArrayCheck() {
-        GlcStringArray$2 a = new GlcStringArray$2(3,5);
-        assertNull(a.get(1).get(1));
-    }
-
-    private static class GlcStringArray$2 extends GlcArray<GlcStringArray$1> {
-
-        public GlcStringArray$2(int length1, int length2) {
-            super(() -> new GlcStringArray$1(length1), GlcStringArray$1.class, length2);
-        }
-
-    }
-
-    private static class GlcStringArray$1 extends GlcArray<String> {
-        GlcStringArray$1(int length) {
-            super(() -> null, String.class, length);
-        }
-    }
-
-    @Test
     public void primitiveSliceEquality() {
         GlcIntSlice a1 = new GlcIntSlice();
         GlcIntSlice a2 = new GlcIntSlice();
