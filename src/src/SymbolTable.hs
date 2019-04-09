@@ -838,32 +838,21 @@ instance Symbolize Expr T.Expr where
           (_, _)      -> fs
       RuneLit o cs ->
         T.Lit . T.RuneLit <$>
-        case cs !! 1 of
-          '\\' ->
-            case cs !! 2 of
-              'a'  -> Right '\a'
-              'b'  -> Right '\b'
-              'f'  -> Right '\f'
-              'n'  -> Right '\n'
-              'r'  -> Right '\r'
-              't'  -> Right '\t'
-              'v'  -> Right '\v'
-              '\'' -> Right '\''
-              '\\' -> Right '\\'
-              c    -> Left $ createError o (RuneInvalidEsc c) -- Should never happen because scanner guarantees these escape characters
-          c -> Right c
-      StringLit o Interpreted s -> T.Lit . T.StringLit <$> stripQuotes s o
-      StringLit o Raw s -> T.Lit . T.StringLit . esc <$> stripQuotes s o
+        convEsc cs o
+      StringLit o Interpreted s -> T.Lit . T.StringLit <$> (rmesc =<< stripQuotes s o)
+        where rmesc :: String -> Glc' String
+              rmesc s' = reverse <$> rmesc' s' ""
+              rmesc' :: String -> String -> Glc' String
+              rmesc' [] acc = Right $ acc
+              rmesc' (c:[]) acc = Right $ c:acc
+              rmesc' (c1:c2:t) acc = if c1 == '\\' then
+                                         (\escs-> rmesc' t (escs:acc))
+                                         =<< convEsc (c1:c2:[]) o
+                                     else
+                                       rmesc' (c2:t) (c1:acc)
+      StringLit o Raw s -> T.Lit . T.StringLit <$> stripQuotes s o
           -- Escape all things that need to be escaped so that we can
           -- transform a raw string to an interpreted string
-        where esc :: String -> String
-              esc =
-                concatMap
-                  (\c ->
-                     case c of
-                       '\\' -> "\\\\"
-                       '"'  -> "\\\""
-                       _    -> [c])
   recurse st e@(Var ident@(Identifier o vname)) -- Should be defined, otherwise we're trying to use undefined variable
    = do
     msi <- S.lookup st vname
@@ -935,6 +924,24 @@ instance Symbolize Expr T.Expr where
       _ ->
         return $ T.Arguments <$> (toBase e =<< ect') <*-> T.Ident vname <*> eel'
   recurse _ (Arguments _ e _) = return $ Left $ createError e ESNotIdent
+
+-- Convert literal escapes to actual escapes
+convEsc :: String -> Offset -> Glc' Char
+convEsc cs o =
+  case cs !! 1 of
+    '\\' ->
+      case cs !! 2 of
+        'a'  -> Right '\a'
+        'b'  -> Right '\b'
+        'f'  -> Right '\f'
+        'n'  -> Right '\n'
+        'r'  -> Right '\r'
+        't'  -> Right '\t'
+        'v'  -> Right '\v'
+        '\'' -> Right '\''
+        '\\' -> Right '\\'
+        c    -> Left $ createError o (RuneInvalidEsc c) -- Should never happen because scanner guarantees these escape characters
+    c -> Right c
 
 -- | Strip first and last character of a string
 stripQuotes :: String -> Offset -> Glc' String
