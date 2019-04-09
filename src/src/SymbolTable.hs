@@ -627,30 +627,22 @@ instance Symbolize Stmt T.Stmt where
   recurse st (For (ForClause ss1 me ss2) s) =
     S.wrap st $ do
       ess1' <- recurse st ss1
+      ee' <- condition me
       ess2' <- recurse st ss2
       es' <- recurse st s
-      maybe
-        (return $
-         (\ss1' ->
-            (\ss2' -> (Right . T.For (T.ForClause ss1' Nothing ss2')) =<< es') =<<
-            ess2') =<<
-         ess1')
-        (\e -> do
-           et' <- infer st e
-           either
-             (return . Left)
-             (\t' ->
-                if C.get (resolveCType t') == PBool
-                  then return $
-                       (\ss1' ->
-                          (\ss2' ->
-                             (Right . T.For (T.ForClause ss1' Nothing ss2')) =<<
-                             es') =<<
-                          ess2') =<<
-                       ess1'
-                  else return $ Left $ createError e (CondBool e t'))
-             et')
-        me
+      return $ T.For <$> (T.ForClause <$> ess1' <*> ee' <*> ess2') <*> es'
+    where
+      condition :: Maybe Expr -> ST s (Glc' (Maybe T.Expr))
+      condition Nothing = return $ pure Nothing
+      condition (Just e) = do
+        et' <- infer st e
+        ee' <- recurse st e
+        return $
+          (\t' ->
+             if C.get (resolveCType t') == PBool
+               then Just <$> ee'
+               else Left $ createError e (CondBool e t')) =<<
+          et'
   recurse _ (Break _) = return $ Right T.Break
   recurse _ (Continue _) = return $ Right T.Continue
   recurse st (Declare d) = T.Declare <$$> recurse st d

@@ -8,6 +8,7 @@ import           ParseCLI
 import           Prettify            (checkPrettifyInvariance, prettify)
 import           Scanner             (putExit, putSucc, scanC, scanP)
 import           SymbolTable         (symbol, typecheckGen, typecheckP)
+import           ResourceBuilder     (resourceGen)
 import           Weeding             (weed)
 
 main :: IO ()
@@ -31,5 +32,6 @@ main = do
         Typecheck -> typecheckP
         IR -> displayIR
         PrettyTypecheck -> either putExit (putStrLn . prettify) . typecheckGen
+        PrettyResource -> either putExit (putStrLn . prettify) . resourceGen
         Codegen ->
           const $ putExit $ createError' "codegen called without filename" -- This should never happen because of case above
