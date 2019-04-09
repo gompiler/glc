@@ -120,8 +120,11 @@ instance VarIndices Stmt where
       If _ (ss, _) s1 s2    -> indices ss ++ indices s1 ++ indices s2
       Switch _ ss _ cases s -> indices ss ++ (indices =<< cases) ++ indices s
       For _ clause s        -> indices clause ++ indices s
-      VarDecl i _ _         -> [i]
+      VarDecl vdl           -> indices =<< vdl
       _                     -> []
+
+instance VarIndices VarDecl' where
+  indices (VarDecl' i _ _) = [i]
 
 instance VarIndices SwitchCase where
   indices (Case _ s) = indices s
