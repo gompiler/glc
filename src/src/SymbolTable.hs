@@ -630,27 +630,21 @@ instance Symbolize Stmt T.Stmt where
       ess2' <- recurse st ss2
       es' <- recurse st s
       maybe
-        (return $
-         (\ss1' ->
-            (\ss2' -> (Right . T.For (T.ForClause ss1' Nothing ss2')) =<< es') =<<
-            ess2') =<<
-         ess1')
+        (return $ createForInf <$> ess1' <*> ess2' <*> es')
         (\e -> do
            et' <- infer st e
-           either
-             (return . Left)
-             (\t' ->
-                if C.get (resolveCType t') == PBool
-                  then return $
-                       (\ss1' ->
-                          (\ss2' ->
-                             (Right . T.For (T.ForClause ss1' Nothing ss2')) =<<
-                             es') =<<
-                          ess2') =<<
-                       ess1'
-                  else return $ Left $ createError e (CondBool e t'))
-             et')
+           ee' <- recurse st e
+           return $ (\t' ->
+                       if C.get (resolveCType t') == PBool
+                       then createFor <$> ess1' <*> ess2' <*> es' <*> ee'
+                       else Left $ createError e (CondBool e t')) =<< et'
+        )
         me
+        where
+          createForInf :: T.SimpleStmt -> T.SimpleStmt -> T.Stmt -> T.Stmt
+          createForInf ss1' ss2' s' = T.For (T.ForClause ss1' Nothing ss2') s'
+          createFor :: T.SimpleStmt -> T.SimpleStmt -> T.Stmt -> T.Expr -> T.Stmt
+          createFor ss1' ss2' s' e' = T.For (T.ForClause ss1' (Just e') ss2') s'
   recurse _ (Break _) = return $ Right T.Break
   recurse _ (Continue _) = return $ Right T.Continue
   recurse st (Declare d) = T.Declare <$$> recurse st d
