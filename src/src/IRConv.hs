@@ -183,7 +183,16 @@ instance IRRep T.Stmt where
       Just e -> toIR e ++ iri [Store (typeToIRType t) idx]
       _ -> -- Get default and store
         case t of
-          (T.ArrayType _ _) -> undefined -- TODO: Multidimensional...
+          (T.ArrayType l at) ->
+            case at of
+              T.ArrayType {} -> undefined -- TODO
+              T.SliceType {} -> undefined -- TODO
+              T.PInt -> iri [LDC (LDCInt l), NewArray IRInt]
+              T.PFloat64 -> iri [LDC (LDCInt l), NewArray IRDouble]
+              T.PBool -> iri [LDC (LDCInt l), NewArray IRInt]
+              T.PRune -> iri [LDC (LDCInt l), NewArray IRInt]
+              T.PString -> iri [LDC (LDCInt l), ANewArray jString]
+              T.StructType _ -> undefined -- TODO
           T.SliceType {} ->
             iri [New cSlice, Dup, InvokeSpecial sliceInit, Store Object idx]
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
