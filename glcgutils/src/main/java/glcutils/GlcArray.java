@@ -5,14 +5,20 @@ import java.lang.reflect.Array;
 public class GlcArray<T> {
     int length;
     T[] array;
-    final Class<? extends T> clazz;
+    final Supplier< T> supplier;
+    final Class<? extends T > clazz;
 
     public GlcArray(Class<? extends T> clazz, int length) {
-        this(clazz, length, null);
+        this(() -> Utils.newInstance(clazz), clazz, length, null);
     }
 
-    public GlcArray(Class<? extends T> clazz, int length, T[] array) {
+    public GlcArray(Supplier< T> supplier, Class<? extends T> clazz, int length) {
+        this(supplier, clazz, length, null);
+    }
+
+    GlcArray(Supplier< T> supplier, Class<? extends T> clazz, int length, T[] array) {
         this.length = length;
+        this.supplier = supplier;
         this.clazz = clazz;
         this.array = array;
     }
@@ -39,8 +45,8 @@ public class GlcArray<T> {
      * Generate a new element entry,
      * based on the struct supplier definition
      */
-    final T supply() {
-        return Utils.newInstance(clazz);
+    public T supply() {
+        return supplier.get();
     }
 
     /**

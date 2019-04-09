@@ -10,7 +10,7 @@ public class GlcIntArray {
         this(length, null);
     }
 
-    public GlcIntArray(int length, int[] array) {
+    GlcIntArray(int length, int[] array) {
         this.length = length;
         this.array = array;
     }
