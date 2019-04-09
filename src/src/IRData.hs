@@ -167,6 +167,7 @@ data Instruction
   | IConst1 -- 1
   | DCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
   | New ClassRef -- class
+  | CheckCast ClassOrArrayRef
   | ANewArray ClassRef
   | MultiANewArray JType Int
   | NewArray IRPrimitive

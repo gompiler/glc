@@ -310,9 +310,6 @@ instance IRRep T.SimpleStmt where
     where
       getValue :: (T.Expr, T.Expr) -> [IRItem]
       getValue (se, ve) =
-        -- case mAop of
-        --   Nothing -> toIR ve ++ cloneIfNeeded ve
-        --   Just op ->
         case (mAop, se) of
           (Nothing, T.Index _ ea ei) ->
             toIR ea ++ toIR ei ++ toIR ve ++ cloneIfNeeded ve
@@ -615,11 +612,13 @@ cloneIfNeeded e =
       iri
         [ InvokeVirtual $
           MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
+        , CheckCast (CRef cr)
         ]
     JArray jt ->
       iri
         [ InvokeVirtual $
           MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
+        , CheckCast (ARef jt)
         ]
     _ -> [] -- Primitives and strings are not clonable
 
@@ -630,11 +629,13 @@ objectRepr t =
       iri
         [ InvokeVirtual $
           MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
+        , CheckCast (CRef cr)
         ]
     JArray jt ->
       iri
         [ InvokeVirtual $
           MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
+        , CheckCast (ARef jt)
         ]
     JInt ->
       iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit] -- e, o -> o, e, o -> o, o, e -> o
@@ -746,6 +747,7 @@ stackDelta IConst0 = 1 -- ... -> ..., 0
 stackDelta IConst1 = 1 -- ... -> ..., 1
 stackDelta DCmpG = -3 -- ..., v1, v2 -> ..., r
 stackDelta New {} = 1 -- ... -> ..., o
+stackDelta CheckCast {} = 0 -- ..., o -> ..., o (checked)
 stackDelta ANewArray {} = 0 -- ..., c -> ..., o
 stackDelta (MultiANewArray _ c) = (-c) + 1 -- ..., c1, c2, .. -> ..., o
 stackDelta NewArray {} = 0 -- ..., c -> ..., o

@@ -130,6 +130,8 @@ instance Bytecode Instruction where
           typename IRInt    = "int"
           typename IRDouble = "double"
       toBCStr (New (ClassRef cn)) = ["new ", cn]
+      toBCStr (CheckCast (CRef (ClassRef cn))) = ["checkcast ", cn]
+      toBCStr (CheckCast (ARef jt)) = ["checkcast [", show jt]
       toBCStr NOp = ["nop"]
       toBCStr Pop = ["pop"]
       toBCStr Pop2 = ["pop2"]
