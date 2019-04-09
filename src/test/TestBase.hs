@@ -29,6 +29,7 @@ module TestBase
   , expectPrettyInvar
   , todoSpec
   , qcGen
+  , unless
   ) where
 
 import Base
