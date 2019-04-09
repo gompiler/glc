@@ -30,10 +30,8 @@ gen: src/generated/TokenGen.hs src/generated/ParserGen.hs
 .PHONY: report
 report: stack --allow-different-user hpc report glc.tix
 
-../glcgutils/target/glcutils-1.0-SNAPSHOT.jar: ../glcgutils/pom.xml $(JAVAFILES)
+$(JFILES): ../glcgutils/pom.xml $(JAVAFILES)
 	mvn install -f ../glcgutils
-
-$(JFILES): ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar
 	python3 ../Krakatau/disassemble.py ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar
 
 src/generated/TokenGen.hs: golite.x
