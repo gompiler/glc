@@ -23,7 +23,7 @@ L7:
     .end code 
 .end method 
 
-.method public <init> : (I[I)V 
+.method <init> : (I[I)V 
     .code stack 2 locals 3 
 L0:     aload_0 
 L1:     invokespecial Method java/lang/Object <init> ()V 
