@@ -33,4 +33,19 @@ public class GlcDataTest {
         a1.set(3, 3);
         assertNotEquals("Structural inequality failed", a1, a2);
     }
+
+    @Test
+    public void arrayEquality() {
+        GlcStruct2 s = new GlcStruct2();
+        GlcArray<GlcStruct2> a1 = new GlcArray<>(GlcStruct2.class, 8);
+        GlcArray<GlcStruct2> a2 = new GlcArray<>(GlcStruct2.class, 8);
+        GlcArray<GlcStruct2> a3 = new GlcArray<>(GlcStruct2.class, 5);
+        assertEquals("Reference equality failed", a1, a1);
+        assertEquals("Structural equality failed", a1, a2);
+        assertNotEquals("Length inequality failed", a1, a3);
+        a1.set(3, s);
+        assertEquals("Nested struct generation failed", a1, a2);
+        s.setFloatField(8f);
+        assertNotEquals("Structural inequality failed", a1, a2);
+    }
 }

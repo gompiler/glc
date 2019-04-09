@@ -105,6 +105,11 @@ public class GlcArray<T> {
         if (!this.clazz.equals(other.clazz)) {
             return false;
         }
+        if (array == other.array) {
+            return true;
+        }
+        init();
+        other.init();
         for (int i = 0; i < length(); i++) {
             if (array[i] == other.array[i]) {
                 continue;

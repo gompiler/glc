@@ -11,7 +11,7 @@ public class GlcStruct2 {
      * All fields have getters and setters
      */
 
-    public void setFloatField(int o) {
+    public void setFloatField(float o) {
         this.floatField = o;
     }
 
