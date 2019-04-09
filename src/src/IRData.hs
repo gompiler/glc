@@ -81,6 +81,7 @@ instance Show MethodRef where
 data JType
   = JClass ClassRef -- Lwhatever;
   | JArray JType -- [ as a prefix, ex. [I
+  | JChar -- C
   | JInt -- I
   | JDouble -- D
   | JBool -- Z
@@ -90,6 +91,7 @@ data JType
 instance Show JType where
   show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
   show (JArray jt)            = "[" ++ show jt
+  show JChar                  = "C"
   show JInt                   = "I"
   show JDouble                = "D"
   show JBool                  = "Z"
@@ -197,6 +199,12 @@ systemOut = FieldRef (ClassRef "java/lang/System") "out"
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
 
+jCharacter :: ClassRef
+jCharacter = ClassRef "java/lang/Character"
+
+jCharInit :: MethodRef
+jCharInit = MethodRef (CRef jCharacter) "<init>" (MethodSpec ([JChar], JVoid))
+
 jInteger :: ClassRef
 jInteger = ClassRef "java/lang/Integer"
 
@@ -206,9 +214,9 @@ jIntInit = MethodRef (CRef jInteger) "<init>" (MethodSpec ([JInt], JVoid))
 jIntValue :: MethodRef
 jIntValue = MethodRef (CRef jInteger) "intValue" (MethodSpec ([], JInt))
 
-jIntToString :: MethodRef
-jIntToString =
-  MethodRef (CRef jInteger) "toString" (MethodSpec ([JInt], JClass jString))
+jValueOfChar :: MethodRef
+jValueOfChar =
+  MethodRef (CRef jString) "valueOf" (MethodSpec ([JChar], JClass jString))
 
 jDouble :: ClassRef
 jDouble = ClassRef "java/lang/Double"

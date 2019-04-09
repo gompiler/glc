@@ -82,7 +82,7 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
         intToString =
           iri
             [ Load (Prim IRInt) (T.VarIndex 0)
-            , InvokeStatic jIntToString
+            , InvokeStatic jValueOfChar
             , Return (Just Object)
             ]
     vdToFields :: T.TopVarDecl -> [Field]
@@ -657,6 +657,8 @@ objectRepr t =
           MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
         , CheckCast (ARef jt)
         ]
+    JChar ->
+      iri [New jCharacter, DupX1, Swap, InvokeSpecial jCharInit] -- e, o -> o, e, o -> o, o, e -> o
     JInt ->
       iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit] -- e, o -> o, e, o -> o, o, e -> o
     JDouble -- e1, e2, o -> e1, e2, o, o -> o, o, e1, e2, o, o -> o, o, e1, e2 -> o
