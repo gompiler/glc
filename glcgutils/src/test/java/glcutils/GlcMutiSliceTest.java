@@ -2,7 +2,7 @@ package glcutils;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertNotNull;
 
 public class GlcMutiSliceTest {
 
@@ -13,27 +13,40 @@ public class GlcMutiSliceTest {
         assertNotNull(a.get(0));
     }
 
-    private static class GlcSlice$String$2 extends GlcSlice<GlcSlice$String$1> {
+    /*
+     * Structure is the same for all levels
+     */
+
+    private static class GlcSlice$String$2 extends GlcArray<GlcSlice$String$1> {
 
         public GlcSlice$String$2() {
-            super(GlcSlice$String$1.class);
+            this(0, null);
         }
 
-        @Override
+        public GlcSlice$String$2(int length, GlcSlice$String$1[] array) {
+            super(GlcSlice$String$1.class, length, array);
+        }
+
         public GlcSlice$String$2 append(GlcSlice$String$1 s) {
-            return (GlcSlice$String$2) super.append(s);
+            GlcSlice$String$1[] newArray = GlcSliceUtils.append(this.clazz, this.array, this.length, s);
+            return new GlcSlice$String$2(length + 1, newArray);
         }
 
     }
 
-    private static class GlcSlice$String$1 extends GlcSlice<String> {
+    private static class GlcSlice$String$1 extends GlcArray<String> {
+
         public GlcSlice$String$1() {
-            super(() -> null, String.class);
+            this(0, null);
         }
 
-        @Override
+        public GlcSlice$String$1(int length, String[] array) {
+            super(String.class, length, array);
+        }
+
         public GlcSlice$String$1 append(String s) {
-            return (GlcSlice$String$1) super.append(s);
+            String[] newArray = GlcSliceUtils.append(this.clazz, this.array, this.length, s);
+            return new GlcSlice$String$1(length + 1, newArray);
         }
     }
 }

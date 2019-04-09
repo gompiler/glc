@@ -12,6 +12,9 @@ public class GlcMutiArrayTest {
         assertNull(a.get(1).get(1));
     }
 
+    /**
+     * For upper levels, pass suppliers which take the first n - 1 lengths
+     */
     private static class GlcArray$String$2 extends GlcArray<GlcArray$String$1> {
 
         public GlcArray$String$2(int length1, int length2) {
@@ -20,9 +23,12 @@ public class GlcMutiArrayTest {
 
     }
 
+    /**
+     * For first level, do not provide supplier
+     */
     private static class GlcArray$String$1 extends GlcArray<String> {
         public GlcArray$String$1(int length) {
-            super(() -> null, String.class, length);
+            super(String.class, length);
         }
     }
 }

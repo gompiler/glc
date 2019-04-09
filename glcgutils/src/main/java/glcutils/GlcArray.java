@@ -5,18 +5,22 @@ import java.lang.reflect.Array;
 public class GlcArray<T> {
     int length;
     T[] array;
-    final Supplier< T> supplier;
-    final Class<? extends T > clazz;
+    final Supplier<T> supplier;
+    final Class<? extends T> clazz;
 
     public GlcArray(Class<? extends T> clazz, int length) {
-        this(() -> Utils.newInstance(clazz), clazz, length, null);
+        this(() -> Utils.baseSupply(clazz), clazz, length, null);
     }
 
-    public GlcArray(Supplier< T> supplier, Class<? extends T> clazz, int length) {
+    public GlcArray(Supplier<T> supplier, Class<? extends T> clazz, int length) {
         this(supplier, clazz, length, null);
     }
 
-    GlcArray(Supplier< T> supplier, Class<? extends T> clazz, int length, T[] array) {
+    public GlcArray(Class<? extends T> clazz, int length, T[] array) {
+        this(() -> Utils.baseSupply(clazz), clazz, length, array);
+    }
+
+    GlcArray(Supplier<T> supplier, Class<? extends T> clazz, int length, T[] array) {
         this.length = length;
         this.supplier = supplier;
         this.clazz = clazz;
