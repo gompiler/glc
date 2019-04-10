@@ -364,6 +364,19 @@ toClasses T.Program { T.structs = scts
             ++ invokeCp t
             ++ iri [PutField (FieldRef (ClassRef sn) fn) (jt)
                    , Return Nothing]
+    getter :: String -> T.FieldDecl -> Method
+    getter sn (T.FieldDecl (D.Ident fn) t) =
+      Method
+        { mname = "get_" ++ fn
+        , stackLimit = maxStackSize setBody 0
+        , localsLimit = 2 -- One for this and one for argument
+        , spec = MethodSpec ([typeToJType t], JVoid)
+        , body = setBody
+        }
+        where
+          setBody :: [IRItem]
+          setBody = let jt = typeToIRType t in
+            iri [Load Object (T.VarIndex 0)]
 
 invokeCp :: T.Type -> [IRItem]
 invokeCp t = iri $ case t of
@@ -443,80 +456,24 @@ instance IRRep T.VarDecl' where
           (T.ArrayType l at) ->
             case at -- TODO: Defaults of elements??? or null checks elsewhere?
                   of
-              T.ArrayType {} -> nestedGlcArrayIR
-              T.SliceType {} -> nestedGlcArrayIR
-              T.PInt -> arrayIR jInteger
-              T.PFloat64 -> arrayIR jDouble
-              T.PBool -> arrayIR jInteger
-              T.PRune -> arrayIR jInteger
-              T.PString -> arrayIR jString
-              T.StructType sid -> arrayIR (ClassRef $ structName sid) -- TODO: FIX THIS FOR NEW STRUCTS
-            where
-              nestedGlcArrayIR :: [IRItem]
-              nestedGlcArrayIR  =
-                iri
-                  [ New cGlcArray
-                  , Dup
-                  , LDC (LDCClass $ classOfBase t)
-                  , LDC (LDCInt $ length sizes) -- Number of dimensions of array
-                  , NewArray IRInt -- array of dimensions
-                  ] ++ sizeArrayIR ++
-                iri [ InvokeSpecial glcArrayInit, Store Object idx]
-                where sizeArrayIR :: [IRItem]
-                      sizeArrayIR =
-                        map (const $ IRInst Dup) sizes ++
-                        concatMap
-                          (\(i, s) ->
-                            iri
-                              [ LDC $ LDCInt i
-                              , LDC $ LDCInt s
-                              , ArrayStore (Prim IRInt)
-                              ])
-                          (zip [0 ..] sizes)
-                      sizes :: [Int]
-                      sizes = getSizes [l] at
-                      getSizes :: [Int] -> T.Type -> [Int]
-                      getSizes rSizes rt =
-                        case rt of
-                          T.ArrayType rl rrt -> getSizes (rl : rSizes) rrt
-                          T.SliceType rrt    -> getSizes (-1 : rSizes) rrt
-                          _                  -> reverse rSizes -- no more arrays
-                      classOfBase :: T.Type -> ClassRef
-                      classOfBase ct =
-                        case ct of
-                          (T.ArrayType _ rt) -> classOfBase rt
-                          (T.SliceType rt) -> classOfBase rt
-                          T.PInt -> jInteger
-                          T.PFloat64 -> jDouble
-                          T.PRune -> jInteger
-                          T.PBool -> jInteger
-                          T.PString -> jString
-                          T.StructType sid -> ClassRef (structName sid)
-              arrayIR :: ClassRef -> [IRItem]
-              arrayIR cr =
-                iri
-                  [ New cGlcArray
-                  , Dup
-                  , LDC (LDCClass cr)
-                  , IConst1
-                  , NewArray IRInt
-                  , Dup
-                  , IConst0
-                  , LDC (LDCInt l)
-                  , ArrayStore (Prim IRInt)
-                  , InvokeSpecial glcArrayInit
-                  , Store Object idx
-                  ]
+              T.ArrayType {} -> nestedGlcArrayIR t idx
+              T.SliceType {} -> nestedGlcArrayIR t idx
+              T.PInt -> arrayOrSliceIR jInteger l idx
+              T.PFloat64 -> arrayOrSliceIR jDouble l idx
+              T.PBool -> arrayOrSliceIR jInteger l idx
+              T.PRune -> arrayOrSliceIR jInteger l idx
+              T.PString -> arrayOrSliceIR jString l idx
+              T.StructType sid -> arrayOrSliceIR (ClassRef $ structName sid) l idx -- TODO: FIX THIS FOR NEW STRUCTS
           (T.SliceType st) ->
             case st of
-              T.ArrayType {} -> newSliceIR cGlcArray idx
-              T.SliceType {} -> newSliceIR cGlcArray idx
-              T.PInt -> newSliceIR jInteger idx
-              T.PFloat64 -> newSliceIR jDouble idx
-              T.PRune -> newSliceIR jInteger idx
-              T.PBool -> newSliceIR jInteger idx
-              T.PString -> newSliceIR jString idx
-              T.StructType sid -> newSliceIR (ClassRef $ structName sid) idx
+              T.ArrayType {} -> nestedGlcArrayIR t idx
+              T.SliceType {} -> nestedGlcArrayIR t idx
+              T.PInt -> arrayOrSliceIR jInteger (-1) idx
+              T.PFloat64 -> arrayOrSliceIR jDouble (-1) idx
+              T.PRune -> arrayOrSliceIR jInteger (-1) idx
+              T.PBool -> arrayOrSliceIR jInteger (-1) idx
+              T.PString -> arrayOrSliceIR jString (-1) idx
+              T.StructType sid -> arrayOrSliceIR (ClassRef $ structName sid) (-1) idx
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
@@ -532,6 +489,62 @@ instance IRRep T.VarDecl' where
                      emptySpec)
               , Store Object idx
               ]
+
+nestedGlcArrayIR :: T.Type -> T.VarIndex -> [IRItem]
+nestedGlcArrayIR t idx =
+  iri
+  [ New cGlcArray
+  , Dup
+  , LDC (LDCClass $ classOfBase t)
+  , LDC (LDCInt $ length sizes) -- Number of dimensions of array
+  , NewArray IRInt -- array of dimensions
+  ] ++ sizeArrayIR ++
+  iri [ InvokeSpecial glcArrayInit, Store Object idx]
+  where sizeArrayIR :: [IRItem]
+        sizeArrayIR =
+          map (const $ IRInst Dup) sizes ++
+          concatMap
+            (\(i, s) ->
+              iri
+                [ LDC $ LDCInt i
+                , LDC $ LDCInt s
+                , ArrayStore (Prim IRInt)
+                ])
+            (zip [0 ..] sizes)
+        sizes :: [Int]
+        sizes = getSizes [] t
+        getSizes :: [Int] -> T.Type -> [Int]
+        getSizes rSizes rt =
+          case rt of
+            T.ArrayType rl rrt -> getSizes (rl : rSizes) rrt
+            T.SliceType rrt    -> getSizes (-1 : rSizes) rrt
+            _                  -> reverse rSizes -- no more arrays
+        classOfBase :: T.Type -> ClassRef
+        classOfBase ct =
+          case ct of
+            (T.ArrayType _ rt) -> classOfBase rt
+            (T.SliceType rt) -> classOfBase rt
+            T.PInt -> jInteger
+            T.PFloat64 -> jDouble
+            T.PRune -> jInteger
+            T.PBool -> jInteger
+            T.PString -> jString
+            T.StructType sid -> ClassRef (structName sid)
+arrayOrSliceIR :: ClassRef -> Int -> T.VarIndex -> [IRItem]
+arrayOrSliceIR cr l idx =
+  iri
+  [ New cGlcArray
+  , Dup
+  , LDC (LDCClass cr)
+  , IConst1
+  , NewArray IRInt
+  , Dup
+  , IConst0
+  , LDC (LDCInt l)
+  , ArrayStore (Prim IRInt)
+  , InvokeSpecial glcArrayInit
+  , Store Object idx
+  ]
 
 newSliceIR :: ClassRef -> T.VarIndex -> [IRItem]
 newSliceIR cr idx =
