@@ -718,6 +718,7 @@ equality idx t =
       iri
         [ InvokeVirtual stringEquals
         , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        , IConst0
         , Goto ("stop_eq_" ++ show idx)
         ] ++
       eqPostfix
@@ -726,6 +727,7 @@ equality idx t =
       iri
         [ DCmpG
         , If IRData.EQ ("true_eq_" ++ show idx) -- dcmpg is 0, they're equal
+        , IConst0
         , Goto ("stop_eq_" ++ show idx)
         ] ++
       eqPostfix
