@@ -234,7 +234,8 @@ instance IRRep T.Stmt where
           toCaseHeader ce =
             IRInst Dup :
             toIR ce ++
-            iri [If IRData.EQ $ "case_" ++ show cIdx ++ "_" ++ show idx] -- TODO: NEED SPECIAL EQUALITY STUFF!!! this is = 0
+            equality cIdx (exprType ce) ++
+            iri [If IRData.NE $ "case_" ++ show cIdx ++ "_" ++ show idx] -- If it's true, make the jump
   toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =
     toIR lstmt ++
     IRLabel ("loop_" ++ show idx) :
@@ -537,46 +538,9 @@ instance IRRep T.Expr where
     iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
     toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
   toIR (T.Binary (T.LabelIndex idx) _ T.EQ e1 e2) =
-    case exprType e1 of
-      T.ArrayType {} -> undefined -- TODO
-      T.PString ->
-        toIR e1 ++
-        toIR e2 ++
-        iri
-          [ InvokeVirtual stringEquals
-          , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
-          , Goto ("stop_eq_" ++ show idx)
-          ] ++
-        eqPostfix
-      (T.StructType (D.Ident _)) -> undefined -- TODO
-      T.PFloat64 ->
-        toIR e1 ++
-        toIR e2 ++
-        iri
-          [ DCmpG
-          , If IRData.EQ ("true_eq_" ++ show idx) -- dcmpg is 0, they're equal
-          , Goto ("stop_eq_" ++ show idx)
-          ] ++
-        eqPostfix
-      T.SliceType {} -> error "Cannot compare slice equality"
-      _
-        -- Integer types
-       ->
-        toIR e1 ++
-        toIR e2 ++
-        iri
-          [ IfICmp IRData.EQ ("true_eq_" ++ show idx)
-          , IConst0
-          , Goto ("stop_eq_" ++ show idx)
-          ] ++
-        eqPostfix
-    where
-      eqPostfix :: [IRItem]
-      eqPostfix =
-        [ IRLabel ("true_eq_" ++ show idx)
-        , IRInst IConst1
-        , IRLabel ("stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
-        ]
+    toIR e1 ++
+    toIR e2 ++
+    equality idx (exprType e1)
   toIR (T.Binary idx t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary idx t T.EQ e1 e2)) -- != is =, !
   toIR (T.Binary (T.LabelIndex idx) _ op e1 e2) -- comparisons
@@ -732,6 +696,43 @@ objectDecode t -- TODO: Maybe this should just be IRType
     T.PRune        -> iri [InvokeVirtual jIntValue]
     T.PString      -> [] -- nothing to do
     T.StructType _ -> [] -- nothing to do
+
+equality :: Int -> T.Type -> [IRItem]
+equality idx t =
+  case t of
+    T.ArrayType {} -> undefined -- TODO
+    T.PString ->
+      iri
+        [ InvokeVirtual stringEquals
+        , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        , Goto ("stop_eq_" ++ show idx)
+        ] ++
+      eqPostfix
+    (T.StructType (D.Ident _)) -> undefined -- TODO
+    T.PFloat64 ->
+      iri
+        [ DCmpG
+        , If IRData.EQ ("true_eq_" ++ show idx) -- dcmpg is 0, they're equal
+        , Goto ("stop_eq_" ++ show idx)
+        ] ++
+      eqPostfix
+    T.SliceType {} -> error "Cannot compare slice equality"
+    _
+      -- Integer types
+     ->
+      iri
+        [ IfICmp IRData.EQ ("true_eq_" ++ show idx)
+        , IConst0
+        , Goto ("stop_eq_" ++ show idx)
+        ] ++
+      eqPostfix
+  where
+    eqPostfix :: [IRItem]
+    eqPostfix =
+      [ IRLabel ("true_eq_" ++ show idx)
+      , IRInst IConst1
+      , IRLabel ("stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
+      ]
 
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
