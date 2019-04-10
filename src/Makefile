@@ -1,8 +1,8 @@
 COMPILE_FLAGS = --pedantic --coverage
-JLIBS = GlcArray Utils GlcIntSlice GlcArray GlcIntArray
+JSRCDIR = ../glcgutils/src/main/java/glcutils/
+JAVAFILES = $(wildcard $(JSRCDIR)*.java)
+JLIBS = $(basename $(notdir $(JAVAFILES)))
 JFILES = $(addsuffix .j,$(addprefix glcutils/,$(JLIBS)))
-JFILES_NOUTILS = $(filterout Utils,$(JFILES))
-JAVAFILES = $(addsuffix .java,$(addprefix ../glcgutils/src/main/java/glcutils/,$(JLIBS)))
 
 .PHONY: all
 all: glc
@@ -16,6 +16,7 @@ clean:
 cleangen:
 	@rm -f src/generated/TokenGen.hs
 	@rm -f src/generated/ParserGen.hs
+	@rm -rf glcutils
 	mvn clean -f ../glcgutils
 
 .PHONY: build
@@ -28,9 +29,10 @@ gen: src/generated/TokenGen.hs src/generated/ParserGen.hs $(JFILES)
 .PHONY: report
 report: stack --allow-different-user hpc report glc.tix
 
-$(JFILES_NOUTILS): glcutils/Utils.j
+$(JFILES): glcutils
 
-glcutils/Utils.j: ../glcgutils/pom.xml $(JAVAFILES)
+glcutils: ../glcgutils/pom.xml $(JAVAFILES)
+	@rm -rf glcutils
 	mvn install -f ../glcgutils
 	python3 ../Krakatau/disassemble.py ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar
 

@@ -1,5 +1,5 @@
 .version 52 0 
-.class public super glcutils/GlcIntArray 
+.class public super glcutils/GlcArray$Int_1 
 .super java/lang/Object 
 .field length I 
 .field array [I 
@@ -9,7 +9,7 @@
 L0:     aload_0 
 L1:     iload_1 
 L2:     aconst_null 
-L3:     invokespecial Method glcutils/GlcIntArray <init> (I[I)V 
+L3:     invokespecial Method glcutils/GlcArray$Int_1 <init> (I[I)V 
 L6:     return 
 L7:     
         .linenumbertable 
@@ -17,7 +17,7 @@ L7:
             L6 11 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L7 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L7 
             1 is length I from L0 to L7 
         .end localvariabletable 
     .end code 
@@ -29,10 +29,10 @@ L0:     aload_0
 L1:     invokespecial Method java/lang/Object <init> ()V 
 L4:     aload_0 
 L5:     iload_1 
-L6:     putfield Field glcutils/GlcIntArray length I 
+L6:     putfield Field glcutils/GlcArray$Int_1 length I 
 L9:     aload_0 
 L10:    aload_2 
-L11:    putfield Field glcutils/GlcIntArray array [I 
+L11:    putfield Field glcutils/GlcArray$Int_1 array [I 
 L14:    return 
 L15:    
         .linenumbertable 
@@ -42,7 +42,7 @@ L15:
             L14 16 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L15 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L15 
             1 is length I from L0 to L15 
             2 is array [I from L0 to L15 
         .end localvariabletable 
@@ -52,13 +52,13 @@ L15:
 .method final init : ()V 
     .code stack 2 locals 1 
 L0:     aload_0 
-L1:     getfield Field glcutils/GlcIntArray array [I 
+L1:     getfield Field glcutils/GlcArray$Int_1 array [I 
 L4:     ifnonnull L17 
 L7:     aload_0 
 L8:     aload_0 
-L9:     getfield Field glcutils/GlcIntArray length I 
+L9:     getfield Field glcutils/GlcArray$Int_1 length I 
 L12:    newarray int 
-L14:    putfield Field glcutils/GlcIntArray array [I 
+L14:    putfield Field glcutils/GlcArray$Int_1 array [I 
 
         .stack same 
 L17:    return 
@@ -69,7 +69,7 @@ L18:
             L17 25 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L18 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L18 
         .end localvariabletable 
     .end code 
 .end method 
@@ -77,9 +77,9 @@ L18:
 .method public final get : (I)I 
     .code stack 2 locals 2 
 L0:     aload_0 
-L1:     invokevirtual Method glcutils/GlcIntArray init ()V 
+L1:     invokevirtual Method glcutils/GlcArray$Int_1 init ()V 
 L4:     aload_0 
-L5:     getfield Field glcutils/GlcIntArray array [I 
+L5:     getfield Field glcutils/GlcArray$Int_1 array [I 
 L8:     iload_1 
 L9:     iaload 
 L10:    ireturn 
@@ -89,7 +89,7 @@ L11:
             L4 32 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L11 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L11 
             1 is i I from L0 to L11 
         .end localvariabletable 
     .end code 
@@ -98,9 +98,9 @@ L11:
 .method public final set : (II)V 
     .code stack 3 locals 3 
 L0:     aload_0 
-L1:     invokevirtual Method glcutils/GlcIntArray init ()V 
+L1:     invokevirtual Method glcutils/GlcArray$Int_1 init ()V 
 L4:     aload_0 
-L5:     getfield Field glcutils/GlcIntArray array [I 
+L5:     getfield Field glcutils/GlcArray$Int_1 array [I 
 L8:     iload_1 
 L9:     iload_2 
 L10:    iastore 
@@ -112,7 +112,7 @@ L12:
             L11 41 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L12 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L12 
             1 is i I from L0 to L12 
             2 is t I from L0 to L12 
         .end localvariabletable 
@@ -122,14 +122,14 @@ L12:
 .method public final length : ()I 
     .code stack 1 locals 1 
 L0:     aload_0 
-L1:     getfield Field glcutils/GlcIntArray length I 
+L1:     getfield Field glcutils/GlcArray$Int_1 length I 
 L4:     ireturn 
 L5:     
         .linenumbertable 
             L0 48 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L5 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L5 
         .end localvariabletable 
     .end code 
 .end method 
@@ -137,14 +137,14 @@ L5:
 .method public final capacity : ()I 
     .code stack 1 locals 1 
 L0:     aload_0 
-L1:     getfield Field glcutils/GlcIntArray array [I 
+L1:     getfield Field glcutils/GlcArray$Int_1 array [I 
 L4:     ifnonnull L11 
 L7:     iconst_0 
 L8:     goto L16 
 
         .stack same 
 L11:    aload_0 
-L12:    getfield Field glcutils/GlcIntArray array [I 
+L12:    getfield Field glcutils/GlcArray$Int_1 array [I 
 L15:    arraylength 
 
         .stack stack_1 Integer 
@@ -154,7 +154,7 @@ L17:
             L0 56 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L17 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L17 
         .end localvariabletable 
     .end code 
 .end method 
@@ -182,34 +182,34 @@ L23:    ireturn
 
         .stack same 
 L24:    aload_1 
-L25:    checkcast glcutils/GlcIntArray 
+L25:    checkcast glcutils/GlcArray$Int_1 
 L28:    astore_2 
 L29:    aload_0 
-L30:    getfield Field glcutils/GlcIntArray length I 
+L30:    getfield Field glcutils/GlcArray$Int_1 length I 
 L33:    aload_2 
-L34:    getfield Field glcutils/GlcIntArray length I 
+L34:    getfield Field glcutils/GlcArray$Int_1 length I 
 L37:    if_icmpeq L42 
 L40:    iconst_0 
 L41:    ireturn 
 
-        .stack append Object glcutils/GlcIntArray 
+        .stack append Object glcutils/GlcArray$Int_1 
 L42:    aload_0 
-L43:    getfield Field glcutils/GlcIntArray array [I 
+L43:    getfield Field glcutils/GlcArray$Int_1 array [I 
 L46:    aload_2 
-L47:    getfield Field glcutils/GlcIntArray array [I 
+L47:    getfield Field glcutils/GlcArray$Int_1 array [I 
 L50:    if_acmpne L55 
 L53:    iconst_1 
 L54:    ireturn 
 
         .stack same 
 L55:    aload_0 
-L56:    invokevirtual Method glcutils/GlcIntArray init ()V 
+L56:    invokevirtual Method glcutils/GlcArray$Int_1 init ()V 
 L59:    aload_2 
-L60:    invokevirtual Method glcutils/GlcIntArray init ()V 
+L60:    invokevirtual Method glcutils/GlcArray$Int_1 init ()V 
 L63:    aload_0 
-L64:    getfield Field glcutils/GlcIntArray array [I 
+L64:    getfield Field glcutils/GlcArray$Int_1 array [I 
 L67:    aload_2 
-L68:    getfield Field glcutils/GlcIntArray array [I 
+L68:    getfield Field glcutils/GlcArray$Int_1 array [I 
 L71:    invokestatic Method java/util/Arrays equals ([I[I)Z 
 L74:    ireturn 
 L75:    
@@ -228,9 +228,9 @@ L75:
             L63 76 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L75 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L75 
             1 is obj Ljava/lang/Object; from L0 to L75 
-            2 is other Lglcutils/GlcIntArray; from L29 to L75 
+            2 is other Lglcutils/GlcArray$Int_1; from L29 to L75 
         .end localvariabletable 
     .end code 
 .end method 
@@ -238,7 +238,7 @@ L75:
 .method public hashCode : ()I 
     .code stack 1 locals 1 
 L0:     aload_0 
-L1:     getfield Field glcutils/GlcIntArray array [I 
+L1:     getfield Field glcutils/GlcArray$Int_1 array [I 
 L4:     invokestatic Method java/util/Arrays hashCode ([I)I 
 L7:     ireturn 
 L8:     
@@ -246,7 +246,7 @@ L8:
             L0 81 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L8 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L8 
         .end localvariabletable 
     .end code 
 .end method 
@@ -254,7 +254,7 @@ L8:
 .method public toString : ()Ljava/lang/String; 
     .code stack 1 locals 1 
 L0:     aload_0 
-L1:     getfield Field glcutils/GlcIntArray array [I 
+L1:     getfield Field glcutils/GlcArray$Int_1 array [I 
 L4:     invokestatic Method java/util/Arrays toString ([I)Ljava/lang/String; 
 L7:     areturn 
 L8:     
@@ -262,9 +262,9 @@ L8:
             L0 86 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcIntArray; from L0 to L8 
+            0 is this Lglcutils/GlcArray$Int_1; from L0 to L8 
         .end localvariabletable 
     .end code 
 .end method 
-.sourcefile 'GlcIntArray.java' 
+.sourcefile 'GlcArray$Int_1.java' 
 .end class 
