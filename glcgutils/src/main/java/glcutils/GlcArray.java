@@ -1,73 +1,80 @@
 package glcutils;
 
-import java.lang.reflect.Array;
+import java.util.Arrays;
 
-public class GlcArray<T> {
-    int length;
-    T[] array;
-    private final Supplier<T> supplier;
-    final Class<? extends T> clazz;
+public class GlcArray {
+    private final int length;
+    private final boolean isSlice;
+    private final int[] subSizes;
+    private final boolean debug;
+    private Object[] array;
+    private final Class clazz;
 
-    public GlcArray(Class<? extends T> clazz, int length) {
-        this(clazz, length, null);
+    public GlcArray(Class clazz, int[] sizes) {
+        this(clazz, sizes, false);
     }
 
-    public GlcArray(Supplier<T> supplier, Class<? extends T> clazz, int length) {
-        this(supplier, clazz, length, null);
+     GlcArray(Class clazz, int[] sizes, boolean debug) {
+        this(clazz, sizes[0] < 0, Utils.tail(sizes), Math.max(0, sizes[0]), null, debug);
     }
 
-    public GlcArray(Class<? extends T> clazz, int length, T[] array) {
-        this(() -> Utils.supply(clazz), clazz, length, array);
-    }
-
-    GlcArray(Supplier<T> supplier, Class<? extends T> clazz, int length, T[] array) {
+    private GlcArray(Class clazz, boolean isSlice, int[] subSizes, int length, Object[] array, boolean debug) {
         this.length = length;
-        this.supplier = supplier;
+        this.isSlice = isSlice;
+        this.subSizes = subSizes;
         this.clazz = clazz;
         this.array = array;
+        this.debug = debug;
     }
 
     /**
      * Ensures that array is nonnull
      */
-    final void init() {
+    private void init() {
         if (array == null) {
-            array = create(length);
+            array = new Object[length];
         }
-    }
-
-    /**
-     * Generates a new array of the provided length
-     * Note that each value is null
-     */
-    final T[] create(int length) {
-        //noinspection unchecked
-        return (T[]) Array.newInstance(this.clazz, length);
     }
 
     /**
      * Generate a new element entry,
      * based on the struct supplier definition
      */
-    public T supply() {
-        return supplier.get();
+    private Object supply() {
+        if (subSizes.length == 0) {
+            return Utils.supplyObj(clazz);
+        }
+        return new GlcArray(clazz, subSizes, debug);
     }
 
     /**
      * Return nonnull struct if index is within bounds
      */
-    public final T get(int i) {
+    public final <T> T get(int i) {
         init();
         if (array[i] == null) {
             array[i] = supply();
         }
-        return array[i];
+        return (T) array[i];
     }
 
     /**
      * Set new struct value at specified index if it is within bounds
      */
-    public final void set(int i, T t) {
+    public void set(int i, Object t) {
+        if (debug) {
+            if (subSizes.length == 0 && !clazz.isInstance(t)) {
+                Utils.fail("Set value in 1D GlcArray, but not of class %s", clazz.getName());
+            } else if (subSizes.length > 0) {
+                if (!(t instanceof GlcArray)) {
+                    Utils.fail("Set value in multi GlcArray, but not of class GlcArray");
+                }
+                GlcArray v = (GlcArray) t;
+                if (!Arrays.equals(v.subSizes, Utils.tail(subSizes))) {
+                    Utils.fail("Set GlcArray of sizes %s in GlcArray of sizes %s", Arrays.toString(v.subSizes), Arrays.toString(subSizes));
+                }
+            }
+        }
         init();
         array[i] = t;
     }
@@ -84,8 +91,21 @@ public class GlcArray<T> {
      * Gets the capacity of the array, representative of the number of elements
      * that can be stored
      */
-    public final int capacity() {
+    public int capacity() {
         return array == null ? 0 : array.length;
+    }
+
+    /**
+     * Returns a new slice, with the value appended.
+     * Note that the underlying array will be reused if the capacity allows another element.
+     * Otherwise, a new array is returned
+     */
+    public GlcArray append(Object t) {
+        if (!isSlice) {
+            throw new RuntimeException("Cannot append to nonslice");
+        }
+        Object[] newArray = GlcSliceUtils.append(array, length, t);
+        return new GlcArray(clazz, true, subSizes, length + 1, newArray, debug);
     }
 
     /**
@@ -103,18 +123,35 @@ public class GlcArray<T> {
             return false;
         }
         GlcArray other = (GlcArray) obj;
+        if (!lightEquals(other)) {
+            return false;
+        }
+        init();
+        other.init();
+        return arrayEquals(other);
+    }
+
+    /**
+     * Check equality, without checking array data
+     */
+    boolean lightEquals(GlcArray other) {
+        if (this.isSlice != other.isSlice) {
+            return false;
+        }
         if (this.length != other.length) {
+            return false;
+        }
+        if (!Arrays.equals(this.subSizes, other.subSizes)) {
             return false;
         }
         if (!this.clazz.equals(other.clazz)) {
             return false;
         }
-        if (array == other.array) {
-            return true;
-        }
-        init();
-        other.init();
-        for (int i = 0; i < length(); i++) {
+        return true;
+    }
+
+    boolean arrayEquals(GlcArray other) {
+        for (int i = 0; i < length; i++) {
             if (array[i] == other.array[i]) {
                 continue;
             }

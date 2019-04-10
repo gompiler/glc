@@ -7,20 +7,6 @@ import static org.junit.Assert.assertNotEquals;
 
 public class GlcDataTest {
 
-    @Test
-    public void structEquality() {
-        Struct1 s1_1 = new Struct1();
-        Struct1 s1_2 = new Struct1();
-        Struct2 s2 = new Struct2();
-        assertEquals("Reference equality failed", s1_1, s1_1);
-        assertEquals("Structural equality failed", s1_1, s1_2);
-        s1_1.setStringField("Hello");
-        assertNotEquals("Reference inequality failed", s1_1, s1_2);
-        s1_1.setStringField(null);
-        s1_2.setStructField(s2);
-        assertEquals("Nested struct generation failed", s1_1, s1_2);
-    }
-
     /**
      * Checks reference and structural equality
      */
@@ -39,21 +25,25 @@ public class GlcDataTest {
     }
 
     @Test
-    public void primitiveArrayEquality() {
-        GlcArray$Int_1 a1 = new GlcArray$Int_1(8);
-        GlcArray$Int_1 a2 = new GlcArray$Int_1(8);
-        GlcArray$Int_1 a3 = new GlcArray$Int_1(5);
-        assertEquality(a1, a2, a3);
-        a1.set(3, 3);
-        assertNotEquals("Structural inequality failed", a1, a2);
+    public void structEquality() {
+        Struct1 s1_1 = new Struct1();
+        Struct1 s1_2 = new Struct1();
+        Struct2 s2 = new Struct2();
+        assertEquals("Reference equality failed", s1_1, s1_1);
+        assertEquals("Structural equality failed", s1_1, s1_2);
+        s1_1.setStringField("Hello");
+        assertNotEquals("Reference inequality failed", s1_1, s1_2);
+        s1_1.setStringField(null);
+        s1_2.setStructField(s2);
+        assertEquals("Nested struct generation failed", s1_1, s1_2);
     }
 
     @Test
     public void arrayEquality() {
         Struct2 s = new Struct2();
-        GlcArray<Struct2> a1 = new GlcArray<>(Struct2.class, 8);
-        GlcArray<Struct2> a2 = new GlcArray<>(Struct2.class, 8);
-        GlcArray<Struct2> a3 = new GlcArray<>(Struct2.class, 5);
+        GlcArray a1 = new GlcArray(Struct2.class, new int[]{8}, true);
+        GlcArray a2 = new GlcArray(Struct2.class, new int[]{8}, true);
+        GlcArray a3 = new GlcArray(Struct2.class, new int[]{5}, true);
         assertEquality(a1, a2, a3);
         a1.set(3, s);
         assertEquals("Nested struct generation failed", a1, a2);
@@ -62,12 +52,16 @@ public class GlcDataTest {
     }
 
     @Test
-    public void primitiveSliceEquality() {
-        GlcSlice$Int_1 a1 = new GlcSlice$Int_1();
-        GlcSlice$Int_1 a2 = new GlcSlice$Int_1();
-        GlcSlice$Int_1 a3 = a2.append(0);
+    public void intArrayEquality() {
+        GlcArray a1 = new GlcArray(Integer.class, new int[]{8}, true);
+        GlcArray a2 = new GlcArray(Integer.class, new int[]{8}, true);
+        GlcArray a3 = new GlcArray(Integer.class, new int[]{5}, true);
         assertEquality(a1, a2, a3);
-        assertNotEquals("Structural inequality failed", a1.append(1), a3);
-        assertEquals("Structural equality failed", a1.append(0), a3);
+        a1.set(3, 5);
+        assertNotEquals("Structural inequality failed", a1, a2);
+        assertEquals("Bad default int", 0, (int) a1.get(2));
+        assertEquals("Bad setter", 5, (int) a1.get(3));
     }
+
 }
+
