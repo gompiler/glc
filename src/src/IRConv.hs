@@ -132,25 +132,17 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
           iri
             [ Load (Prim IRInt) (T.VarIndex 0)
             , IntToDouble
-            , Return (Just $ Prim IRDouble)]
-        idString :: [IRItem]
-        idString =
-          iri
-            [ Load Object (T.VarIndex 0)
-            , Return (Just Object)
+            , Return (Just $ Prim IRDouble)
             ]
+        idString :: [IRItem]
+        idString = iri [Load Object (T.VarIndex 0), Return (Just Object)]
         idInt :: [IRItem]
         idInt =
-          iri
-            [ Load (Prim IRInt) (T.VarIndex 0)
-            , Return (Just $ Prim IRInt)
-            ]
+          iri [Load (Prim IRInt) (T.VarIndex 0), Return (Just $ Prim IRInt)]
         idDouble :: [IRItem]
         idDouble =
           iri
-            [ Load (Prim IRDouble) (T.VarIndex 0)
-            , Return (Just $ Prim IRDouble)
-            ]
+            [Load (Prim IRDouble) (T.VarIndex 0), Return (Just $ Prim IRDouble)]
     vdToFields :: T.TopVarDecl -> [Field]
     vdToFields (T.TopVarDecl vdl) = map vdpToFields vdl
     vdpToFields :: T.TopVarDecl' -> Field
@@ -336,7 +328,7 @@ printIR :: T.Expr -> [IRItem]
 printIR e =
   case exprType e of
     T.PInt     -> printLoad ++ toIR e ++ intPrint
-    T.PFloat64 -> printLoad ++ toIR e ++ floatPrint
+    T.PFloat64 -> printLoad ++ floatPrint
     T.PRune    -> printLoad ++ toIR e ++ intPrint
     T.PBool    -> printLoad ++ toIR e ++ boolToString ++ stringPrint
     T.PString  -> printLoad ++ toIR e ++ stringPrint
@@ -352,9 +344,19 @@ printIR e =
         ]
     floatPrint :: [IRItem]
     floatPrint =
+      iri [LDC (LDCString "%+e")] ++
+      iri [IConst1, ANewArray jObject, Dup, IConst0] ++
+      toIR e ++
+      objectRepr JDouble ++
       iri
-        [ InvokeVirtual $
-          MethodRef (CRef printStream) "print" (MethodSpec ([JDouble], JVoid))
+        [ ArrayStore Object
+        , InvokeVirtual $
+          MethodRef
+            (CRef printStream)
+            "printf"
+            (MethodSpec
+               ([JClass jString, JArray (JClass jObject)], JClass printStream))
+        , Pop
         ]
     stringPrint :: [IRItem]
     stringPrint =
@@ -551,9 +553,7 @@ instance IRRep T.Expr where
     iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
     toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
   toIR (T.Binary (T.LabelIndex idx) _ T.EQ e1 e2) =
-    toIR e1 ++
-    toIR e2 ++
-    equality idx (exprType e1)
+    toIR e1 ++ toIR e2 ++ equality idx (exprType e1)
   toIR (T.Binary idx t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary idx t T.EQ e1 e2)) -- != is =, !
   toIR (T.Binary (T.LabelIndex idx) _ op e1 e2) -- comparisons
