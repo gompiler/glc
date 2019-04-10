@@ -14,11 +14,31 @@ import java.util.Arrays;
  * You may optionally set the debug flag to true to get some verifications.
  */
 public class GlcArray {
+    /**
+     * Current length of the array
+     */
     private final int length;
+    /**
+     * True if structure is a slice and supports append
+     */
     private final boolean isSlice;
+    /**
+     * List of nested sizes
+     * Empty if one dimensional array
+     */
     private final int[] subSizes;
+    /**
+     * True to enable some runtime verifications
+     */
     private final boolean debug;
+    /**
+     * Underlying array; may be null
+     */
     private Object[] array;
+    /**
+     * Class for base type.
+     * See {@link Utils#supplyObj(Class)}
+     */
     private final Class clazz;
 
     public GlcArray(Class clazz, int[] sizes) {
@@ -66,14 +86,18 @@ public class GlcArray {
         if (array[i] == null) {
             array[i] = supply();
         }
+        // noinspection unchecked
         return (T) array[i];
     }
 
+    /**
+     * Mainly for testing; shortcut to get the next array depth
+     */
     final GlcArray getArray(int i) {
         return get(i);
     }
 
-    public void verify(Object t) {
+    private void verify(Object t) {
         if (!debug) {
             return;
         }
@@ -176,5 +200,51 @@ public class GlcArray {
             }
         }
         return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(array);
+    }
+
+    @Override
+    public String toString() {
+        if (debug) {
+            return contentString();
+        }
+        return Arrays.toString(array);
+    }
+
+     String contentString () {
+        StringBuilder s = new StringBuilder();
+        s.append('[');
+        if (!isSlice) {
+            s.append(length);
+        }
+        s.append(']');
+        for (int i : subSizes) {
+            s.append('[');
+            if (i > 0) {
+                s.append(i);
+            }
+            s.append(']');
+        }
+        s.append(clazz.getName());
+        if (array == null) {
+            s.append(" - null");
+            return s.toString();
+        }
+        for (int i = 0; i < array.length; i++) {
+            Object o = array[i];
+            s.append("\n\t").append(i).append(": ");
+            if (o instanceof GlcArray) {
+                String so = ((GlcArray) o).contentString();
+                so = so.replace("\n", "\n\t");
+                s.append(so);
+            } else {
+                s.append(o);
+            }
+        }
+        return s.toString();
     }
 }

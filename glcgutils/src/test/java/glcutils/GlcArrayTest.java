@@ -4,7 +4,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class GlcDataTest {
+public class GlcArrayTest {
 
     /**
      * Checks reference and structural equality
@@ -83,7 +83,7 @@ public class GlcDataTest {
         GlcArray a1 = new GlcArray(Struct1.class, new int[]{3, 5}, true);
         GlcArray a2 = new GlcArray(Struct1.class, new int[]{3, 5}, true);
         GlcArray a3 = new GlcArray(Struct1.class, new int[]{3, 6}, true);
-        GlcDataTest.assertEquality(a1, a2, a3);
+        GlcArrayTest.assertEquality(a1, a2, a3);
         assertNotNull(a1.getArray(1).get(1));
         assertEquals(Utils.supply(Struct1.class), a1.getArray(1).get(1));
     }
@@ -97,6 +97,21 @@ public class GlcDataTest {
         assertEquals(Utils.supply(Struct1.class), a.getArray(0).get(0));
     }
 
+    /**
+     * Resulting structure:
+     *
+     * [5][][3]glcutils.Struct1
+     * 	0: [][3]glcutils.Struct1 - null
+     * 	1: null
+     * 	2: null
+     * 	3: null
+     * 	4: [][3]glcutils.Struct1
+     * 		0: [3]glcutils.Struct1
+     * 			0: null
+     * 			1: null
+     * 			2: glcutils.Struct1@28ba21f3
+     * 		1: null
+     */
     @Test
     public void multiSliceArrayCheck() {
         GlcArray a = new GlcArray(Struct1.class, new int[]{5, -1, 3}, true);
