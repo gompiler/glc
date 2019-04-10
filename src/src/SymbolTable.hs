@@ -165,7 +165,8 @@ instance Typify Type where
           st
           getAllIdents
           (AlreadyDecl "Field ")
-          (concat <$$> mapS checkField fdl)
+          -- Filter blank identifiers from fields
+          (filter (\(fn, _) -> fn /= "_") . concat <$$> mapS checkField fdl)
       checkField :: FieldDecl -> ST s (Glc' [Field])
       checkField (FieldDecl idl (_, t)) = toField idl <$$> fieldType' t
       -- | Checks first for cyclic type, then defaults to the generic type resolver
@@ -201,25 +202,26 @@ instance Symbolize Program T.Program where
     -- Recurse on the top level declarations of a program in a new scope
    = S.wrap st $ fmap (T.Program (T.Ident pkg)) <$> recurse st tdl
 
-instance Symbolize TopDecl T.TopDecl
+instance Symbolize TopDecl (Maybe T.TopDecl)
   -- Recurse on declarations
                              where
-  recurse st (TopDecl d)      = fmap T.TopDecl <$> recurse st d
-  recurse st (TopFuncDecl fd) = fmap T.TopFuncDecl <$> recurse st fd
+  recurse st (TopDecl d)      = fmap (Just . T.TopDecl) <$> recurse st d
+  recurse st (TopFuncDecl fd) = fmap T.TopFuncDecl <$$> recurse st fd
 
 -- | Helper for a list of top declarations, does the same thing as above except we use mapM and sequence the results (i.e. if we have a Left in any of the results, we'll just use that because we have an error)
 instance Symbolize [TopDecl] [T.TopDecl] where
-  recurse st vdl = sequence <$> mapM (recurse st) vdl
+  recurse st vdl = catMaybes <$$> (sequence <$> mapM (recurse st) vdl)
 
-instance Symbolize FuncDecl T.FuncDecl
+instance Symbolize FuncDecl (Maybe T.FuncDecl)
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
-  recurse :: forall s. SymbolTable s -> FuncDecl -> ST s (Glc' T.FuncDecl)
+  recurse ::
+       forall s. SymbolTable s -> FuncDecl -> ST s (Glc' (Maybe T.FuncDecl))
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) =
     if vname == "init"
-      then addInit
-      else addFunc
+      then filterBlank <$$> addInit
+      else filterBlank <$$> addFunc
       -- Get return type of function
     where
       retType :: ST s (Glc' CType)
@@ -237,6 +239,11 @@ instance Symbolize FuncDecl T.FuncDecl
                 else S.scopeLevel st) $>
              Nothing)
           rtm
+      filterBlank :: T.FuncDecl -> Maybe T.FuncDecl
+      filterBlank fd@(T.FuncDecl (T.ScopedIdent _ (T.Ident fn)) _ _) =
+        if fn /= "_"
+          then Just fd
+          else Nothing
       -- Add any function that is not init to symbol table
       addFunc :: ST s (Glc' T.FuncDecl)
       addFunc = do
@@ -347,10 +354,12 @@ instance Symbolize FuncDecl T.FuncDecl
           then return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: S.Scope -> Param -> Glc' T.ParameterDecl
-      p2pd (S.Scope scope) (s, t') =
+      p2pd (S.Scope scope) (s, t')
         -- Note that the scope here is the scope of the function declaration
         -- we add 1 so that the parameters are one scope deeper, i.e. not at the top level
-        T.ParameterDecl (mkSIdStr (S.Scope $ scope + 1) s) <$> toBase (Var ident) t'
+       =
+        T.ParameterDecl (mkSIdStr (S.Scope $ scope + 1) s) <$>
+        toBase (Var ident) t'
       -- The argument to toBase above isn't really the right "expression";
       -- it should be the original parameter with its offset,
       -- but that will require rewriting most of this logic to pass that over
@@ -836,20 +845,18 @@ instance Symbolize Expr T.Expr where
           (_, ['.'])  -> fs ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
           ([], '.':_) -> '0' : fs -- Prepend 0 because .1 is not a valid Float
           (_, _)      -> fs
-      RuneLit o cs ->
-        T.Lit . T.RuneLit <$>
-        convEsc cs o 1 -- Starting index is 1 because we ignore '
-      StringLit o Interpreted s -> T.Lit . T.StringLit <$> (rmesc =<< stripQuotes s o)
+      RuneLit o cs -> T.Lit . T.RuneLit <$> convEsc cs o
+      StringLit o Interpreted s ->
+        T.Lit . T.StringLit <$> (rmesc =<< stripQuotes s o)
         where rmesc :: String -> Glc' String
               rmesc s' = reverse <$> rmesc' s' ""
               rmesc' :: String -> String -> Glc' String
-              rmesc' [] acc = Right $ acc
-              rmesc' (c1:c2:t) acc = if c1 == '\\' then
-                                         (\escs-> rmesc' t (escs:acc))
-                                         =<< convEsc (c1:c2:[]) o 0 -- Starting index is 0 for strings
-                                     else
-                                       rmesc' (c2:t) (c1:acc)
-              rmesc' (c:[]) acc = Right $ c:acc
+              rmesc' [] acc = Right acc
+              rmesc' [c] acc = Right $ c : acc
+              rmesc' (c1:c2:t) acc =
+                if c1 == '\\'
+                  then (\escs -> rmesc' t (escs : acc)) =<< convEsc [c1, c2] o
+                  else rmesc' (c2 : t) (c1 : acc)
       StringLit o Raw s -> T.Lit . T.StringLit <$> stripQuotes s o
           -- Escape all things that need to be escaped so that we can
           -- transform a raw string to an interpreted string
