@@ -3,21 +3,25 @@ module UtilsData
   , Field(..)
   , BaseType(..)
   , Category(..)
+  , toBase
   ) where
 
 data Type
   -- | Flattened array type
   -- With size for each depth
-  = ArrayType BaseType
+  = ArrayType Type
               [Int]
   -- | Flattened slice type
   -- With depth
-  | SliceType BaseType
+  | SliceType Type
               Int
   | Base BaseType
   | StructType String
                [Field]
   deriving (Show, Eq)
+
+toBase :: Type -> BaseType
+toBase = undefined
 
 -- | See https://golang.org/ref/spec#FieldDecl
 -- Golite does not support embedded fields

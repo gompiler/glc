@@ -1,28 +1,33 @@
-{-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RankNTypes     #-}
+{-# LANGUAGE NamedFieldPuns      #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module ResourceContext
   ( ResourceContext
   , new
   , wrap
   , structName
-  , getVarIndex
+  , varIndex
   , allStructs
   , newLabel
   , newLoopLabel
   , currentLoopLabel
   , localLimit
+  , allCategories
+  , registerType
   ) where
 
 import           Base
 import qualified CheckedData             as C
 import           Control.Monad.ST
 import           Data.Hashable
+import qualified Data.HashTable.Class    as HC (toList)
 import qualified Data.HashTable.ST.Basic as HT
 import           Data.Maybe              (catMaybes, listToMaybe)
 import           Data.STRef
 import           Prelude                 hiding (lookup)
 import           ResourceData
+import qualified UtilsData               as U
 
 newtype ResourceContext s =
   ResourceContext (STRef s (ResourceContext_ s))
@@ -33,6 +38,7 @@ newtype ResourceContext s =
 data ResourceContext_ s = RC
   { structTypes   :: [StructType]
   , structMap     :: StructTable s
+  , categoryMap   :: CategoryTable s
   , varScopes     :: [ResourceScope s]
   , labelCounter  :: Int
   , lastLoopLabel :: Int
@@ -75,6 +81,22 @@ instance Hashable StructKey where
 
 type StructTable s = HT.HashTable s StructKey StructType
 
+newtype CatKey =
+  CatKey U.BaseType
+  deriving (Show, Eq)
+
+instance Hashable CatKey where
+  hashWithSalt salt (CatKey c) =
+    case c of
+      U.Custom s -> hashWithSalt salt s
+      U.PInt     -> 7
+      U.PBool    -> 11
+      U.PFloat64 -> 13
+      U.PRune    -> 17
+      U.PString  -> 19
+
+type CategoryTable s = HT.HashTable s CatKey U.Category
+
 {-# INLINE newRef #-}
 newRef :: ResourceContext_ s -> ST s (ResourceContext s)
 newRef = fmap ResourceContext . newSTRef
@@ -89,12 +111,14 @@ readRef (ResourceContext ref) = readSTRef ref
 
 new :: ST s (ResourceContext s)
 new = do
+  categoryMap' <- HT.new
   structMap' <- HT.new
   newRef $
     RC
       { structTypes = []
       , varScopes = []
       , structMap = structMap'
+      , categoryMap = categoryMap'
       , labelCounter = 0
       , lastLoopLabel = 0
       }
@@ -154,11 +178,11 @@ exitScope st = do
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
 -- Otherwise, we will output 1 greater than the biggest index to date
-getVarIndex :: forall s. ResourceContext s -> C.ScopedIdent -> ST s VarIndex
-getVarIndex st si = do
+varIndex :: forall s. ResourceContext s -> C.ScopedIdent -> ST s VarIndex
+varIndex st si = do
   let key = VarKey si
   rc <- readRef st
-  candidates <- mapM (getVarIndex' key) $ varScopes rc
+  candidates <- mapM (varIndex' key) $ varScopes rc
   case listToMaybe $ catMaybes candidates of
     Just index -> return index
     Nothing -> do
@@ -174,8 +198,8 @@ getVarIndex st si = do
        in HT.insert varTable key value $>
           (value, rs {varCounter = varCounter + 1})
     -- | Get the index of the provided key, or return the size of the current scope
-    getVarIndex' :: VarKey -> ResourceScope s -> ST s (Maybe VarIndex)
-    getVarIndex' key RS {varTable} = HT.lookup varTable key
+    varIndex' :: VarKey -> ResourceScope s -> ST s (Maybe VarIndex)
+    varIndex' key RS {varTable} = HT.lookup varTable key
 
 -- | Returns a label id that is unique across the entire program
 newLabel :: ResourceContext s -> ST s LabelIndex
@@ -199,12 +223,68 @@ newLoopLabel st = do
 currentLoopLabel :: ResourceContext s -> ST s LabelIndex
 currentLoopLabel st = LabelIndex . lastLoopLabel <$> readRef st
 
+registerType :: forall s. ResourceContext s -> Type -> ST s ()
+registerType st t = registerType' $ flattenType t
+  where
+    registerType' :: U.Type -> ST s ()
+    registerType' baseType =
+      case baseType of
+        U.ArrayType t' l ->
+          registerArray (U.toBase t') (length l) *> registerType' t'
+        U.SliceType t' i -> registerSlice (U.toBase t') i *> registerType' t'
+        _ -> return ()
+    registerArray = registerElement (\i c -> c {U.arrayDepth = i})
+    registerSlice = registerElement (\i c -> c {U.sliceDepth = i})
+    registerElement ::
+         (Int -> U.Category -> U.Category) -> U.BaseType -> Int -> ST s ()
+    registerElement build baseType depth = do
+      let key = CatKey baseType
+      rc <- readRef st
+      let c = categoryMap rc
+      prev <- HT.lookup c key
+      let value =
+            case prev of
+              Just prev' -> build (max depth (U.arrayDepth prev')) prev'
+              Nothing ->
+                build
+                  depth
+                  U.Category
+                    {U.baseType = baseType, U.arrayDepth = 0, U.sliceDepth = 0}
+      HT.insert c key value
+
+flattenType :: Type -> U.Type
+flattenType t =
+  case t of
+    ArrayType _ _        -> uncurry U.ArrayType $ flattenArrayType t
+    SliceType _          -> uncurry U.SliceType $ flattenSliceType t
+    PInt                 -> U.Base U.PInt
+    PFloat64             -> U.Base U.PFloat64
+    PBool                -> U.Base U.PBool
+    PRune                -> U.Base U.PRune
+    PString              -> U.Base U.PString
+    StructType (Ident i) -> U.Base $ U.Custom i
+  where
+    flattenSliceType :: Type -> (U.Type, Int)
+    flattenSliceType (SliceType t') =
+      let (base, i) = flattenSliceType t'
+       in (base, i + 1)
+    flattenSliceType t' = (flattenType t', 0)
+    flattenArrayType :: Type -> (U.Type, [Int])
+    flattenArrayType (ArrayType i t') =
+      let (base, ii) = flattenArrayType t'
+       in (base, i : ii)
+    flattenArrayType t' = (flattenType t', [])
+
+registerField :: forall s. ResourceContext s -> FieldDecl -> ST s ()
+registerField st (FieldDecl _ t) = registerType st t
+
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type
 -- But in different orders are technically the same
 structName :: forall s. ResourceContext s -> [FieldDecl] -> ST s C.Ident
 structName st fields = do
   let key = StructKey fields
+  mapM_ (registerField st) fields
   rc <- readRef st
   let m = structMap rc
   candidate <- HT.lookup m key
@@ -227,3 +307,8 @@ structName st fields = do
 -- | Returns a list of unique structs, ordered by creation
 allStructs :: ResourceContext s -> ST s [StructType]
 allStructs st = reverse . structTypes <$> readRef st
+
+allCategories :: ResourceContext s -> ST s [U.Category]
+allCategories st =
+  let items = HC.toList =<< categoryMap <$> readRef st
+   in map snd <$> items
