@@ -371,26 +371,13 @@ instance IRRep T.VarDecl' where
                   ]
           (T.SliceType st) ->
             case st of
-              T.ArrayType {} -> undefined -- TODO
-              T.SliceType {} -> undefined -- TODO
-              T.PInt ->
-                iri
-                  [ New cGlcArray
-                  , Dup
-                  , LDC (LDCClass jInteger)
-                  , IConst1 -- slice of dimension 1
-                  , NewArray IRInt -- dimension array
-                  , Dup
-                  , IConst0 -- position 0
-                  , IConstM1 -- slices have dimension -1 to start
-                  , ArrayStore (Prim IRInt)
-                  , InvokeSpecial glcArrayInit
-                  , Store Object idx
-                  ]
-              T.PFloat64 -> undefined -- TODO
-              T.PRune -> undefined -- TODO
-              T.PBool -> undefined -- TODO
-              T.PString -> undefined -- TODO
+              T.ArrayType {} -> newSliceIR cGlcArray idx
+              T.SliceType {} -> newSliceIR cGlcArray idx
+              T.PInt -> newSliceIR jInteger idx
+              T.PFloat64 -> newSliceIR jDouble idx
+              T.PRune -> newSliceIR jInteger idx
+              T.PBool -> newSliceIR jInteger idx
+              T.PString -> newSliceIR jString idx
               (T.StructType _) -> undefined -- TODO
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
@@ -407,6 +394,22 @@ instance IRRep T.VarDecl' where
                      emptySpec)
               , Store Object idx
               ]
+
+newSliceIR :: ClassRef -> T.VarIndex -> [IRItem]
+newSliceIR cr idx =
+  iri
+    [ New cGlcArray
+    , Dup
+    , LDC (LDCClass cr)
+    , IConst1
+    , NewArray IRInt -- dimension array
+    , Dup
+    , IConst0 -- position 0
+    , IConstM1 -- slices have dimension -1 to start
+    , ArrayStore (Prim IRInt)
+    , InvokeSpecial glcArrayInit
+    , Store Object idx
+    ]
 
 printIR :: T.Expr -> [IRItem]
 printIR e =
@@ -555,14 +558,14 @@ instance IRRep T.SimpleStmt where
               storeIR :: [IRItem]
               storeIR =
                 case t of
-                  T.ArrayType {} -> iri [InvokeVirtual glcArraySetArray] -- TODO: LOOK AT CLONING
-                  T.SliceType {} -> iri [InvokeVirtual glcArraySetArray] -- TODO: LOOK AT CLONING
+                  T.ArrayType {} -> iri [InvokeVirtual glcArraySetObj] -- TODO: LOOK AT CLONING
+                  T.SliceType {} -> iri [InvokeVirtual glcArraySetObj] -- TODO: LOOK AT CLONING
                   T.PInt -> iri [InvokeVirtual (glcArraySet JInt)]
                   T.PFloat64 -> iri [InvokeVirtual (glcArraySet JDouble)]
                   T.PBool -> iri [InvokeVirtual (glcArraySet JInt)]
                   T.PRune -> iri [InvokeVirtual (glcArraySet JInt)]
-                  T.PString -> undefined -- TODO: Set slice of string
-                  T.StructType {} -> undefined -- TODO: Set slice of struct
+                  T.PString -> iri [InvokeVirtual glcArraySetObj] -- TODO: LOOK AT CLONING
+                  T.StructType {} -> iri [InvokeVirtual glcArraySetObj] -- TODO: LOOK AT CLONING
           _ -> error "Cannot assign to non-addressable value"
   toIR (T.ShortDeclare iExps) =
     exprInsts ++ zipWith (curry expStore) idxs stTypes
@@ -676,19 +679,20 @@ instance IRRep T.Expr where
       appendIR :: [IRItem]
       appendIR =
         case exprType e2 of
-          T.ArrayType {} -> iri [InvokeVirtual glcArrayAppendArray] -- TODO: CLONE?
-          T.SliceType {} -> iri [InvokeVirtual glcArrayAppendArray] -- TODO: CLONE?
+          T.ArrayType {} -> iri [InvokeVirtual glcArrayAppendObj] -- TODO: CLONE?
+          T.SliceType {} -> iri [InvokeVirtual glcArrayAppendObj] -- TODO: CLONE?
           T.PInt -> iri [InvokeVirtual (glcArrayAppend JInt)]
           T.PFloat64 -> iri [InvokeVirtual (glcArrayAppend JDouble)]
           T.PRune -> iri [InvokeVirtual (glcArrayAppend JInt)]
           T.PBool -> iri [InvokeVirtual (glcArrayAppend JInt)]
-          T.PString -> undefined -- TODO
-          T.StructType {} -> undefined -- TODO: append struct
+          T.PString -> iri [InvokeVirtual glcArrayAppendObj] -- TODO: CLONE?
+          T.StructType {} -> iri [InvokeVirtual glcArrayAppendObj] -- TODO: CLONE?
 
   toIR (T.LenExpr e) =
     case exprType e of
       T.ArrayType l _ -> iri [LDC (LDCInt l)] -- fixed at compile time
       T.SliceType _   -> toIR e ++ iri [InvokeVirtual glcArrayLength]
+      T.PString       -> toIR e ++ iri [InvokeVirtual stringLength]
       _               -> error "Cannot get length of non-array/slice"
   toIR (T.CapExpr e) =
     case exprType e of
@@ -797,13 +801,16 @@ objectDecode t -- TODO: Maybe this should just be IRType
 equality :: Int -> T.Type -> [IRItem]
 equality idx t =
   case t of
-    T.ArrayType {} -> undefined -- TODO
+    T.ArrayType {} ->
+      iri
+        [ InvokeVirtual glcArrayEquals
+        , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        ] ++
+      eqPostfix
     T.PString ->
       iri
         [ InvokeVirtual stringEquals
         , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
-        , IConst0
-        , Goto ("stop_eq_" ++ show idx)
         ] ++
       eqPostfix
     (T.StructType (D.Ident _)) -> undefined -- TODO
@@ -811,24 +818,20 @@ equality idx t =
       iri
         [ DCmpG
         , If IRData.EQ ("true_eq_" ++ show idx) -- dcmpg is 0, they're equal
-        , IConst0
-        , Goto ("stop_eq_" ++ show idx)
         ] ++
       eqPostfix
     T.SliceType {} -> error "Cannot compare slice equality"
     _
       -- Integer types
      ->
-      iri
-        [ IfICmp IRData.EQ ("true_eq_" ++ show idx)
-        , IConst0
-        , Goto ("stop_eq_" ++ show idx)
-        ] ++
+      iri [IfICmp IRData.EQ ("true_eq_" ++ show idx)] ++
       eqPostfix
   where
     eqPostfix :: [IRItem]
     eqPostfix =
-      [ IRLabel ("true_eq_" ++ show idx)
+      [ IRInst IConst0
+      , IRInst (Goto ("stop_eq_" ++ show idx))
+      , IRLabel ("true_eq_" ++ show idx)
       , IRInst IConst1
       , IRLabel ("stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
       ]
@@ -851,7 +854,7 @@ glcArrayGetIR t =
     T.PRune -> iri [InvokeVirtual glcArrayGetInt]
     T.PBool -> iri [InvokeVirtual glcArrayGetInt]
     T.PString -> iri [InvokeVirtual glcArrayGetString]
-    T.StructType {} -> undefined -- TODO: Get array of struct
+    (T.StructType sid) -> iri [InvokeVirtual (glcArrayGet $ ClassRef $ structName sid)] -- TODO
 
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t

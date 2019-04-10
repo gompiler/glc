@@ -236,6 +236,10 @@ jObject = ClassRef "java/lang/Object"
 jClass :: ClassRef
 jClass = ClassRef "java/lang/Class"
 
+stringLength :: MethodRef
+stringLength =
+  MethodRef (CRef jString) "length" (MethodSpec ([], JInt))
+
 stringEquals :: MethodRef
 stringEquals =
   MethodRef (CRef jString) "equals" (MethodSpec ([JClass jObject], JBool))
@@ -280,6 +284,13 @@ glcArrayInit =
     "<init>"
     (MethodSpec ([JClass jClass, JArray JInt], JVoid))
 
+glcArrayEquals :: MethodRef
+glcArrayEquals =
+  MethodRef
+    (CRef cGlcArray)
+    "equals"
+    (MethodSpec ([JClass jObject], JBool))
+
 glcArrayAppend :: JType -> MethodRef
 glcArrayAppend jt =
   MethodRef
@@ -287,12 +298,15 @@ glcArrayAppend jt =
     "append"
     (MethodSpec ([jt], JClass cGlcArray))
 
-glcArrayAppendArray :: MethodRef
-glcArrayAppendArray =
+glcArrayAppendObj :: MethodRef
+glcArrayAppendObj = glcArrayAppend (JClass jObject)
+
+glcArrayGet :: ClassRef -> MethodRef
+glcArrayGet cr =
   MethodRef
     (CRef cGlcArray)
-    "append"
-    (MethodSpec ([JClass cGlcArray], JClass cGlcArray))
+    "get"
+    (MethodSpec ([JInt], JClass cr))
 
 glcArrayGetInt :: MethodRef
 glcArrayGetInt =
@@ -322,12 +336,12 @@ glcArrayGetArray =
     "get"
     (MethodSpec ([JInt], JClass jObject))
 
-glcArraySetArray :: MethodRef
-glcArraySetArray =
+glcArraySetObj :: MethodRef
+glcArraySetObj =
   MethodRef
     (CRef cGlcArray)
     "set"
-    (MethodSpec ([JInt, JClass cGlcArray], JVoid))
+    (MethodSpec ([JInt, JClass jObject], JVoid))
 
 glcArrayGetString :: MethodRef
 glcArrayGetString =
