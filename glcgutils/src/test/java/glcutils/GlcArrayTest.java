@@ -99,18 +99,17 @@ public class GlcArrayTest {
 
     /**
      * Resulting structure:
-     * <p>
-     * [5][][3]glcutils.Struct1
-     * 0: [][3]glcutils.Struct1 - null
-     * 1: null
-     * 2: null
-     * 3: null
-     * 4: [][3]glcutils.Struct1
-     * 0: [3]glcutils.Struct1
-     * 0: null
-     * 1: null
-     * 2: glcutils.Struct1@28ba21f3
-     * 1: null
+     * - [5][][3]glcutils.Struct1
+     * - 	0: [][3]glcutils.Struct1 - null
+     * - 	1: null
+     * - 	2: null
+     * - 	3: null
+     * - 	4: [][3]glcutils.Struct1
+     * - 		0: [3]glcutils.Struct1
+     * - 			0: null
+     * - 			1: null
+     * - 			2: glcutils.Struct1@28ba21f3
+     * - 		1: null
      */
     @Test
     public void multiSliceArrayCheck() {
