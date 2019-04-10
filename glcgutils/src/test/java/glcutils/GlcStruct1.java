@@ -45,7 +45,7 @@ public class GlcStruct1 {
 
     public GlcStruct2 getStructField() {
         if (this.structField == null) {
-            this.structField = Utils.baseSupply(GlcStruct2.class);
+            this.structField = Utils.supply(GlcStruct2.class);
         }
         return this.structField;
     }
@@ -74,14 +74,7 @@ public class GlcStruct1 {
         if (s1.structField == s2.structField) {
             return true;
         }
-        if (s1.structField == null) {
-            // Note that new instance is based on field type
-            s1.structField = Utils.baseSupply(GlcStruct2.class);
-        }
-        if (s2.structField == null) {
-            s2.structField = Utils.baseSupply(GlcStruct2.class);
-        }
-        return s1.structField.equals(s2.structField);
+        return s1.getStructField().equals(s2.getStructField());
     }
 
     @Override

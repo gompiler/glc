@@ -17,7 +17,7 @@ public class GlcArray<T> {
     }
 
     public GlcArray(Class<? extends T> clazz, int length, T[] array) {
-        this(() -> Utils.baseSupply(clazz), clazz, length, array);
+        this(() -> Utils.supply(clazz), clazz, length, array);
     }
 
     GlcArray(Supplier<T> supplier, Class<? extends T> clazz, int length, T[] array) {

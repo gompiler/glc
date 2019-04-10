@@ -1,7 +1,5 @@
 package glcutils;
 
-import java.lang.reflect.Array;
-
 public class Utils {
     public static String boolStr(int b) {
         if (b == 0) {
@@ -11,7 +9,12 @@ public class Utils {
         }
     }
 
-    public static <T> T baseSupply(Class<? extends T> clazz) {
+    /**
+     * Provides a new instance.
+     * Applicable to structs and slices, which must have public default constructors.
+     * For strings, we return null by default
+     */
+    public static <T> T supply(Class<? extends T> clazz) {
         if (clazz == String.class) {
             return null;
         }

@@ -8,8 +8,11 @@ public class GlcMutiArrayTest {
 
     @Test
     public void multiArrayCheck() {
-        GlcArray$String$2 a = new GlcArray$String$2(3, 5);
-        assertNull(a.get(1).get(1));
+        GlcArray$String$2 a1 = new GlcArray$String$2(3, 5);
+        GlcArray$String$2 a2 = new GlcArray$String$2(3, 5);
+        GlcArray$String$2 a3 = new GlcArray$String$2(3, 6);
+        GlcDataTest.assertEquality(a1, a2, a3);
+        assertNull(a1.get(1).get(1));
     }
 
     /**

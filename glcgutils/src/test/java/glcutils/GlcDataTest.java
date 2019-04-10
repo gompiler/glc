@@ -2,7 +2,8 @@ package glcutils;
 
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class GlcDataTest {
 
@@ -23,7 +24,7 @@ public class GlcDataTest {
     /**
      * Checks reference and structural equality
      */
-    private <T> void assertEquality(T s1, T s2) {
+    static <T> void assertEquality(T s1, T s2) {
         assertEquals("Reference equality failed", s1, s1);
         assertEquals("Structural equality failed", s1, s2);
     }
@@ -32,7 +33,7 @@ public class GlcDataTest {
      * Provided that s3 has a different length,
      * also checks for length inequality
      */
-    private <T> void assertEquality(T s1, T s2, T s3) {
+    static <T> void assertEquality(T s1, T s2, T s3) {
         assertEquality(s1, s2);
         assertNotEquals("Length inequality failed", s1, s3);
     }
