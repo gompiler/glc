@@ -177,7 +177,7 @@ toClasses T.Program { T.structs = scts
         { access = FProtected
         , static = True
         , fname = tVarStr fi
-        , descriptor = typeToProgramJType t
+        , descriptor = typeToJType t
       -- , value = Nothing
         }
     clBody :: [IRItem]
@@ -212,11 +212,11 @@ toClasses T.Program { T.structs = scts
             maxStack = maxStackSize irBody 0
             sigToSpec :: T.Signature -> MethodSpec
             sigToSpec (T.Signature (T.Parameters pdl) mr) =
-              MethodSpec (map (typeToProgramJType . pdToType) pdl, mrToJType mr)
+              MethodSpec (map (typeToJType . pdToType) pdl, mrToJType mr)
             pdToType :: T.ParameterDecl -> T.Type
             pdToType (T.ParameterDecl _ t) = t
             mrToJType :: Maybe T.Type -> JType
-            mrToJType mr = maybe JVoid typeToProgramJType mr
+            mrToJType mr = maybe JVoid typeToJType mr
     structClass :: T.StructType -> Class
     structClass strc@(T.Struct sid fdls) =
       Class
@@ -230,7 +230,7 @@ toClasses T.Program { T.structs = scts
         { access = FPublic
         , static = False
         , fname = fid
-        , descriptor = typeToProgramJType t
+        , descriptor = typeToJType t
         -- , value = Nothing
         }
     checkEq :: T.StructType -> Method
@@ -528,7 +528,7 @@ instance IRRep T.SimpleStmt where
         MethodRef
           (CRef cMain)
           (tFnStr aid)
-          (MethodSpec (map exprProgramJType args, JVoid))
+          (MethodSpec (map exprJType args, JVoid))
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR (T.Assign (T.AssignOp mAop) pairs) =
@@ -547,14 +547,14 @@ instance IRRep T.SimpleStmt where
             afterLoadOps op ++ toIR ve ++ finalOps op
           (Just op, T.TopVar t tvi) ->
             setUpOps op ++
-            iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToProgramJType t)] ++
+            iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)] ++
             afterLoadOps op ++ toIR ve ++ finalOps op
           (Just op, T.Selector t eo (T.Ident fid)) ->
             case exprJType eo of
               JClass cr ->
                 setUpOps op ++
                 toIR eo ++
-                iri [GetField (FieldRef cr fid) (typeToProgramJType t)] ++
+                iri [GetField (FieldRef cr fid) (typeToJType t)] ++
                 afterLoadOps op ++ toIR ve ++ finalOps op
               _ -> error "Cannot get field of non-object"
           (Just op, T.Index t ea ei) ->
@@ -601,11 +601,13 @@ instance IRRep T.SimpleStmt where
         case e of
           T.Var t idx -> iri [Store (typeToIRType t) idx]
           T.TopVar t tvi ->
-            iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToProgramJType t)]
+            iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
           T.Selector t eo (T.Ident fid) ->
             case exprJType eo of
+              JClass (ClassRef "glcutils/GlcArray") ->
+                error "Cannot get field of non-object"
               JClass cr ->
-                toIR eo ++ iri [PutField (FieldRef cr fid) (typeToProgramJType t)]
+                toIR eo ++ iri [PutField (FieldRef cr fid) (typeToJType t)]
               _ -> error "Cannot get field of non-object"
           T.Index t _ _ -> storeIR
             where
@@ -726,7 +728,7 @@ instance IRRep T.Expr where
   toIR (T.Lit l) = toIR l
   toIR (T.Var t vi) = iri [Load (typeToIRType t) vi]
   toIR (T.TopVar t tvi) =
-    iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToProgramJType t)]
+    iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
   toIR (T.AppendExpr _ e1 e2) =
     toIR e1 ++ toIR e2 ++ appendIR
     where
@@ -754,13 +756,15 @@ instance IRRep T.Expr where
       T.SliceType _   -> toIR e ++ iri [InvokeVirtual glcArrayCap]
       _               -> error "Cannot get capacity of non-array/slice"
   toIR (T.Selector t e (T.Ident fid)) =
-    toIR e ++ iri [GetField fr (typeToProgramJType t)]
+    toIR e ++ iri [GetField fr (typeToJType t)]
     where
       fr :: FieldRef
       fr =
         case exprJType e of
+          JClass (ClassRef "glcutils/GlcArray") ->
+            error "Cannot get field of non-struct"
           JClass cref -> FieldRef cref fid
-          _           -> error "Cannot get field of non-object"
+          _ -> error "Cannot get field of non-struct"
   toIR (T.Index t e1 e2) = toIR e1 ++ toIR e2 ++ glcArrayGetIR t
   toIR (T.Arguments t aid args) =
     concatMap (\e -> toIR e ++ cloneIfNeeded e) args ++
@@ -769,7 +773,7 @@ instance IRRep T.Expr where
         MethodRef
           (CRef cMain)
           (tFnStr aid)
-          (MethodSpec (map exprProgramJType args, typeToProgramJType t))
+          (MethodSpec (map exprJType args, typeToJType t))
       ]
 
 instance IRRep D.Literal where
@@ -796,7 +800,7 @@ structName (T.Ident sid) = "__Glc$Struct__" ++ sid
 
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
-  case exprProgramJType e of
+  case exprJType e of
     JClass (ClassRef "java/lang/String") -> [] -- Cannot clone strings
     JClass (ClassRef "java/lang/Object") -> [] -- Cannot clone base objects
     JClass (ClassRef "glcutils/GlcArray") -> [] -- TODO: undo this
@@ -939,9 +943,6 @@ exprIRType = typeToIRType . exprType
 exprJType :: T.Expr -> JType
 exprJType = typeToJType . exprType
 
-exprProgramJType :: T.Expr -> JType
-exprProgramJType = typeToProgramJType . exprType
-
 getLiteralType :: D.Literal -> T.Type
 getLiteralType (D.BoolLit _)   = T.PBool
 getLiteralType (D.IntLit _)    = T.PInt
@@ -950,7 +951,7 @@ getLiteralType (D.RuneLit _)   = T.PRune
 getLiteralType (D.StringLit _) = T.PString
 
 typeToJType :: T.Type -> JType
-typeToJType (T.ArrayType _ t) = JArray (typeToJType t)
+typeToJType T.ArrayType {} = JClass cGlcArray
 typeToJType T.SliceType {} = JClass cGlcArray
 typeToJType T.PInt = JInt
 typeToJType T.PFloat64 = JDouble
@@ -958,17 +959,6 @@ typeToJType T.PRune = JInt
 typeToJType T.PBool = JBool
 typeToJType T.PString = JClass jString
 typeToJType (T.StructType (D.Ident sid)) =
-  JClass (ClassRef $ "GlcStruct__" ++ sid)
-
-typeToProgramJType :: T.Type -> JType
-typeToProgramJType T.ArrayType {} = JClass cGlcArray
-typeToProgramJType T.SliceType {} = JClass cGlcArray
-typeToProgramJType T.PInt = JInt
-typeToProgramJType T.PFloat64 = JDouble
-typeToProgramJType T.PRune = JInt
-typeToProgramJType T.PBool = JBool
-typeToProgramJType T.PString = JClass jString
-typeToProgramJType (T.StructType (D.Ident sid)) =
   JClass (ClassRef $ "GlcStruct__" ++ sid)
 
 stackDelta :: Instruction -> Int
