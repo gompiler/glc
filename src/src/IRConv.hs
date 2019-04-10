@@ -356,8 +356,17 @@ instance IRRep T.VarDecl' where
           (T.ArrayType l at) ->
             case at -- TODO: Defaults of elements??? or null checks elsewhere?
                   of
-              (T.ArrayType l2 at2) ->
-                -- loadSizes ++
+              T.ArrayType {} -> nestedGlcArrayIR
+              T.SliceType {} -> nestedGlcArrayIR
+              T.PInt -> arrayIR jInteger
+              T.PFloat64 -> arrayIR jDouble
+              T.PBool -> arrayIR jInteger
+              T.PRune -> arrayIR jInteger
+              T.PString -> arrayIR jString
+              T.StructType sid -> arrayIR (ClassRef $ structName sid) -- TODO: FIX THIS FOR NEW STRUCTS
+            where
+              nestedGlcArrayIR :: [IRItem]
+              nestedGlcArrayIR  =
                 iri
                   [ New cGlcArray
                   , Dup
@@ -378,36 +387,24 @@ instance IRRep T.VarDecl' where
                               ])
                           (zip [0 ..] sizes)
                       sizes :: [Int]
-                      sizes = getDepth [l2, l] at2
+                      sizes = getDepth [l] at
                       getDepth :: [Int] -> T.Type -> [Int]
                       getDepth rSizes rt =
                         case rt of
                           T.ArrayType rl rrt -> getDepth (rl : rSizes) rrt
+                          T.SliceType rrt    -> getDepth (-1 : rSizes) rrt
                           _                  -> reverse rSizes -- no more arrays
                       classOfBase :: T.Type -> ClassRef
                       classOfBase ct =
                         case ct of
                           (T.ArrayType _ rt) -> classOfBase rt
-                          T.SliceType {} -> cGlcArray -- TODO: THIS IS NOT CORRECT
+                          (T.SliceType rt) -> classOfBase rt
                           T.PInt -> jInteger
                           T.PFloat64 -> jDouble
                           T.PRune -> jInteger
                           T.PBool -> jInteger
                           T.PString -> jString
                           T.StructType sid -> ClassRef (structName sid)
-              T.SliceType {} -> undefined -- TODO: Array of slice
-                -- iri
-                --   [ LDC (LDCInt l)
-                --   , ANewArray cSlice
-                --   , Store Object idx
-                --   ]
-              T.PInt -> arrayIR jInteger
-              T.PFloat64 -> arrayIR jDouble
-              T.PBool -> arrayIR jInteger
-              T.PRune -> arrayIR jInteger
-              T.PString -> arrayIR jString
-              T.StructType sid -> arrayIR (ClassRef $ structName sid) -- TODO: FIX THIS FOR NEW STRUCTS
-            where
               arrayIR :: ClassRef -> [IRItem]
               arrayIR cr =
                 iri
