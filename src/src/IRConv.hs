@@ -330,7 +330,6 @@ instance IRRep T.VarDecl' where
                   , IConst0 -- position 0
                   , IConstM1 -- slices have dimension -1 to start
                   , ArrayStore (Prim IRInt)
-                  , IConst1 -- debug flag TODO: WHAT TO DO WITH THIS
                   , InvokeSpecial glcArrayInit
                   , Store Object idx
                   ]
@@ -697,6 +696,7 @@ cloneIfNeeded e =
   case exprJType e of
     JClass (ClassRef "java/lang/String") -> [] -- Cannot clone strings
     JClass (ClassRef "java/lang/Object") -> [] -- Cannot clone base objects
+    JClass (ClassRef "glcutils/GlcArray") -> [] -- TODO: undo this
     JClass cr ->
       iri
         [ InvokeVirtual $

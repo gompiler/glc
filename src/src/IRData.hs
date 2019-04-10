@@ -277,7 +277,7 @@ glcArrayInit =
   MethodRef
     (CRef cGlcArray)
     "<init>"
-    (MethodSpec ([JClass jClass, JArray JInt, JBool], JVoid))
+    (MethodSpec ([JClass jClass, JArray JInt], JVoid))
 
 glcArrayAppendInt :: MethodRef
 glcArrayAppendInt =
@@ -298,28 +298,28 @@ glcArrayGetInt =
   MethodRef
     (CRef cGlcArray)
     "getInt"
-    (MethodSpec ([JInt], JClass cGlcArray))
+    (MethodSpec ([JInt], JInt))
 
 glcArraySetInt :: MethodRef
 glcArraySetInt =
   MethodRef
     (CRef cGlcArray)
     "set"
-    (MethodSpec ([JInt, JInt], JClass cGlcArray))
+    (MethodSpec ([JInt, JInt], JVoid))
 
 glcArrayGetDouble :: MethodRef
 glcArrayGetDouble =
   MethodRef
     (CRef cGlcArray)
     "getDouble"
-    (MethodSpec ([JInt], JClass cGlcArray))
+    (MethodSpec ([JInt], JDouble))
 
 glcArraySetDouble :: MethodRef
 glcArraySetDouble =
   MethodRef
     (CRef cGlcArray)
     "set"
-    (MethodSpec ([JInt, JDouble], JClass cGlcArray))
+    (MethodSpec ([JInt, JDouble], JVoid))
 
 glcArrayCap :: MethodRef
 glcArrayCap = MethodRef (CRef cGlcArray) "capacity" (MethodSpec ([], JInt))
