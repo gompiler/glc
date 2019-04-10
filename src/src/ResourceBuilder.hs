@@ -242,7 +242,9 @@ instance Converter T.SimpleStmt SimpleStmt where
       convertAssign :: (T.Expr, T.Expr) -> ST s (Expr, Expr)
       convertAssign (e1, e2) = (,) <$> ce e1 <*> ce e2
       convertShortDecl :: (T.ScopedIdent, T.Expr) -> ST s (VarIndex, Expr)
-      convertShortDecl (i, e) = (,) <$> RC.getVarIndex rc i PFloat64 <*> ce e -- TODO: Find actual type
+      convertShortDecl (i, e) =
+        (\(e', t) -> (,) <$> RC.getVarIndex rc i t <*> return e') =<<
+        (getType <$> ce e)
       ce :: T.Expr -> ST s Expr
       ce = convert rc
       inc2assn :: Expr -> SimpleStmt
@@ -251,6 +253,26 @@ instance Converter T.SimpleStmt SimpleStmt where
       dec2assn :: Expr -> SimpleStmt
       dec2assn e =
         Assign (T.AssignOp $ Just T.Subtract) ((e, Lit $ T.IntLit 1) :| [])
+      getType :: Expr -> (Expr, Type)
+      getType e = (e, getType' e)
+      getType' :: Expr -> Type
+      getType' (Unary t _ _) = t
+      getType' (Binary _ t _ _ _) = t
+      getType' (Lit lit) =
+        case lit of
+          IntLit _    -> PInt
+          BoolLit _   -> PBool
+          FloatLit _  -> PFloat64
+          RuneLit _   -> PRune
+          StringLit _ -> PString
+      getType' (TopVar t _) = t
+      getType' (Var t _) = t
+      getType' (AppendExpr t _ _) = t
+      getType' (LenExpr _) = PInt
+      getType' (CapExpr _) = PInt
+      getType' (Selector t _ _) = t
+      getType' (Index t _ _) = t
+      getType' (Arguments t _ _) = t
 
 instance Converter T.Stmt Stmt where
   convert :: forall s. RC.ResourceContext s -> T.Stmt -> ST s Stmt
