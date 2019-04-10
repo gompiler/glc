@@ -906,21 +906,20 @@ glcArrayGetIR :: T.Type -> [IRItem]
 glcArrayGetIR t =
   case t of
     T.ArrayType {} ->
-      iri
-        [ InvokeVirtual glcArrayGetArray
-        , CheckCast (CRef cGlcArray)
-        ]
+      iri [InvokeVirtual (glcArrayGet jObject), CheckCast (CRef cGlcArray)]
     T.SliceType {} ->
-      iri
-        [ InvokeVirtual glcArrayGetArray
-        , CheckCast (CRef cGlcArray)
-        ]
+      iri [InvokeVirtual (glcArrayGet jObject), CheckCast (CRef cGlcArray)]
     T.PInt -> iri [InvokeVirtual glcArrayGetInt]
     T.PFloat64 -> iri [InvokeVirtual glcArrayGetDouble]
     T.PRune -> iri [InvokeVirtual glcArrayGetInt]
     T.PBool -> iri [InvokeVirtual glcArrayGetInt]
-    T.PString -> iri [InvokeVirtual glcArrayGetString]
-    (T.StructType sid) -> iri [InvokeVirtual (glcArrayGet $ ClassRef $ structName sid)] -- TODO
+    T.PString ->
+      iri [InvokeVirtual (glcArrayGet jObject), CheckCast (CRef jString)]
+    (T.StructType sid) ->
+      iri
+        [ InvokeVirtual (glcArrayGet jObject)
+        , CheckCast (CRef $ ClassRef $ structName sid)
+        ]
 
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
