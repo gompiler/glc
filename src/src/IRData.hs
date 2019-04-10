@@ -331,13 +331,6 @@ glcArrayGetDouble =
     "getDouble"
     (MethodSpec ([JInt], JDouble))
 
-glcArrayGetArray :: MethodRef
-glcArrayGetArray =
-  MethodRef
-    (CRef cGlcArray)
-    "get"
-    (MethodSpec ([JInt], JClass jObject))
-
 glcArraySetObj :: MethodRef
 glcArraySetObj =
   MethodRef
