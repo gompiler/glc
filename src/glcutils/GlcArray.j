@@ -848,7 +848,7 @@ L15:    iload_1
 L16:    iload_3 
 L17:    iconst_1 
 L18:    isub 
-L19:    if_icmplt L56 
+L19:    if_icmple L56 
 
         .stack append Integer 
 L22:    iload_3 

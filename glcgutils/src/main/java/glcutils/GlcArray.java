@@ -234,7 +234,7 @@ public class GlcArray {
      */
     private static Object[] append(Object[] array, int length, Object t) {
         int capacity = array == null ? 0 : array.length;
-        if (array == null || length >= capacity - 1) {
+        if (array == null || length > capacity - 1) {
             // We have an initial capacity of 2 due to legacy golang
             // This is a requirement for golite
             int newLength = newCapacity(capacity);
