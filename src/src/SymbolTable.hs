@@ -542,7 +542,11 @@ instance Symbolize SimpleStmt T.SimpleStmt where
       aop2aop' (AssignOp Nothing)     = T.AssignOp Nothing
       -- | Check if two expressions have the same type and if LHS is addressable, helper for assignments
       sameType :: (Expr, Expr) -> ST s (Glc' ())
-      sameType (Var (Identifier _ "_"), _) = return $ Right () -- Do not compare if LHS is "_"
+      sameType (Var (Identifier _ "_"), e2) = do
+        -- Do not compare if LHS is "_"
+        et2 <- infer st e2
+        -- Update dummy type of _ so that we can infer its type
+        either (return . Left) (\t' -> S.insert st "_" (Variable t') $> Right ()) et2
       sameType (e1, e2) = do
         et1 <- infer st e1
         et2 <- infer st e2
