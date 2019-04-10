@@ -64,8 +64,8 @@ public class GlcArrayTest {
         assertEquality(a1, a2, a3);
         a1.set(3, 5);
         assertNotEquals("Structural inequality failed", a1, a2);
-        assertEquals("Bad default int", 0, (int) a1.get(2));
-        assertEquals("Bad setter", 5, (int) a1.get(3));
+        assertEquals("Bad default int", 0, a1.getInt(2));
+        assertEquals("Bad setter", 5, a1.getInt(3));
     }
 
     @Test
@@ -74,8 +74,8 @@ public class GlcArrayTest {
         GlcArray a2 = new GlcArray(Integer.class, new int[]{-1}, true);
         GlcArray a3 = a2.append(1);
         assertEquality(a1, a2, a3);
-        assertNotEquals("Structural inequality failed", a1.append(1), a3);
-        assertEquals("Structural equality failed", a1.append(0), a3);
+        assertNotEquals("Structural inequality failed", a1.append(0), a3);
+        assertEquals("Structural equality failed", a1.append(1), a3);
     }
 
     @Test
@@ -99,18 +99,18 @@ public class GlcArrayTest {
 
     /**
      * Resulting structure:
-     *
+     * <p>
      * [5][][3]glcutils.Struct1
-     * 	0: [][3]glcutils.Struct1 - null
-     * 	1: null
-     * 	2: null
-     * 	3: null
-     * 	4: [][3]glcutils.Struct1
-     * 		0: [3]glcutils.Struct1
-     * 			0: null
-     * 			1: null
-     * 			2: glcutils.Struct1@28ba21f3
-     * 		1: null
+     * 0: [][3]glcutils.Struct1 - null
+     * 1: null
+     * 2: null
+     * 3: null
+     * 4: [][3]glcutils.Struct1
+     * 0: [3]glcutils.Struct1
+     * 0: null
+     * 1: null
+     * 2: glcutils.Struct1@28ba21f3
+     * 1: null
      */
     @Test
     public void multiSliceArrayCheck() {

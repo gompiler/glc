@@ -97,6 +97,26 @@ public class GlcArray {
         return get(i);
     }
 
+    public final boolean getBoolean(int i) {
+        return get(i);
+    }
+
+    public final char getChar(int i) {
+        return get(i);
+    }
+
+    public final int getInt(int i) {
+        return get(i);
+    }
+
+    public final float getFloat(int i) {
+        return get(i);
+    }
+
+    public final double getDouble(int i) {
+        return get(i);
+    }
+
     private void verify(Object t) {
         if (!debug) {
             return;

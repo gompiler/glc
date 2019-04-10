@@ -59,12 +59,12 @@ L8:
 
 .method public static varargs fail : (Ljava/lang/String;[Ljava/lang/Object;)V 
     .code stack 4 locals 2 
-L0:     new java/lang/RuntimeException 
+L0:     new glcutils/GlcException 
 L3:     dup 
 L4:     aload_0 
 L5:     aload_1 
 L6:     invokestatic Method java/lang/String format (Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/String; 
-L9:     invokespecial Method java/lang/RuntimeException <init> (Ljava/lang/String;)V 
+L9:     invokespecial Method glcutils/GlcException <init> (Ljava/lang/String;)V 
 L12:    athrow 
 L13:    
         .linenumbertable 
@@ -167,10 +167,10 @@ L56:    areturn
 
         .stack stack_1 Object java/lang/ReflectiveOperationException 
 L57:    astore_1 
-L58:    new java/lang/RuntimeException 
+L58:    new glcutils/GlcException 
 L61:    dup 
 L62:    aload_1 
-L63:    invokespecial Method java/lang/RuntimeException <init> (Ljava/lang/Throwable;)V 
+L63:    invokespecial Method glcutils/GlcException <init> (Ljava/lang/Throwable;)V 
 L66:    athrow 
 L67:    
         .linenumbertable 
