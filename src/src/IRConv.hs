@@ -5,7 +5,7 @@ import qualified CheckedData           as D
 import           Data.Char             (ord, toLower)
 import           Data.List             (intercalate)
 import           Data.List.NonEmpty    (NonEmpty (..))
-import qualified Data.List.NonEmpty    as NE (map, toList)
+import qualified Data.List.NonEmpty    as NE (toList)
 import           Foreign.Marshal.Utils (fromBool)
 import           IRData
 import           ResourceBuilder       (convertProgram)
@@ -250,23 +250,26 @@ instance IRRep T.Stmt where
   toIR (T.Switch (T.LabelIndex idx) sstmt e scs dstmt) =
     toIR sstmt ++
     toIR e ++
-    concatMap irCase (zip [1 ..] scs) ++
-    IRLabel ("default_" ++ show idx) :
-    toIR dstmt ++ [IRLabel ("end_sc_" ++ show idx), IRInst NOp]
-      -- duplicate expression for case statement expressions in lists
+    concatMap irCaseHeaders (zip [1 ..] scs) ++
+    IRLabel ("default_" ++ show idx) : toIR dstmt ++ -- pop off remaining comparison value
+    iri [Goto ("end_sc_" ++ show idx)] ++
+    concatMap irCaseBodies (zip [1 ..] scs) ++
+    [IRLabel ("end_sc_" ++ show idx), IRInst Pop] -- duplicate expression for case statement expressions in lists
     where
-      irCase :: (Int, T.SwitchCase) -> [IRItem]
-      irCase (cIdx, T.Case exprs stmt) =
-        concat (NE.map toCaseHeader exprs) ++
-        [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
-        toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
+      irCaseHeaders :: (Int, T.SwitchCase) -> [IRItem]
+      irCaseHeaders (cIdx, T.Case exprs _) =
+        concatMap toCaseHeader (zip [1 ..] (NE.toList exprs))
         where
-          toCaseHeader :: T.Expr -> [IRItem]
-          toCaseHeader ce =
+          toCaseHeader :: (Int, T.Expr) -> [IRItem]
+          toCaseHeader (eIdx, ce) =
             IRInst Dup :
             toIR ce ++
-            equality cIdx (exprType ce) ++
+            equality ("case_" ++ show cIdx ++ "_" ++ show eIdx) idx (exprType ce) ++
             iri [If IRData.NE $ "case_" ++ show cIdx ++ "_" ++ show idx] -- If it's true, make the jump
+      irCaseBodies :: (Int, T.SwitchCase) -> [IRItem]
+      irCaseBodies (cIdx, T.Case _ stmt) =
+        [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
+        toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
   toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =
     toIR lstmt ++
     IRLabel ("loop_" ++ show idx) :
@@ -635,7 +638,7 @@ instance IRRep T.Expr where
     iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
     toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
   toIR (T.Binary (T.LabelIndex idx) _ T.EQ e1 e2) =
-    toIR e1 ++ toIR e2 ++ equality idx (exprType e1)
+    toIR e1 ++ toIR e2 ++ equality "bin" idx (exprType e1)
   toIR (T.Binary idx t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary idx t T.EQ e1 e2)) -- != is =, !
   toIR (T.Binary (T.LabelIndex idx) _ op e1 e2) -- comparisons
@@ -798,42 +801,42 @@ objectDecode t -- TODO: Maybe this should just be IRType
     T.PString      -> [] -- nothing to do
     T.StructType _ -> [] -- nothing to do
 
-equality :: Int -> T.Type -> [IRItem]
-equality idx t =
+equality :: String -> Int -> T.Type -> [IRItem]
+equality lbl idx t =
   case t of
     T.ArrayType {} ->
       iri
         [ InvokeVirtual glcArrayEquals
-        , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ] ++
       eqPostfix
     T.PString ->
       iri
         [ InvokeVirtual stringEquals
-        , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ] ++
       eqPostfix
     (T.StructType (D.Ident _)) -> undefined -- TODO
     T.PFloat64 ->
       iri
         [ DCmpG
-        , If IRData.EQ ("true_eq_" ++ show idx) -- dcmpg is 0, they're equal
+        , If IRData.EQ (lbl ++ "_true_eq_" ++ show idx) -- dcmpg is 0, they're equal
         ] ++
       eqPostfix
     T.SliceType {} -> error "Cannot compare slice equality"
     _
       -- Integer types
      ->
-      iri [IfICmp IRData.EQ ("true_eq_" ++ show idx)] ++
+      iri [IfICmp IRData.EQ (lbl ++ "_true_eq_" ++ show idx)] ++
       eqPostfix
   where
     eqPostfix :: [IRItem]
     eqPostfix =
       [ IRInst IConst0
-      , IRInst (Goto ("stop_eq_" ++ show idx))
-      , IRLabel ("true_eq_" ++ show idx)
+      , IRInst (Goto (lbl ++ "_stop_eq_" ++ show idx))
+      , IRLabel (lbl ++ "_true_eq_" ++ show idx)
       , IRInst IConst1
-      , IRLabel ("stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
+      , IRLabel (lbl ++ "_stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
       ]
 
 glcArrayGetIR :: T.Type -> [IRItem]
