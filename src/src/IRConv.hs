@@ -395,7 +395,7 @@ instance IRRep T.VarDecl' where
                           T.PBool -> jInteger
                           T.PString -> jString
                           T.StructType sid -> ClassRef (structName sid)
-              T.SliceType {} -> -- TODO: Array of slice
+              T.SliceType {} -> undefined -- TODO: Array of slice
                 -- iri
                 --   [ LDC (LDCInt l)
                 --   , ANewArray cSlice
@@ -432,7 +432,7 @@ instance IRRep T.VarDecl' where
               T.PRune -> newSliceIR jInteger idx
               T.PBool -> newSliceIR jInteger idx
               T.PString -> newSliceIR jString idx
-              T.StructType sid -> newSliceIR (ClassRef $ structName sid)
+              T.StructType sid -> newSliceIR (ClassRef $ structName sid) idx
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
