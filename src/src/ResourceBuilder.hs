@@ -54,7 +54,6 @@ instance Converter T.Program Program where
       Program
         { package = package
         , structs = structs
-        , categories = categories
         -- Returns all declared top vars
         , topVars = vars
         -- Contains a single function that calls each of the original
