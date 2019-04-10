@@ -871,7 +871,15 @@ equality lbl idx t =
         , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ] ++
       eqPostfix
-    (T.StructType (D.Ident _)) -> undefined -- TODO: STRUCT EQUALITY
+    (T.StructType (D.Ident sid)) ->
+      iri
+        [ InvokeVirtual $
+          MethodRef
+            (CRef $ ClassRef sid)
+            "equals"
+            (MethodSpec ([JClass (ClassRef sid)], JBool))
+        , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        ]
     T.PFloat64 ->
       iri
         [ DCmpG
