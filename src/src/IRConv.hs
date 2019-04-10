@@ -20,7 +20,12 @@ genIR :: String -> Glc [Class]
 genIR code = toClasses . convertProgram <$> S.typecheckGen code
 
 toClasses :: T.Program -> [Class]
-toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
+toClasses T.Program { T.structs = scts
+                    , T.topVars = tfs
+                    , T.init = (T.InitDecl ifb ill)
+                    , T.main = (T.MainDecl mfb mll)
+                    , T.functions = tms
+                    } =
   Class {cname = "Main", fields = cFields, methods = cMethods} :
   map structClass scts -- TODO
   where

@@ -45,6 +45,7 @@ instance Converter T.Program Program where
   convert rc T.Program {T.package, T.topLevels} = do
     topLevels' <- mapM (convert rc) topLevels
     structs <- RC.allStructs rc
+    categories <- RC.allCategories rc
     let vars = [v | TVar v <- topLevels']
     let inits = [(body, limit) | TInit body limit <- topLevels']
     let mains = [(body, limit) | TMain body limit <- topLevels']
@@ -54,6 +55,7 @@ instance Converter T.Program Program where
       Program
         { package = package
         , structs = structs
+        , categories = categories
         -- Returns all declared top vars
         , topVars = vars
         -- Contains a single function that calls each of the original
@@ -142,7 +144,7 @@ instance Converter T.Signature Signature where
 
 instance Converter T.ParameterDecl ParameterDecl where
   convert rc (T.ParameterDecl i t) =
-    ParameterDecl <$> (RC.getVarIndex rc i =<< convert rc t) <*> convert rc t
+    ParameterDecl <$> (RC.varIndex rc i =<< convert rc t) <*> convert rc t
 
 instance Converter T.Parameters Parameters where
   convert rc (T.Parameters params) = Parameters <$> mapM (convert rc) params
@@ -170,7 +172,7 @@ instance Converter T.Decl Stmt where
     where
       convertVarDecl :: T.VarDecl' -> ST s VarDecl'
       convertVarDecl (T.VarDecl' i t expr) =
-        VarDecl' <$> (RC.getVarIndex rc i =<< convert rc t) <*> convert rc t <*>
+        VarDecl' <$> (RC.varIndex rc i =<< convert rc t) <*> convert rc t <*>
         maybe (return Nothing) (Just <$$> convert rc) expr
       convertTypeDecl :: T.TypeDef' -> ST s ()
       convertTypeDecl _ = return ()
@@ -178,6 +180,7 @@ instance Converter T.Decl Stmt where
 instance Converter T.CType Type where
   convert :: forall s. RC.ResourceContext s -> T.CType -> ST s Type
   convert rc type' =
+    (\resultType -> RC.registerType rc resultType $> resultType) =<<
     case C.getActual type' of
       T.ArrayType i t -> ArrayType i <$> ct (C.set type' t)
       T.SliceType t -> SliceType <$> ct (C.set type' t)
@@ -214,7 +217,7 @@ instance Converter T.Expr Expr where
       T.Lit lit -> return $ Lit lit
       -- Global vars are accessed by field names vs indices
       T.Var t (T.ScopedIdent (T.Scope 2) i) -> TopVar <$> ct t <*-> i
-      T.Var t i -> Var <$> ct t <*> (RC.getVarIndex rc i =<< ct t)
+      T.Var t i -> Var <$> ct t <*> (RC.varIndex rc i =<< ct t)
       T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
       T.LenExpr e -> LenExpr <$> ce e
       T.CapExpr e -> CapExpr <$> ce e
@@ -243,7 +246,7 @@ instance Converter T.SimpleStmt SimpleStmt where
       convertAssign (e1, e2) = (,) <$> ce e1 <*> ce e2
       convertShortDecl :: (T.ScopedIdent, T.Expr) -> ST s (VarIndex, Expr)
       convertShortDecl (i, e) =
-        (\(e', t) -> (,) <$> RC.getVarIndex rc i t <*> return e') =<<
+        (\(e', t) -> (,) <$> RC.varIndex rc i t <*> return e') =<<
         (getType <$> ce e)
       ce :: T.Expr -> ST s Expr
       ce = convert rc

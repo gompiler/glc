@@ -7,8 +7,8 @@ module Codegen
 
 import           Data.ByteString.Builder (string7, toLazyByteString)
 import           Data.ByteString.Lazy    (ByteString, append)
-import qualified Data.ByteString.Lazy    as B (concat, fromStrict, writeFile)
-import           Data.FileEmbed          (embedFile)
+import qualified Data.ByteString.Lazy    as B (concat, fromStrict, writeFile, intercalate)
+import           Data.FileEmbed          (embedDir)
 import           IRConv
 import           IRData
 import qualified ResourceData            as T
@@ -193,9 +193,10 @@ fileJ file = dropExtension file ++ ".j"
 
 utils :: ByteString
 utils =
-  B.concat
-    [ B.fromStrict $(embedFile "glcgutils/Utils.j")
-    ]
+  B.intercalate nl $
+  map
+    (B.fromStrict . snd)
+    $(embedDir "glcutils")
 
 codegen :: String -> IO ()
 codegen file =

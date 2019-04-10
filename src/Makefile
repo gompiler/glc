@@ -1,4 +1,8 @@
 COMPILE_FLAGS = --pedantic --coverage
+JSRCDIR = ../glcgutils/src/main/java/glcutils/
+JAVAFILES = $(wildcard $(JSRCDIR)*.java)
+JLIBS = $(basename $(notdir $(JAVAFILES)))
+JFILES = $(addsuffix .j,$(addprefix glcutils/,$(JLIBS)))
 
 .PHONY: all
 all: glc
@@ -12,17 +16,26 @@ clean:
 cleangen:
 	@rm -f src/generated/TokenGen.hs
 	@rm -f src/generated/ParserGen.hs
+	@rm -rf glcutils
+	mvn clean -f ../glcgutils
 
 .PHONY: build
 build: gen
 	stack --allow-different-user build $(COMPILE_FLAGS)
 
 .PHONY: gen
-gen: src/generated/TokenGen.hs src/generated/ParserGen.hs
+gen: src/generated/TokenGen.hs src/generated/ParserGen.hs $(JFILES)
 
 .PHONY: report
 report: 
 	stack --allow-different-user hpc report glc.tix
+
+$(JFILES): glcutils
+
+glcutils: ../glcgutils/pom.xml $(JAVAFILES)
+	@rm -rf glcutils
+	mvn install -f ../glcgutils
+	python3 ../Krakatau/disassemble.py ../glcgutils/target/glcutils-1.0-SNAPSHOT.jar
 
 src/generated/TokenGen.hs: golite.x
 	alex $< -g -o $@
