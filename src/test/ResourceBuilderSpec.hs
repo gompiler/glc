@@ -61,6 +61,28 @@ offsetSpec =
         }
         |]
       , [(LocalLimit 2, [0, 1, 1]), (LocalLimit 3, [0, 0, 1, 2, 2])])
+--    , ( [text|
+--        package main
+--
+--        var top int
+--
+--        func test1(c int) {
+--          if c < 2 {
+--            e := 2
+--          } else {
+--            e := 5
+--          }
+--        }
+--
+--        func test2(a int) {
+--          a, b := 2, 3
+--          {
+--            c := 5
+--          }
+--          d := 5
+--        }
+--        |]
+--      , [])
     ]
 
 type OffsetInfo = [(LocalLimit, [Int])]

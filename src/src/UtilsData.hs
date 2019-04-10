@@ -4,6 +4,9 @@ module UtilsData
   , BaseType(..)
   , Category(..)
   , toBase
+  , arrayClassName
+  , sliceClassName
+  , className
   ) where
 
 data Type
@@ -21,7 +24,28 @@ data Type
   deriving (Show, Eq)
 
 toBase :: Type -> BaseType
-toBase = undefined
+toBase type' =
+  case type' of
+    ArrayType t l  -> Custom $ arrayClassName (toBase t) (length l)
+    SliceType t i  -> Custom $ sliceClassName (toBase t) i
+    Base t         -> t
+    StructType i _ -> Custom i
+
+arrayClassName :: BaseType -> Int -> String
+arrayClassName baseType depth =
+  "GlcArray$$" ++ className baseType ++ "$$" ++ show depth
+
+sliceClassName :: BaseType -> Int -> String
+sliceClassName baseType depth =
+  "GlcSlice" ++ className baseType ++ "$$" ++ show depth
+
+className :: BaseType -> String
+className (Custom s) = s
+className PInt       = "Int"
+className PFloat64   = "Float"
+className PBool      = "Bool"
+className PRune      = "Char"
+className PString    = "String"
 
 -- | See https://golang.org/ref/spec#FieldDecl
 -- Golite does not support embedded fields
@@ -44,5 +68,4 @@ data Category = Category
   { baseType   :: BaseType
   , arrayDepth :: Int
   , sliceDepth :: Int
-  }
-  deriving (Show, Eq)
+  } deriving (Show, Eq)
