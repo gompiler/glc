@@ -196,8 +196,6 @@ toClasses T.Program { T.structs = scts
             pdToType (T.ParameterDecl _ t) = t
             mrToJType :: Maybe T.Type -> JType
             mrToJType mr = maybe JVoid typeToJType mr
-    structName :: D.Ident -> String
-    structName (D.Ident fid) = "__Glc$Struct__" ++ fid
     structClass :: T.StructType -> Class
     structClass strc@(T.Struct sid fdls) =
       Class
