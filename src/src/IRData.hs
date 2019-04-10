@@ -293,4 +293,4 @@ sliceLength = FieldRef cSlice "length"
 
 -- Custom-defined methods
 glcUtils :: ClassRef
-glcUtils = ClassRef "glcgutils/Utils"
+glcUtils = ClassRef "glcutils/Utils"
