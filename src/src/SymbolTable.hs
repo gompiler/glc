@@ -19,7 +19,7 @@ import           Data.Either        (isLeft)
 import           Data.Functor       (($>))
 
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
-import           Data.Maybe         (catMaybes, listToMaybe, catMaybes)
+import           Data.Maybe         (catMaybes, listToMaybe)
 
 import           Base
 import qualified CheckedData        as T
@@ -216,7 +216,8 @@ instance Symbolize FuncDecl (Maybe T.FuncDecl)
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
-  recurse :: forall s. SymbolTable s -> FuncDecl -> ST s (Glc' (Maybe T.FuncDecl))
+  recurse ::
+       forall s. SymbolTable s -> FuncDecl -> ST s (Glc' (Maybe T.FuncDecl))
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) =
     if vname == "init"
       then filterBlank <$$> addInit
@@ -239,8 +240,10 @@ instance Symbolize FuncDecl (Maybe T.FuncDecl)
              Nothing)
           rtm
       filterBlank :: T.FuncDecl -> Maybe T.FuncDecl
-      filterBlank fd@(T.FuncDecl (T.ScopedIdent _ (T.Ident fn)) _ _) = if fn /= "_" then Just fd
-                                                  else Nothing
+      filterBlank fd@(T.FuncDecl (T.ScopedIdent _ (T.Ident fn)) _ _) =
+        if fn /= "_"
+          then Just fd
+          else Nothing
       -- Add any function that is not init to symbol table
       addFunc :: ST s (Glc' T.FuncDecl)
       addFunc = do
@@ -351,10 +354,12 @@ instance Symbolize FuncDecl (Maybe T.FuncDecl)
           then return $ Right ((idv, t'), (idv, Variable t', scope))
           else return $ Left $ createError ident (AlreadyDecl "Param " ident')
       p2pd :: S.Scope -> Param -> Glc' T.ParameterDecl
-      p2pd (S.Scope scope) (s, t') =
+      p2pd (S.Scope scope) (s, t')
         -- Note that the scope here is the scope of the function declaration
         -- we add 1 so that the parameters are one scope deeper, i.e. not at the top level
-        T.ParameterDecl (mkSIdStr (S.Scope $ scope + 1) s) <$> toBase (Var ident) t'
+       =
+        T.ParameterDecl (mkSIdStr (S.Scope $ scope + 1) s) <$>
+        toBase (Var ident) t'
       -- The argument to toBase above isn't really the right "expression";
       -- it should be the original parameter with its offset,
       -- but that will require rewriting most of this logic to pass that over
@@ -840,20 +845,18 @@ instance Symbolize Expr T.Expr where
           (_, ['.'])  -> fs ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
           ([], '.':_) -> '0' : fs -- Prepend 0 because .1 is not a valid Float
           (_, _)      -> fs
-      RuneLit o cs ->
-        T.Lit . T.RuneLit <$>
-        convEsc cs o
-      StringLit o Interpreted s -> T.Lit . T.StringLit <$> (rmesc =<< stripQuotes s o)
+      RuneLit o cs -> T.Lit . T.RuneLit <$> convEsc cs o
+      StringLit o Interpreted s ->
+        T.Lit . T.StringLit <$> (rmesc =<< stripQuotes s o)
         where rmesc :: String -> Glc' String
               rmesc s' = reverse <$> rmesc' s' ""
               rmesc' :: String -> String -> Glc' String
-              rmesc' [] acc = Right $ acc
-              rmesc' (c:[]) acc = Right $ c:acc
-              rmesc' (c1:c2:t) acc = if c1 == '\\' then
-                                         (\escs-> rmesc' t (escs:acc))
-                                         =<< convEsc (c1:c2:[]) o
-                                     else
-                                       rmesc' (c2:t) (c1:acc)
+              rmesc' [] acc = Right acc
+              rmesc' [c] acc = Right $ c : acc
+              rmesc' (c1:c2:t) acc =
+                if c1 == '\\'
+                  then (\escs -> rmesc' t (escs : acc)) =<< convEsc [c1, c2] o
+                  else rmesc' (c2 : t) (c1 : acc)
       StringLit o Raw s -> T.Lit . T.StringLit <$> stripQuotes s o
           -- Escape all things that need to be escaped so that we can
           -- transform a raw string to an interpreted string
