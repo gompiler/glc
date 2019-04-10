@@ -249,7 +249,7 @@ toClasses T.Program { T.structs = scts
         -- labelGen i = "L" ++ sn ++ show i
         equalsBody :: [IRItem]
         equalsBody =
-          cmpField fdls [] ++
+          (concatMap (createNE "LSEQ_false") fdls) ++
           (iri
             -- Add null checks here
           --   Load Object (T.VarIndex 0)
@@ -258,33 +258,25 @@ toClasses T.Program { T.structs = scts
           -- , IConst1
           -- , Return (Just $ Prim IRInt)
           -- , IRLabel (labelGen 0)
-             [IConst1, Goto "L2_return"] ++
-           [ IRLabel "L1_false"
+           [IConst1, Goto "LSEQ_return"] ++
+           [ IRLabel "LSEQ_false"
            , IRInst IConst0
-           , IRLabel "L2_return"
+           , IRLabel "LSEQ_return"
            , IRInst $ Return (Just $ Prim IRInt)
            ])
-        cmpField :: [T.FieldDecl] -> [IRItem] -> [IRItem]
-        -- True if no fields
-        cmpField [] []       = iri [Goto "L2_return"]
-        cmpField [] acc      = acc
-        cmpField (fd:t') acc = cmpField t' (acc ++ createNE fd "L1_false")
-        createNE :: T.FieldDecl -> String -> [IRItem]
-        createNE (T.FieldDecl (D.Ident fid) t) label =
+        createNE :: String -> T.FieldDecl -> [IRItem]
+        createNE label (T.FieldDecl (D.Ident fid) t) =
           let jt = typeToJType t
-           in iri $
+           in (iri
               [ Load Object (T.VarIndex 0)
-              , GetField (FieldRef (ClassRef sn) fid) jt
+              , InvokeVirtual (MethodRef (CRef $ ClassRef sn) ("get_" ++ fid) (MethodSpec ([], jt)))
               , Load Object (T.VarIndex 1)
-              , GetField (FieldRef (ClassRef sn) fid) jt
-              ] ++
-              (case jt of
-                 JInt -> [IfICmp IRData.NE label]
-                 JDouble -> [DCmpG, If IRData.NE label]
-                 JClass (ClassRef "java/lang/String") ->
-                   [InvokeVirtual stringEquals, If IRData.EQ label]
-                 _ -> undefined)
-
+              , InvokeVirtual (MethodRef (CRef $ ClassRef sn) ("get_" ++ fid) (MethodSpec ([], jt)))
+              ]) ++
+              equalityNL label 0 t
+              ++ iri
+              [ IConst1
+              , IXOr ]
 class IRRep a where
   toIR :: a -> [IRItem]
 
@@ -856,21 +848,19 @@ objectDecode t -- TODO: Maybe this should just be IRType
     T.PString      -> [] -- nothing to do
     T.StructType _ -> [] -- nothing to do
 
-equality :: String -> Int -> T.Type -> [IRItem]
-equality lbl idx t =
+equalityNL :: String -> Int -> T.Type -> [IRItem]
+equalityNL lbl idx t =
   case t of
     T.ArrayType {} ->
       iri
         [ InvokeVirtual glcArrayEquals
         , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
-        ] ++
-      eqPostfix
+        ]
     T.PString ->
       iri
         [ InvokeVirtual stringEquals
         , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
-        ] ++
-      eqPostfix
+        ]
     (T.StructType (D.Ident sid)) ->
       iri
         [ InvokeVirtual $
@@ -884,14 +874,14 @@ equality lbl idx t =
       iri
         [ DCmpG
         , If IRData.EQ (lbl ++ "_true_eq_" ++ show idx) -- dcmpg is 0, they're equal
-        ] ++
-      eqPostfix
+        ]
     T.SliceType {} -> error "Cannot compare slice equality"
     _
       -- Integer types
      ->
-      iri [IfICmp IRData.EQ (lbl ++ "_true_eq_" ++ show idx)] ++
-      eqPostfix
+      iri [IfICmp IRData.EQ (lbl ++ "_true_eq_" ++ show idx)]
+equality :: String -> Int -> T.Type -> [IRItem]
+equality lbl idx t = equalityNL lbl idx t ++ eqPostfix
   where
     eqPostfix :: [IRItem]
     eqPostfix =
