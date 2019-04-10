@@ -1,12 +1,12 @@
 package glcutils;
 
-public class GlcIntSlice extends GlcIntArray {
+public class GlcSlice$Int_1 extends GlcArray$Int_1 {
 
-    public GlcIntSlice() {
+    public GlcSlice$Int_1() {
         this(0, null);
     }
 
-    private GlcIntSlice(int length, int[] array) {
+    private GlcSlice$Int_1(int length, int[] array) {
         super(length, array);
     }
 
@@ -15,9 +15,9 @@ public class GlcIntSlice extends GlcIntArray {
      * Note that the underlying array will be reused if the capacity allows another element.
      * Otherwise, a new array is returned
      */
-    public GlcIntSlice append(int t) {
+    public GlcSlice$Int_1 append(int t) {
         int[] newArray = GlcSliceUtils.append(array, length, t);
-        return new GlcIntSlice(length + 1, newArray);
+        return new GlcSlice$Int_1(length + 1, newArray);
     }
 
 }

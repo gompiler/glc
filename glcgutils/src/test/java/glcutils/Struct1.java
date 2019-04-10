@@ -6,7 +6,7 @@ import java.util.Objects;
  * The following is an example
  * We need to generate this for each unique class
  */
-public class GlcStruct1 {
+public class Struct1 {
     // Primitive are non lazy
     private int intField = 0;
 
@@ -14,7 +14,7 @@ public class GlcStruct1 {
     private String stringField = null;
 
     // Golite never expects a null struct, but we load it lazily
-    private GlcStruct2 structField = null;
+    private Struct2 structField = null;
 
     /*
      * All fields have getters and setters
@@ -39,13 +39,13 @@ public class GlcStruct1 {
 
     // Input can technically be null as well,
     // though it won't ever be in practice
-    public void setStructField(GlcStruct2 o) {
+    public void setStructField(Struct2 o) {
         this.structField = o;
     }
 
-    public GlcStruct2 getStructField() {
+    public Struct2 getStructField() {
         if (this.structField == null) {
-            this.structField = Utils.supply(GlcStruct2.class);
+            this.structField = Utils.supply(Struct2.class);
         }
         return this.structField;
     }
@@ -54,14 +54,14 @@ public class GlcStruct1 {
      * All fields must supply equality check
      */
 
-    public static boolean intFieldEqual(GlcStruct1 s1, GlcStruct1 s2) {
+    public static boolean intFieldEqual(Struct1 s1, Struct1 s2) {
         return s1.intField == s2.intField;
     }
 
     /*
      * Strings are equal if both are null, or if contents are the same
      */
-    public static boolean stringFieldEqual(GlcStruct1 s1, GlcStruct1 s2) {
+    public static boolean stringFieldEqual(Struct1 s1, Struct1 s2) {
         return Objects.equals(s1.stringField, s2.stringField);
     }
 
@@ -70,7 +70,7 @@ public class GlcStruct1 {
      * With recursive types, we eventually get to a depth where both structs aren't initialized
      * Therefore, it will halt
      */
-    public static boolean structFieldEqual(GlcStruct1 s1, GlcStruct1 s2) {
+    public static boolean structFieldEqual(Struct1 s1, Struct1 s2) {
         if (s1.structField == s2.structField) {
             return true;
         }
@@ -82,10 +82,10 @@ public class GlcStruct1 {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof GlcStruct1)) {
+        if (!(obj instanceof Struct1)) {
             return false;
         }
-        GlcStruct1 other = (GlcStruct1) obj;
+        Struct1 other = (Struct1) obj;
         // Compare all fields
         return intFieldEqual(this, other) && stringFieldEqual(this, other) && structFieldEqual(this, other);
     }

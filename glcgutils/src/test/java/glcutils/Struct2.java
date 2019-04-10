@@ -4,7 +4,7 @@ package glcutils;
  * The following is an example
  * We need to generate this for each unique class
  */
-public class GlcStruct2 {
+public class Struct2 {
     private float floatField = 0f;
 
     /*
@@ -24,7 +24,7 @@ public class GlcStruct2 {
      * (This can be nonstatic. Not sure what's better)
      */
 
-    public static boolean floatFieldEqual(GlcStruct2 s1, GlcStruct2 s2) {
+    public static boolean floatFieldEqual(Struct2 s1, Struct2 s2) {
         return s1.floatField == s2.floatField;
     }
 
@@ -33,10 +33,10 @@ public class GlcStruct2 {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof GlcStruct2)) {
+        if (!(obj instanceof Struct2)) {
             return false;
         }
-        GlcStruct2 other = (GlcStruct2) obj;
+        Struct2 other = (Struct2) obj;
         // Compare all fields
         return floatFieldEqual(this, other);
     }

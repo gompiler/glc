@@ -29,4 +29,3 @@
 .idea/**/libraries
 
 src/**/*.class
-!j/**.j

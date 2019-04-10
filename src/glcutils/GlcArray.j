@@ -5,7 +5,7 @@
 .field array [Ljava/lang/Object; .fieldattributes 
     .signature [TT; 
 .end fieldattributes 
-.field final supplier Lglcutils/Supplier; .fieldattributes 
+.field private final supplier Lglcutils/Supplier; .fieldattributes 
     .signature Lglcutils/Supplier<TT;>; 
 .end fieldattributes 
 .field final clazz Ljava/lang/Class; .fieldattributes 
@@ -13,28 +13,26 @@
 .end fieldattributes 
 
 .method public <init> : (Ljava/lang/Class;I)V 
-    .code stack 5 locals 3 
+    .code stack 4 locals 3 
 L0:     aload_0 
 L1:     aload_1 
-L2:     invokedynamic [id1] 
-L7:     aload_1 
-L8:     iload_2 
-L9:     aconst_null 
-L10:    invokespecial Method glcutils/GlcArray <init> (Lglcutils/Supplier;Ljava/lang/Class;I[Ljava/lang/Object;)V 
-L13:    return 
-L14:    
+L2:     iload_2 
+L3:     aconst_null 
+L4:     invokespecial Method glcutils/GlcArray <init> (Ljava/lang/Class;I[Ljava/lang/Object;)V 
+L7:     return 
+L8:     
         .linenumbertable 
             L0 12 
-            L13 13 
+            L7 13 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcArray; from L0 to L14 
-            1 is clazz Ljava/lang/Class; from L0 to L14 
-            2 is length I from L0 to L14 
+            0 is this Lglcutils/GlcArray; from L0 to L8 
+            1 is clazz Ljava/lang/Class; from L0 to L8 
+            2 is length I from L0 to L8 
         .end localvariabletable 
         .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L14 
-            1 is clazz Ljava/lang/Class<+TT;>; from L0 to L14 
+            0 is this Lglcutils/GlcArray<TT;>; from L0 to L8 
+            1 is clazz Ljava/lang/Class<+TT;>; from L0 to L8 
         .end localvariabletypetable 
     .end code 
     .signature (Ljava/lang/Class<+TT;>;I)V 
@@ -69,6 +67,36 @@ L9:
     .signature (Lglcutils/Supplier<TT;>;Ljava/lang/Class<+TT;>;I)V 
 .end method 
 
+.method public <init> : (Ljava/lang/Class;I[Ljava/lang/Object;)V 
+    .code stack 5 locals 4 
+L0:     aload_0 
+L1:     aload_1 
+L2:     invokedynamic [id3] 
+L7:     aload_1 
+L8:     iload_2 
+L9:     aload_3 
+L10:    invokespecial Method glcutils/GlcArray <init> (Lglcutils/Supplier;Ljava/lang/Class;I[Ljava/lang/Object;)V 
+L13:    return 
+L14:    
+        .linenumbertable 
+            L0 20 
+            L13 21 
+        .end linenumbertable 
+        .localvariabletable 
+            0 is this Lglcutils/GlcArray; from L0 to L14 
+            1 is clazz Ljava/lang/Class; from L0 to L14 
+            2 is length I from L0 to L14 
+            3 is array [Ljava/lang/Object; from L0 to L14 
+        .end localvariabletable 
+        .localvariabletypetable 
+            0 is this Lglcutils/GlcArray<TT;>; from L0 to L14 
+            1 is clazz Ljava/lang/Class<+TT;>; from L0 to L14 
+            3 is array [TT; from L0 to L14 
+        .end localvariabletypetable 
+    .end code 
+    .signature (Ljava/lang/Class<+TT;>;I[TT;)V 
+.end method 
+
 .method <init> : (Lglcutils/Supplier;Ljava/lang/Class;I[Ljava/lang/Object;)V 
     .code stack 2 locals 5 
 L0:     aload_0 
@@ -88,12 +116,12 @@ L22:    putfield Field glcutils/GlcArray array [Ljava/lang/Object;
 L25:    return 
 L26:    
         .linenumbertable 
-            L0 19 
-            L4 20 
-            L9 21 
-            L14 22 
-            L19 23 
-            L25 24 
+            L0 23 
+            L4 24 
+            L9 25 
+            L14 26 
+            L19 27 
+            L25 28 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L26 
@@ -128,9 +156,9 @@ L16:    putfield Field glcutils/GlcArray array [Ljava/lang/Object;
 L19:    return 
 L20:    
         .linenumbertable 
-            L0 30 
-            L7 31 
-            L19 33 
+            L0 34 
+            L7 35 
+            L19 37 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L20 
@@ -152,7 +180,7 @@ L11:    checkcast [Ljava/lang/Object;
 L14:    areturn 
 L15:    
         .linenumbertable 
-            L0 41 
+            L0 45 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L15 
@@ -173,7 +201,7 @@ L4:     invokeinterface InterfaceMethod glcutils/Supplier get ()Ljava/lang/Objec
 L9:     areturn 
 L10:    
         .linenumbertable 
-            L0 49 
+            L0 53 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L10 
@@ -209,10 +237,10 @@ L28:    aaload
 L29:    areturn 
 L30:    
         .linenumbertable 
-            L0 56 
-            L4 57 
-            L13 58 
-            L23 60 
+            L0 60 
+            L4 61 
+            L13 62 
+            L23 64 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L30 
@@ -237,9 +265,9 @@ L10:    aastore
 L11:    return 
 L12:    
         .linenumbertable 
-            L0 67 
-            L4 68 
-            L11 69 
+            L0 71 
+            L4 72 
+            L11 73 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L12 
@@ -261,7 +289,7 @@ L1:     getfield Field glcutils/GlcArray length I
 L4:     ireturn 
 L5:     
         .linenumbertable 
-            L0 76 
+            L0 80 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L5 
@@ -289,7 +317,7 @@ L15:    arraylength
 L16:    ireturn 
 L17:    
         .linenumbertable 
-            L0 84 
+            L0 88 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L17 
@@ -425,30 +453,30 @@ L171:   iconst_1
 L172:   ireturn 
 L173:   
         .linenumbertable 
-            L0 95 
-            L5 96 
-            L7 98 
-            L22 99 
-            L24 101 
-            L29 102 
-            L40 103 
-            L42 105 
-            L56 106 
-            L58 108 
-            L69 109 
-            L71 111 
-            L75 112 
-            L79 113 
-            L89 114 
-            L104 115 
-            L107 117 
-            L116 118 
-            L126 120 
-            L135 121 
-            L145 123 
-            L163 124 
-            L165 113 
-            L171 127 
+            L0 99 
+            L5 100 
+            L7 102 
+            L22 103 
+            L24 105 
+            L29 106 
+            L40 107 
+            L42 109 
+            L56 110 
+            L58 112 
+            L69 113 
+            L71 115 
+            L75 116 
+            L79 117 
+            L89 118 
+            L104 119 
+            L107 121 
+            L116 122 
+            L126 124 
+            L135 125 
+            L145 127 
+            L163 128 
+            L165 117 
+            L171 131 
         .end linenumbertable 
         .localvariabletable 
             3 is i I from L81 to L171 
@@ -465,11 +493,11 @@ L173:
 .method private static synthetic lambda$new$0 : (Ljava/lang/Class;)Ljava/lang/Object; 
     .code stack 1 locals 1 
 L0:     aload_0 
-L1:     invokestatic Method glcutils/Utils newInstance (Ljava/lang/Class;)Ljava/lang/Object; 
+L1:     invokestatic Method glcutils/Utils supply (Ljava/lang/Class;)Ljava/lang/Object; 
 L4:     areturn 
 L5:     
         .linenumbertable 
-            L0 12 
+            L0 20 
         .end linenumbertable 
         .localvariabletable 
             0 is clazz Ljava/lang/Class; from L0 to L5 
@@ -481,5 +509,5 @@ L5:
 .innerclasses 
     java/lang/invoke/MethodHandles$Lookup java/lang/invoke/MethodHandles Lookup public static final 
 .end innerclasses 
-.const [id1] = InvokeDynamic invokeStatic Method java/lang/invoke/LambdaMetafactory metafactory (Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite; MethodType ()Ljava/lang/Object; MethodHandle invokeStatic Method glcutils/GlcArray lambda$new$0 (Ljava/lang/Class;)Ljava/lang/Object; MethodType ()Ljava/lang/Object; : get (Ljava/lang/Class;)Lglcutils/Supplier; 
+.const [id3] = InvokeDynamic invokeStatic Method java/lang/invoke/LambdaMetafactory metafactory (Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite; MethodType ()Ljava/lang/Object; MethodHandle invokeStatic Method glcutils/GlcArray lambda$new$0 (Ljava/lang/Class;)Ljava/lang/Object; MethodType ()Ljava/lang/Object; : get (Ljava/lang/Class;)Lglcutils/Supplier; 
 .end class 

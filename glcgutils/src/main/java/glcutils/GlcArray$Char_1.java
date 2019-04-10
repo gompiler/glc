@@ -2,15 +2,15 @@ package glcutils;
 
 import java.util.Arrays;
 
-public class GlcIntArray {
+public class GlcArray$Char_1 {
     int length;
-    int[] array;
+    char[] array;
 
-    public GlcIntArray(int length) {
+    public GlcArray$Char_1(int length) {
         this(length, null);
     }
 
-    GlcIntArray(int length, int[] array) {
+    GlcArray$Char_1(int length, char[] array) {
         this.length = length;
         this.array = array;
     }
@@ -20,14 +20,14 @@ public class GlcIntArray {
      */
     final void init() {
         if (array == null) {
-            array = new int[length];
+            array = new char[length];
         }
     }
 
     /**
      * Return nonnull struct if index is within bounds
      */
-    public final int get(int i) {
+    public final char get(int i) {
         init();
         return array[i];
     }
@@ -35,7 +35,7 @@ public class GlcIntArray {
     /**
      * Set new struct value at specified index if it is within bounds
      */
-    public final void set(int i, int t) {
+    public final void set(int i, char t) {
         init();
         array[i] = t;
     }
@@ -64,7 +64,7 @@ public class GlcIntArray {
         if (obj == null || obj.getClass() != getClass()) {
             return false;
         }
-        GlcIntArray other = (GlcIntArray) obj;
+        GlcArray$Char_1 other = (GlcArray$Char_1) obj;
         if (length != other.length) {
             return false;
         }

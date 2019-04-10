@@ -9,9 +9,9 @@ public class GlcDataTest {
 
     @Test
     public void structEquality() {
-        GlcStruct1 s1_1 = new GlcStruct1();
-        GlcStruct1 s1_2 = new GlcStruct1();
-        GlcStruct2 s2 = new GlcStruct2();
+        Struct1 s1_1 = new Struct1();
+        Struct1 s1_2 = new Struct1();
+        Struct2 s2 = new Struct2();
         assertEquals("Reference equality failed", s1_1, s1_1);
         assertEquals("Structural equality failed", s1_1, s1_2);
         s1_1.setStringField("Hello");
@@ -40,9 +40,9 @@ public class GlcDataTest {
 
     @Test
     public void primitiveArrayEquality() {
-        GlcIntArray a1 = new GlcIntArray(8);
-        GlcIntArray a2 = new GlcIntArray(8);
-        GlcIntArray a3 = new GlcIntArray(5);
+        GlcArray$Int_1 a1 = new GlcArray$Int_1(8);
+        GlcArray$Int_1 a2 = new GlcArray$Int_1(8);
+        GlcArray$Int_1 a3 = new GlcArray$Int_1(5);
         assertEquality(a1, a2, a3);
         a1.set(3, 3);
         assertNotEquals("Structural inequality failed", a1, a2);
@@ -50,10 +50,10 @@ public class GlcDataTest {
 
     @Test
     public void arrayEquality() {
-        GlcStruct2 s = new GlcStruct2();
-        GlcArray<GlcStruct2> a1 = new GlcArray<>(GlcStruct2.class, 8);
-        GlcArray<GlcStruct2> a2 = new GlcArray<>(GlcStruct2.class, 8);
-        GlcArray<GlcStruct2> a3 = new GlcArray<>(GlcStruct2.class, 5);
+        Struct2 s = new Struct2();
+        GlcArray<Struct2> a1 = new GlcArray<>(Struct2.class, 8);
+        GlcArray<Struct2> a2 = new GlcArray<>(Struct2.class, 8);
+        GlcArray<Struct2> a3 = new GlcArray<>(Struct2.class, 5);
         assertEquality(a1, a2, a3);
         a1.set(3, s);
         assertEquals("Nested struct generation failed", a1, a2);
@@ -63,9 +63,9 @@ public class GlcDataTest {
 
     @Test
     public void primitiveSliceEquality() {
-        GlcIntSlice a1 = new GlcIntSlice();
-        GlcIntSlice a2 = new GlcIntSlice();
-        GlcIntSlice a3 = a2.append(0);
+        GlcSlice$Int_1 a1 = new GlcSlice$Int_1();
+        GlcSlice$Int_1 a2 = new GlcSlice$Int_1();
+        GlcSlice$Int_1 a3 = a2.append(0);
         assertEquality(a1, a2, a3);
         assertNotEquals("Structural inequality failed", a1.append(1), a3);
         assertEquals("Structural equality failed", a1.append(0), a3);

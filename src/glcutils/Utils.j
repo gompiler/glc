@@ -39,33 +39,42 @@ L10:
     .end code 
 .end method 
 
-.method public static newInstance : (Ljava/lang/Class;)Ljava/lang/Object; 
+.method public static supply : (Ljava/lang/Class;)Ljava/lang/Object; 
     .code stack 3 locals 2 
-        .catch java/lang/InstantiationException from L0 to L4 using L5 
-        .catch java/lang/IllegalAccessException from L0 to L4 using L5 
 L0:     aload_0 
-L1:     invokevirtual Method java/lang/Class newInstance ()Ljava/lang/Object; 
-L4:     areturn 
+L1:     ldc Class java/lang/String 
+L3:     if_acmpne L8 
+L6:     aconst_null 
+L7:     areturn 
+        .catch java/lang/InstantiationException from L8 to L12 using L13 
+        .catch java/lang/IllegalAccessException from L8 to L12 using L13 
+
+        .stack same 
+L8:     aload_0 
+L9:     invokevirtual Method java/lang/Class newInstance ()Ljava/lang/Object; 
+L12:    areturn 
 
         .stack stack_1 Object java/lang/ReflectiveOperationException 
-L5:     astore_1 
-L6:     new java/lang/RuntimeException 
-L9:     dup 
-L10:    aload_1 
-L11:    invokespecial Method java/lang/RuntimeException <init> (Ljava/lang/Throwable;)V 
-L14:    athrow 
-L15:    
+L13:    astore_1 
+L14:    new java/lang/RuntimeException 
+L17:    dup 
+L18:    aload_1 
+L19:    invokespecial Method java/lang/RuntimeException <init> (Ljava/lang/Throwable;)V 
+L22:    athrow 
+L23:    
         .linenumbertable 
-            L0 14 
-            L5 15 
-            L6 16 
+            L0 18 
+            L6 19 
+            L8 22 
+            L13 23 
+            L14 24 
         .end linenumbertable 
         .localvariabletable 
-            1 is e Ljava/lang/ReflectiveOperationException; from L6 to L15 
-            0 is clazz Ljava/lang/Class; from L0 to L15 
+            1 is e Ljava/lang/ReflectiveOperationException; from L14 to L23 
+            0 is clazz Ljava/lang/Class; from L0 to L23 
         .end localvariabletable 
         .localvariabletypetable 
-            0 is clazz Ljava/lang/Class<+TT;>; from L0 to L15 
+            0 is clazz Ljava/lang/Class<+TT;>; from L0 to L23 
         .end localvariabletypetable 
     .end code 
     .signature '<T:Ljava/lang/Object;>(Ljava/lang/Class<+TT;>;)TT;' 

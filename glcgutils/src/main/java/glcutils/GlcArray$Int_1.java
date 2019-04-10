@@ -2,15 +2,15 @@ package glcutils;
 
 import java.util.Arrays;
 
-public class GlcBooleanArray {
+public class GlcArray$Int_1 {
     int length;
-    boolean[] array;
+    int[] array;
 
-    public GlcBooleanArray(int length) {
+    public GlcArray$Int_1(int length) {
         this(length, null);
     }
 
-    GlcBooleanArray(int length, boolean[] array) {
+    GlcArray$Int_1(int length, int[] array) {
         this.length = length;
         this.array = array;
     }
@@ -20,14 +20,14 @@ public class GlcBooleanArray {
      */
     final void init() {
         if (array == null) {
-            array = new boolean[length];
+            array = new int[length];
         }
     }
 
     /**
      * Return nonnull struct if index is within bounds
      */
-    public final boolean get(int i) {
+    public final int get(int i) {
         init();
         return array[i];
     }
@@ -35,7 +35,7 @@ public class GlcBooleanArray {
     /**
      * Set new struct value at specified index if it is within bounds
      */
-    public final void set(int i, boolean t) {
+    public final void set(int i, int t) {
         init();
         array[i] = t;
     }
@@ -64,7 +64,7 @@ public class GlcBooleanArray {
         if (obj == null || obj.getClass() != getClass()) {
             return false;
         }
-        GlcBooleanArray other = (GlcBooleanArray) obj;
+        GlcArray$Int_1 other = (GlcArray$Int_1) obj;
         if (length != other.length) {
             return false;
         }
