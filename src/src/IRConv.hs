@@ -222,7 +222,7 @@ toClasses T.Program { T.structs = scts
       Class
         { cname = structName sid
         , fields = map sfToF fdls
-        , methods = [checkEq strc, copyStc strc] -- TODO: EQUALITY CHECKS?
+        , methods = [checkEq strc, copyStc strc] ++ (map (setter (structName sid)) fdls)
         }
     sfToF :: T.FieldDecl -> Field
     sfToF (T.FieldDecl (D.Ident fid) t) =
@@ -346,6 +346,24 @@ toClasses T.Program { T.structs = scts
           invokeCp t ++
           (iri [ PutField (FieldRef (ClassRef sn) fn) (jt)
           ])
+    setter :: String -> T.FieldDecl -> Method
+    setter sn (T.FieldDecl (D.Ident fn) t) =
+      Method
+        { mname = "set_" ++ fn
+        , stackLimit = maxStackSize setBody 0
+        , localsLimit = 2 -- One for this and one for argument
+        , spec = MethodSpec ([typeToJType t], JVoid)
+        , body = setBody
+        }
+        where
+          setBody :: [IRItem]
+          setBody = let jt = typeToJType t in
+            iri [Load Object (T.VarIndex 0)
+                , Load (typeToIRType t) (T.VarIndex 1)
+                ]
+            ++ invokeCp t
+            ++ iri [PutField (FieldRef (ClassRef sn) fn) (jt)
+                   , Return Nothing]
 
 invokeCp :: T.Type -> [IRItem]
 invokeCp t = iri $ case t of
