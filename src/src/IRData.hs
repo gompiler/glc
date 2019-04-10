@@ -133,6 +133,7 @@ data LDCType
   = LDCInt Int -- Integers, booleans, runes
   | LDCDouble Float -- Float64s
   | LDCString String -- Strings
+  | LDCClass ClassRef -- Class constants
   deriving (Show, Eq)
 
 data Instruction
@@ -231,6 +232,9 @@ jDoubleInit = MethodRef (CRef jDouble) "<init>" (MethodSpec ([JDouble], JVoid))
 jObject :: ClassRef
 jObject = ClassRef "java/lang/Object"
 
+jClass :: ClassRef
+jClass = ClassRef "java/lang/Class"
+
 stringEquals :: MethodRef
 stringEquals =
   MethodRef (CRef jString) "equals" (MethodSpec ([JClass jObject], JBool))
@@ -265,31 +269,63 @@ emptySpec = MethodSpec ([], JVoid)
 cMain :: ClassRef
 cMain = ClassRef "Main"
 
-cSlice :: ClassRef
-cSlice = ClassRef "Slice"
+cGlcArray :: ClassRef
+cGlcArray = ClassRef "glcutils/GlcArray"
 
-sliceInit :: MethodRef
-sliceInit = MethodRef (CRef cSlice) "<init>" emptySpec
-
-sliceAppend :: MethodRef
-sliceAppend =
+glcArrayInit :: MethodRef
+glcArrayInit =
   MethodRef
-    (CRef cSlice)
+    (CRef cGlcArray)
+    "<init>"
+    (MethodSpec ([JClass jClass, JArray JInt, JBool], JVoid))
+
+glcArrayAppendInt :: MethodRef
+glcArrayAppendInt =
+  MethodRef
+    (CRef cGlcArray)
     "append"
-    (MethodSpec ([JClass jObject], JClass cSlice))
+    (MethodSpec ([JInt], JClass cGlcArray))
 
-sliceGet :: MethodRef
-sliceGet = MethodRef (CRef cSlice) "get" (MethodSpec ([JInt], JClass jObject))
+glcArrayAppendDouble :: MethodRef
+glcArrayAppendDouble =
+  MethodRef
+    (CRef cGlcArray)
+    "append"
+    (MethodSpec ([JDouble], JClass cGlcArray))
 
-sliceSet :: MethodRef
-sliceSet =
-  MethodRef (CRef cSlice) "set" (MethodSpec ([JInt, JClass jObject], JVoid))
+glcArrayGetInt :: MethodRef
+glcArrayGetInt =
+  MethodRef
+    (CRef cGlcArray)
+    "getInt"
+    (MethodSpec ([JInt], JClass cGlcArray))
 
-sliceCapacity :: MethodRef
-sliceCapacity = MethodRef (CRef cSlice) "capacity" (MethodSpec ([], JInt))
+glcArraySetInt :: MethodRef
+glcArraySetInt =
+  MethodRef
+    (CRef cGlcArray)
+    "set"
+    (MethodSpec ([JInt, JInt], JClass cGlcArray))
 
-sliceLength :: FieldRef
-sliceLength = FieldRef cSlice "length"
+glcArrayGetDouble :: MethodRef
+glcArrayGetDouble =
+  MethodRef
+    (CRef cGlcArray)
+    "getDouble"
+    (MethodSpec ([JInt], JClass cGlcArray))
+
+glcArraySetDouble :: MethodRef
+glcArraySetDouble =
+  MethodRef
+    (CRef cGlcArray)
+    "set"
+    (MethodSpec ([JInt, JDouble], JClass cGlcArray))
+
+glcArrayCap :: MethodRef
+glcArrayCap = MethodRef (CRef cGlcArray) "capacity" (MethodSpec ([], JInt))
+
+glcArrayLength :: MethodRef
+glcArrayLength = MethodRef (CRef cGlcArray) "length" (MethodSpec ([], JInt))
 
 -- Custom-defined methods
 glcUtils :: ClassRef

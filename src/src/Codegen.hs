@@ -120,6 +120,7 @@ instance Bytecode Instruction where
               LDCInt i    -> [" ", show i]
               LDCDouble f -> ["2_w ", show f] -- Check if this is in the right format
               LDCString s -> ["_w ", show s]
+              LDCClass (ClassRef cr) -> [" Class ", cr]
       toBCStr IConstM1 = ["iconst_m1"]
       toBCStr IConst0 = ["iconst_0"]
       toBCStr IConst1 = ["iconst_1"]

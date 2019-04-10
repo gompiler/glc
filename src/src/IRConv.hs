@@ -296,8 +296,12 @@ instance IRRep T.VarDecl' where
                         case rt of
                           T.ArrayType rl rrt -> getDepth (rl : rSizes) rrt
                           _                  -> reverse rSizes -- no more arrays
-              T.SliceType {} ->
-                iri [LDC (LDCInt l), ANewArray cSlice, Store Object idx]
+              T.SliceType {} -> undefined -- TODO: Array of slice
+                -- iri
+                --   [ LDC (LDCInt l)
+                --   , ANewArray cSlice
+                --   , Store Object idx
+                --   ]
               T.PInt -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
               T.PFloat64 ->
                 iri [LDC (LDCInt l), NewArray IRDouble, Store Object idx]
@@ -311,8 +315,30 @@ instance IRRep T.VarDecl' where
                   , ANewArray (ClassRef $ structName sid)
                   , Store Object idx
                   ]
-          T.SliceType {} ->
-            iri [New cSlice, Dup, InvokeSpecial sliceInit, Store Object idx]
+          (T.SliceType st) ->
+            case st of
+              T.ArrayType {} -> undefined -- TODO
+              T.SliceType {} -> undefined -- TODO
+              T.PInt ->
+                iri
+                  [ New cGlcArray
+                  , Dup
+                  , LDC (LDCClass jInteger)
+                  , IConst1 -- slice of dimension 1
+                  , NewArray IRInt -- dimension array
+                  , Dup
+                  , IConst0 -- position 0
+                  , IConstM1 -- slices have dimension -1 to start
+                  , ArrayStore (Prim IRInt)
+                  , IConst1 -- debug flag TODO: WHAT TO DO WITH THIS
+                  , InvokeSpecial glcArrayInit
+                  , Store Object idx
+                  ]
+              T.PFloat64 -> undefined -- TODO
+              T.PRune -> undefined -- TODO
+              T.PBool -> undefined -- TODO
+              T.PString -> undefined -- TODO
+              (T.StructType _) -> undefined -- TODO
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
@@ -427,14 +453,14 @@ instance IRRep T.SimpleStmt where
                 setUpOps op ++
                 toIR ea ++
                 toIR ei ++
-                iri [Dup2, ArrayLoad irType] ++ -- Duplicate addr. and index at the same time
+                (IRInst Dup2) : glcArrayGetIR t ++ -- Duplicate addr. and index at the same time...
                 afterLoadOps op ++ toIR ve ++ finalOps op
               T.SliceType {} ->
                 setUpOps op ++
                 toIR ea ++
                 toIR ei ++
-                iri [Dup2, InvokeVirtual sliceGet] ++
-                objectDecode t ++ afterLoadOps op ++ toIR ve ++ finalOps op
+                (IRInst Dup2) : glcArrayGetIR t ++ -- Duplicate addr. and index at the same time...
+                afterLoadOps op ++ toIR ve ++ finalOps op
               _ -> error "Cannot index non-array/slice"
           _ -> error "Cannot assign to non-addressable value"
         where
@@ -480,16 +506,20 @@ instance IRRep T.SimpleStmt where
               JClass cr ->
                 toIR eo ++ iri [PutField (FieldRef cr fid) (typeToJType t)]
               _ -> error "Cannot get field of non-object"
-          T.Index t ea _ ->
-            case exprType ea of
-              T.ArrayType {} -> iri [ArrayStore irType] -- matched with above
-              T.SliceType {} ->
-                objectRepr (typeToJType t) ++ iri [InvokeVirtual sliceSet]
-              _ -> error "Cannot index non-array/slice"
+          T.Index t _ _ -> storeIR
+            where
+              storeIR :: [IRItem]
+              storeIR =
+                case t of
+                  T.ArrayType {} -> undefined -- TODO: Set slice of array
+                  T.SliceType {} -> undefined -- TODO: Set slice of slice
+                  T.PInt -> iri [InvokeVirtual glcArraySetInt]
+                  T.PFloat64 -> iri [InvokeVirtual glcArraySetDouble]
+                  T.PBool -> iri [InvokeVirtual glcArraySetInt]
+                  T.PRune -> iri [InvokeVirtual glcArraySetInt]
+                  T.PString -> undefined -- TODO: Set slice of string
+                  T.StructType {} -> undefined -- TODO: Set slice of struct
           _ -> error "Cannot assign to non-addressable value"
-        where
-          irType :: IRType
-          irType = exprIRType e
   toIR (T.ShortDeclare iExps) =
     exprInsts ++ zipWith (curry expStore) idxs stTypes
     where
@@ -597,19 +627,29 @@ instance IRRep T.Expr where
   toIR (T.TopVar t tvi) =
     iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
   toIR (T.AppendExpr _ e1 e2) =
-    toIR e1 ++
-    toIR e2 ++
-    objectRepr (exprJType e2) ++
-    iri [InvokeVirtual sliceAppend] -- returns Slice for us
+    toIR e1 ++ toIR e2 ++ appendIR
+    where
+      appendIR :: [IRItem]
+      appendIR =
+        case exprType e2 of
+          T.ArrayType {} -> undefined -- TODO: append array
+          T.SliceType {} -> undefined -- TODO: append slice
+          T.PInt -> iri [InvokeVirtual glcArrayAppendInt]
+          T.PFloat64 -> iri [InvokeVirtual glcArrayAppendDouble]
+          T.PRune -> iri [InvokeVirtual glcArrayAppendInt]
+          T.PBool -> iri [InvokeVirtual glcArrayAppendInt]
+          T.PString -> undefined -- TODO
+          T.StructType {} -> undefined -- TODO: append struct
+
   toIR (T.LenExpr e) =
     case exprType e of
       T.ArrayType l _ -> iri [LDC (LDCInt l)] -- fixed at compile time
-      T.SliceType _   -> toIR e ++ iri [GetField sliceLength JInt]
+      T.SliceType _   -> toIR e ++ iri [InvokeVirtual glcArrayLength]
       _               -> error "Cannot get length of non-array/slice"
   toIR (T.CapExpr e) =
     case exprType e of
       T.ArrayType l _ -> iri [LDC (LDCInt l)]
-      T.SliceType _   -> toIR e ++ iri [InvokeVirtual sliceCapacity]
+      T.SliceType _   -> toIR e ++ iri [InvokeVirtual glcArrayCap]
       _               -> error "Cannot get capacity of non-array/slice"
   toIR (T.Selector t e (T.Ident fid)) =
     toIR e ++ iri [GetField fr (typeToJType t)]
@@ -619,13 +659,7 @@ instance IRRep T.Expr where
         case exprJType e of
           JClass cref -> FieldRef cref fid
           _           -> error "Cannot get field of non-object"
-  toIR (T.Index t e1 e2) =
-    case exprType e1 of
-      T.ArrayType _ _ -- TODO: CHECK LENGTH HERE?
-       -> toIR e1 ++ toIR e2 ++ iri [ArrayLoad (typeToIRType t)]
-      T.SliceType {} ->
-        toIR e1 ++ toIR e2 ++ iri [InvokeVirtual sliceGet] ++ objectDecode t
-      _ -> error "Cannot index non-array/slice"
+  toIR (T.Index t e1 e2) = toIR e1 ++ toIR e2 ++ glcArrayGetIR t
   toIR (T.Arguments t aid args) =
     concatMap (\e -> toIR e ++ cloneIfNeeded e) args ++
     iri
@@ -754,6 +788,18 @@ equality idx t =
       , IRLabel ("stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
       ]
 
+glcArrayGetIR :: T.Type -> [IRItem]
+glcArrayGetIR t =
+  case t of
+    T.ArrayType {} -> undefined -- TODO: Get array of array
+    T.SliceType {} -> undefined -- TODO: Get array of slice
+    T.PInt -> iri [InvokeVirtual glcArrayGetInt]
+    T.PFloat64 -> iri [InvokeVirtual glcArrayGetDouble]
+    T.PRune -> iri [InvokeVirtual glcArrayGetInt]
+    T.PBool -> iri [InvokeVirtual glcArrayGetInt]
+    T.PString -> undefined -- TODO
+    T.StructType {} -> undefined -- TODO: Get array of struct
+
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
 exprType (T.Binary _ t _ _ _) = t
@@ -792,7 +838,7 @@ getLiteralType (D.StringLit _) = T.PString
 
 typeToJType :: T.Type -> JType
 typeToJType (T.ArrayType _ t) = JArray (typeToJType t)
-typeToJType T.SliceType {} = JClass cSlice
+typeToJType T.SliceType {} = JClass cGlcArray
 typeToJType T.PInt = JInt
 typeToJType T.PFloat64 = JDouble
 typeToJType T.PRune = JInt
