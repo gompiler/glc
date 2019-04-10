@@ -3,7 +3,37 @@ package glcutils;
 import java.lang.reflect.Array;
 
 public class GlcSliceUtils {
-    
+
+    private GlcSliceUtils() {
+        // disallow
+    }
+
+    public static Object[] append(Object[] array, int length, Object t) {
+        int capacity = array == null ? 0 : array.length;
+        if (array == null || length >= capacity - 1) {
+            // We have an initial capacity of 2 due to legacy golang
+            // This is a requirement for golite
+            int newLength = newCapacity(capacity);
+            Object[] newArray = new Object[newLength];
+            if (array != null) {
+                System.arraycopy(array, 0, newArray, 0, length);
+            }
+            newArray[length] = t;
+            return newArray;
+        } else {
+            array[length] = t;
+            return array;
+        }
+    }
+
+    /**
+     * We have an initial capacity of 2 due to legacy golang
+     * This is a requirement for golite
+     */
+    public static int newCapacity(int capacity) {
+        return capacity <= 0 ? 2 : 2 * capacity;
+    }
+
     /**
      * Appends value at provided length using provided array.
      * If capacity is too small, a new array will be generated
