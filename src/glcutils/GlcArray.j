@@ -254,7 +254,7 @@ L25:    getfield Field glcutils/GlcArray length I
 L28:    iconst_1 
 L29:    isub 
 L30:    if_icmple L59 
-L33:    ldc 'Slice index %i out of range (length %i)' 
+L33:    ldc 'Slice index %d out of range (length %d)' 
 L35:    iconst_2 
 L36:    anewarray java/lang/Object 
 L39:    dup 
