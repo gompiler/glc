@@ -95,6 +95,9 @@ public class GlcArray {
         if (array[i] == null) {
             array[i] = supply();
         }
+        if (i > length - 1) {
+            Utils.fail("Slice index %i out of range (length %i)", i, length);
+        }
         // noinspection unchecked
         return (T) array[i];
     }

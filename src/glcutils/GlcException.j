@@ -12,6 +12,9 @@ L5:
             L0 5 
             L4 6 
         .end linenumbertable 
+        .localvariabletable 
+            0 is this Lglcutils/GlcException; from L0 to L5 
+        .end localvariabletable 
     .end code 
 .end method 
 
@@ -26,6 +29,10 @@ L6:
             L0 9 
             L5 10 
         .end linenumbertable 
+        .localvariabletable 
+            0 is this Lglcutils/GlcException; from L0 to L6 
+            1 is message Ljava/lang/String; from L0 to L6 
+        .end localvariabletable 
     .end code 
 .end method 
 
@@ -41,6 +48,11 @@ L7:
             L0 13 
             L6 14 
         .end linenumbertable 
+        .localvariabletable 
+            0 is this Lglcutils/GlcException; from L0 to L7 
+            1 is message Ljava/lang/String; from L0 to L7 
+            2 is cause Ljava/lang/Throwable; from L0 to L7 
+        .end localvariabletable 
     .end code 
 .end method 
 
@@ -55,6 +67,10 @@ L6:
             L0 17 
             L5 18 
         .end linenumbertable 
+        .localvariabletable 
+            0 is this Lglcutils/GlcException; from L0 to L6 
+            1 is cause Ljava/lang/Throwable; from L0 to L6 
+        .end localvariabletable 
     .end code 
 .end method 
 .sourcefile 'GlcException.java' 
