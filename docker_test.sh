@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-
+set -e
 (cd src && make test)
 
 if [[ $? -ne 0 ]]; then
