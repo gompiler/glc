@@ -387,12 +387,12 @@ instance IRRep T.VarDecl' where
                               ])
                           (zip [0 ..] sizes)
                       sizes :: [Int]
-                      sizes = getDepth [l] at
-                      getDepth :: [Int] -> T.Type -> [Int]
-                      getDepth rSizes rt =
+                      sizes = getSizes [l] at
+                      getSizes :: [Int] -> T.Type -> [Int]
+                      getSizes rSizes rt =
                         case rt of
-                          T.ArrayType rl rrt -> getDepth (rl : rSizes) rrt
-                          T.SliceType rrt    -> getDepth (-1 : rSizes) rrt
+                          T.ArrayType rl rrt -> getSizes (rl : rSizes) rrt
+                          T.SliceType rrt    -> getSizes (-1 : rSizes) rrt
                           _                  -> reverse rSizes -- no more arrays
                       classOfBase :: T.Type -> ClassRef
                       classOfBase ct =
