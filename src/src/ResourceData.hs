@@ -41,7 +41,6 @@ import qualified Cyclic             as C
 import           Data.List.NonEmpty (NonEmpty (..))
 import           Prelude            hiding (init)
 import           Prettify           (Prettify (..))
-import           UtilsData (Category)
 
 -- Represents the stack index within a method
 newtype VarIndex =
@@ -62,7 +61,6 @@ newtype LabelIndex =
 data Program = Program
   { package    :: Ident
   , structs    :: [StructType]
-  , categories :: [Category]
   , topVars    :: [TopVarDecl]
   , init       :: InitDecl
   , main       :: MainDecl
