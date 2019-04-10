@@ -840,7 +840,7 @@ instance Symbolize Expr T.Expr where
           And        -> T.And
           Arithm aop -> T.Arithm $ aopConv aop
           Data.EQ    -> T.EQ
-          NEQ        -> T.EQ
+          NEQ        -> T.NEQ
           Data.LT    -> T.LT
           LEQ        -> T.LEQ
           Data.GT    -> T.GT
