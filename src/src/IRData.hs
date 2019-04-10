@@ -159,6 +159,7 @@ data Instruction
   | IAnd
   | IOr
   | IXOr
+  | IntToDouble
   | If IRCmp
        LabelName
   | IfICmp IRCmp

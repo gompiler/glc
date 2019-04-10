@@ -84,6 +84,13 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
         , spec = MethodSpec ([JDouble], JDouble)
         , body = idDouble
         } :
+      Method -- float64 -> int casts
+        { mname = "__glc$fn__float64"
+        , stackLimit = 2
+        , localsLimit = 2
+        , spec = MethodSpec ([JInt], JDouble)
+        , body = intToDouble
+        } :
       Method
         { mname = "main"
         , stackLimit = 0
@@ -120,6 +127,12 @@ toClasses (T.Program _ scts tfs (T.InitDecl ifb ill) (T.MainDecl mfb mll) tms) =
             , InvokeStatic jValueOfChar
             , Return (Just Object)
             ]
+        intToDouble :: [IRItem]
+        intToDouble =
+          iri
+            [ Load (Prim IRInt) (T.VarIndex 0)
+            , IntToDouble
+            , Return (Just $ Prim IRDouble)]
         idString :: [IRItem]
         idString =
           iri
@@ -815,6 +828,7 @@ stackDelta IShR = -1 -- ..., v, w -> ..., r
 stackDelta IAnd = -1 -- ..., v, w -> ..., r
 stackDelta IOr = -1 -- ..., v, w -> ..., r
 stackDelta IXOr = -1 -- ..., v, w -> ..., r
+stackDelta IntToDouble = 1 --- ..., i -> ..., d (double-wide)
 stackDelta If {} = -1 -- ..., v -> ...
 stackDelta IfICmp {} = -2 -- ..., v, w -> ...
 stackDelta (LDC (LDCDouble _)) = 2 -- ... -> ..., v (double-wide)

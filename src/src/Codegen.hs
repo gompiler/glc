@@ -106,6 +106,7 @@ instance Bytecode Instruction where
       toBCStr IShL = ["ishl"]
       toBCStr IShR = ["ishr"]
       toBCStr IAnd = ["iand"]
+      toBCStr IntToDouble = ["i2d"]
       toBCStr (If cmp label) = ["if", show cmp, " L", label]
       toBCStr (IfICmp cmp label) = ["if_icmp", show cmp, " L", label]
       toBCStr IOr = ["ior"]
