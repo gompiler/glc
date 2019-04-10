@@ -845,7 +845,7 @@ instance Symbolize Expr T.Expr where
           (_, ['.'])  -> fs ++ "0" -- Append 0 because 1. is not a valid Float in Haskell
           ([], '.':_) -> '0' : fs -- Prepend 0 because .1 is not a valid Float
           (_, _)      -> fs
-      RuneLit o cs -> T.Lit . T.RuneLit <$> convEsc cs o
+      RuneLit o cs -> T.Lit . T.RuneLit <$> convEsc cs o 1
       StringLit o Interpreted s ->
         T.Lit . T.StringLit <$> (rmesc =<< stripQuotes s o)
         where rmesc :: String -> Glc' String
@@ -855,7 +855,7 @@ instance Symbolize Expr T.Expr where
               rmesc' [c] acc = Right $ c : acc
               rmesc' (c1:c2:t) acc =
                 if c1 == '\\'
-                  then (\escs -> rmesc' t (escs : acc)) =<< convEsc [c1, c2] o
+                  then (\escs -> rmesc' t (escs : acc)) =<< convEsc [c1, c2] o 0
                   else rmesc' (c2 : t) (c1 : acc)
       StringLit o Raw s -> T.Lit . T.StringLit <$> stripQuotes s o
           -- Escape all things that need to be escaped so that we can
