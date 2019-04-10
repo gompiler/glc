@@ -764,9 +764,9 @@ instance Symbolize VarDecl' [T.VarDecl'] where
         either
           (return . Left)
           (\t' -> do
+             ee' <- recurse st e
              me <- checkId st tempVar "Variable " ident
              scope <- S.insert st vname (Variable t') -- Update type of variable
-             ee' <- recurse st e
              return $ maybe (createVarD scope <$> toBase e t' <*> ee') Left me)
           et'
         where
