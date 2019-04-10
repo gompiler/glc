@@ -513,23 +513,28 @@ instance Symbolize SimpleStmt T.SimpleStmt where
       (return . Left)
       (const $
        maybe
-         (do l1 <- mapM (recurse st) (toList el1)
-             l2 <- mapM (recurse st) (toList el2)
-             case mop of
-               Nothing -> do
-                 ee <- mapM sameType (zip (toList el1) (toList el2))
-                 return $ sequence ee *>
-                   (T.Assign (T.AssignOp Nothing) . fromList <$$> zip <$>
-                    sequence l1 <*>
-                    sequence l2)
-               Just op -> do
-                 el <-
-                   mapM
-                     (infer st . aop2e (Arithm op))
-                     (zip (toList el1) (toList el2))
-                 return $ sequence el *>
-                   (T.Assign (aop2aop' aop) . fromList <$$> zip <$> sequence l1 <*>
-                    sequence l2))
+         (case mop of
+            Nothing -> do
+              ee <- mapM sameType (zip (toList el1) (toList el2))
+                 -- NOTE: l1 and l2 are here instead of at the
+                 -- beginning of the case because sameType may update
+                 -- the type of _
+              l1 <- mapM (recurse st) (toList el1)
+              l2 <- mapM (recurse st) (toList el2)
+              return $ sequence ee *>
+                (T.Assign (T.AssignOp Nothing) . fromList <$$> zip <$>
+                 sequence l1 <*>
+                 sequence l2)
+            Just op -> do
+              l1 <- mapM (recurse st) (toList el1)
+              l2 <- mapM (recurse st) (toList el2)
+              el <-
+                mapM
+                  (infer st . aop2e (Arithm op))
+                  (zip (toList el1) (toList el2))
+              return $ sequence el *>
+                (T.Assign (aop2aop' aop) . fromList <$$> zip <$> sequence l1 <*>
+                 sequence l2))
          (return . Left . head)
          (sequence me))
       (sequence ets)
@@ -542,11 +547,15 @@ instance Symbolize SimpleStmt T.SimpleStmt where
       aop2aop' (AssignOp Nothing)     = T.AssignOp Nothing
       -- | Check if two expressions have the same type and if LHS is addressable, helper for assignments
       sameType :: (Expr, Expr) -> ST s (Glc' ())
-      sameType (Var (Identifier _ "_"), e2) = do
+      sameType (Var (Identifier _ "_"), e2)
         -- Do not compare if LHS is "_"
+       = do
         et2 <- infer st e2
         -- Update dummy type of _ so that we can infer its type
-        either (return . Left) (\t' -> S.insert st "_" (Variable t') $> Right ()) et2
+        either
+          (return . Left)
+          (\t' -> S.insert st "_" (Variable t') $> Right ())
+          et2
       sameType (e1, e2) = do
         et1 <- infer st e1
         et2 <- infer st e2
