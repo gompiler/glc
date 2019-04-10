@@ -447,20 +447,11 @@ instance IRRep T.SimpleStmt where
                 afterLoadOps op ++ toIR ve ++ finalOps op
               _ -> error "Cannot get field of non-object"
           (Just op, T.Index t ea ei) ->
-            case exprType ea of
-              T.ArrayType {} ->
-                setUpOps op ++
-                toIR ea ++
-                toIR ei ++
-                (IRInst Dup2) : glcArrayGetIR t ++ -- Duplicate addr. and index at the same time...
-                afterLoadOps op ++ toIR ve ++ finalOps op
-              T.SliceType {} ->
-                setUpOps op ++
-                toIR ea ++
-                toIR ei ++
-                (IRInst Dup2) : glcArrayGetIR t ++ -- Duplicate addr. and index at the same time...
-                afterLoadOps op ++ toIR ve ++ finalOps op
-              _ -> error "Cannot index non-array/slice"
+            setUpOps op ++
+            toIR ea ++
+            toIR ei ++
+            (IRInst Dup2) : glcArrayGetIR t ++ -- Duplicate addr. and index at the same time...
+            afterLoadOps op ++ toIR ve ++ finalOps op
           _ -> error "Cannot assign to non-addressable value"
         where
           irType :: IRType
@@ -791,8 +782,8 @@ equality idx t =
 glcArrayGetIR :: T.Type -> [IRItem]
 glcArrayGetIR t =
   case t of
-    T.ArrayType {} -> undefined -- TODO: Get array of array
-    T.SliceType {} -> undefined -- TODO: Get array of slice
+    T.ArrayType {} -> iri [InvokeVirtual glcArrayGetArray]
+    T.SliceType {} -> iri [InvokeVirtual glcArrayGetArray]
     T.PInt -> iri [InvokeVirtual glcArrayGetInt]
     T.PFloat64 -> iri [InvokeVirtual glcArrayGetDouble]
     T.PRune -> iri [InvokeVirtual glcArrayGetInt]

@@ -321,6 +321,13 @@ glcArraySetDouble =
     "set"
     (MethodSpec ([JInt, JDouble], JVoid))
 
+glcArrayGetArray :: MethodRef
+glcArrayGetArray =
+  MethodRef
+    (CRef cGlcArray)
+    "get"
+    (MethodSpec ([JInt], JClass cGlcArray))
+
 glcArrayCap :: MethodRef
 glcArrayCap = MethodRef (CRef cGlcArray) "capacity" (MethodSpec ([], JInt))
 
