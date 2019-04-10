@@ -49,15 +49,21 @@ sliceClassName t depth =
     then className t
     else "GlcSlice$" ++ className t ++ "_" ++ show depth
 
+class ClassType a where
+  className :: a -> String
+
+instance ClassType Type where
+  className = className . toBase
+
 -- | Class name of base types
 -- Keep in sync with generated java files
-className :: BaseType -> String
-className (Custom s) = s
-className PInt       = "Int"
-className PFloat64   = "Float"
-className PBool      = "Bool"
-className PRune      = "Char"
-className PString    = "String"
+instance ClassType BaseType where
+  className (Custom s) = s
+  className PInt       = "Int"
+  className PFloat64   = "Float"
+  className PBool      = "Bool"
+  className PRune      = "Char"
+  className PString    = "String"
 
 -- | See https://golang.org/ref/spec#FieldDecl
 -- Golite does not support embedded fields
