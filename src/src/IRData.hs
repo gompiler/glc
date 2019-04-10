@@ -161,6 +161,7 @@ data Instruction
   | IOr
   | IXOr
   | IntToDouble
+  | DoubleToInt
   | If IRCmp
        LabelName
   | IfICmp IRCmp

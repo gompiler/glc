@@ -68,12 +68,26 @@ toClasses T.Program { T.structs = scts
         , spec = MethodSpec ([JInt], JInt)
         , body = idInt
         } :
+      Method -- int -> float64 casts
+        { mname = "__glc$fn__int"
+        , stackLimit = 2
+        , localsLimit = 2
+        , spec = MethodSpec ([JDouble], JInt)
+        , body = doubleToInt
+        } :
       Method -- rune -> rune identity casts
         { mname = "__glc$fn__rune"
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JInt], JInt)
         , body = idInt
+        } :
+      Method -- rune -> float64 casts
+        { mname = "__glc$fn__rune"
+        , stackLimit = 2
+        , localsLimit = 2
+        , spec = MethodSpec ([JDouble], JInt)
+        , body = doubleToInt
         } :
       Method -- bool -> bool identity casts
         { mname = "__glc$fn__bool"
@@ -138,6 +152,13 @@ toClasses T.Program { T.structs = scts
             [ Load (Prim IRInt) (T.VarIndex 0)
             , IntToDouble
             , Return (Just $ Prim IRDouble)
+            ]
+        doubleToInt :: [IRItem]
+        doubleToInt =
+          iri
+            [ Load (Prim IRDouble) (T.VarIndex 0)
+            , DoubleToInt
+            , Return (Just $ Prim IRInt)
             ]
         idString :: [IRItem]
         idString = iri [Load Object (T.VarIndex 0), Return (Just Object)]
@@ -873,6 +894,7 @@ stackDelta IAnd = -1 -- ..., v, w -> ..., r
 stackDelta IOr = -1 -- ..., v, w -> ..., r
 stackDelta IXOr = -1 -- ..., v, w -> ..., r
 stackDelta IntToDouble = 1 --- ..., i -> ..., d (double-wide)
+stackDelta DoubleToInt = -1 --- ..., d (double-wide) -> ..., i
 stackDelta If {} = -1 -- ..., v -> ...
 stackDelta IfICmp {} = -2 -- ..., v, w -> ...
 stackDelta (LDC (LDCDouble _)) = 2 -- ... -> ..., v (double-wide)
