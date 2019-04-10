@@ -1,5 +1,5 @@
 COMPILE_FLAGS = --pedantic --coverage
-JLIBS = GlcArray Utils GlcIntSlice GlcArray GlcIntArray
+JLIBS = GlcArray Utils GlcSliceUtils
 JFILES = $(addsuffix .j,$(addprefix glcutils/,$(JLIBS)))
 JFILES_NOUTILS = $(filterout Utils,$(JFILES))
 JAVAFILES = $(addsuffix .java,$(addprefix ../glcgutils/src/main/java/glcutils/,$(JLIBS)))

@@ -2,6 +2,17 @@ package glcutils;
 
 import java.util.Arrays;
 
+/**
+ * Lazy multi dimensional array implementation, supporting slice operations.
+ * The public constructor allows you to specify the multi dimensional sizes.
+ * For instance, passing new int[]{1, 2, 3} with class Test.class will create Test[1][2][3]
+ * To create a slice, simply provide a size that is less than 0.
+ * <p>
+ * No generics are used, so there are no guarantees towards get and set.
+ * It is expected that you set arrays of the appropriate subsizes for a multi dimensional array,
+ * or a value of the appropriate type in a one dimensional array.
+ * You may optionally set the debug flag to true to get some verifications.
+ */
 public class GlcArray {
     private final int length;
     private final boolean isSlice;
@@ -14,7 +25,7 @@ public class GlcArray {
         this(clazz, sizes, false);
     }
 
-     GlcArray(Class clazz, int[] sizes, boolean debug) {
+    GlcArray(Class clazz, int[] sizes, boolean debug) {
         this(clazz, sizes[0] < 0, Utils.tail(sizes), Math.max(0, sizes[0]), null, debug);
     }
 
@@ -58,23 +69,35 @@ public class GlcArray {
         return (T) array[i];
     }
 
+    final GlcArray getArray(int i) {
+        return get(i);
+    }
+
+    public void verify(Object t) {
+        if (!debug) {
+            return;
+        }
+        if (t == null) {
+            return;
+        }
+        if (subSizes.length == 0 && !clazz.isInstance(t)) {
+            Utils.fail("Set value of class %s in 1D GlcArray, expected class %s", t.getClass().getName(), clazz.getName());
+        } else if (subSizes.length > 0) {
+            if (!(t instanceof GlcArray)) {
+                Utils.fail("Set value in multi GlcArray, but not of class GlcArray");
+            }
+            GlcArray v = (GlcArray) t;
+            if (!Arrays.equals(v.subSizes, Utils.tail(subSizes))) {
+                Utils.fail("Set GlcArray of sizes %s in GlcArray of sizes %s", Arrays.toString(v.subSizes), Arrays.toString(subSizes));
+            }
+        }
+    }
+
     /**
      * Set new struct value at specified index if it is within bounds
      */
     public void set(int i, Object t) {
-        if (debug) {
-            if (subSizes.length == 0 && !clazz.isInstance(t)) {
-                Utils.fail("Set value in 1D GlcArray, but not of class %s", clazz.getName());
-            } else if (subSizes.length > 0) {
-                if (!(t instanceof GlcArray)) {
-                    Utils.fail("Set value in multi GlcArray, but not of class GlcArray");
-                }
-                GlcArray v = (GlcArray) t;
-                if (!Arrays.equals(v.subSizes, Utils.tail(subSizes))) {
-                    Utils.fail("Set GlcArray of sizes %s in GlcArray of sizes %s", Arrays.toString(v.subSizes), Arrays.toString(subSizes));
-                }
-            }
-        }
+        verify(t);
         init();
         array[i] = t;
     }
@@ -101,8 +124,9 @@ public class GlcArray {
      * Otherwise, a new array is returned
      */
     public GlcArray append(Object t) {
+        verify(t);
         if (!isSlice) {
-            throw new RuntimeException("Cannot append to nonslice");
+            Utils.fail("Cannot append to nonslice");
         }
         Object[] newArray = GlcSliceUtils.append(array, length, t);
         return new GlcArray(clazz, true, subSizes, length + 1, newArray, debug);
@@ -123,18 +147,6 @@ public class GlcArray {
             return false;
         }
         GlcArray other = (GlcArray) obj;
-        if (!lightEquals(other)) {
-            return false;
-        }
-        init();
-        other.init();
-        return arrayEquals(other);
-    }
-
-    /**
-     * Check equality, without checking array data
-     */
-    boolean lightEquals(GlcArray other) {
         if (this.isSlice != other.isSlice) {
             return false;
         }
@@ -147,10 +159,8 @@ public class GlcArray {
         if (!this.clazz.equals(other.clazz)) {
             return false;
         }
-        return true;
-    }
-
-    boolean arrayEquals(GlcArray other) {
+        init();
+        other.init();
         for (int i = 0; i < length; i++) {
             if (array[i] == other.array[i]) {
                 continue;

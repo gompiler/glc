@@ -1,222 +1,189 @@
 .version 52 0 
 .class public super glcutils/GlcArray 
 .super java/lang/Object 
-.field length I 
-.field array [Ljava/lang/Object; .fieldattributes 
-    .signature [TT; 
-.end fieldattributes 
-.field private final supplier Lglcutils/Supplier; .fieldattributes 
-    .signature Lglcutils/Supplier<TT;>; 
-.end fieldattributes 
-.field final clazz Ljava/lang/Class; .fieldattributes 
-    .signature Ljava/lang/Class<+TT;>; 
-.end fieldattributes 
+.field private final length I 
+.field private final isSlice Z 
+.field private final subSizes [I 
+.field private final debug Z 
+.field private array [Ljava/lang/Object; 
+.field private final clazz Ljava/lang/Class; 
 
-.method public <init> : (Ljava/lang/Class;I)V 
+.method public <init> : (Ljava/lang/Class;[I)V 
     .code stack 4 locals 3 
 L0:     aload_0 
 L1:     aload_1 
-L2:     iload_2 
-L3:     aconst_null 
-L4:     invokespecial Method glcutils/GlcArray <init> (Ljava/lang/Class;I[Ljava/lang/Object;)V 
+L2:     aload_2 
+L3:     iconst_0 
+L4:     invokespecial Method glcutils/GlcArray <init> (Ljava/lang/Class;[IZ)V 
 L7:     return 
 L8:     
         .linenumbertable 
-            L0 12 
-            L7 13 
+            L0 25 
+            L7 26 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L8 
             1 is clazz Ljava/lang/Class; from L0 to L8 
-            2 is length I from L0 to L8 
+            2 is sizes [I from L0 to L8 
         .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L8 
-            1 is clazz Ljava/lang/Class<+TT;>; from L0 to L8 
-        .end localvariabletypetable 
     .end code 
-    .signature (Ljava/lang/Class<+TT;>;I)V 
 .end method 
 
-.method public <init> : (Lglcutils/Supplier;Ljava/lang/Class;I)V 
-    .code stack 5 locals 4 
+.method <init> : (Ljava/lang/Class;[IZ)V 
+    .code stack 7 locals 4 
 L0:     aload_0 
 L1:     aload_1 
 L2:     aload_2 
-L3:     iload_3 
-L4:     aconst_null 
-L5:     invokespecial Method glcutils/GlcArray <init> (Lglcutils/Supplier;Ljava/lang/Class;I[Ljava/lang/Object;)V 
-L8:     return 
-L9:     
+L3:     iconst_0 
+L4:     iaload 
+L5:     ifge L12 
+L8:     iconst_1 
+L9:     goto L13 
+
+        .stack full 
+            locals UninitializedThis Object java/lang/Class Object [I Integer 
+            stack UninitializedThis Object java/lang/Class 
+        .end stack 
+L12:    iconst_0 
+
+        .stack full 
+            locals UninitializedThis Object java/lang/Class Object [I Integer 
+            stack UninitializedThis Object java/lang/Class Integer 
+        .end stack 
+L13:    aload_2 
+L14:    invokestatic Method glcutils/Utils tail ([I)[I 
+L17:    iconst_0 
+L18:    aload_2 
+L19:    iconst_0 
+L20:    iaload 
+L21:    invokestatic Method java/lang/Math max (II)I 
+L24:    aconst_null 
+L25:    iload_3 
+L26:    invokespecial Method glcutils/GlcArray <init> (Ljava/lang/Class;Z[II[Ljava/lang/Object;Z)V 
+L29:    return 
+L30:    
         .linenumbertable 
-            L0 16 
-            L8 17 
+            L0 29 
+            L29 30 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcArray; from L0 to L9 
-            1 is supplier Lglcutils/Supplier; from L0 to L9 
-            2 is clazz Ljava/lang/Class; from L0 to L9 
-            3 is length I from L0 to L9 
+            0 is this Lglcutils/GlcArray; from L0 to L30 
+            1 is clazz Ljava/lang/Class; from L0 to L30 
+            2 is sizes [I from L0 to L30 
+            3 is debug Z from L0 to L30 
         .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L9 
-            1 is supplier Lglcutils/Supplier<TT;>; from L0 to L9 
-            2 is clazz Ljava/lang/Class<+TT;>; from L0 to L9 
-        .end localvariabletypetable 
     .end code 
-    .signature (Lglcutils/Supplier<TT;>;Ljava/lang/Class<+TT;>;I)V 
 .end method 
 
-.method public <init> : (Ljava/lang/Class;I[Ljava/lang/Object;)V 
-    .code stack 5 locals 4 
-L0:     aload_0 
-L1:     aload_1 
-L2:     invokedynamic [id3] 
-L7:     aload_1 
-L8:     iload_2 
-L9:     aload_3 
-L10:    invokespecial Method glcutils/GlcArray <init> (Lglcutils/Supplier;Ljava/lang/Class;I[Ljava/lang/Object;)V 
-L13:    return 
-L14:    
-        .linenumbertable 
-            L0 20 
-            L13 21 
-        .end linenumbertable 
-        .localvariabletable 
-            0 is this Lglcutils/GlcArray; from L0 to L14 
-            1 is clazz Ljava/lang/Class; from L0 to L14 
-            2 is length I from L0 to L14 
-            3 is array [Ljava/lang/Object; from L0 to L14 
-        .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L14 
-            1 is clazz Ljava/lang/Class<+TT;>; from L0 to L14 
-            3 is array [TT; from L0 to L14 
-        .end localvariabletypetable 
-    .end code 
-    .signature (Ljava/lang/Class<+TT;>;I[TT;)V 
-.end method 
-
-.method <init> : (Lglcutils/Supplier;Ljava/lang/Class;I[Ljava/lang/Object;)V 
-    .code stack 2 locals 5 
+.method private <init> : (Ljava/lang/Class;Z[II[Ljava/lang/Object;Z)V 
+    .code stack 2 locals 7 
 L0:     aload_0 
 L1:     invokespecial Method java/lang/Object <init> ()V 
 L4:     aload_0 
-L5:     iload_3 
-L6:     putfield Field glcutils/GlcArray length I 
-L9:     aload_0 
-L10:    aload_1 
-L11:    putfield Field glcutils/GlcArray supplier Lglcutils/Supplier; 
-L14:    aload_0 
-L15:    aload_2 
-L16:    putfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
-L19:    aload_0 
-L20:    aload 4 
-L22:    putfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L25:    return 
-L26:    
+L5:     iload 4 
+L7:     putfield Field glcutils/GlcArray length I 
+L10:    aload_0 
+L11:    iload_2 
+L12:    putfield Field glcutils/GlcArray isSlice Z 
+L15:    aload_0 
+L16:    aload_3 
+L17:    putfield Field glcutils/GlcArray subSizes [I 
+L20:    aload_0 
+L21:    aload_1 
+L22:    putfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L25:    aload_0 
+L26:    aload 5 
+L28:    putfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L31:    aload_0 
+L32:    iload 6 
+L34:    putfield Field glcutils/GlcArray debug Z 
+L37:    return 
+L38:    
         .linenumbertable 
-            L0 23 
-            L4 24 
-            L9 25 
-            L14 26 
-            L19 27 
-            L25 28 
+            L0 32 
+            L4 33 
+            L10 34 
+            L15 35 
+            L20 36 
+            L25 37 
+            L31 38 
+            L37 39 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcArray; from L0 to L26 
-            1 is supplier Lglcutils/Supplier; from L0 to L26 
-            2 is clazz Ljava/lang/Class; from L0 to L26 
-            3 is length I from L0 to L26 
-            4 is array [Ljava/lang/Object; from L0 to L26 
+            0 is this Lglcutils/GlcArray; from L0 to L38 
+            1 is clazz Ljava/lang/Class; from L0 to L38 
+            2 is isSlice Z from L0 to L38 
+            3 is subSizes [I from L0 to L38 
+            4 is length I from L0 to L38 
+            5 is array [Ljava/lang/Object; from L0 to L38 
+            6 is debug Z from L0 to L38 
         .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L26 
-            1 is supplier Lglcutils/Supplier<TT;>; from L0 to L26 
-            2 is clazz Ljava/lang/Class<+TT;>; from L0 to L26 
-            4 is array [TT; from L0 to L26 
-        .end localvariabletypetable 
     .end code 
-    .signature (Lglcutils/Supplier<TT;>;Ljava/lang/Class<+TT;>;I[TT;)V 
 .end method 
 
-.method final init : ()V 
-    .code stack 3 locals 1 
+.method private init : ()V 
+    .code stack 2 locals 1 
 L0:     aload_0 
 L1:     getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L4:     ifnonnull L19 
+L4:     ifnonnull L18 
 L7:     aload_0 
 L8:     aload_0 
-L9:     aload_0 
-L10:    getfield Field glcutils/GlcArray length I 
-L13:    invokevirtual Method glcutils/GlcArray create (I)[Ljava/lang/Object; 
-L16:    putfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L9:     getfield Field glcutils/GlcArray length I 
+L12:    anewarray java/lang/Object 
+L15:    putfield Field glcutils/GlcArray array [Ljava/lang/Object; 
 
         .stack same 
-L19:    return 
-L20:    
-        .linenumbertable 
-            L0 34 
-            L7 35 
-            L19 37 
-        .end linenumbertable 
-        .localvariabletable 
-            0 is this Lglcutils/GlcArray; from L0 to L20 
-        .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L20 
-        .end localvariabletypetable 
-    .end code 
-.end method 
-
-.method final create : (I)[Ljava/lang/Object; 
-    .code stack 2 locals 2 
-L0:     aload_0 
-L1:     getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
-L4:     iload_1 
-L5:     invokestatic Method java/lang/reflect/Array newInstance (Ljava/lang/Class;I)Ljava/lang/Object; 
-L8:     checkcast [Ljava/lang/Object; 
-L11:    checkcast [Ljava/lang/Object; 
-L14:    areturn 
-L15:    
+L18:    return 
+L19:    
         .linenumbertable 
             L0 45 
+            L7 46 
+            L18 48 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcArray; from L0 to L15 
-            1 is length I from L0 to L15 
+            0 is this Lglcutils/GlcArray; from L0 to L19 
         .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L15 
-        .end localvariabletypetable 
     .end code 
-    .signature (I)[TT; 
 .end method 
 
-.method public supply : ()Ljava/lang/Object; 
-    .code stack 1 locals 1 
+.method private supply : ()Ljava/lang/Object; 
+    .code stack 5 locals 1 
 L0:     aload_0 
-L1:     getfield Field glcutils/GlcArray supplier Lglcutils/Supplier; 
-L4:     invokeinterface InterfaceMethod glcutils/Supplier get ()Ljava/lang/Object; 1 
-L9:     areturn 
-L10:    
+L1:     getfield Field glcutils/GlcArray subSizes [I 
+L4:     arraylength 
+L5:     ifne L16 
+L8:     aload_0 
+L9:     getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L12:    invokestatic Method glcutils/Utils supplyObj (Ljava/lang/Class;)Ljava/lang/Object; 
+L15:    areturn 
+
+        .stack same 
+L16:    new glcutils/GlcArray 
+L19:    dup 
+L20:    aload_0 
+L21:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L24:    aload_0 
+L25:    getfield Field glcutils/GlcArray subSizes [I 
+L28:    aload_0 
+L29:    getfield Field glcutils/GlcArray debug Z 
+L32:    invokespecial Method glcutils/GlcArray <init> (Ljava/lang/Class;[IZ)V 
+L35:    areturn 
+L36:    
         .linenumbertable 
-            L0 53 
+            L0 55 
+            L8 56 
+            L16 58 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcArray; from L0 to L10 
+            0 is this Lglcutils/GlcArray; from L0 to L36 
         .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L10 
-        .end localvariabletypetable 
     .end code 
-    .signature ()TT; 
 .end method 
 
 .method public final get : (I)Ljava/lang/Object; 
     .code stack 3 locals 2 
 L0:     aload_0 
-L1:     invokevirtual Method glcutils/GlcArray init ()V 
+L1:     invokespecial Method glcutils/GlcArray init ()V 
 L4:     aload_0 
 L5:     getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
 L8:     iload_1 
@@ -226,7 +193,7 @@ L13:    aload_0
 L14:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
 L17:    iload_1 
 L18:    aload_0 
-L19:    invokevirtual Method glcutils/GlcArray supply ()Ljava/lang/Object; 
+L19:    invokespecial Method glcutils/GlcArray supply ()Ljava/lang/Object; 
 L22:    aastore 
 
         .stack same 
@@ -237,49 +204,117 @@ L28:    aaload
 L29:    areturn 
 L30:    
         .linenumbertable 
-            L0 60 
-            L4 61 
-            L13 62 
-            L23 64 
+            L0 65 
+            L4 66 
+            L13 67 
+            L23 69 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L30 
             1 is i I from L0 to L30 
         .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L30 
-        .end localvariabletypetable 
     .end code 
-    .signature (I)TT; 
+    .signature '<T:Ljava/lang/Object;>(I)TT;' 
 .end method 
 
-.method public final set : (ILjava/lang/Object;)V 
-    .code stack 3 locals 3 
+.method public set : (ILjava/lang/Object;)V 
+    .code stack 5 locals 4 
 L0:     aload_0 
-L1:     invokevirtual Method glcutils/GlcArray init ()V 
-L4:     aload_0 
-L5:     getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L8:     iload_1 
-L9:     aload_2 
-L10:    aastore 
-L11:    return 
-L12:    
+L1:     getfield Field glcutils/GlcArray debug Z 
+L4:     ifeq L123 
+L7:     aload_0 
+L8:     getfield Field glcutils/GlcArray subSizes [I 
+L11:    arraylength 
+L12:    ifne L48 
+L15:    aload_0 
+L16:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L19:    aload_2 
+L20:    invokevirtual Method java/lang/Class isInstance (Ljava/lang/Object;)Z 
+L23:    ifne L48 
+L26:    ldc 'Set value in 1D GlcArray, but not of class %s' 
+L28:    iconst_1 
+L29:    anewarray java/lang/Object 
+L32:    dup 
+L33:    iconst_0 
+L34:    aload_0 
+L35:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L38:    invokevirtual Method java/lang/Class getName ()Ljava/lang/String; 
+L41:    aastore 
+L42:    invokestatic Method glcutils/Utils fail (Ljava/lang/String;[Ljava/lang/Object;)V 
+L45:    goto L123 
+
+        .stack same 
+L48:    aload_0 
+L49:    getfield Field glcutils/GlcArray subSizes [I 
+L52:    arraylength 
+L53:    ifle L123 
+L56:    aload_2 
+L57:    instanceof glcutils/GlcArray 
+L60:    ifne L72 
+L63:    ldc 'Set value in multi GlcArray, but not of class GlcArray' 
+L65:    iconst_0 
+L66:    anewarray java/lang/Object 
+L69:    invokestatic Method glcutils/Utils fail (Ljava/lang/String;[Ljava/lang/Object;)V 
+
+        .stack same 
+L72:    aload_2 
+L73:    checkcast glcutils/GlcArray 
+L76:    astore_3 
+L77:    aload_3 
+L78:    getfield Field glcutils/GlcArray subSizes [I 
+L81:    aload_0 
+L82:    getfield Field glcutils/GlcArray subSizes [I 
+L85:    invokestatic Method glcutils/Utils tail ([I)[I 
+L88:    invokestatic Method java/util/Arrays equals ([I[I)Z 
+L91:    ifne L123 
+L94:    ldc 'Set GlcArray of sizes %s in GlcArray of sizes %s' 
+L96:    iconst_2 
+L97:    anewarray java/lang/Object 
+L100:   dup 
+L101:   iconst_0 
+L102:   aload_3 
+L103:   getfield Field glcutils/GlcArray subSizes [I 
+L106:   invokestatic Method java/util/Arrays toString ([I)Ljava/lang/String; 
+L109:   aastore 
+L110:   dup 
+L111:   iconst_1 
+L112:   aload_0 
+L113:   getfield Field glcutils/GlcArray subSizes [I 
+L116:   invokestatic Method java/util/Arrays toString ([I)Ljava/lang/String; 
+L119:   aastore 
+L120:   invokestatic Method glcutils/Utils fail (Ljava/lang/String;[Ljava/lang/Object;)V 
+
+        .stack same 
+L123:   aload_0 
+L124:   invokespecial Method glcutils/GlcArray init ()V 
+L127:   aload_0 
+L128:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L131:   iload_1 
+L132:   aload_2 
+L133:   aastore 
+L134:   return 
+L135:   
         .linenumbertable 
-            L0 71 
-            L4 72 
-            L11 73 
+            L0 76 
+            L7 77 
+            L26 78 
+            L48 79 
+            L56 80 
+            L63 81 
+            L72 83 
+            L77 84 
+            L94 85 
+            L123 89 
+            L127 90 
+            L134 91 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcArray; from L0 to L12 
-            1 is i I from L0 to L12 
-            2 is t Ljava/lang/Object; from L0 to L12 
+            3 is v Lglcutils/GlcArray; from L77 to L123 
+            0 is this Lglcutils/GlcArray; from L0 to L135 
+            1 is i I from L0 to L135 
+            2 is t Ljava/lang/Object; from L0 to L135 
         .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L12 
-            2 is t TT; from L0 to L12 
-        .end localvariabletypetable 
     .end code 
-    .signature (ITT;)V 
 .end method 
 
 .method public final length : ()I 
@@ -289,18 +324,15 @@ L1:     getfield Field glcutils/GlcArray length I
 L4:     ireturn 
 L5:     
         .linenumbertable 
-            L0 80 
+            L0 98 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L5 
         .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L5 
-        .end localvariabletypetable 
     .end code 
 .end method 
 
-.method public final capacity : ()I 
+.method public capacity : ()I 
     .code stack 1 locals 1 
 L0:     aload_0 
 L1:     getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
@@ -317,19 +349,66 @@ L15:    arraylength
 L16:    ireturn 
 L17:    
         .linenumbertable 
-            L0 88 
+            L0 106 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L17 
         .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L17 
-        .end localvariabletypetable 
+    .end code 
+.end method 
+
+.method public append : (Ljava/lang/Object;)Lglcutils/GlcArray; 
+    .code stack 8 locals 3 
+L0:     aload_0 
+L1:     getfield Field glcutils/GlcArray isSlice Z 
+L4:     ifne L17 
+L7:     new java/lang/RuntimeException 
+L10:    dup 
+L11:    ldc 'Cannot append to nonslice' 
+L13:    invokespecial Method java/lang/RuntimeException <init> (Ljava/lang/String;)V 
+L16:    athrow 
+
+        .stack same 
+L17:    aload_0 
+L18:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L21:    aload_0 
+L22:    getfield Field glcutils/GlcArray length I 
+L25:    aload_1 
+L26:    invokestatic Method glcutils/GlcSliceUtils append ([Ljava/lang/Object;ILjava/lang/Object;)[Ljava/lang/Object; 
+L29:    astore_2 
+L30:    new glcutils/GlcArray 
+L33:    dup 
+L34:    aload_0 
+L35:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L38:    iconst_1 
+L39:    aload_0 
+L40:    getfield Field glcutils/GlcArray subSizes [I 
+L43:    aload_0 
+L44:    getfield Field glcutils/GlcArray length I 
+L47:    iconst_1 
+L48:    iadd 
+L49:    aload_2 
+L50:    aload_0 
+L51:    getfield Field glcutils/GlcArray debug Z 
+L54:    invokespecial Method glcutils/GlcArray <init> (Ljava/lang/Class;Z[II[Ljava/lang/Object;Z)V 
+L57:    areturn 
+L58:    
+        .linenumbertable 
+            L0 115 
+            L7 116 
+            L17 118 
+            L30 119 
+        .end linenumbertable 
+        .localvariabletable 
+            0 is this Lglcutils/GlcArray; from L0 to L58 
+            1 is t Ljava/lang/Object; from L0 to L58 
+            2 is newArray [Ljava/lang/Object; from L30 to L58 
+        .end localvariabletable 
     .end code 
 .end method 
 
 .method public equals : (Ljava/lang/Object;)Z 
-    .code stack 3 locals 4 
+    .code stack 2 locals 3 
 L0:     aload_0 
 L1:     aload_1 
 L2:     if_acmpne L7 
@@ -354,17 +433,75 @@ L24:    aload_1
 L25:    checkcast glcutils/GlcArray 
 L28:    astore_2 
 L29:    aload_0 
-L30:    getfield Field glcutils/GlcArray length I 
-L33:    aload_2 
-L34:    getfield Field glcutils/GlcArray length I 
-L37:    if_icmpeq L42 
+L30:    aload_2 
+L31:    invokevirtual Method glcutils/GlcArray lightEquals (Lglcutils/GlcArray;)Z 
+L34:    ifne L39 
+L37:    iconst_0 
+L38:    ireturn 
+
+        .stack append Object glcutils/GlcArray 
+L39:    aload_0 
+L40:    invokespecial Method glcutils/GlcArray init ()V 
+L43:    aload_2 
+L44:    invokespecial Method glcutils/GlcArray init ()V 
+L47:    aload_0 
+L48:    aload_2 
+L49:    invokevirtual Method glcutils/GlcArray arrayEquals (Lglcutils/GlcArray;)Z 
+L52:    ireturn 
+L53:    
+        .linenumbertable 
+            L0 130 
+            L5 131 
+            L7 133 
+            L22 134 
+            L24 136 
+            L29 137 
+            L37 138 
+            L39 140 
+            L43 141 
+            L47 142 
+        .end linenumbertable 
+        .localvariabletable 
+            0 is this Lglcutils/GlcArray; from L0 to L53 
+            1 is obj Ljava/lang/Object; from L0 to L53 
+            2 is other Lglcutils/GlcArray; from L29 to L53 
+        .end localvariabletable 
+    .end code 
+.end method 
+
+.method lightEquals : (Lglcutils/GlcArray;)Z 
+    .code stack 2 locals 2 
+L0:     aload_0 
+L1:     getfield Field glcutils/GlcArray isSlice Z 
+L4:     aload_1 
+L5:     getfield Field glcutils/GlcArray isSlice Z 
+L8:     if_icmpeq L13 
+L11:    iconst_0 
+L12:    ireturn 
+
+        .stack same 
+L13:    aload_0 
+L14:    getfield Field glcutils/GlcArray length I 
+L17:    aload_1 
+L18:    getfield Field glcutils/GlcArray length I 
+L21:    if_icmpeq L26 
+L24:    iconst_0 
+L25:    ireturn 
+
+        .stack same 
+L26:    aload_0 
+L27:    getfield Field glcutils/GlcArray subSizes [I 
+L30:    aload_1 
+L31:    getfield Field glcutils/GlcArray subSizes [I 
+L34:    invokestatic Method java/util/Arrays equals ([I[I)Z 
+L37:    ifne L42 
 L40:    iconst_0 
 L41:    ireturn 
 
-        .stack append Object glcutils/GlcArray 
+        .stack same 
 L42:    aload_0 
 L43:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
-L46:    aload_2 
+L46:    aload_1 
 L47:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
 L50:    invokevirtual Method java/lang/Object equals (Ljava/lang/Object;)Z 
 L53:    ifne L58 
@@ -372,142 +509,115 @@ L56:    iconst_0
 L57:    ireturn 
 
         .stack same 
-L58:    aload_0 
-L59:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L62:    aload_2 
-L63:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L66:    if_acmpne L71 
-L69:    iconst_1 
-L70:    ireturn 
+L58:    iconst_1 
+L59:    ireturn 
+L60:    
+        .linenumbertable 
+            L0 149 
+            L11 150 
+            L13 152 
+            L24 153 
+            L26 155 
+            L40 156 
+            L42 158 
+            L56 159 
+            L58 161 
+        .end linenumbertable 
+        .localvariabletable 
+            0 is this Lglcutils/GlcArray; from L0 to L60 
+            1 is other Lglcutils/GlcArray; from L0 to L60 
+        .end localvariabletable 
+    .end code 
+.end method 
 
-        .stack same 
-L71:    aload_0 
-L72:    invokevirtual Method glcutils/GlcArray init ()V 
-L75:    aload_2 
-L76:    invokevirtual Method glcutils/GlcArray init ()V 
-L79:    iconst_0 
-L80:    istore_3 
+.method arrayEquals : (Lglcutils/GlcArray;)Z 
+    .code stack 3 locals 3 
+L0:     iconst_0 
+L1:     istore_2 
 
         .stack append Integer 
-L81:    iload_3 
-L82:    aload_0 
-L83:    invokevirtual Method glcutils/GlcArray length ()I 
-L86:    if_icmpge L171 
-L89:    aload_0 
-L90:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L93:    iload_3 
-L94:    aaload 
-L95:    aload_2 
-L96:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L99:    iload_3 
-L100:   aaload 
-L101:   if_acmpne L107 
-L104:   goto L165 
+L2:     iload_2 
+L3:     aload_0 
+L4:     getfield Field glcutils/GlcArray length I 
+L7:     if_icmpge L92 
+L10:    aload_0 
+L11:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L14:    iload_2 
+L15:    aaload 
+L16:    aload_1 
+L17:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L20:    iload_2 
+L21:    aaload 
+L22:    if_acmpne L28 
+L25:    goto L86 
 
         .stack same 
-L107:   aload_0 
-L108:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L111:   iload_3 
-L112:   aaload 
-L113:   ifnonnull L126 
-L116:   aload_0 
-L117:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L120:   iload_3 
-L121:   aload_0 
-L122:   invokevirtual Method glcutils/GlcArray supply ()Ljava/lang/Object; 
-L125:   aastore 
+L28:    aload_0 
+L29:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L32:    iload_2 
+L33:    aaload 
+L34:    ifnonnull L47 
+L37:    aload_0 
+L38:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L41:    iload_2 
+L42:    aload_0 
+L43:    invokespecial Method glcutils/GlcArray supply ()Ljava/lang/Object; 
+L46:    aastore 
 
         .stack same 
-L126:   aload_2 
-L127:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L130:   iload_3 
-L131:   aaload 
-L132:   ifnonnull L145 
-L135:   aload_2 
-L136:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L139:   iload_3 
-L140:   aload_0 
-L141:   invokevirtual Method glcutils/GlcArray supply ()Ljava/lang/Object; 
-L144:   aastore 
+L47:    aload_1 
+L48:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L51:    iload_2 
+L52:    aaload 
+L53:    ifnonnull L66 
+L56:    aload_1 
+L57:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L60:    iload_2 
+L61:    aload_0 
+L62:    invokespecial Method glcutils/GlcArray supply ()Ljava/lang/Object; 
+L65:    aastore 
 
         .stack same 
-L145:   aload_0 
-L146:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L149:   iload_3 
-L150:   aaload 
-L151:   aload_2 
-L152:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L155:   iload_3 
-L156:   aaload 
-L157:   invokevirtual Method java/lang/Object equals (Ljava/lang/Object;)Z 
-L160:   ifne L165 
-L163:   iconst_0 
-L164:   ireturn 
+L66:    aload_0 
+L67:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L70:    iload_2 
+L71:    aaload 
+L72:    aload_1 
+L73:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L76:    iload_2 
+L77:    aaload 
+L78:    invokevirtual Method java/lang/Object equals (Ljava/lang/Object;)Z 
+L81:    ifne L86 
+L84:    iconst_0 
+L85:    ireturn 
 
         .stack same 
-L165:   iinc 3 1 
-L168:   goto L81 
+L86:    iinc 2 1 
+L89:    goto L2 
 
         .stack chop 1 
-L171:   iconst_1 
-L172:   ireturn 
-L173:   
+L92:    iconst_1 
+L93:    ireturn 
+L94:    
         .linenumbertable 
-            L0 99 
-            L5 100 
-            L7 102 
-            L22 103 
-            L24 105 
-            L29 106 
-            L40 107 
-            L42 109 
-            L56 110 
-            L58 112 
-            L69 113 
-            L71 115 
-            L75 116 
-            L79 117 
-            L89 118 
-            L104 119 
-            L107 121 
-            L116 122 
-            L126 124 
-            L135 125 
-            L145 127 
-            L163 128 
-            L165 117 
-            L171 131 
+            L0 165 
+            L10 166 
+            L25 167 
+            L28 169 
+            L37 170 
+            L47 172 
+            L56 173 
+            L66 175 
+            L84 176 
+            L86 165 
+            L92 179 
         .end linenumbertable 
         .localvariabletable 
-            3 is i I from L81 to L171 
-            0 is this Lglcutils/GlcArray; from L0 to L173 
-            1 is obj Ljava/lang/Object; from L0 to L173 
-            2 is other Lglcutils/GlcArray; from L29 to L173 
-        .end localvariabletable 
-        .localvariabletypetable 
-            0 is this Lglcutils/GlcArray<TT;>; from L0 to L173 
-        .end localvariabletypetable 
-    .end code 
-.end method 
-
-.method private static synthetic lambda$new$0 : (Ljava/lang/Class;)Ljava/lang/Object; 
-    .code stack 1 locals 1 
-L0:     aload_0 
-L1:     invokestatic Method glcutils/Utils supply (Ljava/lang/Class;)Ljava/lang/Object; 
-L4:     areturn 
-L5:     
-        .linenumbertable 
-            L0 20 
-        .end linenumbertable 
-        .localvariabletable 
-            0 is clazz Ljava/lang/Class; from L0 to L5 
+            2 is i I from L2 to L92 
+            0 is this Lglcutils/GlcArray; from L0 to L94 
+            1 is other Lglcutils/GlcArray; from L0 to L94 
         .end localvariabletable 
     .end code 
 .end method 
-.signature '<T:Ljava/lang/Object;>Ljava/lang/Object;' 
 .sourcefile 'GlcArray.java' 
-.innerclasses 
-    java/lang/invoke/MethodHandles$Lookup java/lang/invoke/MethodHandles Lookup public static final 
-.end innerclasses 
-.const [id3] = InvokeDynamic invokeStatic Method java/lang/invoke/LambdaMetafactory metafactory (Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite; MethodType ()Ljava/lang/Object; MethodHandle invokeStatic Method glcutils/GlcArray lambda$new$0 (Ljava/lang/Class;)Ljava/lang/Object; MethodType ()Ljava/lang/Object; : get (Ljava/lang/Class;)Lglcutils/Supplier; 
 .end class 

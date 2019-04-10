@@ -16,7 +16,7 @@ public class Utils {
     }
 
     public static void fail(String s, Object... args) {
-        throw new RuntimeException(String.format(s, args));
+        throw new GlcException(String.format(s, args));
     }
 
     /**
@@ -54,7 +54,7 @@ public class Utils {
         try {
             return clazz.newInstance();
         } catch (InstantiationException | IllegalAccessException e) {
-            throw new RuntimeException(e);
+            throw new GlcException(e);
         }
     }
 
