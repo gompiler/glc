@@ -19,7 +19,7 @@ import           Data.Either        (isLeft)
 import           Data.Functor       (($>))
 
 import           Data.List.NonEmpty (NonEmpty (..), fromList, toList)
-import           Data.Maybe         (catMaybes, listToMaybe)
+import           Data.Maybe         (catMaybes, listToMaybe, catMaybes)
 
 import           Base
 import qualified CheckedData        as T
@@ -165,7 +165,8 @@ instance Typify Type where
           st
           getAllIdents
           (AlreadyDecl "Field ")
-          (concat <$$> mapS checkField fdl)
+          -- Filter blank identifiers from fields
+          (filter (\(fn, _) -> fn /= "_") . concat <$$> mapS checkField fdl)
       checkField :: FieldDecl -> ST s (Glc' [Field])
       checkField (FieldDecl idl (_, t)) = toField idl <$$> fieldType' t
       -- | Checks first for cyclic type, then defaults to the generic type resolver
@@ -201,25 +202,25 @@ instance Symbolize Program T.Program where
     -- Recurse on the top level declarations of a program in a new scope
    = S.wrap st $ fmap (T.Program (T.Ident pkg)) <$> recurse st tdl
 
-instance Symbolize TopDecl T.TopDecl
+instance Symbolize TopDecl (Maybe T.TopDecl)
   -- Recurse on declarations
                              where
-  recurse st (TopDecl d)      = fmap T.TopDecl <$> recurse st d
-  recurse st (TopFuncDecl fd) = fmap T.TopFuncDecl <$> recurse st fd
+  recurse st (TopDecl d)      = fmap (Just . T.TopDecl) <$> recurse st d
+  recurse st (TopFuncDecl fd) = fmap T.TopFuncDecl <$$> recurse st fd
 
 -- | Helper for a list of top declarations, does the same thing as above except we use mapM and sequence the results (i.e. if we have a Left in any of the results, we'll just use that because we have an error)
 instance Symbolize [TopDecl] [T.TopDecl] where
-  recurse st vdl = sequence <$> mapM (recurse st) vdl
+  recurse st vdl = catMaybes <$$> (sequence <$> mapM (recurse st) vdl)
 
-instance Symbolize FuncDecl T.FuncDecl
+instance Symbolize FuncDecl (Maybe T.FuncDecl)
   -- Check if function (ident) is declared in current scope (top scope)
   -- if not, we open new scope to symbolize body and then validate sig before declaring
                                                                                         where
-  recurse :: forall s. SymbolTable s -> FuncDecl -> ST s (Glc' T.FuncDecl)
+  recurse :: forall s. SymbolTable s -> FuncDecl -> ST s (Glc' (Maybe T.FuncDecl))
   recurse st (FuncDecl ident@(Identifier _ vname) (Signature (Parameters pdl) t) (BlockStmt sl)) =
     if vname == "init"
-      then addInit
-      else addFunc
+      then filterBlank <$$> addInit
+      else filterBlank <$$> addFunc
       -- Get return type of function
     where
       retType :: ST s (Glc' CType)
@@ -237,6 +238,9 @@ instance Symbolize FuncDecl T.FuncDecl
                 else S.scopeLevel st) $>
              Nothing)
           rtm
+      filterBlank :: T.FuncDecl -> Maybe T.FuncDecl
+      filterBlank fd@(T.FuncDecl (T.ScopedIdent _ (T.Ident fn)) _ _) = if fn /= "_" then Just fd
+                                                  else Nothing
       -- Add any function that is not init to symbol table
       addFunc :: ST s (Glc' T.FuncDecl)
       addFunc = do
