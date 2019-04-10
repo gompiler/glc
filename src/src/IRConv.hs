@@ -368,7 +368,7 @@ printIR e =
     boolToString :: [IRItem]
     boolToString =
       iri
-        [ InvokeVirtual $
+        [ InvokeStatic $
           MethodRef
             (CRef glcUtils)
             "boolStr"
