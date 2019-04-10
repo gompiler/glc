@@ -490,14 +490,14 @@ instance IRRep T.SimpleStmt where
             afterLoadOps op ++ toIR ve ++ finalOps op
           (Just op, T.TopVar t tvi) ->
             setUpOps op ++
-            iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)] ++
+            iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToProgramJType t)] ++
             afterLoadOps op ++ toIR ve ++ finalOps op
           (Just op, T.Selector t eo (T.Ident fid)) ->
             case exprJType eo of
               JClass cr ->
                 setUpOps op ++
                 toIR eo ++
-                iri [GetField (FieldRef cr fid) (typeToJType t)] ++
+                iri [GetField (FieldRef cr fid) (typeToProgramJType t)] ++
                 afterLoadOps op ++ toIR ve ++ finalOps op
               _ -> error "Cannot get field of non-object"
           (Just op, T.Index t ea ei) ->
@@ -544,11 +544,11 @@ instance IRRep T.SimpleStmt where
         case e of
           T.Var t idx -> iri [Store (typeToIRType t) idx]
           T.TopVar t tvi ->
-            iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
+            iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToProgramJType t)]
           T.Selector t eo (T.Ident fid) ->
             case exprJType eo of
               JClass cr ->
-                toIR eo ++ iri [PutField (FieldRef cr fid) (typeToJType t)]
+                toIR eo ++ iri [PutField (FieldRef cr fid) (typeToProgramJType t)]
               _ -> error "Cannot get field of non-object"
           T.Index t _ _ -> storeIR
             where
