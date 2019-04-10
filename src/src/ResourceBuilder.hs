@@ -45,6 +45,7 @@ instance Converter T.Program Program where
   convert rc T.Program {T.package, T.topLevels} = do
     topLevels' <- mapM (convert rc) topLevels
     structs <- RC.allStructs rc
+    categories <- RC.allCategories rc
     let vars = [v | TVar v <- topLevels']
     let inits = [(body, limit) | TInit body limit <- topLevels']
     let mains = [(body, limit) | TMain body limit <- topLevels']
@@ -54,6 +55,7 @@ instance Converter T.Program Program where
       Program
         { package = package
         , structs = structs
+        , categories = categories
         -- Returns all declared top vars
         , topVars = vars
         -- Contains a single function that calls each of the original

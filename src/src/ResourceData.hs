@@ -41,6 +41,7 @@ import qualified Cyclic             as C
 import           Data.List.NonEmpty (NonEmpty (..))
 import           Prelude            hiding (init)
 import           Prettify           (Prettify (..))
+import           UtilsData (Category)
 
 -- Represents the stack index within a method
 newtype VarIndex =
@@ -59,12 +60,13 @@ newtype LabelIndex =
 -- * We separate var declarations and function declarations
 -- To create a working program, data should be loaded in this order
 data Program = Program
-  { package   :: Ident
-  , structs   :: [StructType]
-  , topVars   :: [TopVarDecl]
-  , init      :: InitDecl
-  , main      :: MainDecl
-  , functions :: [FuncDecl]
+  { package    :: Ident
+  , structs    :: [StructType]
+  , categories :: [Category]
+  , topVars    :: [TopVarDecl]
+  , init       :: InitDecl
+  , main       :: MainDecl
+  , functions  :: [FuncDecl]
   } deriving (Show, Eq)
 
 ----------------------------------------------------------------------
