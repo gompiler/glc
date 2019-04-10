@@ -233,20 +233,24 @@ registerType st t = registerType' $ flattenType t
           registerArray (U.toBase t') (length l) *> registerType' t'
         U.SliceType t' i -> registerSlice (U.toBase t') i *> registerType' t'
         _ -> return ()
-    registerArray = registerElement (\i c -> c {U.arrayDepth = i})
-    registerSlice = registerElement (\i c -> c {U.sliceDepth = i})
+    registerArray = registerElement U.arrayDepth (\i c -> c {U.arrayDepth = i})
+    registerSlice = registerElement U.sliceDepth (\i c -> c {U.sliceDepth = i})
     registerElement ::
-         (Int -> U.Category -> U.Category) -> U.BaseType -> Int -> ST s ()
-    registerElement build baseType depth = do
+         (U.Category -> Int)
+      -> (Int -> U.Category -> U.Category)
+      -> U.BaseType
+      -> Int
+      -> ST s ()
+    registerElement get set baseType depth = do
       let key = CatKey baseType
       rc <- readRef st
       let c = categoryMap rc
       prev <- HT.lookup c key
       let value =
             case prev of
-              Just prev' -> build (max depth (U.arrayDepth prev')) prev'
+              Just prev' -> set (max depth (get prev')) prev'
               Nothing ->
-                build
+                set
                   depth
                   U.Category
                     {U.baseType = baseType, U.arrayDepth = 0, U.sliceDepth = 0}

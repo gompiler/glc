@@ -9,17 +9,17 @@ import           Data.List          (intercalate)
 import           Data.List.NonEmpty (toList)
 import           Prelude            hiding (init)
 import           ResourceBuilder
-import           ResourceData
+import           ResourceData       hiding (Type (..))
 import           SymbolTable
 import           TestBase
+import           UtilsData          (BaseType (..), Category (..))
 
 spec :: Spec
 spec = offsetSpec
 
 offsetSpec :: Spec
-offsetSpec =
+offsetSpec = do
   expectOffsetValues
-  -- Info
     [ ( [text|
         package empty
         |]
@@ -61,33 +61,23 @@ offsetSpec =
         }
         |]
       , [(LocalLimit 2, [0, 1, 1]), (LocalLimit 3, [0, 0, 1, 2, 2])])
---    , ( [text|
---        package main
---
---        var top int
---
---        func test1(c int) {
---          if c < 2 {
---            e := 2
---          } else {
---            e := 5
---          }
---        }
---
---        func test2(a int) {
---          a, b := 2, 3
---          {
---            c := 5
---          }
---          d := 5
---        }
---        |]
---      , [])
+    ]
+  expectCategoryValues
+    [ ( [text|
+        package main
+
+        type s struct {
+          a []int
+          b [8][2]int
+        }
+
+        var p s
+        |]
+      , [Category {baseType = PInt, arrayDepth = 2, sliceDepth = 1}])
     ]
 
 type OffsetInfo = [(LocalLimit, [Int])]
 
--- | Expects that input = pretty(parse(input))
 expectOffsetValues :: (Stringable s) => [(s, OffsetInfo)] -> Spec
 expectOffsetValues =
   expectBase
@@ -159,3 +149,26 @@ instance VarIndices SimpleStmt where
     case stmt of
       ShortDeclare decls -> map fst $ toList decls
       _                  -> []
+
+expectCategoryValues :: (Stringable s) => [(s, [Category])] -> Spec
+expectCategoryValues =
+  expectBase
+    "check category values"
+    (\(s, info) ->
+       let s' = toString s
+        in case resourceGen s' of
+             Left err -> expectationFailure $ show err
+             Right program ->
+               let actual = categories program
+                in unless (actual == info) . expectationFailure $
+                   showError s' program info actual)
+    (toString . fst)
+    ""
+  where
+    showError :: String -> Program -> [Category] -> [Category] -> String
+    showError input program expected actual =
+      "Failed category values for\n\n" ++
+      input ++
+      "\n\nexpected:" ++
+      show expected ++
+      "\n but got:" ++ show actual ++ "\n\nAST:\n\n" ++ show program
