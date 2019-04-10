@@ -31,14 +31,26 @@ toBase type' =
     Base t         -> t
     StructType i _ -> Custom i
 
+-- | Generate the name of the array class
+-- Note that the depth should start at 1 to represent 1D array
+-- For convenience, depth 0 returns the base class, as that will be the generic type
 arrayClassName :: BaseType -> Int -> String
-arrayClassName baseType depth =
-  "GlcArray$$" ++ className baseType ++ "$$" ++ show depth
+arrayClassName t depth =
+  if depth == 0
+    then className t
+    else "GlcArray$" ++ className t ++ "_" ++ show depth
 
+-- | Generate the name of the slice class
+-- Note that the depth should start at 1 to represent 1D slice
+-- For convenience, depth 0 returns the base class, as that will be the generic type
 sliceClassName :: BaseType -> Int -> String
-sliceClassName baseType depth =
-  "GlcSlice" ++ className baseType ++ "$$" ++ show depth
+sliceClassName t depth =
+  if depth == 0
+    then className t
+    else "GlcSlice$" ++ className t ++ "_" ++ show depth
 
+-- | Class name of base types
+-- Keep in sync with generated java files
 className :: BaseType -> String
 className (Custom s) = s
 className PInt       = "Int"
@@ -62,10 +74,10 @@ data BaseType
   | PBool
   | PRune
   | PString
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data Category = Category
   { baseType   :: BaseType
   , arrayDepth :: Int
   , sliceDepth :: Int
-  } deriving (Show, Eq)
+  } deriving (Show, Eq, Ord)

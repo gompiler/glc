@@ -23,6 +23,7 @@ import           Control.Monad.ST
 import           Data.Hashable
 import qualified Data.HashTable.Class    as HC (toList)
 import qualified Data.HashTable.ST.Basic as HT
+import           Data.List               (sort)
 import           Data.Maybe              (catMaybes, listToMaybe)
 import           Data.STRef
 import           Prelude                 hiding (lookup)
@@ -315,4 +316,4 @@ allStructs st = reverse . structTypes <$> readRef st
 allCategories :: ResourceContext s -> ST s [U.Category]
 allCategories st =
   let items = HC.toList =<< categoryMap <$> readRef st
-   in map snd <$> items
+   in sort . map snd <$> items

@@ -74,6 +74,26 @@ offsetSpec = do
         var p s
         |]
       , [Category {baseType = PInt, arrayDepth = 2, sliceDepth = 1}])
+    , ( [text|
+        package main
+
+        type s struct {
+          a [][5][]int
+        }
+
+        var p [3][4]s
+        |]
+      , [ Category
+            { baseType = Custom "GlcArray$GlcSlice$Int_1_1"
+            , arrayDepth = 0
+            , sliceDepth = 1
+            }
+        , Category
+            {baseType = Custom "GlcSlice$Int_1", arrayDepth = 1, sliceDepth = 0}
+        , Category
+            {baseType = Custom "GlcStruct1", arrayDepth = 2, sliceDepth = 0}
+        , Category {baseType = PInt, arrayDepth = 0, sliceDepth = 1}
+        ])
     ]
 
 type OffsetInfo = [(LocalLimit, [Int])]
