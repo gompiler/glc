@@ -181,52 +181,108 @@ L36:
 .end method 
 
 .method public copy : ()Lglcutils/GlcArray; 
-    .code stack 8 locals 2 
-L0:     aconst_null 
-L1:     astore_1 
-L2:     aload_0 
-L3:     getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L6:     ifnull L31 
-L9:     aload_0 
-L10:    getfield Field glcutils/GlcArray length I 
-L13:    anewarray java/lang/Object 
-L16:    astore_1 
-L17:    aload_0 
-L18:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L21:    iconst_0 
-L22:    aload_1 
-L23:    iconst_0 
-L24:    aload_0 
-L25:    getfield Field glcutils/GlcArray length I 
-L28:    invokestatic Method java/lang/System arraycopy (Ljava/lang/Object;ILjava/lang/Object;II)V 
+    .code stack 8 locals 3 
+L0:     aload_0 
+L1:     ifnonnull L6 
+L4:     aconst_null 
+L5:     areturn 
+
+        .stack same 
+L6:     aconst_null 
+L7:     astore_1 
+L8:     aload_0 
+L9:     getfield Field glcutils/GlcArray isSlice Z 
+L12:    ifeq L23 
+L15:    aload_0 
+L16:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L19:    astore_1 
+L20:    goto L105 
 
         .stack append Object [Ljava/lang/Object; 
-L31:    new glcutils/GlcArray 
-L34:    dup 
-L35:    aload_0 
-L36:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
-L39:    aload_0 
-L40:    getfield Field glcutils/GlcArray isSlice Z 
-L43:    aload_0 
-L44:    getfield Field glcutils/GlcArray subSizes [I 
+L23:    aload_0 
+L24:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L27:    ifnull L105 
+L30:    aload_0 
+L31:    getfield Field glcutils/GlcArray length I 
+L34:    anewarray java/lang/Object 
+L37:    astore_1 
+L38:    aload_0 
+L39:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L42:    ldc Class java/lang/Integer 
+L44:    if_acmpeq L65 
 L47:    aload_0 
-L48:    getfield Field glcutils/GlcArray length I 
-L51:    aload_1 
-L52:    aload_0 
-L53:    getfield Field glcutils/GlcArray debug Z 
-L56:    invokespecial Method glcutils/GlcArray <init> (Ljava/lang/Class;Z[II[Ljava/lang/Object;Z)V 
-L59:    areturn 
-L60:    
+L48:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L51:    ldc Class java/lang/Double 
+L53:    if_acmpeq L65 
+L56:    aload_0 
+L57:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L60:    ldc Class java/lang/String 
+L62:    if_acmpne L82 
+
+        .stack same 
+L65:    aload_0 
+L66:    getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L69:    iconst_0 
+L70:    aload_1 
+L71:    iconst_0 
+L72:    aload_0 
+L73:    getfield Field glcutils/GlcArray length I 
+L76:    invokestatic Method java/lang/System arraycopy (Ljava/lang/Object;ILjava/lang/Object;II)V 
+L79:    goto L105 
+
+        .stack same 
+L82:    iconst_0 
+L83:    istore_2 
+
+        .stack append Integer 
+L84:    iload_2 
+L85:    aload_0 
+L86:    getfield Field glcutils/GlcArray length I 
+L89:    if_icmpge L105 
+L92:    aload_1 
+L93:    iload_2 
+L94:    aload_0 
+L95:    invokevirtual Method glcutils/GlcArray copy ()Lglcutils/GlcArray; 
+L98:    aastore 
+L99:    iinc 2 1 
+L102:   goto L84 
+
+        .stack chop 1 
+L105:   new glcutils/GlcArray 
+L108:   dup 
+L109:   aload_0 
+L110:   getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
+L113:   aload_0 
+L114:   getfield Field glcutils/GlcArray isSlice Z 
+L117:   aload_0 
+L118:   getfield Field glcutils/GlcArray subSizes [I 
+L121:   aload_0 
+L122:   getfield Field glcutils/GlcArray length I 
+L125:   aload_1 
+L126:   aload_0 
+L127:   getfield Field glcutils/GlcArray debug Z 
+L130:   invokespecial Method glcutils/GlcArray <init> (Ljava/lang/Class;Z[II[Ljava/lang/Object;Z)V 
+L133:   areturn 
+L134:   
         .linenumbertable 
             L0 82 
-            L2 83 
-            L9 84 
-            L17 85 
-            L31 87 
+            L4 83 
+            L6 86 
+            L8 87 
+            L15 88 
+            L23 90 
+            L30 91 
+            L38 92 
+            L65 93 
+            L82 96 
+            L92 97 
+            L99 96 
+            L105 101 
         .end linenumbertable 
         .localvariabletable 
-            0 is this Lglcutils/GlcArray; from L0 to L60 
-            1 is newArray [Ljava/lang/Object; from L2 to L60 
+            2 is i I from L84 to L105 
+            1 is newArray [Ljava/lang/Object; from L8 to L134 
+            0 is this Lglcutils/GlcArray; from L0 to L134 
         .end localvariabletable 
     .end code 
 .end method 
@@ -258,11 +314,11 @@ L33:    aaload
 L34:    areturn 
 L35:    
         .linenumbertable 
-            L0 94 
-            L5 95 
-            L9 96 
-            L18 97 
-            L28 100 
+            L0 109 
+            L5 110 
+            L9 111 
+            L18 112 
+            L28 115 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L35 
@@ -281,7 +337,7 @@ L5:     checkcast glcutils/GlcArray
 L8:     areturn 
 L9:     
         .linenumbertable 
-            L0 107 
+            L0 122 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L9 
@@ -300,7 +356,7 @@ L8:     invokevirtual Method java/lang/Boolean booleanValue ()Z
 L11:    ireturn 
 L12:    
         .linenumbertable 
-            L0 111 
+            L0 126 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L12 
@@ -319,7 +375,7 @@ L8:     invokevirtual Method java/lang/Character charValue ()C
 L11:    ireturn 
 L12:    
         .linenumbertable 
-            L0 115 
+            L0 130 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L12 
@@ -338,7 +394,7 @@ L8:     invokevirtual Method java/lang/Integer intValue ()I
 L11:    ireturn 
 L12:    
         .linenumbertable 
-            L0 119 
+            L0 134 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L12 
@@ -357,7 +413,7 @@ L8:     invokevirtual Method java/lang/Float floatValue ()F
 L11:    freturn 
 L12:    
         .linenumbertable 
-            L0 123 
+            L0 138 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L12 
@@ -376,7 +432,7 @@ L8:     invokevirtual Method java/lang/Double doubleValue ()D
 L11:    dreturn 
 L12:    
         .linenumbertable 
-            L0 127 
+            L0 142 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L12 
@@ -470,19 +526,19 @@ L136:   invokestatic Method glcutils/Utils fail (Ljava/lang/String;[Ljava/lang/O
 L139:   return 
 L140:   
         .linenumbertable 
-            L0 131 
-            L7 132 
-            L8 134 
-            L12 135 
-            L13 137 
-            L32 138 
-            L64 139 
-            L72 140 
-            L79 141 
-            L88 143 
-            L93 144 
-            L110 145 
-            L139 148 
+            L0 146 
+            L7 147 
+            L8 149 
+            L12 150 
+            L13 152 
+            L32 153 
+            L64 154 
+            L72 155 
+            L79 156 
+            L88 158 
+            L93 159 
+            L110 160 
+            L139 163 
         .end linenumbertable 
         .localvariabletable 
             2 is v Lglcutils/GlcArray; from L93 to L139 
@@ -524,9 +580,9 @@ L37:    invokestatic Method glcutils/Utils fail (Ljava/lang/String;[Ljava/lang/O
 L40:    return 
 L41:    
         .linenumbertable 
-            L0 151 
-            L14 152 
-            L40 154 
+            L0 166 
+            L14 167 
+            L40 169 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L41 
@@ -553,11 +609,11 @@ L20:    aastore
 L21:    return 
 L22:    
         .linenumbertable 
-            L0 160 
-            L5 161 
-            L10 162 
-            L14 163 
-            L21 164 
+            L0 175 
+            L5 176 
+            L10 177 
+            L14 178 
+            L21 179 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L22 
@@ -577,8 +633,8 @@ L6:     invokevirtual Method glcutils/GlcArray set (ILjava/lang/Object;)V
 L9:     return 
 L10:    
         .linenumbertable 
-            L0 167 
-            L9 168 
+            L0 182 
+            L9 183 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L10 
@@ -598,8 +654,8 @@ L6:     invokevirtual Method glcutils/GlcArray set (ILjava/lang/Object;)V
 L9:     return 
 L10:    
         .linenumbertable 
-            L0 171 
-            L9 172 
+            L0 186 
+            L9 187 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L10 
@@ -619,8 +675,8 @@ L6:     invokevirtual Method glcutils/GlcArray set (ILjava/lang/Object;)V
 L9:     return 
 L10:    
         .linenumbertable 
-            L0 175 
-            L9 176 
+            L0 190 
+            L9 191 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L10 
@@ -640,8 +696,8 @@ L6:     invokevirtual Method glcutils/GlcArray set (ILjava/lang/Object;)V
 L9:     return 
 L10:    
         .linenumbertable 
-            L0 179 
-            L9 180 
+            L0 194 
+            L9 195 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L10 
@@ -661,8 +717,8 @@ L6:     invokevirtual Method glcutils/GlcArray set (ILjava/lang/Object;)V
 L9:     return 
 L10:    
         .linenumbertable 
-            L0 183 
-            L9 184 
+            L0 198 
+            L9 199 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L10 
@@ -679,7 +735,7 @@ L1:     getfield Field glcutils/GlcArray length I
 L4:     ireturn 
 L5:     
         .linenumbertable 
-            L0 191 
+            L0 206 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L5 
@@ -704,7 +760,7 @@ L15:    arraylength
 L16:    ireturn 
 L17:    
         .linenumbertable 
-            L0 199 
+            L0 214 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L17 
@@ -751,11 +807,11 @@ L58:    invokespecial Method glcutils/GlcArray <init> (Ljava/lang/Class;Z[II[Lja
 L61:    areturn 
 L62:    
         .linenumbertable 
-            L0 208 
-            L5 209 
-            L12 210 
-            L21 212 
-            L34 213 
+            L0 223 
+            L5 224 
+            L12 225 
+            L21 227 
+            L34 228 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L62 
@@ -774,7 +830,7 @@ L5:     invokevirtual Method glcutils/GlcArray append (Ljava/lang/Object;)Lglcut
 L8:     areturn 
 L9:     
         .linenumbertable 
-            L0 217 
+            L0 232 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L9 
@@ -792,7 +848,7 @@ L5:     invokevirtual Method glcutils/GlcArray append (Ljava/lang/Object;)Lglcut
 L8:     areturn 
 L9:     
         .linenumbertable 
-            L0 221 
+            L0 236 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L9 
@@ -810,7 +866,7 @@ L5:     invokevirtual Method glcutils/GlcArray append (Ljava/lang/Object;)Lglcut
 L8:     areturn 
 L9:     
         .linenumbertable 
-            L0 225 
+            L0 240 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L9 
@@ -828,7 +884,7 @@ L5:     invokevirtual Method glcutils/GlcArray append (Ljava/lang/Object;)Lglcut
 L8:     areturn 
 L9:     
         .linenumbertable 
-            L0 229 
+            L0 244 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L9 
@@ -846,7 +902,7 @@ L5:     invokevirtual Method glcutils/GlcArray append (Ljava/lang/Object;)Lglcut
 L8:     areturn 
 L9:     
         .linenumbertable 
-            L0 233 
+            L0 248 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L9 
@@ -909,16 +965,16 @@ L60:    aload_0
 L61:    areturn 
 L62:    
         .linenumbertable 
-            L0 241 
-            L11 242 
-            L22 245 
-            L28 246 
-            L35 247 
-            L39 248 
-            L48 250 
-            L53 251 
-            L56 253 
-            L60 254 
+            L0 256 
+            L11 257 
+            L22 260 
+            L28 261 
+            L35 262 
+            L39 263 
+            L48 265 
+            L53 266 
+            L56 268 
+            L60 269 
         .end linenumbertable 
         .localvariabletable 
             4 is newLength I from L28 to L56 
@@ -947,7 +1003,7 @@ L10:    imul
 L11:    ireturn 
 L12:    
         .linenumbertable 
-            L0 263 
+            L0 278 
         .end linenumbertable 
         .localvariabletable 
             0 is capacity I from L0 to L12 
@@ -1090,32 +1146,32 @@ L187:   iconst_1
 L188:   ireturn 
 L189:   
         .linenumbertable 
-            L0 274 
-            L5 275 
-            L7 277 
-            L22 278 
-            L24 280 
-            L29 281 
-            L40 282 
-            L42 284 
-            L53 285 
-            L55 287 
-            L69 288 
-            L71 290 
-            L85 291 
-            L87 293 
-            L91 294 
-            L95 295 
-            L105 296 
-            L120 297 
-            L123 299 
-            L132 300 
-            L142 302 
-            L151 303 
-            L161 305 
-            L179 306 
-            L181 295 
-            L187 309 
+            L0 289 
+            L5 290 
+            L7 292 
+            L22 293 
+            L24 295 
+            L29 296 
+            L40 297 
+            L42 299 
+            L53 300 
+            L55 302 
+            L69 303 
+            L71 305 
+            L85 306 
+            L87 308 
+            L91 309 
+            L95 310 
+            L105 311 
+            L120 312 
+            L123 314 
+            L132 315 
+            L142 317 
+            L151 318 
+            L161 320 
+            L179 321 
+            L181 310 
+            L187 324 
         .end linenumbertable 
         .localvariabletable 
             3 is i I from L97 to L187 
@@ -1134,7 +1190,7 @@ L4:     invokestatic Method java/util/Arrays hashCode ([Ljava/lang/Object;)I
 L7:     ireturn 
 L8:     
         .linenumbertable 
-            L0 314 
+            L0 329 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L8 
@@ -1158,9 +1214,9 @@ L16:    invokestatic Method java/util/Arrays toString ([Ljava/lang/Object;)Ljava
 L19:    areturn 
 L20:    
         .linenumbertable 
-            L0 319 
-            L7 320 
-            L12 322 
+            L0 334 
+            L7 335 
+            L12 337 
         .end linenumbertable 
         .localvariabletable 
             0 is this Lglcutils/GlcArray; from L0 to L20 
@@ -1306,32 +1362,32 @@ L208:   invokevirtual Method java/lang/StringBuilder toString ()Ljava/lang/Strin
 L211:   areturn 
 L212:   
         .linenumbertable 
-            L0 326 
-            L8 327 
-            L15 328 
-            L22 329 
-            L31 331 
-            L38 332 
-            L61 333 
-            L68 334 
-            L73 335 
-            L80 337 
-            L87 332 
-            L93 339 
-            L105 340 
-            L112 341 
-            L119 342 
-            L124 344 
-            L135 345 
-            L142 346 
-            L158 347 
-            L165 348 
-            L174 349 
-            L185 350 
-            L192 351 
-            L195 352 
-            L201 344 
-            L207 355 
+            L0 341 
+            L8 342 
+            L15 343 
+            L22 344 
+            L31 346 
+            L38 347 
+            L61 348 
+            L68 349 
+            L73 350 
+            L80 352 
+            L87 347 
+            L93 354 
+            L105 355 
+            L112 356 
+            L119 357 
+            L124 359 
+            L135 360 
+            L142 361 
+            L158 362 
+            L165 363 
+            L174 364 
+            L185 365 
+            L192 366 
+            L195 367 
+            L201 359 
+            L207 370 
         .end linenumbertable 
         .localvariabletable 
             5 is i I from L61 to L87 

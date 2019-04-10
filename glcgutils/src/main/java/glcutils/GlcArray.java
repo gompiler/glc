@@ -79,12 +79,27 @@ public class GlcArray {
     }
 
     public GlcArray copy() {
-        Object[] newArray = null;
-        if (this.array != null) {
-            newArray = new Object[this.length];
-            System.arraycopy(this.array, 0, newArray, 0, this.length);
+        if (this == null) {
+            return null;
         }
-        return new GlcArray(this.clazz, this.isSlice, this.subSizes, this.length, newArray, this.debug);
+        else {
+            Object[] newArray = null;
+            if (this.isSlice) {
+                newArray = this.array;
+            }
+            else if (this.array != null) {
+                newArray = new Object[this.length];
+                if (this.clazz == Integer.class || this.clazz == Double.class || this.clazz == String.class) {
+                    System.arraycopy(this.array, 0, newArray, 0, this.length);
+                }
+                else {
+                    for (int i = 0; i < this.length; i++) {
+                        newArray[i] = this.copy();
+                    }
+                }
+            }
+            return new GlcArray(this.clazz, this.isSlice, this.subSizes, this.length, newArray, this.debug);
+        }
     }
 
     /**
