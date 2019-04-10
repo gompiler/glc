@@ -233,7 +233,7 @@ jObject = ClassRef "java/lang/Object"
 
 stringEquals :: MethodRef
 stringEquals =
-  MethodRef (CRef jString) "equals" (MethodSpec ([JClass jString], JBool))
+  MethodRef (CRef jString) "equals" (MethodSpec ([JClass jObject], JBool))
 
 stringCompare :: MethodRef
 stringCompare =
