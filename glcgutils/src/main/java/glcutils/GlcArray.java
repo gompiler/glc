@@ -78,6 +78,15 @@ public class GlcArray {
         return new GlcArray(clazz, subSizes, debug);
     }
 
+    public GlcArray copy() {
+        Object[] newArray = null;
+        if (this.array != null) {
+            newArray = new Object[this.length];
+            System.arraycopy(this.array, 0, newArray, 0, this.length);
+        }
+        return new GlcArray(this.clazz, this.isSlice, this.subSizes, this.length, newArray, this.debug);
+    }
+
     /**
      * Return nonnull struct if index is within bounds
      */
