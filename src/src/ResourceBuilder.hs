@@ -252,7 +252,13 @@ instance Converter T.SimpleStmt SimpleStmt where
         Assign (T.AssignOp $ Just T.Add) ((e, Lit $ T.IntLit 1) :| [])
       dec2assn :: Expr -> SimpleStmt
       dec2assn e =
-        Assign (T.AssignOp $ Just T.Subtract) ((e, Lit $ T.IntLit 1) :| [])
+        Assign (T.AssignOp $ Just T.Subtract) ((e, toOne e) :| [])
+      toOne :: Expr -> Expr
+      toOne e = case getType' e of
+        PInt -> Lit $ T.IntLit 1
+        PRune -> Lit $ T.IntLit 1
+        PFloat64 -> Lit $ T.FloatLit 1
+        _ -> undefined
       getType :: Expr -> (Expr, Type)
       getType e = (e, getType' e)
       getType' :: Expr -> Type
