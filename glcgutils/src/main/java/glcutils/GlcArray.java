@@ -91,12 +91,10 @@ public class GlcArray {
      * Return nonnull struct if index is within bounds
      */
     public final <T> T get(int i) {
+        verifyIndex(i);
         init();
         if (array[i] == null) {
             array[i] = supply();
-        }
-        if (i > length - 1) {
-            Utils.fail("Slice index %d out of range (length %d)", i, length);
         }
         // noinspection unchecked
         return (T) array[i];
@@ -149,10 +147,17 @@ public class GlcArray {
         }
     }
 
+    private void verifyIndex(int i) {
+        if (i < 0 || i > length - 1) {
+            Utils.fail("Slice index %d out of range (length %d)", i, length);
+        }
+    }
+
     /**
      * Set new struct value at specified index if it is within bounds
      */
     public void set(int i, Object t) {
+        verifyIndex(i);
         verify(t);
         init();
         array[i] = t;
