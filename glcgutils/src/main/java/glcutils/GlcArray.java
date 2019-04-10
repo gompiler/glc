@@ -146,6 +146,26 @@ public class GlcArray {
         array[i] = t;
     }
 
+    public void set(int i, boolean t) {
+        set(i, (Object) t);
+    }
+
+    public void set(int i, char t) {
+        set(i, (Object) t);
+    }
+
+    public void set(int i, int t) {
+        set(i, (Object) t);
+    }
+
+    public void set(int i, float t) {
+        set(i, (Object) t);
+    }
+
+    public void set(int i, double t) {
+        set(i, (Object) t);
+    }
+
     /**
      * Gets the length of the array, representative of the number of elements
      * stored
@@ -174,6 +194,26 @@ public class GlcArray {
         }
         Object[] newArray = append(array, length, t);
         return new GlcArray(clazz, true, subSizes, length + 1, newArray, debug);
+    }
+
+    public GlcArray append(boolean t) {
+        return append((Object) t);
+    }
+
+    public GlcArray append(char t) {
+        return append((Object) t);
+    }
+
+    public GlcArray append(int t) {
+        return append((Object) t);
+    }
+
+    public GlcArray append(float t) {
+        return append((Object) t);
+    }
+
+    public GlcArray append(double t) {
+        return append((Object) t);
     }
 
     /**
