@@ -21,7 +21,8 @@ build: gen
 gen: src/generated/TokenGen.hs src/generated/ParserGen.hs
 
 .PHONY: report
-report: stack --allow-different-user hpc report glc.tix
+report: 
+	stack --allow-different-user hpc report glc.tix
 
 src/generated/TokenGen.hs: golite.x
 	alex $< -g -o $@

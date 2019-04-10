@@ -81,6 +81,7 @@ instance Show MethodRef where
 data JType
   = JClass ClassRef -- Lwhatever;
   | JArray JType -- [ as a prefix, ex. [I
+  | JChar -- C
   | JInt -- I
   | JDouble -- D
   | JBool -- Z
@@ -90,6 +91,7 @@ data JType
 instance Show JType where
   show (JClass (ClassRef cn)) = "L" ++ cn ++ ";"
   show (JArray jt)            = "[" ++ show jt
+  show JChar                  = "C"
   show JInt                   = "I"
   show JDouble                = "D"
   show JBool                  = "Z"
@@ -143,6 +145,8 @@ data Instruction
   | Return (Maybe IRType)
   | Dup
   | Dup2 -- ..., v, w -> ..., v, w, v, w
+  | DupX1
+  | Dup2X2
   | Goto LabelName
   | Add IRPrimitive
   | Div IRPrimitive
@@ -155,6 +159,7 @@ data Instruction
   | IAnd
   | IOr
   | IXOr
+  | IntToDouble
   | If IRCmp
        LabelName
   | IfICmp IRCmp
@@ -165,10 +170,14 @@ data Instruction
   | IConst1 -- 1
   | DCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
   | New ClassRef -- class
+  | CheckCast ClassOrArrayRef
   | ANewArray ClassRef
+  | MultiANewArray JType
+                   Int
   | NewArray IRPrimitive
   | NOp
   | Pop
+  | Pop2
   | Swap
   | GetStatic FieldRef
               JType -- field spec, descriptor
@@ -191,9 +200,40 @@ systemOut = FieldRef (ClassRef "java/lang/System") "out"
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
 
+jCharacter :: ClassRef
+jCharacter = ClassRef "java/lang/Character"
+
+jCharInit :: MethodRef
+jCharInit = MethodRef (CRef jCharacter) "<init>" (MethodSpec ([JChar], JVoid))
+
+jInteger :: ClassRef
+jInteger = ClassRef "java/lang/Integer"
+
+jIntInit :: MethodRef
+jIntInit = MethodRef (CRef jInteger) "<init>" (MethodSpec ([JInt], JVoid))
+
+jIntValue :: MethodRef
+jIntValue = MethodRef (CRef jInteger) "intValue" (MethodSpec ([], JInt))
+
+jValueOfChar :: MethodRef
+jValueOfChar =
+  MethodRef (CRef jString) "valueOf" (MethodSpec ([JChar], JClass jString))
+
+jDouble :: ClassRef
+jDouble = ClassRef "java/lang/Double"
+
+jDoubleValue :: MethodRef
+jDoubleValue = MethodRef (CRef jDouble) "doubleValue" (MethodSpec ([], JDouble))
+
+jDoubleInit :: MethodRef
+jDoubleInit = MethodRef (CRef jDouble) "<init>" (MethodSpec ([JDouble], JVoid))
+
+jObject :: ClassRef
+jObject = ClassRef "java/lang/Object"
+
 stringEquals :: MethodRef
 stringEquals =
-  MethodRef (CRef jString) "equals" (MethodSpec ([JClass jString], JBool))
+  MethodRef (CRef jString) "equals" (MethodSpec ([JClass jObject], JBool))
 
 stringCompare :: MethodRef
 stringCompare =
@@ -219,14 +259,37 @@ sbToString :: MethodRef
 sbToString =
   MethodRef (CRef stringBuilder) "toString" (MethodSpec ([], JClass jString))
 
-jObject :: ClassRef
-jObject = ClassRef "java/lang/Object"
-
 emptySpec :: MethodSpec
 emptySpec = MethodSpec ([], JVoid)
 
 cMain :: ClassRef
 cMain = ClassRef "Main"
+
+cSlice :: ClassRef
+cSlice = ClassRef "Slice"
+
+sliceInit :: MethodRef
+sliceInit = MethodRef (CRef cSlice) "<init>" emptySpec
+
+sliceAppend :: MethodRef
+sliceAppend =
+  MethodRef
+    (CRef cSlice)
+    "append"
+    (MethodSpec ([JClass jObject], JClass cSlice))
+
+sliceGet :: MethodRef
+sliceGet = MethodRef (CRef cSlice) "get" (MethodSpec ([JInt], JClass jObject))
+
+sliceSet :: MethodRef
+sliceSet =
+  MethodRef (CRef cSlice) "set" (MethodSpec ([JInt, JClass jObject], JVoid))
+
+sliceCapacity :: MethodRef
+sliceCapacity = MethodRef (CRef cSlice) "capacity" (MethodSpec ([], JInt))
+
+sliceLength :: FieldRef
+sliceLength = FieldRef cSlice "length"
 
 -- Custom-defined methods
 glcUtils :: ClassRef

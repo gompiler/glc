@@ -29,6 +29,7 @@ instance Bytecode Class where
       [ bstrM [".class public ", cn, "\n", ".super java/lang/Object", "\n\n"]
       , B.concat $ map toBC fls
       , B.concat $ map toBC mts
+      , bstr ".end class"
       ]
 
 instance Bytecode [Class] where
@@ -80,7 +81,7 @@ instance Bytecode Method where
 
 instance Bytecode IRItem where
   toBC' (IRInst inst)   = tab $ toBC' inst
-  toBC' (IRLabel label) = bstrM [label, ":"]
+  toBC' (IRLabel label) = bstrM ["L", label, ":"]
 
 instance Bytecode Instruction where
   toBC' ins = bstrM (toBCStr ins)
@@ -94,7 +95,9 @@ instance Bytecode Instruction where
       toBCStr (Return Nothing) = ["return"]
       toBCStr Dup = ["dup"]
       toBCStr Dup2 = ["dup2"]
-      toBCStr (Goto label) = ["goto ", label]
+      toBCStr DupX1 = ["dup_x1"]
+      toBCStr Dup2X2 = ["dup2_x2"]
+      toBCStr (Goto label) = ["goto L", label]
       toBCStr (Add t) = [typePrefix' t, "add"]
       toBCStr (Div t) = [typePrefix' t, "div"]
       toBCStr (Mul t) = [typePrefix' t, "mul"]
@@ -104,8 +107,9 @@ instance Bytecode Instruction where
       toBCStr IShL = ["ishl"]
       toBCStr IShR = ["ishr"]
       toBCStr IAnd = ["iand"]
-      toBCStr (If cmp label) = ["if", show cmp, " ", label]
-      toBCStr (IfICmp cmp label) = ["if_icmp", show cmp, " ", label]
+      toBCStr IntToDouble = ["i2d"]
+      toBCStr (If cmp label) = ["if", show cmp, " L", label]
+      toBCStr (IfICmp cmp label) = ["if_icmp", show cmp, " L", label]
       toBCStr IOr = ["ior"]
       toBCStr IXOr = ["ixor"]
       toBCStr (LDC lt) = "ldc" : suffix lt
@@ -120,6 +124,7 @@ instance Bytecode Instruction where
       toBCStr IConst0 = ["iconst_0"]
       toBCStr IConst1 = ["iconst_1"]
       toBCStr DCmpG = ["dcmpg"]
+      toBCStr (MultiANewArray t c) = ["multianewarray ", show t, " ", show c]
       toBCStr (ANewArray (ClassRef cn)) = ["anewarray ", cn]
       toBCStr (NewArray prim) = ["newarray ", typename prim]
         where
@@ -127,8 +132,11 @@ instance Bytecode Instruction where
           typename IRInt    = "int"
           typename IRDouble = "double"
       toBCStr (New (ClassRef cn)) = ["new ", cn]
+      toBCStr (CheckCast (CRef (ClassRef cn))) = ["checkcast ", cn]
+      toBCStr (CheckCast (ARef jt)) = ["checkcast [", show jt]
       toBCStr NOp = ["nop"]
       toBCStr Pop = ["pop"]
+      toBCStr Pop2 = ["pop2"]
       toBCStr Swap = ["swap"]
       toBCStr (GetStatic (FieldRef (ClassRef cn) fn) jt) =
         ["getstatic Field ", cn, " ", fn, " ", show jt]
@@ -184,7 +192,10 @@ fileJ :: String -> String
 fileJ file = dropExtension file ++ ".j"
 
 utils :: ByteString
-utils = B.fromStrict $(embedFile "glcgutils/Utils.j")
+utils =
+  B.concat
+    [ B.fromStrict $(embedFile "glcgutils/Utils.j")
+    ]
 
 codegen :: String -> IO ()
 codegen file =

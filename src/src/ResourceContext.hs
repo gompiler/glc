@@ -154,8 +154,8 @@ exitScope st = do
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
 -- Otherwise, we will output 1 greater than the biggest index to date
-getVarIndex :: forall s. ResourceContext s -> C.ScopedIdent -> ST s VarIndex
-getVarIndex st si = do
+getVarIndex :: forall s. ResourceContext s -> C.ScopedIdent -> Type -> ST s VarIndex
+getVarIndex st si vt = do
   let key = VarKey si
   rc <- readRef st
   candidates <- mapM (getVarIndex' key) $ varScopes rc
@@ -172,7 +172,13 @@ getVarIndex st si = do
     setVarIndex' rs@RS {varTable, varCounter} key =
       let value = VarIndex varCounter
        in HT.insert varTable key value $>
-          (value, rs {varCounter = varCounter + 1})
+          (value, rs {varCounter = varCounter + increment})
+      where
+        increment :: Int
+        increment =
+          case vt of
+            PFloat64 -> 2
+            _        -> 1
     -- | Get the index of the provided key, or return the size of the current scope
     getVarIndex' :: VarKey -> ResourceScope s -> ST s (Maybe VarIndex)
     getVarIndex' key RS {varTable} = HT.lookup varTable key
