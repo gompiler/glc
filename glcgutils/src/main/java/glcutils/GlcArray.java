@@ -152,8 +152,38 @@ public class GlcArray {
         if (!isSlice) {
             Utils.fail("Cannot append to nonslice");
         }
-        Object[] newArray = GlcSliceUtils.append(array, length, t);
+        Object[] newArray = append(array, length, t);
         return new GlcArray(clazz, true, subSizes, length + 1, newArray, debug);
+    }
+
+    /**
+     * Underlying append logic, returning the resulting array data
+     * Static for legacy, in case we want to support custom primitive types
+     */
+    private static Object[] append(Object[] array, int length, Object t) {
+        int capacity = array == null ? 0 : array.length;
+        if (array == null || length >= capacity - 1) {
+            // We have an initial capacity of 2 due to legacy golang
+            // This is a requirement for golite
+            int newLength = newCapacity(capacity);
+            Object[] newArray = new Object[newLength];
+            if (array != null) {
+                System.arraycopy(array, 0, newArray, 0, length);
+            }
+            newArray[length] = t;
+            return newArray;
+        } else {
+            array[length] = t;
+            return array;
+        }
+    }
+
+    /**
+     * We have an initial capacity of 2 due to legacy golang
+     * This is a requirement for golite
+     */
+    private static int newCapacity(int capacity) {
+        return capacity <= 0 ? 2 : 2 * capacity;
     }
 
     /**
@@ -215,7 +245,7 @@ public class GlcArray {
         return Arrays.toString(array);
     }
 
-     String contentString () {
+    String contentString() {
         StringBuilder s = new StringBuilder();
         s.append('[');
         if (!isSlice) {
