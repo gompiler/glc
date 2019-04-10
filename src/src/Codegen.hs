@@ -29,6 +29,7 @@ instance Bytecode Class where
       [ bstrM [".class public ", cn, "\n", ".super java/lang/Object", "\n\n"]
       , B.concat $ map toBC fls
       , B.concat $ map toBC mts
+      , bstr ".end class"
       ]
 
 instance Bytecode [Class] where
