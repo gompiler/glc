@@ -16,8 +16,4 @@ public class GlcException extends RuntimeException {
     public GlcException(Throwable cause) {
         super(cause);
     }
-
-    protected GlcException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-        super(message, cause, enableSuppression, writableStackTrace);
-    }
 }
