@@ -343,13 +343,17 @@ toClasses T.Program { T.structs = scts
           iri [ Load Object (T.VarIndex 1)
               , Load Object (T.VarIndex 0)
               , GetField (FieldRef (ClassRef sn) fn) (jt)] ++
-          (iri $ case t of
+          invokeCp t ++
+          (iri [ PutField (FieldRef (ClassRef sn) fn) (jt)
+          ])
+
+invokeCp :: T.Type -> [IRItem]
+invokeCp t = iri $ case t of
                    T.ArrayType {} -> [InvokeVirtual (MethodRef (CRef cGlcArray) "copy" (MethodSpec ([], JClass cGlcArray)))]
                    T.SliceType {} -> [InvokeVirtual (MethodRef (CRef cGlcArray) "copy" (MethodSpec ([], JClass cGlcArray)))]
                    T.StructType sid' -> [InvokeVirtual (MethodRef (CRef (ClassRef $ structName sid')) "copy" (MethodSpec ([], JClass $ ClassRef $ structName sid')))]
-                   _ -> []) ++
-          (iri [ PutField (FieldRef (ClassRef sn) fn) (jt)
-          ])
+                   _ -> []
+
 class IRRep a where
   toIR :: a -> [IRItem]
 
