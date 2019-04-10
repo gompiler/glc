@@ -177,7 +177,7 @@ toClasses T.Program { T.structs = scts
         { access = FProtected
         , static = True
         , fname = tVarStr fi
-        , descriptor = typeToJType t
+        , descriptor = typeToProgramJType t
       -- , value = Nothing
         }
     clBody :: [IRItem]
@@ -212,11 +212,11 @@ toClasses T.Program { T.structs = scts
             maxStack = maxStackSize irBody 0
             sigToSpec :: T.Signature -> MethodSpec
             sigToSpec (T.Signature (T.Parameters pdl) mr) =
-              MethodSpec (map (typeToJType . pdToType) pdl, mrToJType mr)
+              MethodSpec (map (typeToProgramJType . pdToType) pdl, mrToJType mr)
             pdToType :: T.ParameterDecl -> T.Type
             pdToType (T.ParameterDecl _ t) = t
             mrToJType :: Maybe T.Type -> JType
-            mrToJType mr = maybe JVoid typeToJType mr
+            mrToJType mr = maybe JVoid typeToProgramJType mr
     structClass :: T.StructType -> Class
     structClass (T.Struct sid fdls) =
       Class
@@ -230,7 +230,7 @@ toClasses T.Program { T.structs = scts
         { access = FPublic
         , static = False
         , fname = fid
-        , descriptor = typeToJType t
+        , descriptor = typeToProgramJType t
         -- , value = Nothing
         }
 
@@ -303,13 +303,26 @@ instance IRRep T.VarDecl' where
             case at -- TODO: Defaults of elements??? or null checks elsewhere?
                   of
               (T.ArrayType l2 at2) ->
-                loadSizes ++
+                -- loadSizes ++
                 iri
-                  [ MultiANewArray (typeToJType t) (length sizes)
-                  , Store Object idx
-                  ]
-                where loadSizes :: [IRItem]
-                      loadSizes = map (\s -> IRInst (LDC $ LDCInt s)) sizes
+                  [ New cGlcArray
+                  , Dup
+                  , LDC (LDCClass $ classOfBase t)
+                  , LDC (LDCInt $ length sizes) -- Number of dimensions of array
+                  , NewArray IRInt -- array of dimensions
+                  ] ++ sizeArrayIR ++
+                iri [ InvokeSpecial glcArrayInit, Store Object idx]
+                where sizeArrayIR :: [IRItem]
+                      sizeArrayIR =
+                        map (const $ IRInst Dup) sizes ++
+                        concatMap
+                          (\(i, s) ->
+                            iri
+                              [ LDC $ LDCInt i
+                              , LDC $ LDCInt s
+                              , ArrayStore (Prim IRInt)
+                              ])
+                          (zip [0 ..] sizes)
                       sizes :: [Int]
                       sizes = getDepth [l2, l] at2
                       getDepth :: [Int] -> T.Type -> [Int]
@@ -317,23 +330,43 @@ instance IRRep T.VarDecl' where
                         case rt of
                           T.ArrayType rl rrt -> getDepth (rl : rSizes) rrt
                           _                  -> reverse rSizes -- no more arrays
+                      classOfBase :: T.Type -> ClassRef
+                      classOfBase ct =
+                        case ct of
+                          (T.ArrayType _ rt) -> classOfBase rt
+                          T.SliceType {} -> cGlcArray
+                          T.PInt -> jInteger
+                          T.PFloat64 -> jDouble
+                          T.PRune -> jInteger
+                          T.PBool -> jInteger
+                          T.PString -> jString
+                          T.StructType {} -> undefined -- TODO
               T.SliceType {} -> undefined -- TODO: Array of slice
                 -- iri
                 --   [ LDC (LDCInt l)
                 --   , ANewArray cSlice
                 --   , Store Object idx
                 --   ]
-              T.PInt -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
-              T.PFloat64 ->
-                iri [LDC (LDCInt l), NewArray IRDouble, Store Object idx]
-              T.PBool -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
-              T.PRune -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
-              T.PString ->
-                iri [LDC (LDCInt l), ANewArray jString, Store Object idx]
-              T.StructType sid ->
+              T.PInt -> arrayIR jInteger
+              T.PFloat64 -> arrayIR jDouble
+              T.PBool -> arrayIR jInteger
+              T.PRune -> arrayIR jInteger
+              T.PString -> arrayIR jString
+              T.StructType sid -> arrayIR (ClassRef $ structName sid) -- TODO: FIX THIS FOR NEW STRUCTS
+            where
+              arrayIR :: ClassRef -> [IRItem]
+              arrayIR cr =
                 iri
-                  [ LDC (LDCInt l)
-                  , ANewArray (ClassRef $ structName sid)
+                  [ New cGlcArray
+                  , Dup
+                  , LDC (LDCClass cr)
+                  , IConst1
+                  , NewArray IRInt
+                  , Dup
+                  , IConst0
+                  , LDC (LDCInt l)
+                  , ArrayStore (Prim IRInt)
+                  , InvokeSpecial glcArrayInit
                   , Store Object idx
                   ]
           (T.SliceType st) ->
@@ -438,7 +471,7 @@ instance IRRep T.SimpleStmt where
         MethodRef
           (CRef cMain)
           (tFnStr aid)
-          (MethodSpec (map exprJType args, JVoid))
+          (MethodSpec (map exprProgramJType args, JVoid))
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR (T.Assign (T.AssignOp mAop) pairs) =
@@ -522,12 +555,12 @@ instance IRRep T.SimpleStmt where
               storeIR :: [IRItem]
               storeIR =
                 case t of
-                  T.ArrayType {} -> undefined -- TODO: Set slice of array
-                  T.SliceType {} -> undefined -- TODO: Set slice of slice
-                  T.PInt -> iri [InvokeVirtual glcArraySetInt]
-                  T.PFloat64 -> iri [InvokeVirtual glcArraySetDouble]
-                  T.PBool -> iri [InvokeVirtual glcArraySetInt]
-                  T.PRune -> iri [InvokeVirtual glcArraySetInt]
+                  T.ArrayType {} -> iri [InvokeVirtual glcArraySetArray] -- TODO: LOOK AT CLONING
+                  T.SliceType {} -> iri [InvokeVirtual glcArraySetArray] -- TODO: LOOK AT CLONING
+                  T.PInt -> iri [InvokeVirtual (glcArraySet JInt)]
+                  T.PFloat64 -> iri [InvokeVirtual (glcArraySet JDouble)]
+                  T.PBool -> iri [InvokeVirtual (glcArraySet JInt)]
+                  T.PRune -> iri [InvokeVirtual (glcArraySet JInt)]
                   T.PString -> undefined -- TODO: Set slice of string
                   T.StructType {} -> undefined -- TODO: Set slice of struct
           _ -> error "Cannot assign to non-addressable value"
@@ -636,19 +669,19 @@ instance IRRep T.Expr where
   toIR (T.Lit l) = toIR l
   toIR (T.Var t vi) = iri [Load (typeToIRType t) vi]
   toIR (T.TopVar t tvi) =
-    iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
+    iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToProgramJType t)]
   toIR (T.AppendExpr _ e1 e2) =
     toIR e1 ++ toIR e2 ++ appendIR
     where
       appendIR :: [IRItem]
       appendIR =
         case exprType e2 of
-          T.ArrayType {} -> undefined -- TODO: append array
-          T.SliceType {} -> undefined -- TODO: append slice
-          T.PInt -> iri [InvokeVirtual glcArrayAppendInt]
-          T.PFloat64 -> iri [InvokeVirtual glcArrayAppendDouble]
-          T.PRune -> iri [InvokeVirtual glcArrayAppendInt]
-          T.PBool -> iri [InvokeVirtual glcArrayAppendInt]
+          T.ArrayType {} -> iri [InvokeVirtual glcArrayAppendArray] -- TODO: CLONE?
+          T.SliceType {} -> iri [InvokeVirtual glcArrayAppendArray] -- TODO: CLONE?
+          T.PInt -> iri [InvokeVirtual (glcArrayAppend JInt)]
+          T.PFloat64 -> iri [InvokeVirtual (glcArrayAppend JDouble)]
+          T.PRune -> iri [InvokeVirtual (glcArrayAppend JInt)]
+          T.PBool -> iri [InvokeVirtual (glcArrayAppend JInt)]
           T.PString -> undefined -- TODO
           T.StructType {} -> undefined -- TODO: append struct
 
@@ -663,7 +696,7 @@ instance IRRep T.Expr where
       T.SliceType _   -> toIR e ++ iri [InvokeVirtual glcArrayCap]
       _               -> error "Cannot get capacity of non-array/slice"
   toIR (T.Selector t e (T.Ident fid)) =
-    toIR e ++ iri [GetField fr (typeToJType t)]
+    toIR e ++ iri [GetField fr (typeToProgramJType t)]
     where
       fr :: FieldRef
       fr =
@@ -678,7 +711,7 @@ instance IRRep T.Expr where
         MethodRef
           (CRef cMain)
           (tFnStr aid)
-          (MethodSpec (map exprJType args, typeToJType t))
+          (MethodSpec (map exprProgramJType args, typeToProgramJType t))
       ]
 
 instance IRRep D.Literal where
@@ -705,7 +738,7 @@ structName (T.Ident sid) = "__Glc$Struct__" ++ sid
 
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
-  case exprJType e of
+  case exprProgramJType e of
     JClass (ClassRef "java/lang/String") -> [] -- Cannot clone strings
     JClass (ClassRef "java/lang/Object") -> [] -- Cannot clone base objects
     JClass (ClassRef "glcutils/GlcArray") -> [] -- TODO: undo this
@@ -803,13 +836,21 @@ equality idx t =
 glcArrayGetIR :: T.Type -> [IRItem]
 glcArrayGetIR t =
   case t of
-    T.ArrayType {} -> iri [InvokeVirtual glcArrayGetArray]
-    T.SliceType {} -> iri [InvokeVirtual glcArrayGetArray]
+    T.ArrayType {} ->
+      iri
+        [ InvokeVirtual glcArrayGetArray
+        , CheckCast (CRef cGlcArray)
+        ]
+    T.SliceType {} ->
+      iri
+        [ InvokeVirtual glcArrayGetArray
+        , CheckCast (CRef cGlcArray)
+        ]
     T.PInt -> iri [InvokeVirtual glcArrayGetInt]
     T.PFloat64 -> iri [InvokeVirtual glcArrayGetDouble]
     T.PRune -> iri [InvokeVirtual glcArrayGetInt]
     T.PBool -> iri [InvokeVirtual glcArrayGetInt]
-    T.PString -> undefined -- TODO
+    T.PString -> iri [InvokeVirtual glcArrayGetString]
     T.StructType {} -> undefined -- TODO: Get array of struct
 
 exprType :: T.Expr -> T.Type
@@ -841,6 +882,9 @@ exprIRType = typeToIRType . exprType
 exprJType :: T.Expr -> JType
 exprJType = typeToJType . exprType
 
+exprProgramJType :: T.Expr -> JType
+exprProgramJType = typeToProgramJType . exprType
+
 getLiteralType :: D.Literal -> T.Type
 getLiteralType (D.BoolLit _)   = T.PBool
 getLiteralType (D.IntLit _)    = T.PInt
@@ -857,6 +901,17 @@ typeToJType T.PRune = JInt
 typeToJType T.PBool = JBool
 typeToJType T.PString = JClass jString
 typeToJType (T.StructType (D.Ident sid)) =
+  JClass (ClassRef $ "GlcStruct__" ++ sid)
+
+typeToProgramJType :: T.Type -> JType
+typeToProgramJType T.ArrayType {} = JClass cGlcArray
+typeToProgramJType T.SliceType {} = JClass cGlcArray
+typeToProgramJType T.PInt = JInt
+typeToProgramJType T.PFloat64 = JDouble
+typeToProgramJType T.PRune = JInt
+typeToProgramJType T.PBool = JBool
+typeToProgramJType T.PString = JClass jString
+typeToProgramJType (T.StructType (D.Ident sid)) =
   JClass (ClassRef $ "GlcStruct__" ++ sid)
 
 stackDelta :: Instruction -> Int
