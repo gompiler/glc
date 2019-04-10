@@ -14,6 +14,12 @@ public class GlcMutiArrayTest {
 
     /**
      * For upper levels, pass suppliers which take the first n - 1 lengths
+     *
+     * Changing args:
+     * - currentClass
+     * - parentClass
+     * - constructorHeader
+     * - constructorBody
      */
     private static class GlcArray$String$2 extends GlcArray<GlcArray$String$1> {
 
@@ -25,6 +31,10 @@ public class GlcMutiArrayTest {
 
     /**
      * For first level, do not provide supplier
+     *
+     * Changing args:
+     * - currentClass
+     * - parentClass
      */
     private static class GlcArray$String$1 extends GlcArray<String> {
         public GlcArray$String$1(int length) {

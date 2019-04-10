@@ -5,11 +5,11 @@ import java.lang.reflect.Array;
 public class GlcArray<T> {
     int length;
     T[] array;
-    final Supplier<T> supplier;
+    private final Supplier<T> supplier;
     final Class<? extends T> clazz;
 
     public GlcArray(Class<? extends T> clazz, int length) {
-        this(() -> Utils.baseSupply(clazz), clazz, length, null);
+        this(clazz, length, null);
     }
 
     public GlcArray(Supplier<T> supplier, Class<? extends T> clazz, int length) {

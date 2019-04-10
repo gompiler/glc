@@ -15,10 +15,16 @@ public class GlcMutiSliceTest {
         assertEquals("Hello", a.get(0).get(0));
     }
 
-    /*
+    /**
      * Structure is the same for all levels
+     *
+     * Changing args:
+     * - current class
+     * - parent class
+     * - append signature + body
+     *
+     * Public constructor with no args is mandatory for instantiation
      */
-
     private static class GlcSlice$String$2 extends GlcArray<GlcSlice$String$1> {
 
         public GlcSlice$String$2() {
