@@ -388,14 +388,14 @@ instance IRRep T.VarDecl' where
                       classOfBase ct =
                         case ct of
                           (T.ArrayType _ rt) -> classOfBase rt
-                          T.SliceType {} -> cGlcArray
+                          T.SliceType {} -> cGlcArray -- TODO: THIS IS NOT CORRECT
                           T.PInt -> jInteger
                           T.PFloat64 -> jDouble
                           T.PRune -> jInteger
                           T.PBool -> jInteger
                           T.PString -> jString
-                          T.StructType {} -> undefined -- TODO
-              T.SliceType {} -> undefined -- TODO: Array of slice
+                          T.StructType sid -> ClassRef (structName sid)
+              T.SliceType {} -> -- TODO: Array of slice
                 -- iri
                 --   [ LDC (LDCInt l)
                 --   , ANewArray cSlice
@@ -432,7 +432,7 @@ instance IRRep T.VarDecl' where
               T.PRune -> newSliceIR jInteger idx
               T.PBool -> newSliceIR jInteger idx
               T.PString -> newSliceIR jString idx
-              (T.StructType _) -> undefined -- TODO
+              T.StructType sid -> newSliceIR (ClassRef $ structName sid)
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
@@ -871,7 +871,7 @@ equality lbl idx t =
         , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ] ++
       eqPostfix
-    (T.StructType (D.Ident _)) -> undefined -- TODO
+    (T.StructType (D.Ident _)) -> undefined -- TODO: STRUCT EQUALITY
     T.PFloat64 ->
       iri
         [ DCmpG
