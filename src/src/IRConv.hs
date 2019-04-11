@@ -358,10 +358,9 @@ toClasses T.Program { T.structs = scts
         cpField (T.FieldDecl (D.Ident fn) t) = let jt = typeToJType t in
           iri [ Load Object (T.VarIndex 1)
               , Load Object (T.VarIndex 0)
-              , GetField (FieldRef (ClassRef sn) fn) (jt)] ++
-          invokeCp t ++
-          (iri [ PutField (FieldRef (ClassRef sn) fn) (jt)
-          ])
+              , InvokeVirtual (MethodRef cr ("get_" ++ fn) (MethodSpec ([], jt)))
+              , PutField (FieldRef (ClassRef sn) fn) (jt)
+              ]
     setter :: String -> T.FieldDecl -> Method
     setter sn (T.FieldDecl (D.Ident fn) t) =
       Method
@@ -1013,13 +1012,13 @@ equalityNL eq lbl idx t =
         [ InvokeVirtual stringEquals
         , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ]
-    (T.StructType (D.Ident sid)) ->
+    (T.StructType sid) ->
       iri
         [ InvokeVirtual $
           MethodRef
-            (CRef $ ClassRef sid)
+            (CRef $ ClassRef $ structName sid)
             "equals"
-            (MethodSpec ([JClass (ClassRef sid)], JBool))
+            (MethodSpec ([JClass (ClassRef $ structName sid)], JBool))
         , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ]
     T.PFloat64 ->
