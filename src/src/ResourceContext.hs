@@ -264,7 +264,7 @@ breakParentLabel st =
 continueParentLabel :: ResourceContext s -> ST s LabelIndex
 continueParentLabel st =
   LabelIndex .
-  fromMaybe (error "Invalid break parent") .
+  fromMaybe (error "Invalid continue parent") .
   _continueParentLabel . head . _varScopes <$>
   readRef st
 
