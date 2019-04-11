@@ -751,7 +751,7 @@ instance IRRep T.SimpleStmt where
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR (T.Assign (T.AssignOp mAop) pairs) =
     concatMap getValue (NE.toList pairs) ++
-    concatMap getStore (reverse $ NE.toList pairs)
+    concatMap setStore (reverse $ NE.toList pairs)
     where
       getValue :: (T.Expr, T.Expr) -> [IRItem]
       getValue (se, ve) =
@@ -823,25 +823,25 @@ instance IRRep T.SimpleStmt where
               (T.BitXor, Prim _) -> iri [IXOr]
               (T.BitClear, Prim _) -> iri [IConstM1, IXOr, IAnd]
               _ -> error "Invalid operation on non-primitive"
-      getStore :: (T.Expr, T.Expr) -> [IRItem]
-      getStore (e, _) =
+      setStore :: (T.Expr, T.Expr) -> [IRItem]
+      setStore (e, _) =
         case e of
           T.Var t idx -> iri [Store (typeToIRType t) idx]
           T.TopVar t tvi ->
             iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
           T.Selector t eo (T.Ident fid) ->
             case exprJType eo of
-              JClass (ClassRef "glcutils/GlcArray") ->
-                error "Cannot get field of non-object"
               JClass cr ->
-                iri
-                  [ InvokeVirtual $
-                    MethodRef
-                      (CRef cr)
-                      ("set_" ++ fid)
-                      (MethodSpec ([typeToJType t], JVoid))
-                  ]
-              _ -> error "Cannot get field of non-object"
+                if cr == cGlcArray
+                  then error "Cannot set field of non-struct"
+                  else iri
+                         [ InvokeVirtual $
+                           MethodRef
+                             (CRef cr)
+                             ("set_" ++ fid)
+                             (MethodSpec ([typeToJType t], JVoid))
+                         ]
+              _ -> error "Cannot set field of non-struct"
           T.Index t _ _ -> storeIR
             where storeIR :: [IRItem]
                   storeIR =
@@ -995,9 +995,10 @@ instance IRRep T.Expr where
       cr :: ClassRef
       cr =
         case exprJType e of
-          JClass (ClassRef "glcutils/GlcArray") ->
-            error "Cannot get field of non-struct"
-          JClass cref -> cref
+          JClass cref ->
+            if cref == cGlcArray
+              then error "Cannot get field of non-struct"
+              else cref
           _ -> error "Cannot get field of non-struct"
   toIR (T.Index t e1 e2) = toIR e1 ++ toIR e2 ++ glcArrayGetIR t
   toIR (T.Arguments t aid args) =
