@@ -603,20 +603,18 @@ instance IRRep T.VarDecl' where
                      emptySpec)
               , Store Object idx
               ]
-          where
-            glcArrayIR :: Int -> T.Type -> [IRItem]
-            glcArrayIR l t' =
-              case t' of
-                T.ArrayType {} -> nestedGlcArrayIR t idx
-                T.SliceType {} -> nestedGlcArrayIR t idx
-                T.PInt -> arrayOrSliceIR jInteger l idx
-                T.PFloat64 -> arrayOrSliceIR jDouble l idx
-                T.PRune -> arrayOrSliceIR jInteger l idx
-                T.PBool -> arrayOrSliceIR jInteger l idx
-                T.PString -> arrayOrSliceIR jString l idx
-                T.StructType sid ->
-                  arrayOrSliceIR (ClassRef $ structName sid) l idx
-
+        where glcArrayIR :: Int -> T.Type -> [IRItem]
+              glcArrayIR l t' =
+                case t' of
+                  T.ArrayType {} -> nestedGlcArrayIR t idx
+                  T.SliceType {} -> nestedGlcArrayIR t idx
+                  T.PInt -> arrayOrSliceIR jInteger l idx
+                  T.PFloat64 -> arrayOrSliceIR jDouble l idx
+                  T.PRune -> arrayOrSliceIR jInteger l idx
+                  T.PBool -> arrayOrSliceIR jInteger l idx
+                  T.PString -> arrayOrSliceIR jString l idx
+                  T.StructType sid ->
+                    arrayOrSliceIR (ClassRef $ structName sid) l idx
 
 nestedGlcArrayIR :: T.Type -> T.VarIndex -> [IRItem]
 nestedGlcArrayIR t idx =
@@ -711,7 +709,7 @@ printIR e =
       iri [LDC (LDCString "%+e")] ++
       iri [IConst1, ANewArray jObject, Dup, IConst0] ++
       toIR e ++
-      objectRepr JDouble ++
+      doubleObjectRepr ++
       iri
         [ ArrayStore Object
         , InvokeVirtual $
@@ -722,6 +720,10 @@ printIR e =
                ([JClass jString, JArray (JClass jObject)], JClass printStream))
         , Pop
         ]
+      where
+        doubleObjectRepr :: [IRItem]
+        doubleObjectRepr =
+          iri [New jDouble, Dup, Dup2X2, Pop2, InvokeSpecial jDoubleInit]
     stringPrint :: [IRItem]
     stringPrint =
       iri
@@ -1056,30 +1058,6 @@ cloneIfNeeded e =
         , CheckCast (ARef jt)
         ]
     _ -> [] -- Primitives and strings are not clonable
-
-objectRepr :: JType -> [IRItem]
-objectRepr t =
-  case t of
-    JClass cr ->
-      iri
-        [ InvokeVirtual $
-          MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
-        , CheckCast (CRef cr)
-        ]
-    JArray jt ->
-      iri
-        [ InvokeVirtual $
-          MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
-        , CheckCast (ARef jt)
-        ]
-    JChar ->
-      iri [New jCharacter, DupX1, Swap, InvokeSpecial jCharInit] -- e, o -> o, e, o -> o, o, e -> o
-    JInt ->
-      iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit] -- e, o -> o, e, o -> o, o, e -> o
-    JDouble -- e1, e2, o -> e1, e2, o, o -> o, o, e1, e2, o, o -> o, o, e1, e2 -> o
-     -> iri [New jDouble, Dup, Dup2X2, Pop2, InvokeSpecial jDoubleInit]
-    JBool -> iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit]
-    JVoid -> error "Cannot have slice of void"
 
 equalityNL :: Bool -> String -> Int -> T.Type -> [IRItem]
 equalityNL eq lbl idx t =
