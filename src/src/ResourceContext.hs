@@ -24,7 +24,7 @@ import qualified CheckedData             as C
 import           Control.Monad.ST
 import           Data.Hashable
 import qualified Data.HashTable.ST.Basic as HT
-import           Data.Maybe              (catMaybes, listToMaybe)
+import           Data.Maybe              (catMaybes, fromMaybe, listToMaybe)
 import           Data.STRef
 import           Prelude                 hiding (lookup)
 import           ResourceData
@@ -36,26 +36,26 @@ newtype ResourceContext s =
 -- While we only need to store a counter,
 -- this makes it easier to fetch the ordered struct list
 data ResourceContext_ s = RC
-  { _structTypes          :: [StructType]
-  , _structMap            :: StructTable s
-  , _varScopes            :: [ResourceScope s]
-  , _labelCounter         :: Int
-  , _breakParentLabel    :: Int
-  , _continueParentLabel :: Int
+  { _structTypes  :: [StructType]
+  , _structMap    :: StructTable s
+  , _varScopes    :: [ResourceScope s]
+  , _labelCounter :: Int
   }
 
 -- | Scope, with its own set of declared variables and offset values
 data ResourceScope s = RS
-  { _varTable   :: VarTable s
+  { _varTable            :: VarTable s
   -- | Scope's counter size
   -- Each varCounter starts at the value of the previous scope,
   -- or 0 if the scope is global.
   -- To create a new index, we use the current counter, then increment the value
-  , _varCounter :: Int
+  , _varCounter          :: Int
   -- | Max varCounter within current scope
   -- This is propagated from all children's varCounters, where only
   -- the max value is kept
-  , _varLimit   :: Int
+  , _varLimit            :: Int
+  , _breakParentLabel    :: Maybe Int
+  , _continueParentLabel :: Maybe Int
   }
 
 newtype VarKey =
@@ -102,19 +102,21 @@ new = do
       , _varScopes = []
       , _structMap = structMap
       , _labelCounter = 0
-      , _breakParentLabel = 0
-      , _continueParentLabel = 0
       }
 
 -- | Create a new resource scope
 newScope :: [ResourceScope s] -> ST s (ResourceScope s)
 newScope scopes = do
   m <- HT.new
-  return $ RS {_varTable = m, _varCounter = varCounter scopes, _varLimit = 0}
-  where
-    varCounter :: [ResourceScope s] -> Int
-    varCounter []                  = 0
-    varCounter (RS {_varCounter}:_) = _varCounter
+  let prevScope = listToMaybe scopes
+  return $
+    RS
+      { _varTable = m
+      , _varCounter = maybe 0 _varCounter prevScope
+      , _varLimit = 0
+      , _breakParentLabel = _breakParentLabel =<< prevScope
+      , _continueParentLabel = _continueParentLabel =<< prevScope
+      }
 
 wrap :: ResourceContext s -> ST s a -> ST s a
 wrap rc action = do
@@ -150,7 +152,8 @@ exitScope st = do
   where
     exitScope' :: [ResourceScope s] -> [ResourceScope s]
     exitScope' (curr:parent:vars) =
-      let varLimit = maximum [_varLimit curr, _varCounter curr, _varLimit parent]
+      let varLimit =
+            maximum [_varLimit curr, _varCounter curr, _varLimit parent]
        in parent {_varLimit = varLimit} : vars
     exitScope' (_:vars) = vars
     -- Note that this should never happen, given that we
@@ -234,27 +237,36 @@ newLabel' context st = do
   let c = context defaultLabelContext
   rc <- readRef st
   let i = _labelCounter rc
-  writeRef st $!
-    rc
-      { _labelCounter = i + 1
-      , _breakParentLabel =
-          if _breakParent c
-            then i
-            else _breakParentLabel rc
-      , _continueParentLabel =
-          if _continueParent c
-            then i
-            else _continueParentLabel rc
-      }
+  let (v:vars) = _varScopes rc
+  let v' =
+        v
+          { _breakParentLabel =
+              if _breakParent c
+                then Just i
+                else _breakParentLabel v
+          , _continueParentLabel =
+              if _continueParent c
+                then Just i
+                else _continueParentLabel v
+          }
+  writeRef st $! rc {_labelCounter = i + 1, _varScopes = v' : vars}
   return $! LabelIndex i
 
 -- | Return the destination label of a break statement
 breakParentLabel :: ResourceContext s -> ST s LabelIndex
-breakParentLabel st = LabelIndex . _breakParentLabel <$> readRef st
+breakParentLabel st =
+  LabelIndex .
+  fromMaybe (error "Invalid break parent") .
+  _breakParentLabel . head . _varScopes <$>
+  readRef st
 
--- | Return the destination label of a break statement
+-- | Return the destination label of a continue statement
 continueParentLabel :: ResourceContext s -> ST s LabelIndex
-continueParentLabel st = LabelIndex . _continueParentLabel <$> readRef st
+continueParentLabel st =
+  LabelIndex .
+  fromMaybe (error "Invalid continue parent") .
+  _continueParentLabel . head . _varScopes <$>
+  readRef st
 
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type
