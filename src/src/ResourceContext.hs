@@ -196,9 +196,10 @@ varIndexBase requiresNew st si vt = do
       where
         increment :: Int
         increment =
-          case vt of
-            PFloat64 -> 2
-            _        -> 1
+          case (vt, si) of
+            (PFloat64, _)                    -> 2
+            (_, C.ScopedIdent _ (Ident "_")) -> 2 -- Holes are re-usable, so should always be double-width
+            _                                -> 1
     -- | Get the index of the provided key, or return the size of the current scope
     varIndex' :: VarKey -> ResourceScope s -> ST s (Maybe VarIndex)
     varIndex' key RS {_varTable} = HT.lookup _varTable key
