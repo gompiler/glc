@@ -358,9 +358,10 @@ toClasses T.Program { T.structs = scts
         cpField (T.FieldDecl (D.Ident fn) t) = let jt = typeToJType t in
           iri [ Load Object (T.VarIndex 1)
               , Load Object (T.VarIndex 0)
-              , InvokeVirtual (MethodRef cr ("get_" ++ fn) (MethodSpec ([], jt)))
-              , PutField (FieldRef (ClassRef sn) fn) (jt)
-              ]
+              , InvokeVirtual (MethodRef cr ("get_" ++ fn) (MethodSpec ([], jt)))]
+          ++
+          iri [PutField (FieldRef (ClassRef sn) fn) (jt)]
+
     setter :: String -> T.FieldDecl -> Method
     setter sn (T.FieldDecl (D.Ident fn) t) =
       Method
@@ -377,7 +378,6 @@ toClasses T.Program { T.structs = scts
             iri [Load Object (T.VarIndex 0)
                 , Load (typeToIRType t) (T.VarIndex 1)
                 ]
-            ++ invokeCp t
             ++ iri [PutField (FieldRef (ClassRef sn) fn) (jt)
                    , Return Nothing]
     getter :: String -> T.FieldDecl -> Method
@@ -402,13 +402,21 @@ toClasses T.Program { T.structs = scts
                            , Return (Just $ typeToIRType t)])
           getObj :: T.Type -> [IRItem]
           getObj t' = let jt = typeToJType t in
+                        iri [ GetField (FieldRef (ClassRef sn) fn) (jt)
+                            , IfNonNull "LSGET_NULL"
+                            , Load Object (T.VarIndex 0)
+                            ] ++
                         toIR (T.VarDecl' (T.VarIndex 1) t' Nothing) ++
                         iri [ Load Object (T.VarIndex 1)
                             , PutField (FieldRef (ClassRef sn) fn) (jt)
                             , Load Object (T.VarIndex 0)
                             , GetField (FieldRef (ClassRef sn) fn) (jt)
-                            ] ++
-                        invokeCp t
+                            , Goto "LSGET_RET"] ++
+                        [IRLabel "LSGET_NULL"]
+                        ++ iri [ Load Object (T.VarIndex 0)
+                               , GetField (FieldRef (ClassRef sn) fn) (jt)
+                               ]
+                        ++ [IRLabel "LSGET_RET"]
                         ++ iri [ Return (Just Object)]
     sinit :: Method
     sinit =
