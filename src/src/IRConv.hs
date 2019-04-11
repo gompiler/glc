@@ -969,7 +969,8 @@ instance IRRep T.Expr where
   toIR (T.Var t vi) = iri [Load (typeToIRType t) vi]
   toIR (T.TopVar t tvi) =
     iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
-  toIR (T.AppendExpr _ e1 e2) = toIR e1 ++ toIR e2 ++ appendIR
+  toIR (T.AppendExpr _ e1 e2) =
+    toIR e1 ++ toIR e2 ++ cloneIfNeeded e2 ++ appendIR -- clone e2 as if it were an argument
     where
       appendIR :: [IRItem]
       appendIR =
