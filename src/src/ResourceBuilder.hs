@@ -142,7 +142,7 @@ instance Converter T.Signature Signature where
 
 instance Converter T.ParameterDecl ParameterDecl where
   convert rc (T.ParameterDecl i t) =
-    ParameterDecl <$> (RC.varIndex rc i =<< convert rc t) <*> convert rc t
+    ParameterDecl <$> (RC.paramIndex rc i =<< convert rc t) <*> convert rc t
 
 instance Converter T.Parameters Parameters where
   convert rc (T.Parameters params) = Parameters <$> mapM (convert rc) params

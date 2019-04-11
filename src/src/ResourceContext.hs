@@ -8,6 +8,7 @@ module ResourceContext
   , wrap
   , structName
   , varIndex
+  , paramIndex
   , allStructs
   , newLabel
   , newLoopLabel
@@ -152,14 +153,26 @@ exitScope st = do
     -- Each exit only occurs with an enter
     exitScope' [] = []
 
+type VarIndexFunc s
+   = ResourceContext s -> C.ScopedIdent -> Type -> ST s VarIndex
+
+paramIndex :: forall s. VarIndexFunc s
+paramIndex = varIndexBase True
+
+varIndex :: forall s. VarIndexFunc s
+varIndex = varIndexBase False
+
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
 -- Otherwise, we will output 1 greater than the biggest index to date
-varIndex :: forall s. ResourceContext s -> C.ScopedIdent -> Type -> ST s VarIndex
-varIndex st si vt = do
+varIndexBase :: forall s. Bool -> VarIndexFunc s
+varIndexBase requiresNew st si vt = do
   let key = VarKey si
   rc <- readRef st
-  candidates <- mapM (varIndex' key) $ varScopes rc
+  candidates <-
+    if requiresNew
+      then pure []
+      else mapM (varIndex' key) $ varScopes rc
   case listToMaybe $ catMaybes candidates of
     Just index -> return index
     Nothing -> do
@@ -174,6 +187,7 @@ varIndex st si vt = do
       let value = VarIndex varCounter
        in HT.insert varTable key value $>
           (value, rs {varCounter = varCounter + increment})
+        -- | Not all types have the same size
       where
         increment :: Int
         increment =

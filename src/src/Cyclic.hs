@@ -68,18 +68,11 @@ set (CyclicContainer root _) = CyclicContainer root
 map :: (a -> a) -> CyclicContainer a -> CyclicContainer a
 map action c = set c $ action $ get c
 
--- | Remove cyclic layer if it exists
-format :: CyclicContainer a -> CyclicContainer a
-format c@(CyclicContainer root current) =
-  if isRoot current
-    then CyclicContainer root root
-    else c
-
 -- | Map against both root and current
 mapContainer ::
      (Cyclic a, Cyclic b) => (a -> b) -> CyclicContainer a -> CyclicContainer b
 mapContainer action (CyclicContainer root current) =
-  format $ CyclicContainer (action root) (action current)
+  CyclicContainer (action root) (action current)
 
 fmapContainer ::
      (Cyclic a, Cyclic b, Monad m)
@@ -87,7 +80,7 @@ fmapContainer ::
   -> CyclicContainer a
   -> m (CyclicContainer b)
 fmapContainer action (CyclicContainer root current) =
-  format <$> (CyclicContainer <$> action root <*> action current)
+  CyclicContainer <$> action root <*> action current
 
 class Cyclic a where
   isRoot :: a -> Bool
