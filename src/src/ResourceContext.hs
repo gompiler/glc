@@ -152,10 +152,19 @@ exitScope st = do
     -- Each exit only occurs with an enter
     exitScope' [] = []
 
+data VarIndexInfo = VarIndexInfo
+  { size       :: Int
+  , requireNew :: Bool
+  }
+
+defaultIndexInfo :: VarIndexInfo
+defaultIndexInfo = VarIndexInfo {size = 1, requireNew = False}
+
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
 -- Otherwise, we will output 1 greater than the biggest index to date
-varIndex :: forall s. ResourceContext s -> C.ScopedIdent -> Type -> ST s VarIndex
+varIndex ::
+     forall s. ResourceContext s -> C.ScopedIdent -> Type -> ST s VarIndex
 varIndex st si vt = do
   let key = VarKey si
   rc <- readRef st
