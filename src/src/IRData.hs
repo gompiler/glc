@@ -205,12 +205,6 @@ systemOut = FieldRef (ClassRef "java/lang/System") "out"
 jString :: ClassRef
 jString = ClassRef "java/lang/String"
 
-jCharacter :: ClassRef
-jCharacter = ClassRef "java/lang/Character"
-
-jCharInit :: MethodRef
-jCharInit = MethodRef (CRef jCharacter) "<init>" (MethodSpec ([JChar], JVoid))
-
 jInteger :: ClassRef
 jInteger = ClassRef "java/lang/Integer"
 
