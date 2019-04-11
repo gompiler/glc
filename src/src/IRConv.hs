@@ -1076,8 +1076,8 @@ typeToJType T.PFloat64 = JDouble
 typeToJType T.PRune = JInt
 typeToJType T.PBool = JBool
 typeToJType T.PString = JClass jString
-typeToJType (T.StructType (D.Ident sid)) =
-  JClass (ClassRef $ "GlcStruct__" ++ sid)
+typeToJType (T.StructType sid) =
+  JClass (ClassRef $ structName sid)
 
 stackDelta :: Instruction -> Int
 stackDelta (Load (Prim IRDouble) _) = 2 -- ... -> ..., v (double-wide)
