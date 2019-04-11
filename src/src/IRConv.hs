@@ -498,6 +498,7 @@ instance IRRep T.VarDecl' where
           (T.StructType sid) ->
             iri
               [ New (ClassRef $ structName sid)
+              , Dup
               , InvokeSpecial
                   (MethodRef
                      (CRef $ ClassRef $ structName sid)
