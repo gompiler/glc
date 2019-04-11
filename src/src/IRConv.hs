@@ -388,7 +388,7 @@ toClasses T.Program { T.structs = scts
         , mstatic = False
         , stackLimit = maxStackSize getBody 0
         , localsLimit = 2 -- One for this and one for copy
-        , spec = MethodSpec ([typeToJType t], typeToJType t)
+        , spec = MethodSpec ([], typeToJType t)
         , body = getBody
         }
         where
@@ -685,6 +685,7 @@ instance IRRep T.SimpleStmt where
         case (mAop, se) of
           (Nothing, T.Index _ ea ei) ->
             toIR ea ++ toIR ei ++ toIR ve ++ cloneIfNeeded ve
+          (Nothing, T.Selector _ eo _) -> toIR eo ++ toIR ve ++ cloneIfNeeded ve
           (Nothing, _) -> toIR ve ++ cloneIfNeeded ve
           (Just op, T.Var t idx) ->
             setUpOps op ++
@@ -699,7 +700,7 @@ instance IRRep T.SimpleStmt where
               JClass cr ->
                 setUpOps op ++
                 toIR eo ++
-                iri [GetField (FieldRef cr fid) (typeToJType t)] ++
+                iri [Dup, InvokeVirtual $ MethodRef (CRef cr) ("get_" ++ fid) (MethodSpec ([], typeToJType t))] ++
                 afterLoadOps op ++ toIR ve ++ finalOps op
               _ -> error "Cannot get field of non-object"
           (Just op, T.Index t ea ei) ->
@@ -752,7 +753,7 @@ instance IRRep T.SimpleStmt where
               JClass (ClassRef "glcutils/GlcArray") ->
                 error "Cannot get field of non-object"
               JClass cr ->
-                toIR eo ++ iri [PutField (FieldRef cr fid) (typeToJType t)]
+                iri [InvokeVirtual $ MethodRef (CRef cr) ("set_" ++ fid) (MethodSpec ([typeToJType t], JVoid))]
               _ -> error "Cannot get field of non-object"
           T.Index t _ _ -> storeIR
             where
@@ -901,14 +902,14 @@ instance IRRep T.Expr where
       T.SliceType _   -> toIR e ++ iri [InvokeVirtual glcArrayCap]
       _               -> error "Cannot get capacity of non-array/slice"
   toIR (T.Selector t e (T.Ident fid)) =
-    toIR e ++ iri [GetField fr (typeToJType t)]
+    toIR e ++ iri [InvokeVirtual $ MethodRef (CRef cr) ("get_" ++ fid) (MethodSpec ([], typeToJType t))]
     where
-      fr :: FieldRef
-      fr =
+      cr :: ClassRef
+      cr =
         case exprJType e of
           JClass (ClassRef "glcutils/GlcArray") ->
             error "Cannot get field of non-struct"
-          JClass cref -> FieldRef cref fid
+          JClass cref -> cref
           _ -> error "Cannot get field of non-struct"
   toIR (T.Index t e1 e2) = toIR e1 ++ toIR e2 ++ glcArrayGetIR t
   toIR (T.Arguments t aid args) =
