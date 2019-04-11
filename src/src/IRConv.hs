@@ -326,8 +326,8 @@ toClasses T.Program { T.structs = scts
         { mname = "copy"
         , mstatic = False
         , stackLimit = maxStackSize copyBody 0
-        , localsLimit = 2 -- One for this and one for argument
-        , spec = MethodSpec ([JClass (ClassRef sn)], (JClass $ ClassRef sn))
+        , localsLimit = 2
+        , spec = MethodSpec ([], (JClass $ ClassRef sn))
         , body = copyBody
         }
       where
@@ -667,7 +667,7 @@ instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
   toIR (T.VoidExprStmt aid args) -- Akin to Argument without a type
    =
-    concatMap toIR args ++
+    concatMap (\e -> toIR e ++ cloneIfNeeded e) args ++
     iri
       [ InvokeStatic $
         MethodRef
@@ -949,17 +949,15 @@ cloneIfNeeded e =
   case exprJType e of
     JClass (ClassRef "java/lang/String") -> [] -- Cannot clone strings
     JClass (ClassRef "java/lang/Object") -> [] -- Cannot clone base objects
-    JClass (ClassRef "glcutils/GlcArray") -> [] -- TODO: undo this
     JClass cr ->
       iri
         [ InvokeVirtual $
-          MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
-        , CheckCast (CRef cr)
+          MethodRef (CRef cr) "copy" (MethodSpec ([], JClass cr))
         ]
     JArray jt ->
       iri
         [ InvokeVirtual $
-          MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
+          MethodRef (ARef jt) "copy" (MethodSpec ([], JClass jObject))
         , CheckCast (ARef jt)
         ]
     _ -> [] -- Primitives and strings are not clonable
