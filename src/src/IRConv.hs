@@ -236,12 +236,15 @@ toClasses T.Program { T.structs = scts
       Class
         { cname = structName sid
         , fields = map sfToF fdls
-        , methods = [checkEq strc, copyStc strc] ++ (map (setter (structName sid)) fdls) ++ (map (getter (structName sid)) fdls)
+        , methods = (sinit):[checkEq strc, copyStc strc] ++ (map (setter sn) fdls) ++ (map (getter sn) fdls)
         }
+      where
+        sn :: String
+        sn = structName sid
     sfToF :: T.FieldDecl -> Field
     sfToF (T.FieldDecl (D.Ident fid) t) =
       Field
-        { access = FPublic
+        { access = FPrivate
         , static = False
         , fname = fid
         , descriptor = typeToJType t
@@ -385,7 +388,7 @@ toClasses T.Program { T.structs = scts
         , mstatic = False
         , stackLimit = maxStackSize getBody 0
         , localsLimit = 2 -- One for this and one for copy
-        , spec = MethodSpec ([typeToJType t], JVoid)
+        , spec = MethodSpec ([typeToJType t], typeToJType t)
         , body = getBody
         }
         where
@@ -408,6 +411,19 @@ toClasses T.Program { T.structs = scts
                             ] ++
                         invokeCp t
                         ++ iri [ Return (Just Object)]
+    sinit :: Method
+    sinit =
+      Method
+        { mname = "<init>"
+        , mstatic = False
+        , stackLimit = 1
+        , localsLimit = 1 -- One for this and one for copy
+        , spec = MethodSpec ([], JVoid)
+        , body = iri [ Load Object (T.VarIndex 0)
+                     , InvokeSpecial (MethodRef (CRef jObject) "<init>" (MethodSpec ([], JVoid)))
+                     , Return Nothing
+                     ]
+        }
 
 invokeCp :: T.Type -> [IRItem]
 invokeCp t = iri $ case t of
