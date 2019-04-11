@@ -524,7 +524,7 @@ instance IRRep T.Stmt where
     [IRLabel ("end_sc_" ++ show idx), IRInst Pop] -- duplicate expression for case statement expressions in lists
     where
       irCaseHeaders :: (Int, T.SwitchCase) -> [IRItem]
-      irCaseHeaders (cIdx, T.Case exprs _) =
+      irCaseHeaders (cIdx, T.Case _ exprs _) =
         concatMap toCaseHeader (zip [1 ..] (NE.toList exprs))
         where
           toCaseHeader :: (Int, T.Expr) -> [IRItem]
@@ -538,7 +538,7 @@ instance IRRep T.Stmt where
               (exprType ce) ++
             iri [If IRData.NE $ "case_" ++ show cIdx ++ "_" ++ show idx] -- If it's true, make the jump
       irCaseBodies :: (Int, T.SwitchCase) -> [IRItem]
-      irCaseBodies (cIdx, T.Case _ stmt) =
+      irCaseBodies (cIdx, T.Case _ _ stmt) =
         [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
         toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
   toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =

@@ -125,7 +125,7 @@ instance VarIndices VarDecl' where
   indices (VarDecl' i _ _) = [i]
 
 instance VarIndices SwitchCase where
-  indices (Case _ s) = indices s
+  indices (Case _ _ s) = indices s
 
 instance VarIndices ForClause where
   indices (ForClause ss1 _ ss2) = indices ss1 ++ indices ss2

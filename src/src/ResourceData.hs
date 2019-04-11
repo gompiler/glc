@@ -214,7 +214,7 @@ data VarDecl' =
 
 -- | See https://golang.org/ref/spec#ExprSwitchStmt
 data SwitchCase =
-  Case (NonEmpty Expr)
+  Case LabelIndex (NonEmpty Expr)
        Stmt
   deriving (Show, Eq)
 
@@ -384,7 +384,7 @@ instance Convert VarDecl' T.VarDecl' where
   convert (VarDecl' i t e) = T.VarDecl' (convert i) (convert t) (convert e)
 
 instance Convert SwitchCase T.SwitchCase where
-  convert (Case nle s) = T.Case (convert nle) (convert s)
+  convert (Case _ nle s) = T.Case (convert nle) (convert s)
 
 instance Convert ForClause T.ForClause where
   convert (ForClause pre cond post) =

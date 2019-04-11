@@ -11,8 +11,11 @@ module ResourceContext
   , paramIndex
   , allStructs
   , newLabel
-  , newLoopLabel
-  , currentLoopLabel
+  , newLabel'
+  , breakParent
+  , continueParent
+  , breakParentLabel
+  , continueParentLabel
   , localLimit
   ) where
 
@@ -33,11 +36,12 @@ newtype ResourceContext s =
 -- While we only need to store a counter,
 -- this makes it easier to fetch the ordered struct list
 data ResourceContext_ s = RC
-  { structTypes   :: [StructType]
-  , structMap     :: StructTable s
-  , varScopes     :: [ResourceScope s]
-  , labelCounter  :: Int
-  , lastLoopLabel :: Int
+  { structTypes          :: [StructType]
+  , structMap            :: StructTable s
+  , varScopes            :: [ResourceScope s]
+  , labelCounter         :: Int
+  , breakParentLabel'    :: Int
+  , continueParentLabel' :: Int
   }
 
 -- | Scope, with its own set of declared variables and offset values
@@ -98,7 +102,8 @@ new = do
       , varScopes = []
       , structMap = structMap'
       , labelCounter = 0
-      , lastLoopLabel = 0
+      , breakParentLabel' = 0
+      , continueParentLabel' = 0
       }
 
 -- | Create a new resource scope
@@ -198,27 +203,57 @@ varIndexBase requiresNew st si vt = do
     varIndex' :: VarKey -> ResourceScope s -> ST s (Maybe VarIndex)
     varIndex' key RS {varTable} = HT.lookup varTable key
 
+data LabelContext = LabelContext
+  -- Label used for break statement
+  { _breakParent    :: Bool
+  -- Label used for continue statement
+  , _continueParent :: Bool
+  }
+
+defaultLabelContext :: LabelContext
+defaultLabelContext =
+  LabelContext {_breakParent = False, _continueParent = False}
+
+-- | Marks label context as break parent
+breakParent :: LabelContext -> LabelContext
+breakParent c = c {_breakParent = True}
+
+-- | Marks label context as continue parent
+continueParent :: LabelContext -> LabelContext
+continueParent c = c {_continueParent = True}
+
 -- | Returns a label id that is unique across the entire program
+-- Label parents are also updated depending on the context
 newLabel :: ResourceContext s -> ST s LabelIndex
-newLabel st = do
+newLabel = newLabel' id
+
+newLabel' ::
+     (LabelContext -> LabelContext) -> ResourceContext s -> ST s LabelIndex
+newLabel' context st = do
+  let c = context defaultLabelContext
   rc <- readRef st
   let i = labelCounter rc
-  writeRef st $! rc {labelCounter = i + 1}
-  return $ LabelIndex i
+  writeRef st $!
+    rc
+      { labelCounter = i + 1
+      , breakParentLabel' =
+          if _breakParent c
+            then i
+            else breakParentLabel' rc
+      , continueParentLabel' =
+          if _continueParent c
+            then i
+            else continueParentLabel' rc
+      }
+  return $! LabelIndex i
 
--- | Returns a label id that is unique across the entire program
--- We will also store it as the last loop label,
--- as it will be used for things like 'break' and 'continue'
-newLoopLabel :: ResourceContext s -> ST s LabelIndex
-newLoopLabel st = do
-  rc <- readRef st
-  let i = labelCounter rc
-  writeRef st $! rc {labelCounter = i + 1, lastLoopLabel = i}
-  return $ LabelIndex i
+-- | Return the destination label of a break statement
+breakParentLabel :: ResourceContext s -> ST s LabelIndex
+breakParentLabel st = LabelIndex . breakParentLabel' <$> readRef st
 
--- | Returns the last label created
-currentLoopLabel :: ResourceContext s -> ST s LabelIndex
-currentLoopLabel st = LabelIndex . lastLoopLabel <$> readRef st
+-- | Return the destination label of a break statement
+continueParentLabel :: ResourceContext s -> ST s LabelIndex
+continueParentLabel st = LabelIndex . continueParentLabel' <$> readRef st
 
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type
