@@ -1081,20 +1081,6 @@ objectRepr t =
     JBool -> iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit]
     JVoid -> error "Cannot have slice of void"
 
-objectDecode :: T.Type -> [IRItem]
-objectDecode t -- TODO: Maybe this should just be IRType
- =
-  case t -- TODO: Might need CheckCast
-        of
-    T.ArrayType {} -> [] -- nothing to do
-    T.SliceType {} -> [] -- nothing to do
-    T.PInt         -> iri [InvokeVirtual jIntValue]
-    T.PFloat64     -> iri [InvokeVirtual jDoubleValue]
-    T.PBool        -> iri [InvokeVirtual jIntValue]
-    T.PRune        -> iri [InvokeVirtual jIntValue]
-    T.PString      -> [] -- nothing to do
-    T.StructType _ -> [] -- nothing to do
-
 equalityNL :: Bool -> String -> Int -> T.Type -> [IRItem]
 equalityNL eq lbl idx t =
   case t of
