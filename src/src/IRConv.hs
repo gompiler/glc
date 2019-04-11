@@ -1049,7 +1049,11 @@ equalityNL eq lbl idx t =
         [ DCmpG
         , If checkInt (lbl ++ "_true_eq_" ++ show idx) -- dcmpg is 0, they're equal
         ]
-    T.SliceType {} -> error "Cannot compare slice equality"
+    T.SliceType {} ->
+      iri
+        [ InvokeVirtual glcArrayEquals
+        , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        ]
     _
       -- Integer types
      ->
