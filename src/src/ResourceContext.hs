@@ -36,12 +36,12 @@ newtype ResourceContext s =
 -- While we only need to store a counter,
 -- this makes it easier to fetch the ordered struct list
 data ResourceContext_ s = RC
-  { structTypes          :: [StructType]
-  , structMap            :: StructTable s
-  , varScopes            :: [ResourceScope s]
-  , labelCounter         :: Int
-  , breakParentLabel'    :: Int
-  , continueParentLabel' :: Int
+  { _structTypes          :: [StructType]
+  , _structMap            :: StructTable s
+  , _varScopes            :: [ResourceScope s]
+  , _labelCounter         :: Int
+  , _breakParentLabel    :: Int
+  , _continueParentLabel :: Int
   }
 
 -- | Scope, with its own set of declared variables and offset values
@@ -95,15 +95,15 @@ readRef (ResourceContext ref) = readSTRef ref
 
 new :: ST s (ResourceContext s)
 new = do
-  structMap' <- HT.new
+  structMap <- HT.new
   newRef $
     RC
-      { structTypes = []
-      , varScopes = []
-      , structMap = structMap'
-      , labelCounter = 0
-      , breakParentLabel' = 0
-      , continueParentLabel' = 0
+      { _structTypes = []
+      , _varScopes = []
+      , _structMap = structMap
+      , _labelCounter = 0
+      , _breakParentLabel = 0
+      , _continueParentLabel = 0
       }
 
 -- | Create a new resource scope
@@ -126,16 +126,16 @@ wrap rc action = do
 localLimit :: ResourceContext s -> ST s LocalLimit
 localLimit st = do
   rc <- readRef st
-  let scope = head $! varScopes rc
+  let scope = head $! _varScopes rc
   return $! LocalLimit $! max (varLimit scope) (varCounter scope)
 
 -- | Create a new scope level
 enterScope :: ResourceContext s -> ST s ()
 enterScope st = do
   rc <- readRef st
-  scope <- newScope $ varScopes rc
-  let vars = scope : varScopes rc
-  writeRef st $! rc {varScopes = vars}
+  scope <- newScope $ _varScopes rc
+  let vars = scope : _varScopes rc
+  writeRef st $! rc {_varScopes = vars}
 
 -- | Exit current scope level
 -- This allows us to reuse offsets for all variables created in the current scope
@@ -143,8 +143,8 @@ enterScope st = do
 exitScope :: ResourceContext s -> ST s ()
 exitScope st = do
   rc <- readRef st
-  let varScopes' = exitScope' $ varScopes rc
-  writeRef st $! rc {varScopes = varScopes'}
+  let varScopes = exitScope' $ _varScopes rc
+  writeRef st $! rc {_varScopes = varScopes}
     -- | Remove current scope, and update parent's limit with current counter
     -- if it exists
   where
@@ -177,13 +177,13 @@ varIndexBase requiresNew st si vt = do
   candidates <-
     if requiresNew
       then pure []
-      else mapM (varIndex' key) $ varScopes rc
+      else mapM (varIndex' key) $ _varScopes rc
   case listToMaybe $ catMaybes candidates of
     Just index -> return index
     Nothing -> do
-      let (v:vars) = varScopes rc
+      let (v:vars) = _varScopes rc
       (value, v') <- setVarIndex' v key
-      writeRef st $! rc {varScopes = v' : vars} -- Replace current scope
+      writeRef st $! rc {_varScopes = v' : vars} -- Replace current scope
       return value
   where
     setVarIndex' ::
@@ -232,28 +232,28 @@ newLabel' ::
 newLabel' context st = do
   let c = context defaultLabelContext
   rc <- readRef st
-  let i = labelCounter rc
+  let i = _labelCounter rc
   writeRef st $!
     rc
-      { labelCounter = i + 1
-      , breakParentLabel' =
+      { _labelCounter = i + 1
+      , _breakParentLabel =
           if _breakParent c
             then i
-            else breakParentLabel' rc
-      , continueParentLabel' =
+            else _breakParentLabel rc
+      , _continueParentLabel =
           if _continueParent c
             then i
-            else continueParentLabel' rc
+            else _continueParentLabel rc
       }
   return $! LabelIndex i
 
 -- | Return the destination label of a break statement
 breakParentLabel :: ResourceContext s -> ST s LabelIndex
-breakParentLabel st = LabelIndex . breakParentLabel' <$> readRef st
+breakParentLabel st = LabelIndex . _breakParentLabel <$> readRef st
 
 -- | Return the destination label of a break statement
 continueParentLabel :: ResourceContext s -> ST s LabelIndex
-continueParentLabel st = LabelIndex . continueParentLabel' <$> readRef st
+continueParentLabel st = LabelIndex . _continueParentLabel <$> readRef st
 
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type
@@ -262,7 +262,7 @@ structName :: forall s. ResourceContext s -> [FieldDecl] -> ST s C.Ident
 structName st fields = do
   let key = StructKey fields
   rc <- readRef st
-  let m = structMap rc
+  let m = _structMap rc
   candidate <- HT.lookup m key
   case candidate of
     Just (Struct name _) -> return name
@@ -270,11 +270,11 @@ structName st fields = do
       -- Create the new StructType, save it in the hashmap,
       -- and update our struct list
      -> do
-      let name = structName' $ length (structTypes rc) + 1
+      let name = structName' $ length (_structTypes rc) + 1
           value = Struct name fields
-          structTypes' = value : structTypes rc
+          structTypes = value : _structTypes rc
       _ <- HT.insert m key value
-      writeRef st $! rc {structTypes = structTypes'}
+      writeRef st $! rc {_structTypes = structTypes}
       return $! name
   where
     structName' :: Int -> C.Ident
@@ -282,4 +282,4 @@ structName st fields = do
 
 -- | Returns a list of unique structs, ordered by creation
 allStructs :: ResourceContext s -> ST s [StructType]
-allStructs st = reverse . structTypes <$> readRef st
+allStructs st = reverse . _structTypes <$> readRef st
