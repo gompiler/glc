@@ -388,9 +388,11 @@ toClasses T.Program { T.structs = scts
         }
       where
         ll :: Int
-        ll = 1 + (case t of
-          T.PFloat64 -> 2
-          _          -> 1)
+        ll =
+          1 +
+          (case t of
+             T.PFloat64 -> 2
+             _          -> 1)
         setBody :: [IRItem]
         setBody =
           let jt = typeToJType t
@@ -411,9 +413,11 @@ toClasses T.Program { T.structs = scts
         }
       where
         ll :: Int
-        ll = 1 + (case t of
-          T.PFloat64 -> 2
-          _          -> 1)
+        ll =
+          1 +
+          (case t of
+             T.PFloat64 -> 2
+             _          -> 1)
         getBody :: [IRItem]
         getBody =
           let jt = typeToJType t
@@ -1290,13 +1294,13 @@ instance StackHeight Instruction where
   stackDelta PutField {} = -2 -- ..., o, v -> ...
   stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, rt))))
     -- ..., o, a1, .., an -> r (or void)
-    = (sum $ map stackDelta a) - 1 + (stackDelta rt)
+   = sum (map stackDelta a) - 1 + stackDelta rt
   stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, rt))))
     -- ..., o, a1, .., an -> r (or void)
-    = (sum $ map stackDelta a) - 1 + (stackDelta rt)
+   = sum (map stackDelta a) - 1 + stackDelta rt
   stackDelta (InvokeStatic (MethodRef _ _ (MethodSpec (a, rt))))
     -- ..., a1, .., an -> r
-    = (sum $ map stackDelta a) + (stackDelta rt)
+   = sum (map stackDelta a) + stackDelta rt
   stackDelta Debug {} = 0
 
 instance StackHeight JType where
