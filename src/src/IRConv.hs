@@ -287,7 +287,7 @@ toClasses T.Program { T.structs = scts
            [IRLabel ("LSEQ_NULL3")] ++
           (concatMap (createNE "LSEQ_false") fdls) ++
            iri [IConst1, Goto "LSEQ_return"] ++
-           [ IRLabel "LSEQ_false"
+           [ IRLabel "LSEQ_false_true_eq_0"
            , IRInst IConst0
            , IRLabel "LSEQ_return"
            , IRInst $ Return (Just $ Prim IRInt)
