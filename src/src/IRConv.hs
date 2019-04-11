@@ -382,11 +382,15 @@ toClasses T.Program { T.structs = scts
         { mname = "set_" ++ fn
         , mstatic = False
         , stackLimit = maxStackSize setBody 0
-        , localsLimit = 2 -- One for this and one for argument
+        , localsLimit = ll -- One for this and one/two for argument
         , spec = MethodSpec ([typeToJType t], JVoid)
         , body = setBody
         }
       where
+        ll :: Int
+        ll = 1 + (case t of
+          T.PFloat64 -> 2
+          _          -> 1)
         setBody :: [IRItem]
         setBody =
           let jt = typeToJType t
@@ -401,11 +405,15 @@ toClasses T.Program { T.structs = scts
         { mname = "get_" ++ fn
         , mstatic = False
         , stackLimit = maxStackSize getBody 0
-        , localsLimit = 2 -- One for this and one for copy
+        , localsLimit = ll -- One for this and one/two for copy
         , spec = MethodSpec ([], typeToJType t)
         , body = getBody
         }
       where
+        ll :: Int
+        ll = 1 + (case t of
+          T.PFloat64 -> 2
+          _          -> 1)
         getBody :: [IRItem]
         getBody =
           let jt = typeToJType t
@@ -824,9 +832,9 @@ instance IRRep T.SimpleStmt where
               (T.BitClear, Prim _) -> iri [IConstM1, IXOr, IAnd]
               _ -> error "Invalid operation on non-primitive"
       setStore :: (T.Expr, T.Expr) -> [IRItem]
-      setStore (e, _) =
-        case e of
-          T.Var t idx -> iri [Store (typeToIRType t) idx]
+      setStore (se, ve) =
+        case se of
+          T.Var _ idx -> iri [Store (exprIRType ve) idx] -- Cannot use var t in the case of holes...
           T.TopVar t tvi ->
             iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
           T.Selector t eo (T.Ident fid) ->
