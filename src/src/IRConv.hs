@@ -519,9 +519,9 @@ instance IRRep T.Stmt where
     concatMap irCaseHeaders (zip [1 ..] scs) ++
     IRLabel ("default_" ++ show idx) :
     toIR dstmt ++ -- pop off remaining comparison value
-    iri [Goto ("end_sc_" ++ show idx)] ++
+    iri [Goto ("end_breakable_" ++ show idx)] ++
     concatMap irCaseBodies (zip [1 ..] scs) ++
-    [IRLabel ("end_sc_" ++ show idx), IRInst Pop] -- duplicate expression for case statement expressions in lists
+    [IRLabel ("end_breakable_" ++ show idx), IRInst Pop] -- duplicate expression for case statement expressions in lists
     where
       irCaseHeaders :: (Int, T.SwitchCase) -> [IRItem]
       irCaseHeaders (cIdx, T.Case _ exprs _) =
@@ -540,20 +540,20 @@ instance IRRep T.Stmt where
       irCaseBodies :: (Int, T.SwitchCase) -> [IRItem]
       irCaseBodies (cIdx, T.Case _ _ stmt) =
         [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
-        toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
+        toIR stmt ++ iri [Goto ("end_breakable_" ++ show idx)]
   toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =
     toIR lstmt ++
     IRLabel ("loop_" ++ show idx) :
     toIR cond ++
-    iri [If IRData.LE ("end_loop_" ++ show idx)] ++
+    iri [If IRData.LE ("end_breakable_" ++ show idx)] ++
     toIR fbody ++
     IRLabel ("post_loop_" ++ show idx) :
     toIR rstmt ++
     [ IRInst (Goto $ "loop_" ++ show idx)
-    , IRLabel ("end_loop_" ++ show idx)
+    , IRLabel ("end_breakable_" ++ show idx)
     , IRInst NOp
     ]
-  toIR (T.Break (T.LabelIndex idx)) = iri [Goto ("end_loop_" ++ show idx)]
+  toIR (T.Break (T.LabelIndex idx)) = iri [Goto ("end_breakable_" ++ show idx)]
   toIR (T.Continue (T.LabelIndex idx)) = iri [Goto ("post_loop_" ++ show idx)]
   toIR (T.VarDecl vdl) = concatMap toIR vdl
   toIR (T.Print el) = concatMap printIR el
