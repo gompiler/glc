@@ -427,11 +427,10 @@ instance Symbolize SimpleStmt T.SimpleStmt where
                [(Bool, (T.ScopedIdent, T.Expr))]
             -> Either (String -> ErrorMessage) (NonEmpty (T.ScopedIdent, T.Expr))
           check l =
-            let (bl, decl) =
-                  unzip
-                    (filter (\(_, (sident, _)) -> not (isBlankIdent sident)) l)
+            let (_, decl') = unzip l in
+              let (bl, _) = unzip (filter (\(_, (sident, _)) -> not (isBlankIdent sident)) l)
              in if True `elem` bl
-                  then Right (fromList decl)
+                  then Right (fromList decl')
                   else Left $ createError (head idl') ShortDec
       checkDec :: Identifier -> Expr -> ST s (Glc' (Bool, (SIdent, T.Expr)))
       checkDec ident e = do
