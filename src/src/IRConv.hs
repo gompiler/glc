@@ -585,29 +585,8 @@ instance IRRep T.VarDecl' where
       _ -- Get default and store
        ->
         case t of
-          (T.ArrayType l at) ->
-            case at -- TODO: Defaults of elements??? or null checks elsewhere?
-                  of
-              T.ArrayType {} -> nestedGlcArrayIR t idx
-              T.SliceType {} -> nestedGlcArrayIR t idx
-              T.PInt -> arrayOrSliceIR jInteger l idx
-              T.PFloat64 -> arrayOrSliceIR jDouble l idx
-              T.PBool -> arrayOrSliceIR jInteger l idx
-              T.PRune -> arrayOrSliceIR jInteger l idx
-              T.PString -> arrayOrSliceIR jString l idx
-              T.StructType sid ->
-                arrayOrSliceIR (ClassRef $ structName sid) l idx -- TODO: FIX THIS FOR NEW STRUCTS
-          (T.SliceType st) ->
-            case st of
-              T.ArrayType {} -> nestedGlcArrayIR t idx
-              T.SliceType {} -> nestedGlcArrayIR t idx
-              T.PInt -> arrayOrSliceIR jInteger (-1) idx
-              T.PFloat64 -> arrayOrSliceIR jDouble (-1) idx
-              T.PRune -> arrayOrSliceIR jInteger (-1) idx
-              T.PBool -> arrayOrSliceIR jInteger (-1) idx
-              T.PString -> arrayOrSliceIR jString (-1) idx
-              T.StructType sid ->
-                arrayOrSliceIR (ClassRef $ structName sid) (-1) idx
+          (T.ArrayType l at) -> glcArrayIR l at
+          (T.SliceType st) -> glcArrayIR (-1) st
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
@@ -624,6 +603,20 @@ instance IRRep T.VarDecl' where
                      emptySpec)
               , Store Object idx
               ]
+          where
+            glcArrayIR :: Int -> T.Type -> [IRItem]
+            glcArrayIR l t' =
+              case t' of
+                T.ArrayType {} -> nestedGlcArrayIR t idx
+                T.SliceType {} -> nestedGlcArrayIR t idx
+                T.PInt -> arrayOrSliceIR jInteger l idx
+                T.PFloat64 -> arrayOrSliceIR jDouble l idx
+                T.PRune -> arrayOrSliceIR jInteger l idx
+                T.PBool -> arrayOrSliceIR jInteger l idx
+                T.PString -> arrayOrSliceIR jString l idx
+                T.StructType sid ->
+                  arrayOrSliceIR (ClassRef $ structName sid) l idx
+
 
 nestedGlcArrayIR :: T.Type -> T.VarIndex -> [IRItem]
 nestedGlcArrayIR t idx =
