@@ -1278,23 +1278,23 @@ stackDelta (PutField _ JDouble) = -3 -- ..., o, v -> ... (double-wide)
 stackDelta PutField {} = -2 -- ..., o, v -> ...
 stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, rt))))
   -- ..., o, a1, .., an -> r (or void)
- =
-  case rt of
-    JVoid -> -(length a) - 1
-    _     -> -(length a)
+ = (sum $ map jTypeStackSize a) - 1 + (jTypeStackSize rt)
 stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, rt))))
   -- ..., o, a1, .., an -> r (or void)
- =
-  case rt of
-    JVoid -> -(length a) - 1
-    _     -> -(length a)
+ = (sum $ map jTypeStackSize a) - 1 + (jTypeStackSize rt)
 stackDelta (InvokeStatic (MethodRef _ _ (MethodSpec (a, rt))))
   -- ..., a1, .., an -> r
- =
-  case rt of
-    JVoid -> -(length a)
-    _     -> -(length a) + 1
+ = (sum $ map jTypeStackSize a) + (jTypeStackSize rt)
 stackDelta Debug {} = 0
+
+jTypeStackSize :: JType -> Int
+jTypeStackSize (JClass _) = 1
+jTypeStackSize (JArray _) = 1
+jTypeStackSize JChar      = 1
+jTypeStackSize JInt       = 1
+jTypeStackSize JDouble    = 2
+jTypeStackSize JBool      = 1
+jTypeStackSize JVoid      = 0
 
 maxStackSize :: [IRItem] -> Int -> Int
 maxStackSize irs current =
