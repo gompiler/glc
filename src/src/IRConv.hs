@@ -316,10 +316,7 @@ toClasses T.Program { T.structs = scts
               , Load Object (T.VarIndex 1)
               , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
               ]) ++
-              equalityNL label 0 t
-              ++ iri
-              [ IConst1
-              , IXOr ]
+              equalityNL False label 0 t
     copyStc :: T.StructType -> Method
     copyStc (T.Struct sid fdls) =
       Method
@@ -449,7 +446,7 @@ instance IRRep T.Stmt where
           toCaseHeader (eIdx, ce) =
             IRInst Dup :
             toIR ce ++
-            equality ("case_" ++ show cIdx ++ "_" ++ show eIdx) idx (exprType ce) ++
+            equality True ("case_" ++ show cIdx ++ "_" ++ show eIdx) idx (exprType ce) ++
             iri [If IRData.NE $ "case_" ++ show cIdx ++ "_" ++ show idx] -- If it's true, make the jump
       irCaseBodies :: (Int, T.SwitchCase) -> [IRItem]
       irCaseBodies (cIdx, T.Case _ stmt) =
@@ -823,7 +820,7 @@ instance IRRep T.Expr where
     iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
     toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
   toIR (T.Binary (T.LabelIndex idx) _ T.EQ e1 e2) =
-    toIR e1 ++ toIR e2 ++ equality "bin" idx (exprType e1)
+    toIR e1 ++ toIR e2 ++ equality True "bin" idx (exprType e1)
   toIR (T.Binary idx t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary idx t T.EQ e1 e2)) -- != is =, !
   toIR (T.Binary (T.LabelIndex idx) _ op e1 e2) -- comparisons
@@ -988,18 +985,18 @@ objectDecode t -- TODO: Maybe this should just be IRType
     T.PString      -> [] -- nothing to do
     T.StructType _ -> [] -- nothing to do
 
-equalityNL :: String -> Int -> T.Type -> [IRItem]
-equalityNL lbl idx t =
+equalityNL :: Bool -> String -> Int -> T.Type -> [IRItem]
+equalityNL eq lbl idx t =
   case t of
     T.ArrayType {} ->
       iri
         [ InvokeVirtual glcArrayEquals
-        , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ]
     T.PString ->
       iri
         [ InvokeVirtual stringEquals
-        , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ]
     (T.StructType (D.Ident sid)) ->
       iri
@@ -1008,20 +1005,25 @@ equalityNL lbl idx t =
             (CRef $ ClassRef sid)
             "equals"
             (MethodSpec ([JClass (ClassRef sid)], JBool))
-        , If IRData.GT (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ]
     T.PFloat64 ->
       iri
         [ DCmpG
-        , If IRData.EQ (lbl ++ "_true_eq_" ++ show idx) -- dcmpg is 0, they're equal
+        , If checkInt (lbl ++ "_true_eq_" ++ show idx) -- dcmpg is 0, they're equal
         ]
     T.SliceType {} -> error "Cannot compare slice equality"
     _
       -- Integer types
      ->
-      iri [IfICmp IRData.EQ (lbl ++ "_true_eq_" ++ show idx)]
-equality :: String -> Int -> T.Type -> [IRItem]
-equality lbl idx t = equalityNL lbl idx t ++ eqPostfix
+      iri [IfICmp checkInt (lbl ++ "_true_eq_" ++ show idx)]
+  where
+    checkBool :: IRCmp
+    checkBool = if eq then IRData.GT else IRData.EQ
+    checkInt :: IRCmp
+    checkInt = if eq then IRData.EQ else IRData.NE
+equality :: Bool -> String -> Int -> T.Type -> [IRItem]
+equality eq lbl idx t = equalityNL eq lbl idx t ++ eqPostfix
   where
     eqPostfix :: [IRItem]
     eqPostfix =
