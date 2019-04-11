@@ -222,7 +222,7 @@ toClasses T.Program { T.structs = scts
       Class
         { cname = structName sid
         , fields = map sfToF fdls
-        , methods = [checkEq strc, copyStc strc] ++ (map (setter (structName sid)) fdls)
+        , methods = [checkEq strc, copyStc strc] ++ (map (setter (structName sid)) fdls) ++ (map (getter (structName sid)) fdls)
         }
     sfToF :: T.FieldDecl -> Field
     sfToF (T.FieldDecl (D.Ident fid) t) =
@@ -368,15 +368,31 @@ toClasses T.Program { T.structs = scts
     getter sn (T.FieldDecl (D.Ident fn) t) =
       Method
         { mname = "get_" ++ fn
-        , stackLimit = maxStackSize setBody 0
-        , localsLimit = 2 -- One for this and one for argument
+        , stackLimit = maxStackSize getBody 0
+        , localsLimit = 2 -- One for this and one for copy
         , spec = MethodSpec ([typeToJType t], JVoid)
-        , body = setBody
+        , body = getBody
         }
         where
-          setBody :: [IRItem]
-          setBody = let jt = typeToIRType t in
+          getBody :: [IRItem]
+          getBody = let jt = typeToJType t in
             iri [Load Object (T.VarIndex 0)]
+            ++ (case t of
+                  T.ArrayType {} -> getObj t
+                  T.SliceType {} -> getObj t
+                  T.StructType {} -> getObj t
+                  _ -> iri [GetField (FieldRef (ClassRef sn) fn) (jt)
+                           , Return (Just $ typeToIRType t)])
+          getObj :: T.Type -> [IRItem]
+          getObj t' = let jt = typeToJType t in
+                        toIR (T.VarDecl' (T.VarIndex 1) t' Nothing) ++
+                        iri [ Load Object (T.VarIndex 1)
+                            , PutField (FieldRef (ClassRef sn) fn) (jt)
+                            , Load Object (T.VarIndex 0)
+                            , GetField (FieldRef (ClassRef sn) fn) (jt)
+                            ] ++
+                        invokeCp t
+                        ++ iri [ Return (Just Object)]
 
 invokeCp :: T.Type -> [IRItem]
 invokeCp t = iri $ case t of
