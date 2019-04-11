@@ -35,6 +35,7 @@ toClasses T.Program { T.structs = scts
     cMethods =
       Method
         { mname = "__glc$init__"
+        , mstatic = True
         , stackLimit = maxStackInit
         , localsLimit = getLim ill
         , spec = emptySpec
@@ -42,6 +43,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method
         { mname = "__glc$main__"
+        , mstatic = True
         , stackLimit = maxStackMain
         , localsLimit = getLim mll
         , spec = emptySpec
@@ -49,6 +51,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- int -> string casts
         { mname = "__glc$fn__string"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JInt], JClass jString)
@@ -56,6 +59,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- string -> string identity casts
         { mname = "__glc$fn__string"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JClass jString], JClass jString)
@@ -63,6 +67,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- int -> int identity casts
         { mname = "__glc$fn__int"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JInt], JInt)
@@ -70,6 +75,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- int -> float64 casts
         { mname = "__glc$fn__int"
+        , mstatic = True
         , stackLimit = 2
         , localsLimit = 2
         , spec = MethodSpec ([JDouble], JInt)
@@ -77,6 +83,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- rune -> rune identity casts
         { mname = "__glc$fn__rune"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JInt], JInt)
@@ -84,6 +91,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- rune -> float64 casts
         { mname = "__glc$fn__rune"
+        , mstatic = True
         , stackLimit = 2
         , localsLimit = 2
         , spec = MethodSpec ([JDouble], JInt)
@@ -91,6 +99,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- bool -> bool identity casts
         { mname = "__glc$fn__bool"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JInt], JInt)
@@ -98,6 +107,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- float64 -> float64 identity casts
         { mname = "__glc$fn__float64"
+        , mstatic = True
         , stackLimit = 2
         , localsLimit = 2
         , spec = MethodSpec ([JDouble], JDouble)
@@ -105,6 +115,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- float64 -> int casts
         { mname = "__glc$fn__float64"
+        , mstatic = True
         , stackLimit = 2
         , localsLimit = 2
         , spec = MethodSpec ([JInt], JDouble)
@@ -112,6 +123,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method
         { mname = "main"
+        , mstatic = True
         , stackLimit = 0
         , localsLimit = 1
         , spec = MethodSpec ([JArray (JClass jString)], JVoid)
@@ -124,6 +136,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method
         { mname = "<clinit>"
+        , mstatic = True
         , stackLimit = maxStackSize clBody 0
         , localsLimit = 0
         , spec = MethodSpec ([], JVoid)
@@ -200,6 +213,7 @@ toClasses T.Program { T.structs = scts
         fdToMethod (T.FuncDecl fni sig fb fll) =
           Method
             { mname = tFnStr fni
+            , mstatic = True
             , stackLimit = maxStack
             , localsLimit = getLim fll
             , spec = sigToSpec sig
@@ -237,6 +251,7 @@ toClasses T.Program { T.structs = scts
     checkEq (T.Struct sid fdls) =
       Method
         { mname = "equals"
+        , mstatic = False
         , stackLimit = maxStackSize equalsBody 0
         , localsLimit = 3 -- One for this and one for argument, one for temp
         , spec = MethodSpec ([JClass (ClassRef sn)], JBool)
@@ -309,6 +324,7 @@ toClasses T.Program { T.structs = scts
     copyStc (T.Struct sid fdls) =
       Method
         { mname = "copy"
+        , mstatic = False
         , stackLimit = maxStackSize copyBody 0
         , localsLimit = 2 -- One for this and one for argument
         , spec = MethodSpec ([JClass (ClassRef sn)], (JClass $ ClassRef sn))
@@ -350,6 +366,7 @@ toClasses T.Program { T.structs = scts
     setter sn (T.FieldDecl (D.Ident fn) t) =
       Method
         { mname = "set_" ++ fn
+        , mstatic = False
         , stackLimit = maxStackSize setBody 0
         , localsLimit = 2 -- One for this and one for argument
         , spec = MethodSpec ([typeToJType t], JVoid)
@@ -368,6 +385,7 @@ toClasses T.Program { T.structs = scts
     getter sn (T.FieldDecl (D.Ident fn) t) =
       Method
         { mname = "get_" ++ fn
+        , mstatic = False
         , stackLimit = maxStackSize getBody 0
         , localsLimit = 2 -- One for this and one for copy
         , spec = MethodSpec ([typeToJType t], JVoid)

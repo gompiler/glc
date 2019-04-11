@@ -55,14 +55,14 @@ instance Bytecode Field where
       ]
 
 instance Bytecode Method where
-  toBC' (Method mn sl ll (MethodSpec (jtl, jt)) bod)
+  toBC' (Method mn static' sl ll (MethodSpec (jtl, jt)) bod)
     -- .method public $(methodname)$(signature)
     -- ex.
     -- public int main() ->
     -- .method public main()I
    =
     B.concat
-      [ bstrM [".method ", "public static ", mn, " : ("]
+      [ bstrM [".method ", "public ", if static' then "static " else "", mn, " : ("]
       , bstrM (map show jtl)
       , bstrM
           [ ")"

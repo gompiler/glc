@@ -45,6 +45,7 @@ data Class = Class
 
 data Method = Method
   { mname       :: String
+  , mstatic     :: Bool
   , stackLimit  :: Int
   , localsLimit :: Int
   , spec        :: MethodSpec
