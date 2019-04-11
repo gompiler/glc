@@ -249,7 +249,7 @@ instance Converter T.SimpleStmt SimpleStmt where
       ce = convert rc
       inc2assn :: Expr -> SimpleStmt
       inc2assn e =
-        Assign (T.AssignOp $ Just T.Add) ((e, Lit $ T.IntLit 1) :| [])
+        Assign (T.AssignOp $ Just T.Add) ((e, toOne e) :| [])
       dec2assn :: Expr -> SimpleStmt
       dec2assn e =
         Assign (T.AssignOp $ Just T.Subtract) ((e, toOne e) :| [])
