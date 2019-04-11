@@ -1230,32 +1230,20 @@ class StackHeight a where
   stackDelta :: a -> Int
 
 instance StackHeight Instruction where
-  stackDelta (Load (Prim IRDouble) _) = 2 -- ... -> ..., v (double-wide)
-  stackDelta Load {} = 1 -- ... -> ..., v
-  stackDelta (ArrayLoad (Prim IRDouble)) = 0 -- ..., o, i -> v (double-wide)
-  stackDelta ArrayLoad {} = -1 -- ..., o, i -> v
-  stackDelta (Store (Prim IRDouble) _) = -2 -- ..., v -> ... (double-wide)
-  stackDelta Store {} = -1 -- ..., v -> ...
-  stackDelta (ArrayStore (Prim IRDouble)) = -4 -- ..., o, i, v2 -> ...
-  stackDelta ArrayStore {} = -3 -- ..., o, i, v -> ...
-  stackDelta (Return m) =
-    case m of
-      Nothing              -> 0
-      Just (Prim IRDouble) -> -2
-      Just _               -> -1
+  stackDelta (Load ir _) = stackDelta ir -- ... -> ..., v
+  stackDelta (ArrayLoad ir) = -1 + stackDelta ir -- ..., o, i -> v (double-wide)
+  stackDelta (Store ir _) = -(stackDelta ir) -- ..., v -> ...
+  stackDelta (ArrayStore ir) = -2 - stackDelta ir -- ..., o, i, v -> ...
+  stackDelta (Return m) = maybe 0 stackDelta m
   stackDelta Dup = 1 -- ..., v -> ..., v, v
   stackDelta Dup2 = 2 -- ..., v, w -> ..., v, w, v, w
   stackDelta DupX1 = 1 -- ..., v, w -> ..., w, v, w
   stackDelta Dup2X2 = 2 -- ..., v, w, x, y -> ..., x, y, v, w, x, y
   stackDelta Goto {} = 0
-  stackDelta (Add IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
-  stackDelta (Add IRInt) = -1 -- ..., v, w -> ..., r
-  stackDelta (Div IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
-  stackDelta (Div IRInt) = -1 -- ..., v, w -> ..., r
-  stackDelta (Mul IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
-  stackDelta (Mul IRInt) = -1 -- ..., v, w -> ..., r
-  stackDelta (Sub IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
-  stackDelta (Sub IRInt) = -1 -- ..., v, w -> ..., r
+  stackDelta (Add ir) = -(stackDelta ir) -- ..., v, w -> ..., r
+  stackDelta (Div ir) = -(stackDelta ir) -- ..., v, w -> ..., r
+  stackDelta (Mul ir) = -(stackDelta ir) -- ..., v, w -> ..., r
+  stackDelta (Sub ir) = -(stackDelta ir) -- ..., v, w -> ..., r
   stackDelta Neg {} = 0 -- ..., v -> ..., r (double-wide or not)
   stackDelta IRem = -1 -- ..., v, w -> ..., r
   stackDelta IShL = -1 -- ..., v, w -> ..., r
@@ -1284,14 +1272,10 @@ instance StackHeight Instruction where
   stackDelta Pop = -1 -- ..., v -> ...
   stackDelta Pop2 = -2 -- ..., v, w -> ...
   stackDelta Swap = 0 -- ..., v, w -> ..., w, v
-  stackDelta (GetStatic _ JDouble) = 2 -- ... -> ..., v (double-wide)
-  stackDelta GetStatic {} = 1 -- ... -> ..., v
-  stackDelta (GetField _ JDouble) = 1 -- ..., o -> ..., v (double-wide)
-  stackDelta GetField {} = 0 -- ..., o -> ..., v
-  stackDelta (PutStatic _ JDouble) = -2 -- ..., v -> ... (double-wide)
-  stackDelta PutStatic {} = -1 -- ..., v -> ...
-  stackDelta (PutField _ JDouble) = -3 -- ..., o, v -> ... (double-wide)
-  stackDelta PutField {} = -2 -- ..., o, v -> ...
+  stackDelta (GetStatic _ jt) = stackDelta jt -- ... -> ..., v
+  stackDelta (GetField _ jt) = -1 + stackDelta jt -- ..., o -> ..., v
+  stackDelta (PutStatic _ jt) = -(stackDelta jt) -- ..., v -> ...
+  stackDelta (PutField _ jt) = -1 - stackDelta jt -- ..., o, v -> ...
   stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, rt))))
     -- ..., o, a1, .., an -> r (or void)
    = sum (map stackDelta a) - 1 + stackDelta rt
@@ -1307,6 +1291,14 @@ instance StackHeight JType where
   stackDelta JDouble = 2
   stackDelta JVoid   = 0
   stackDelta _       = 1 -- references, chars, ints, bools
+
+instance StackHeight IRType where
+  stackDelta Object    = 1 -- references are 32-bit
+  stackDelta (Prim ir) = stackDelta ir
+
+instance StackHeight IRPrimitive where
+  stackDelta IRDouble = 2
+  stackDelta IRInt    = 1
 
 maxStackSize :: [IRItem] -> Int -> Int
 maxStackSize irs current =
