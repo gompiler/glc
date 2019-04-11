@@ -236,7 +236,7 @@ toClasses T.Program { T.structs = scts
       Class
         { cname = structName sid
         , fields = map sfToF fdls
-        , methods = (sinit):[checkEq strc, copyStc strc] ++ (map (setter sn) fdls) ++ (map (getter sn) fdls)
+        , methods = (sinit):(eqo sn):[checkEq strc, copyStc strc] ++ (map (setter sn) fdls) ++ (map (getter sn) fdls)
         }
       where
         sn :: String
@@ -429,6 +429,21 @@ toClasses T.Program { T.structs = scts
         , body = iri [ Load Object (T.VarIndex 0)
                      , InvokeSpecial (MethodRef (CRef jObject) "<init>" (MethodSpec ([], JVoid)))
                      , Return Nothing
+                     ]
+        }
+    eqo :: String -> Method
+    eqo sn =
+      Method
+        { mname = "equals"
+        , mstatic = False
+        , stackLimit = 2
+        , localsLimit = 2 -- One for this and one for copy
+        , spec = MethodSpec ([JClass jObject], JBool)
+        , body = iri [ Load Object (T.VarIndex 0)
+                     , Load Object (T.VarIndex 1)
+                     , CheckCast (CRef $ ClassRef sn)
+                     , InvokeSpecial (MethodRef (CRef $ ClassRef sn) "equals" (MethodSpec ([JClass $ ClassRef sn], JBool)))
+                     , Return (Just (Prim IRInt))
                      ]
         }
 
