@@ -5,7 +5,7 @@ import qualified CheckedData           as D
 import           Data.Char             (ord, toLower)
 import           Data.List             (intercalate)
 import           Data.List.NonEmpty    (NonEmpty (..))
-import qualified Data.List.NonEmpty    as NE (map, toList)
+import qualified Data.List.NonEmpty    as NE (toList)
 import           Foreign.Marshal.Utils (fromBool)
 import           IRData
 import           ResourceBuilder       (convertProgram)
@@ -35,6 +35,7 @@ toClasses T.Program { T.structs = scts
     cMethods =
       Method
         { mname = "__glc$init__"
+        , mstatic = True
         , stackLimit = maxStackInit
         , localsLimit = getLim ill
         , spec = emptySpec
@@ -42,6 +43,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method
         { mname = "__glc$main__"
+        , mstatic = True
         , stackLimit = maxStackMain
         , localsLimit = getLim mll
         , spec = emptySpec
@@ -49,6 +51,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- int -> string casts
         { mname = "__glc$fn__string"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JInt], JClass jString)
@@ -56,6 +59,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- string -> string identity casts
         { mname = "__glc$fn__string"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JClass jString], JClass jString)
@@ -63,20 +67,39 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- int -> int identity casts
         { mname = "__glc$fn__int"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JInt], JInt)
         , body = idInt
+        } :
+      Method -- int -> float64 casts
+        { mname = "__glc$fn__int"
+        , mstatic = True
+        , stackLimit = 2
+        , localsLimit = 2
+        , spec = MethodSpec ([JDouble], JInt)
+        , body = doubleToInt
         } :
       Method -- rune -> rune identity casts
         { mname = "__glc$fn__rune"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JInt], JInt)
         , body = idInt
         } :
+      Method -- rune -> float64 casts
+        { mname = "__glc$fn__rune"
+        , mstatic = True
+        , stackLimit = 2
+        , localsLimit = 2
+        , spec = MethodSpec ([JDouble], JInt)
+        , body = doubleToInt
+        } :
       Method -- bool -> bool identity casts
         { mname = "__glc$fn__bool"
+        , mstatic = True
         , stackLimit = 1
         , localsLimit = 1
         , spec = MethodSpec ([JInt], JInt)
@@ -84,6 +107,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- float64 -> float64 identity casts
         { mname = "__glc$fn__float64"
+        , mstatic = True
         , stackLimit = 2
         , localsLimit = 2
         , spec = MethodSpec ([JDouble], JDouble)
@@ -91,6 +115,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method -- float64 -> int casts
         { mname = "__glc$fn__float64"
+        , mstatic = True
         , stackLimit = 2
         , localsLimit = 2
         , spec = MethodSpec ([JInt], JDouble)
@@ -98,6 +123,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method
         { mname = "main"
+        , mstatic = True
         , stackLimit = 0
         , localsLimit = 1
         , spec = MethodSpec ([JArray (JClass jString)], JVoid)
@@ -110,6 +136,7 @@ toClasses T.Program { T.structs = scts
         } :
       Method
         { mname = "<clinit>"
+        , mstatic = True
         , stackLimit = maxStackSize clBody 0
         , localsLimit = 0
         , spec = MethodSpec ([], JVoid)
@@ -138,6 +165,13 @@ toClasses T.Program { T.structs = scts
             [ Load (Prim IRInt) (T.VarIndex 0)
             , IntToDouble
             , Return (Just $ Prim IRDouble)
+            ]
+        doubleToInt :: [IRItem]
+        doubleToInt =
+          iri
+            [ Load (Prim IRDouble) (T.VarIndex 0)
+            , DoubleToInt
+            , Return (Just $ Prim IRInt)
             ]
         idString :: [IRItem]
         idString = iri [Load Object (T.VarIndex 0), Return (Just Object)]
@@ -179,6 +213,7 @@ toClasses T.Program { T.structs = scts
         fdToMethod (T.FuncDecl fni sig fb fll) =
           Method
             { mname = tFnStr fni
+            , mstatic = True
             , stackLimit = maxStack
             , localsLimit = getLim fll
             , spec = sigToSpec sig
@@ -201,12 +236,15 @@ toClasses T.Program { T.structs = scts
       Class
         { cname = structName sid
         , fields = map sfToF fdls
-        , methods = [checkEq strc] -- TODO: EQUALITY CHECKS?
+        , methods = (sinit):[checkEq strc, copyStc strc] ++ (map (setter sn) fdls) ++ (map (getter sn) fdls)
         }
+      where
+        sn :: String
+        sn = structName sid
     sfToF :: T.FieldDecl -> Field
     sfToF (T.FieldDecl (D.Ident fid) t) =
       Field
-        { access = FPublic
+        { access = FPrivate
         , static = False
         , fname = fid
         , descriptor = typeToJType t
@@ -216,53 +254,183 @@ toClasses T.Program { T.structs = scts
     checkEq (T.Struct sid fdls) =
       Method
         { mname = "equals"
+        , mstatic = False
         , stackLimit = maxStackSize equalsBody 0
-        , localsLimit = 2 -- One for this and one for argument
-        , spec = MethodSpec ([JClass (ClassRef (structName sid))], JBool)
+        , localsLimit = 3 -- One for this and one for argument, one for temp
+        , spec = MethodSpec ([JClass (ClassRef sn)], JBool)
         , body = equalsBody
         }
       where
         sn :: String
         sn = structName sid
-        -- labelGen :: Int -> String
-        -- labelGen i = "L" ++ sn ++ show i
+        cr :: ClassOrArrayRef
+        cr = CRef (ClassRef sn)
         equalsBody :: [IRItem]
         equalsBody =
-          cmpField fdls [] ++
           (iri
             -- Add null checks here
-          --   Load Object (T.VarIndex 0)
-          -- , Load Object (T.VarIndex 1)
-          -- , If IRData.NE (labelGen 0)
-          -- , IConst1
-          -- , Return (Just $ Prim IRInt)
-          -- , IRLabel (labelGen 0)
-             [IConst1, Goto "L2_return"] ++
-           [ IRLabel "L1_false"
+           [ Load Object (T.VarIndex 0)
+           , IfNonNull "LSEQ_NULL"
+           , Load Object (T.VarIndex 1)
+           , IfNonNull "LSEQ_NULL"
+           , IConst1
+           , Return (Just $ Prim IRInt)
+           ]) ++
+           [IRLabel ("LSEQ_NULL")] ++
+           (iri [
+             Load Object (T.VarIndex 0)
+           , IfNonNull "LSEQ_NULL2"
+           , New (ClassRef sn)
+           , Dup
+           , InvokeSpecial (MethodRef cr "<init>" (MethodSpec ([], JVoid)))
+           , Store Object (T.VarIndex 2)
+           , Load Object (T.VarIndex 2)
+           , Load Object (T.VarIndex 1)
+           , InvokeVirtual (MethodRef cr "equals" (MethodSpec ([JClass (ClassRef sn)], JBool)))
+           , Return (Just $ Prim IRInt)
+           ]) ++
+           [IRLabel ("LSEQ_NULL2")] ++
+           (iri [
+               Load Object (T.VarIndex 1)
+               , IfNonNull "LSEQ_NULL3"
+               , New (ClassRef sn)
+               , Dup
+               , InvokeSpecial (MethodRef cr "<init>" (MethodSpec ([], JVoid)))
+               , Store Object (T.VarIndex 1)
+               , Load Object (T.VarIndex 0)
+               , Load Object (T.VarIndex 1)
+               , InvokeVirtual (MethodRef cr "equals" (MethodSpec ([JClass (ClassRef sn)], JBool)))
+               , Return (Just $ Prim IRInt)
+                ]) ++
+           [IRLabel ("LSEQ_NULL3")] ++
+          (concatMap (createNE "LSEQ_false") fdls) ++
+           iri [IConst1, Goto "LSEQ_return"] ++
+           [ IRLabel "LSEQ_false_true_eq_0"
            , IRInst IConst0
-           , IRLabel "L2_return"
+           , IRLabel "LSEQ_return"
            , IRInst $ Return (Just $ Prim IRInt)
-           ])
-        cmpField :: [T.FieldDecl] -> [IRItem] -> [IRItem]
-        -- True if no fields
-        cmpField [] []       = iri [Goto "L2_return"]
-        cmpField [] acc      = acc
-        cmpField (fd:t') acc = cmpField t' (acc ++ createNE fd "L1_false")
-        createNE :: T.FieldDecl -> String -> [IRItem]
-        createNE (T.FieldDecl (D.Ident fid) t) label =
+           ]
+        createNE :: String -> T.FieldDecl -> [IRItem]
+        createNE label (T.FieldDecl (D.Ident fid) t) =
           let jt = typeToJType t
-           in iri $
+           in (iri
               [ Load Object (T.VarIndex 0)
-              , GetField (FieldRef (ClassRef sn) fid) jt
+              , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
               , Load Object (T.VarIndex 1)
-              , GetField (FieldRef (ClassRef sn) fid) jt
-              ] ++
-              (case jt of
-                 JInt -> [IfICmp IRData.NE label]
-                 JDouble -> [DCmpG, If IRData.NE label]
-                 JClass (ClassRef "java/lang/String") ->
-                   [InvokeVirtual stringEquals, If IRData.EQ label]
-                 _ -> undefined)
+              , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+              ]) ++
+              equalityNL False label 0 t
+    copyStc :: T.StructType -> Method
+    copyStc (T.Struct sid fdls) =
+      Method
+        { mname = "copy"
+        , mstatic = False
+        , stackLimit = maxStackSize copyBody 0
+        , localsLimit = 2
+        , spec = MethodSpec ([], (JClass $ ClassRef sn))
+        , body = copyBody
+        }
+      where
+        sn :: String
+        sn = structName sid
+        cr :: ClassOrArrayRef
+        cr = CRef (ClassRef sn)
+        copyBody :: [IRItem]
+        copyBody =
+          (iri [
+                 Load Object (T.VarIndex 0)
+               , IfNonNull "LCP_NULL"
+               , AConstNull
+               , Return (Just Object)
+               ])
+          ++
+          [IRLabel "LCP_NULL"]
+          ++
+          (iri [ New (ClassRef sn)
+               , Dup
+               , InvokeSpecial (MethodRef cr "<init>" (MethodSpec ([], JVoid)))
+               , Store Object (T.VarIndex 1)
+               ])
+          ++ (concatMap cpField fdls)
+          ++ iri [Load Object (T.VarIndex 1)
+                 , Return (Just Object)]
+        cpField :: T.FieldDecl -> [IRItem]
+        cpField (T.FieldDecl (D.Ident fn) t) = let jt = typeToJType t in
+          iri [ Load Object (T.VarIndex 1)
+              , Load Object (T.VarIndex 0)
+              , GetField (FieldRef (ClassRef sn) fn) (jt)] ++
+          invokeCp t ++
+          (iri [ PutField (FieldRef (ClassRef sn) fn) (jt)
+          ])
+    setter :: String -> T.FieldDecl -> Method
+    setter sn (T.FieldDecl (D.Ident fn) t) =
+      Method
+        { mname = "set_" ++ fn
+        , mstatic = False
+        , stackLimit = maxStackSize setBody 0
+        , localsLimit = 2 -- One for this and one for argument
+        , spec = MethodSpec ([typeToJType t], JVoid)
+        , body = setBody
+        }
+        where
+          setBody :: [IRItem]
+          setBody = let jt = typeToJType t in
+            iri [Load Object (T.VarIndex 0)
+                , Load (typeToIRType t) (T.VarIndex 1)
+                ]
+            ++ invokeCp t
+            ++ iri [PutField (FieldRef (ClassRef sn) fn) (jt)
+                   , Return Nothing]
+    getter :: String -> T.FieldDecl -> Method
+    getter sn (T.FieldDecl (D.Ident fn) t) =
+      Method
+        { mname = "get_" ++ fn
+        , mstatic = False
+        , stackLimit = maxStackSize getBody 0
+        , localsLimit = 2 -- One for this and one for copy
+        , spec = MethodSpec ([], typeToJType t)
+        , body = getBody
+        }
+        where
+          getBody :: [IRItem]
+          getBody = let jt = typeToJType t in
+            iri [Load Object (T.VarIndex 0)]
+            ++ (case t of
+                  T.ArrayType {} -> getObj t
+                  T.SliceType {} -> getObj t
+                  T.StructType {} -> getObj t
+                  _ -> iri [GetField (FieldRef (ClassRef sn) fn) (jt)
+                           , Return (Just $ typeToIRType t)])
+          getObj :: T.Type -> [IRItem]
+          getObj t' = let jt = typeToJType t in
+                        toIR (T.VarDecl' (T.VarIndex 1) t' Nothing) ++
+                        iri [ Load Object (T.VarIndex 1)
+                            , PutField (FieldRef (ClassRef sn) fn) (jt)
+                            , Load Object (T.VarIndex 0)
+                            , GetField (FieldRef (ClassRef sn) fn) (jt)
+                            ] ++
+                        invokeCp t
+                        ++ iri [ Return (Just Object)]
+    sinit :: Method
+    sinit =
+      Method
+        { mname = "<init>"
+        , mstatic = False
+        , stackLimit = 1
+        , localsLimit = 1 -- One for this and one for copy
+        , spec = MethodSpec ([], JVoid)
+        , body = iri [ Load Object (T.VarIndex 0)
+                     , InvokeSpecial (MethodRef (CRef jObject) "<init>" (MethodSpec ([], JVoid)))
+                     , Return Nothing
+                     ]
+        }
+
+invokeCp :: T.Type -> [IRItem]
+invokeCp t = iri $ case t of
+                   T.ArrayType {} -> [InvokeVirtual (MethodRef (CRef cGlcArray) "copy" (MethodSpec ([], JClass cGlcArray)))]
+                   T.SliceType {} -> [InvokeVirtual (MethodRef (CRef cGlcArray) "copy" (MethodSpec ([], JClass cGlcArray)))]
+                   T.StructType sid' -> [InvokeVirtual (MethodRef (CRef (ClassRef $ structName sid')) "copy" (MethodSpec ([], JClass $ ClassRef $ structName sid')))]
+                   _ -> []
 
 class IRRep a where
   toIR :: a -> [IRItem]
@@ -280,23 +448,26 @@ instance IRRep T.Stmt where
   toIR (T.Switch (T.LabelIndex idx) sstmt e scs dstmt) =
     toIR sstmt ++
     toIR e ++
-    concatMap irCase (zip [1 ..] scs) ++
-    IRLabel ("default_" ++ show idx) :
-    toIR dstmt ++ [IRLabel ("end_sc_" ++ show idx), IRInst NOp]
-      -- duplicate expression for case statement expressions in lists
+    concatMap irCaseHeaders (zip [1 ..] scs) ++
+    IRLabel ("default_" ++ show idx) : toIR dstmt ++ -- pop off remaining comparison value
+    iri [Goto ("end_sc_" ++ show idx)] ++
+    concatMap irCaseBodies (zip [1 ..] scs) ++
+    [IRLabel ("end_sc_" ++ show idx), IRInst Pop] -- duplicate expression for case statement expressions in lists
     where
-      irCase :: (Int, T.SwitchCase) -> [IRItem]
-      irCase (cIdx, T.Case exprs stmt) =
-        concat (NE.map toCaseHeader exprs) ++
-        [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
-        toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
+      irCaseHeaders :: (Int, T.SwitchCase) -> [IRItem]
+      irCaseHeaders (cIdx, T.Case exprs _) =
+        concatMap toCaseHeader (zip [1 ..] (NE.toList exprs))
         where
-          toCaseHeader :: T.Expr -> [IRItem]
-          toCaseHeader ce =
+          toCaseHeader :: (Int, T.Expr) -> [IRItem]
+          toCaseHeader (eIdx, ce) =
             IRInst Dup :
             toIR ce ++
-            equality cIdx (exprType ce) ++
+            equality True ("case_" ++ show cIdx ++ "_" ++ show eIdx) idx (exprType ce) ++
             iri [If IRData.NE $ "case_" ++ show cIdx ++ "_" ++ show idx] -- If it's true, make the jump
+      irCaseBodies :: (Int, T.SwitchCase) -> [IRItem]
+      irCaseBodies (cIdx, T.Case _ stmt) =
+        [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
+        toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
   toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =
     toIR lstmt ++
     IRLabel ("loop_" ++ show idx) :
@@ -332,38 +503,24 @@ instance IRRep T.VarDecl' where
           (T.ArrayType l at) ->
             case at -- TODO: Defaults of elements??? or null checks elsewhere?
                   of
-              (T.ArrayType l2 at2) ->
-                loadSizes ++
-                iri
-                  [ MultiANewArray (typeToJType t) (length sizes)
-                  , Store Object idx
-                  ]
-                where loadSizes :: [IRItem]
-                      loadSizes = map (\s -> IRInst (LDC $ LDCInt s)) sizes
-                      sizes :: [Int]
-                      sizes = getDepth [l2, l] at2
-                      getDepth :: [Int] -> T.Type -> [Int]
-                      getDepth rSizes rt =
-                        case rt of
-                          T.ArrayType rl rrt -> getDepth (rl : rSizes) rrt
-                          _                  -> reverse rSizes -- no more arrays
-              T.SliceType {} ->
-                iri [LDC (LDCInt l), ANewArray cSlice, Store Object idx]
-              T.PInt -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
-              T.PFloat64 ->
-                iri [LDC (LDCInt l), NewArray IRDouble, Store Object idx]
-              T.PBool -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
-              T.PRune -> iri [LDC (LDCInt l), NewArray IRInt, Store Object idx]
-              T.PString ->
-                iri [LDC (LDCInt l), ANewArray jString, Store Object idx]
-              T.StructType sid ->
-                iri
-                  [ LDC (LDCInt l)
-                  , ANewArray (ClassRef $ structName sid)
-                  , Store Object idx
-                  ]
-          T.SliceType {} ->
-            iri [New cSlice, Dup, InvokeSpecial sliceInit, Store Object idx]
+              T.ArrayType {} -> nestedGlcArrayIR t idx
+              T.SliceType {} -> nestedGlcArrayIR t idx
+              T.PInt -> arrayOrSliceIR jInteger l idx
+              T.PFloat64 -> arrayOrSliceIR jDouble l idx
+              T.PBool -> arrayOrSliceIR jInteger l idx
+              T.PRune -> arrayOrSliceIR jInteger l idx
+              T.PString -> arrayOrSliceIR jString l idx
+              T.StructType sid -> arrayOrSliceIR (ClassRef $ structName sid) l idx -- TODO: FIX THIS FOR NEW STRUCTS
+          (T.SliceType st) ->
+            case st of
+              T.ArrayType {} -> nestedGlcArrayIR t idx
+              T.SliceType {} -> nestedGlcArrayIR t idx
+              T.PInt -> arrayOrSliceIR jInteger (-1) idx
+              T.PFloat64 -> arrayOrSliceIR jDouble (-1) idx
+              T.PRune -> arrayOrSliceIR jInteger (-1) idx
+              T.PBool -> arrayOrSliceIR jInteger (-1) idx
+              T.PString -> arrayOrSliceIR jString (-1) idx
+              T.StructType sid -> arrayOrSliceIR (ClassRef $ structName sid) (-1) idx
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
@@ -372,6 +529,7 @@ instance IRRep T.VarDecl' where
           (T.StructType sid) ->
             iri
               [ New (ClassRef $ structName sid)
+              , Dup
               , InvokeSpecial
                   (MethodRef
                      (CRef $ ClassRef $ structName sid)
@@ -379,6 +537,78 @@ instance IRRep T.VarDecl' where
                      emptySpec)
               , Store Object idx
               ]
+
+nestedGlcArrayIR :: T.Type -> T.VarIndex -> [IRItem]
+nestedGlcArrayIR t idx =
+  iri
+  [ New cGlcArray
+  , Dup
+  , LDC (LDCClass $ classOfBase t)
+  , LDC (LDCInt $ length sizes) -- Number of dimensions of array
+  , NewArray IRInt -- array of dimensions
+  ] ++ sizeArrayIR ++
+  iri [ InvokeSpecial glcArrayInit, Store Object idx]
+  where sizeArrayIR :: [IRItem]
+        sizeArrayIR =
+          map (const $ IRInst Dup) sizes ++
+          concatMap
+            (\(i, s) ->
+              iri
+                [ LDC $ LDCInt i
+                , LDC $ LDCInt s
+                , ArrayStore (Prim IRInt)
+                ])
+            (zip [0 ..] sizes)
+        sizes :: [Int]
+        sizes = getSizes [] t
+        getSizes :: [Int] -> T.Type -> [Int]
+        getSizes rSizes rt =
+          case rt of
+            T.ArrayType rl rrt -> getSizes (rl : rSizes) rrt
+            T.SliceType rrt    -> getSizes (-1 : rSizes) rrt
+            _                  -> reverse rSizes -- no more arrays
+        classOfBase :: T.Type -> ClassRef
+        classOfBase ct =
+          case ct of
+            (T.ArrayType _ rt) -> classOfBase rt
+            (T.SliceType rt) -> classOfBase rt
+            T.PInt -> jInteger
+            T.PFloat64 -> jDouble
+            T.PRune -> jInteger
+            T.PBool -> jInteger
+            T.PString -> jString
+            T.StructType sid -> ClassRef (structName sid)
+arrayOrSliceIR :: ClassRef -> Int -> T.VarIndex -> [IRItem]
+arrayOrSliceIR cr l idx =
+  iri
+  [ New cGlcArray
+  , Dup
+  , LDC (LDCClass cr)
+  , IConst1
+  , NewArray IRInt
+  , Dup
+  , IConst0
+  , LDC (LDCInt l)
+  , ArrayStore (Prim IRInt)
+  , InvokeSpecial glcArrayInit
+  , Store Object idx
+  ]
+
+newSliceIR :: ClassRef -> T.VarIndex -> [IRItem]
+newSliceIR cr idx =
+  iri
+    [ New cGlcArray
+    , Dup
+    , LDC (LDCClass cr)
+    , IConst1
+    , NewArray IRInt -- dimension array
+    , Dup
+    , IConst0 -- position 0
+    , IConstM1 -- slices have dimension -1 to start
+    , ArrayStore (Prim IRInt)
+    , InvokeSpecial glcArrayInit
+    , Store Object idx
+    ]
 
 printIR :: T.Expr -> [IRItem]
 printIR e =
@@ -437,7 +667,7 @@ instance IRRep T.SimpleStmt where
   toIR T.EmptyStmt = []
   toIR (T.VoidExprStmt aid args) -- Akin to Argument without a type
    =
-    concatMap toIR args ++
+    concatMap (\e -> toIR e ++ cloneIfNeeded e) args ++
     iri
       [ InvokeStatic $
         MethodRef
@@ -455,6 +685,7 @@ instance IRRep T.SimpleStmt where
         case (mAop, se) of
           (Nothing, T.Index _ ea ei) ->
             toIR ea ++ toIR ei ++ toIR ve ++ cloneIfNeeded ve
+          (Nothing, T.Selector _ eo _) -> toIR eo ++ toIR ve ++ cloneIfNeeded ve
           (Nothing, _) -> toIR ve ++ cloneIfNeeded ve
           (Just op, T.Var t idx) ->
             setUpOps op ++
@@ -469,24 +700,15 @@ instance IRRep T.SimpleStmt where
               JClass cr ->
                 setUpOps op ++
                 toIR eo ++
-                iri [GetField (FieldRef cr fid) (typeToJType t)] ++
+                iri [Dup, InvokeVirtual $ MethodRef (CRef cr) ("get_" ++ fid) (MethodSpec ([], typeToJType t))] ++
                 afterLoadOps op ++ toIR ve ++ finalOps op
               _ -> error "Cannot get field of non-object"
           (Just op, T.Index t ea ei) ->
-            case exprType ea of
-              T.ArrayType {} ->
-                setUpOps op ++
-                toIR ea ++
-                toIR ei ++
-                iri [Dup2, ArrayLoad irType] ++ -- Duplicate addr. and index at the same time
-                afterLoadOps op ++ toIR ve ++ finalOps op
-              T.SliceType {} ->
-                setUpOps op ++
-                toIR ea ++
-                toIR ei ++
-                iri [Dup2, InvokeVirtual sliceGet] ++
-                objectDecode t ++ afterLoadOps op ++ toIR ve ++ finalOps op
-              _ -> error "Cannot index non-array/slice"
+            setUpOps op ++
+            toIR ea ++
+            toIR ei ++
+            (IRInst Dup2) : glcArrayGetIR t ++ -- Duplicate addr. and index at the same time...
+            afterLoadOps op ++ toIR ve ++ finalOps op
           _ -> error "Cannot assign to non-addressable value"
         where
           irType :: IRType
@@ -528,19 +750,25 @@ instance IRRep T.SimpleStmt where
             iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
           T.Selector t eo (T.Ident fid) ->
             case exprJType eo of
+              JClass (ClassRef "glcutils/GlcArray") ->
+                error "Cannot get field of non-object"
               JClass cr ->
-                toIR eo ++ iri [PutField (FieldRef cr fid) (typeToJType t)]
+                iri [InvokeVirtual $ MethodRef (CRef cr) ("set_" ++ fid) (MethodSpec ([typeToJType t], JVoid))]
               _ -> error "Cannot get field of non-object"
-          T.Index t ea _ ->
-            case exprType ea of
-              T.ArrayType {} -> iri [ArrayStore irType] -- matched with above
-              T.SliceType {} ->
-                objectRepr (typeToJType t) ++ iri [InvokeVirtual sliceSet]
-              _ -> error "Cannot index non-array/slice"
+          T.Index t _ _ -> storeIR
+            where
+              storeIR :: [IRItem]
+              storeIR =
+                case t of
+                  T.ArrayType {} -> iri [InvokeVirtual glcArraySetObj] -- TODO: LOOK AT CLONING
+                  T.SliceType {} -> iri [InvokeVirtual glcArraySetObj] -- TODO: LOOK AT CLONING
+                  T.PInt -> iri [InvokeVirtual (glcArraySet JInt)]
+                  T.PFloat64 -> iri [InvokeVirtual (glcArraySet JDouble)]
+                  T.PBool -> iri [InvokeVirtual (glcArraySet JInt)]
+                  T.PRune -> iri [InvokeVirtual (glcArraySet JInt)]
+                  T.PString -> iri [InvokeVirtual glcArraySetObj] -- TODO: LOOK AT CLONING
+                  T.StructType {} -> iri [InvokeVirtual glcArraySetObj] -- TODO: LOOK AT CLONING
           _ -> error "Cannot assign to non-addressable value"
-        where
-          irType :: IRType
-          irType = exprIRType e
   toIR (T.ShortDeclare iExps) =
     exprInsts ++ zipWith (curry expStore) idxs stTypes
     where
@@ -609,7 +837,7 @@ instance IRRep T.Expr where
     iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
     toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
   toIR (T.Binary (T.LabelIndex idx) _ T.EQ e1 e2) =
-    toIR e1 ++ toIR e2 ++ equality idx (exprType e1)
+    toIR e1 ++ toIR e2 ++ equality True "bin" idx (exprType e1)
   toIR (T.Binary idx t T.NEQ e1 e2) =
     toIR (T.Unary T.PBool D.Not (T.Binary idx t T.EQ e1 e2)) -- != is =, !
   toIR (T.Binary (T.LabelIndex idx) _ op e1 e2) -- comparisons
@@ -648,35 +876,42 @@ instance IRRep T.Expr where
   toIR (T.TopVar t tvi) =
     iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
   toIR (T.AppendExpr _ e1 e2) =
-    toIR e1 ++
-    toIR e2 ++
-    objectRepr (exprJType e2) ++
-    iri [InvokeVirtual sliceAppend] -- returns Slice for us
+    toIR e1 ++ toIR e2 ++ appendIR
+    where
+      appendIR :: [IRItem]
+      appendIR =
+        case exprType e2 of
+          T.ArrayType {} -> iri [InvokeVirtual glcArrayAppendObj] -- TODO: CLONE?
+          T.SliceType {} -> iri [InvokeVirtual glcArrayAppendObj] -- TODO: CLONE?
+          T.PInt -> iri [InvokeVirtual (glcArrayAppend JInt)]
+          T.PFloat64 -> iri [InvokeVirtual (glcArrayAppend JDouble)]
+          T.PRune -> iri [InvokeVirtual (glcArrayAppend JInt)]
+          T.PBool -> iri [InvokeVirtual (glcArrayAppend JInt)]
+          T.PString -> iri [InvokeVirtual glcArrayAppendObj] -- TODO: CLONE?
+          T.StructType {} -> iri [InvokeVirtual glcArrayAppendObj] -- TODO: CLONE?
+
   toIR (T.LenExpr e) =
     case exprType e of
       T.ArrayType l _ -> iri [LDC (LDCInt l)] -- fixed at compile time
-      T.SliceType _   -> toIR e ++ iri [GetField sliceLength JInt]
+      T.SliceType _   -> toIR e ++ iri [InvokeVirtual glcArrayLength]
+      T.PString       -> toIR e ++ iri [InvokeVirtual stringLength]
       _               -> error "Cannot get length of non-array/slice"
   toIR (T.CapExpr e) =
     case exprType e of
       T.ArrayType l _ -> iri [LDC (LDCInt l)]
-      T.SliceType _   -> toIR e ++ iri [InvokeVirtual sliceCapacity]
+      T.SliceType _   -> toIR e ++ iri [InvokeVirtual glcArrayCap]
       _               -> error "Cannot get capacity of non-array/slice"
   toIR (T.Selector t e (T.Ident fid)) =
-    toIR e ++ iri [GetField fr (typeToJType t)]
+    toIR e ++ iri [InvokeVirtual $ MethodRef (CRef cr) ("get_" ++ fid) (MethodSpec ([], typeToJType t))]
     where
-      fr :: FieldRef
-      fr =
+      cr :: ClassRef
+      cr =
         case exprJType e of
-          JClass cref -> FieldRef cref fid
-          _           -> error "Cannot get field of non-object"
-  toIR (T.Index t e1 e2) =
-    case exprType e1 of
-      T.ArrayType _ _ -- TODO: CHECK LENGTH HERE?
-       -> toIR e1 ++ toIR e2 ++ iri [ArrayLoad (typeToIRType t)]
-      T.SliceType {} ->
-        toIR e1 ++ toIR e2 ++ iri [InvokeVirtual sliceGet] ++ objectDecode t
-      _ -> error "Cannot index non-array/slice"
+          JClass (ClassRef "glcutils/GlcArray") ->
+            error "Cannot get field of non-struct"
+          JClass cref -> cref
+          _ -> error "Cannot get field of non-struct"
+  toIR (T.Index t e1 e2) = toIR e1 ++ toIR e2 ++ glcArrayGetIR t
   toIR (T.Arguments t aid args) =
     concatMap (\e -> toIR e ++ cloneIfNeeded e) args ++
     iri
@@ -717,13 +952,12 @@ cloneIfNeeded e =
     JClass cr ->
       iri
         [ InvokeVirtual $
-          MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
-        , CheckCast (CRef cr)
+          MethodRef (CRef cr) "copy" (MethodSpec ([], JClass cr))
         ]
     JArray jt ->
       iri
         [ InvokeVirtual $
-          MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
+          MethodRef (ARef jt) "copy" (MethodSpec ([], JClass jObject))
         , CheckCast (ARef jt)
         ]
     _ -> [] -- Primitives and strings are not clonable
@@ -766,44 +1000,73 @@ objectDecode t -- TODO: Maybe this should just be IRType
     T.PString      -> [] -- nothing to do
     T.StructType _ -> [] -- nothing to do
 
-equality :: Int -> T.Type -> [IRItem]
-equality idx t =
+equalityNL :: Bool -> String -> Int -> T.Type -> [IRItem]
+equalityNL eq lbl idx t =
   case t of
-    T.ArrayType {} -> undefined -- TODO
+    T.ArrayType {} ->
+      iri
+        [ InvokeVirtual glcArrayEquals
+        , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        ]
     T.PString ->
       iri
         [ InvokeVirtual stringEquals
-        , If IRData.GT ("true_eq_" ++ show idx) -- 1 > 0, i.e. true
-        , IConst0
-        , Goto ("stop_eq_" ++ show idx)
-        ] ++
-      eqPostfix
-    (T.StructType (D.Ident _)) -> undefined -- TODO
+        , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        ]
+    (T.StructType (D.Ident sid)) ->
+      iri
+        [ InvokeVirtual $
+          MethodRef
+            (CRef $ ClassRef sid)
+            "equals"
+            (MethodSpec ([JClass (ClassRef sid)], JBool))
+        , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
+        ]
     T.PFloat64 ->
       iri
         [ DCmpG
-        , If IRData.EQ ("true_eq_" ++ show idx) -- dcmpg is 0, they're equal
-        , IConst0
-        , Goto ("stop_eq_" ++ show idx)
-        ] ++
-      eqPostfix
+        , If checkInt (lbl ++ "_true_eq_" ++ show idx) -- dcmpg is 0, they're equal
+        ]
     T.SliceType {} -> error "Cannot compare slice equality"
     _
       -- Integer types
      ->
-      iri
-        [ IfICmp IRData.EQ ("true_eq_" ++ show idx)
-        , IConst0
-        , Goto ("stop_eq_" ++ show idx)
-        ] ++
-      eqPostfix
+      iri [IfICmp checkInt (lbl ++ "_true_eq_" ++ show idx)]
+  where
+    checkBool :: IRCmp
+    checkBool = if eq then IRData.GT else IRData.EQ
+    checkInt :: IRCmp
+    checkInt = if eq then IRData.EQ else IRData.NE
+equality :: Bool -> String -> Int -> T.Type -> [IRItem]
+equality eq lbl idx t = equalityNL eq lbl idx t ++ eqPostfix
   where
     eqPostfix :: [IRItem]
     eqPostfix =
-      [ IRLabel ("true_eq_" ++ show idx)
+      [ IRInst IConst0
+      , IRInst (Goto (lbl ++ "_stop_eq_" ++ show idx))
+      , IRLabel (lbl ++ "_true_eq_" ++ show idx)
       , IRInst IConst1
-      , IRLabel ("stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
+      , IRLabel (lbl ++ "_stop_eq_" ++ show idx) -- Don't need NOP, can't end block with x == y
       ]
+
+glcArrayGetIR :: T.Type -> [IRItem]
+glcArrayGetIR t =
+  case t of
+    T.ArrayType {} ->
+      iri [InvokeVirtual (glcArrayGet jObject), CheckCast (CRef cGlcArray)]
+    T.SliceType {} ->
+      iri [InvokeVirtual (glcArrayGet jObject), CheckCast (CRef cGlcArray)]
+    T.PInt -> iri [InvokeVirtual glcArrayGetInt]
+    T.PFloat64 -> iri [InvokeVirtual glcArrayGetDouble]
+    T.PRune -> iri [InvokeVirtual glcArrayGetInt]
+    T.PBool -> iri [InvokeVirtual glcArrayGetInt]
+    T.PString ->
+      iri [InvokeVirtual (glcArrayGet jObject), CheckCast (CRef jString)]
+    (T.StructType sid) ->
+      iri
+        [ InvokeVirtual (glcArrayGet jObject)
+        , CheckCast (CRef $ ClassRef $ structName sid)
+        ]
 
 exprType :: T.Expr -> T.Type
 exprType (T.Unary t _ _)      = t
@@ -842,15 +1105,15 @@ getLiteralType (D.RuneLit _)   = T.PRune
 getLiteralType (D.StringLit _) = T.PString
 
 typeToJType :: T.Type -> JType
-typeToJType (T.ArrayType _ t) = JArray (typeToJType t)
-typeToJType T.SliceType {} = JClass cSlice
+typeToJType T.ArrayType {} = JClass cGlcArray
+typeToJType T.SliceType {} = JClass cGlcArray
 typeToJType T.PInt = JInt
 typeToJType T.PFloat64 = JDouble
 typeToJType T.PRune = JInt
 typeToJType T.PBool = JBool
 typeToJType T.PString = JClass jString
-typeToJType (T.StructType (D.Ident sid)) =
-  JClass (ClassRef $ "GlcStruct__" ++ sid)
+typeToJType (T.StructType sid) =
+  JClass (ClassRef $ structName sid)
 
 stackDelta :: Instruction -> Int
 stackDelta (Load (Prim IRDouble) _) = 2 -- ... -> ..., v (double-wide)
@@ -887,13 +1150,16 @@ stackDelta IAnd = -1 -- ..., v, w -> ..., r
 stackDelta IOr = -1 -- ..., v, w -> ..., r
 stackDelta IXOr = -1 -- ..., v, w -> ..., r
 stackDelta IntToDouble = 1 --- ..., i -> ..., d (double-wide)
+stackDelta DoubleToInt = -1 --- ..., d (double-wide) -> ..., i
 stackDelta If {} = -1 -- ..., v -> ...
 stackDelta IfICmp {} = -2 -- ..., v, w -> ...
+stackDelta IfNonNull {} = -1 -- ..., v -> ...
 stackDelta (LDC (LDCDouble _)) = 2 -- ... -> ..., v (double-wide)
 stackDelta LDC {} = 1 -- ... -> ..., v
 stackDelta IConstM1 = 1 -- ... -> ..., -1
 stackDelta IConst0 = 1 -- ... -> ..., 0
 stackDelta IConst1 = 1 -- ... -> ..., 1
+stackDelta AConstNull = 1 -- ... -> ..., null
 stackDelta DCmpG = -3 -- ..., v1, v2 -> ..., r
 stackDelta New {} = 1 -- ... -> ..., o
 stackDelta CheckCast {} = 0 -- ..., o -> ..., o (checked)

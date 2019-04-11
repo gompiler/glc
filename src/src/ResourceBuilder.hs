@@ -45,7 +45,6 @@ instance Converter T.Program Program where
   convert rc T.Program {T.package, T.topLevels} = do
     topLevels' <- mapM (convert rc) topLevels
     structs <- RC.allStructs rc
-    categories <- RC.allCategories rc
     let vars = [v | TVar v <- topLevels']
     let inits = [(body, limit) | TInit body limit <- topLevels']
     let mains = [(body, limit) | TMain body limit <- topLevels']
@@ -55,7 +54,6 @@ instance Converter T.Program Program where
       Program
         { package = package
         , structs = structs
-        , categories = categories
         -- Returns all declared top vars
         , topVars = vars
         -- Contains a single function that calls each of the original
@@ -144,7 +142,7 @@ instance Converter T.Signature Signature where
 
 instance Converter T.ParameterDecl ParameterDecl where
   convert rc (T.ParameterDecl i t) =
-    ParameterDecl <$> (RC.varIndex rc i =<< convert rc t) <*> convert rc t
+    ParameterDecl <$> (RC.paramIndex rc i =<< convert rc t) <*> convert rc t
 
 instance Converter T.Parameters Parameters where
   convert rc (T.Parameters params) = Parameters <$> mapM (convert rc) params
@@ -180,7 +178,6 @@ instance Converter T.Decl Stmt where
 instance Converter T.CType Type where
   convert :: forall s. RC.ResourceContext s -> T.CType -> ST s Type
   convert rc type' =
-    (\resultType -> RC.registerType rc resultType $> resultType) =<<
     case C.getActual type' of
       T.ArrayType i t -> ArrayType i <$> ct (C.set type' t)
       T.SliceType t -> SliceType <$> ct (C.set type' t)
@@ -255,7 +252,13 @@ instance Converter T.SimpleStmt SimpleStmt where
         Assign (T.AssignOp $ Just T.Add) ((e, Lit $ T.IntLit 1) :| [])
       dec2assn :: Expr -> SimpleStmt
       dec2assn e =
-        Assign (T.AssignOp $ Just T.Subtract) ((e, Lit $ T.IntLit 1) :| [])
+        Assign (T.AssignOp $ Just T.Subtract) ((e, toOne e) :| [])
+      toOne :: Expr -> Expr
+      toOne e = case getType' e of
+        PInt -> Lit $ T.IntLit 1
+        PRune -> Lit $ T.IntLit 1
+        PFloat64 -> Lit $ T.FloatLit 1
+        _ -> undefined
       getType :: Expr -> (Expr, Type)
       getType e = (e, getType' e)
       getType' :: Expr -> Type

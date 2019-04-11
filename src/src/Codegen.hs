@@ -55,14 +55,14 @@ instance Bytecode Field where
       ]
 
 instance Bytecode Method where
-  toBC' (Method mn sl ll (MethodSpec (jtl, jt)) bod)
+  toBC' (Method mn static' sl ll (MethodSpec (jtl, jt)) bod)
     -- .method public $(methodname)$(signature)
     -- ex.
     -- public int main() ->
     -- .method public main()I
    =
     B.concat
-      [ bstrM [".method ", "public static ", mn, " : ("]
+      [ bstrM [".method ", "public ", if static' then "static " else "", mn, " : ("]
       , bstrM (map show jtl)
       , bstrM
           [ ")"
@@ -108,6 +108,8 @@ instance Bytecode Instruction where
       toBCStr IShR = ["ishr"]
       toBCStr IAnd = ["iand"]
       toBCStr IntToDouble = ["i2d"]
+      toBCStr DoubleToInt = ["d2i"]
+      toBCStr (IfNonNull label) = ["ifnonnull", " L", label]
       toBCStr (If cmp label) = ["if", show cmp, " L", label]
       toBCStr (IfICmp cmp label) = ["if_icmp", show cmp, " L", label]
       toBCStr IOr = ["ior"]
@@ -120,9 +122,11 @@ instance Bytecode Instruction where
               LDCInt i    -> [" ", show i]
               LDCDouble f -> ["2_w ", show f] -- Check if this is in the right format
               LDCString s -> ["_w ", show s]
+              LDCClass (ClassRef cr) -> [" Class ", cr]
       toBCStr IConstM1 = ["iconst_m1"]
       toBCStr IConst0 = ["iconst_0"]
       toBCStr IConst1 = ["iconst_1"]
+      toBCStr AConstNull = ["aconst_null"]
       toBCStr DCmpG = ["dcmpg"]
       toBCStr (MultiANewArray t c) = ["multianewarray ", show t, " ", show c]
       toBCStr (ANewArray (ClassRef cn)) = ["anewarray ", cn]

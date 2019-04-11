@@ -45,6 +45,7 @@ data Class = Class
 
 data Method = Method
   { mname       :: String
+  , mstatic     :: Bool
   , stackLimit  :: Int
   , localsLimit :: Int
   , spec        :: MethodSpec
@@ -133,6 +134,7 @@ data LDCType
   = LDCInt Int -- Integers, booleans, runes
   | LDCDouble Float -- Float64s
   | LDCString String -- Strings
+  | LDCClass ClassRef -- Class constants
   deriving (Show, Eq)
 
 data Instruction
@@ -160,6 +162,8 @@ data Instruction
   | IOr
   | IXOr
   | IntToDouble
+  | DoubleToInt
+  | IfNonNull LabelName
   | If IRCmp
        LabelName
   | IfICmp IRCmp
@@ -168,6 +172,7 @@ data Instruction
   | IConstM1 -- -1
   | IConst0 -- 0
   | IConst1 -- 1
+  | AConstNull
   | DCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
   | New ClassRef -- class
   | CheckCast ClassOrArrayRef
@@ -231,6 +236,13 @@ jDoubleInit = MethodRef (CRef jDouble) "<init>" (MethodSpec ([JDouble], JVoid))
 jObject :: ClassRef
 jObject = ClassRef "java/lang/Object"
 
+jClass :: ClassRef
+jClass = ClassRef "java/lang/Class"
+
+stringLength :: MethodRef
+stringLength =
+  MethodRef (CRef jString) "length" (MethodSpec ([], JInt))
+
 stringEquals :: MethodRef
 stringEquals =
   MethodRef (CRef jString) "equals" (MethodSpec ([JClass jObject], JBool))
@@ -265,32 +277,88 @@ emptySpec = MethodSpec ([], JVoid)
 cMain :: ClassRef
 cMain = ClassRef "Main"
 
-cSlice :: ClassRef
-cSlice = ClassRef "Slice"
+cGlcArray :: ClassRef
+cGlcArray = ClassRef "glcutils/GlcArray"
 
-sliceInit :: MethodRef
-sliceInit = MethodRef (CRef cSlice) "<init>" emptySpec
-
-sliceAppend :: MethodRef
-sliceAppend =
+glcArrayInit :: MethodRef
+glcArrayInit =
   MethodRef
-    (CRef cSlice)
+    (CRef cGlcArray)
+    "<init>"
+    (MethodSpec ([JClass jClass, JArray JInt], JVoid))
+
+glcArrayEquals :: MethodRef
+glcArrayEquals =
+  MethodRef
+    (CRef cGlcArray)
+    "equals"
+    (MethodSpec ([JClass jObject], JBool))
+
+glcArrayAppend :: JType -> MethodRef
+glcArrayAppend jt =
+  MethodRef
+    (CRef cGlcArray)
     "append"
-    (MethodSpec ([JClass jObject], JClass cSlice))
+    (MethodSpec ([jt], JClass cGlcArray))
 
-sliceGet :: MethodRef
-sliceGet = MethodRef (CRef cSlice) "get" (MethodSpec ([JInt], JClass jObject))
+glcArrayAppendObj :: MethodRef
+glcArrayAppendObj = glcArrayAppend (JClass jObject)
 
-sliceSet :: MethodRef
-sliceSet =
-  MethodRef (CRef cSlice) "set" (MethodSpec ([JInt, JClass jObject], JVoid))
+glcArrayGet :: ClassRef -> MethodRef
+glcArrayGet cr =
+  MethodRef
+    (CRef cGlcArray)
+    "get"
+    (MethodSpec ([JInt], JClass cr))
 
-sliceCapacity :: MethodRef
-sliceCapacity = MethodRef (CRef cSlice) "capacity" (MethodSpec ([], JInt))
+glcArrayGetInt :: MethodRef
+glcArrayGetInt =
+  MethodRef
+    (CRef cGlcArray)
+    "getInt"
+    (MethodSpec ([JInt], JInt))
 
-sliceLength :: FieldRef
-sliceLength = FieldRef cSlice "length"
+glcArraySet :: JType -> MethodRef
+glcArraySet jt =
+  MethodRef
+    (CRef cGlcArray)
+    "set"
+    (MethodSpec ([JInt, jt], JVoid))
+
+glcArrayGetDouble :: MethodRef
+glcArrayGetDouble =
+  MethodRef
+    (CRef cGlcArray)
+    "getDouble"
+    (MethodSpec ([JInt], JDouble))
+
+glcArraySetObj :: MethodRef
+glcArraySetObj =
+  MethodRef
+    (CRef cGlcArray)
+    "set"
+    (MethodSpec ([JInt, JClass jObject], JVoid))
+
+glcArrayGetString :: MethodRef
+glcArrayGetString =
+  MethodRef
+    (CRef cGlcArray)
+    "get"
+    (MethodSpec ([JInt], JClass jString))
+
+glcArraySetString :: MethodRef
+glcArraySetString =
+  MethodRef
+    (CRef cGlcArray)
+    "set"
+    (MethodSpec ([JInt, JClass jString], JVoid))
+
+glcArrayCap :: MethodRef
+glcArrayCap = MethodRef (CRef cGlcArray) "capacity" (MethodSpec ([], JInt))
+
+glcArrayLength :: MethodRef
+glcArrayLength = MethodRef (CRef cGlcArray) "length" (MethodSpec ([], JInt))
 
 -- Custom-defined methods
 glcUtils :: ClassRef
-glcUtils = ClassRef "glcgutils/Utils"
+glcUtils = ClassRef "glcutils/Utils"

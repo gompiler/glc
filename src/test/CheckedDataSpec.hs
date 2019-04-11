@@ -355,7 +355,7 @@ prettifySpec =
            } = initMin()
            for i := 0; (i < len(pl)); i++ {
                for j := 0; (j < len(pl)); j++ {
-                   if (i == j) {
+                   if (i != j) {
                        var pp struct {
                            p1 struct {
                                x int
@@ -515,7 +515,7 @@ prettifySpec =
                x int
                y int
            }
-           if (len(pa[0]) == len(pa[1])) {
+           if (len(pa[0]) != len(pa[1])) {
                return pl
            } else {
                var p struct {

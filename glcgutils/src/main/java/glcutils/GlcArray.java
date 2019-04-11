@@ -78,10 +78,35 @@ public class GlcArray {
         return new GlcArray(clazz, subSizes, debug);
     }
 
+    public GlcArray copy() {
+        if (this == null) {
+            return null;
+        }
+        else {
+            Object[] newArray = null;
+            if (this.isSlice) {
+                newArray = this.array;
+            }
+            else if (this.array != null) {
+                newArray = new Object[this.length];
+                if (this.clazz == Integer.class || this.clazz == Double.class || this.clazz == String.class) {
+                    System.arraycopy(this.array, 0, newArray, 0, this.length);
+                }
+                else {
+                    for (int i = 0; i < this.length; i++) {
+                        newArray[i] = this.copy();
+                    }
+                }
+            }
+            return new GlcArray(this.clazz, this.isSlice, this.subSizes, this.length, newArray, this.debug);
+        }
+    }
+
     /**
      * Return nonnull struct if index is within bounds
      */
     public final <T> T get(int i) {
+        verifyIndex(i);
         init();
         if (array[i] == null) {
             array[i] = supply();
@@ -137,10 +162,17 @@ public class GlcArray {
         }
     }
 
+    private void verifyIndex(int i) {
+        if (i < 0 || i > length - 1) {
+            Utils.fail("Slice index %d out of range (length %d)", i, length);
+        }
+    }
+
     /**
      * Set new struct value at specified index if it is within bounds
      */
     public void set(int i, Object t) {
+        verifyIndex(i);
         verify(t);
         init();
         array[i] = t;
@@ -222,7 +254,7 @@ public class GlcArray {
      */
     private static Object[] append(Object[] array, int length, Object t) {
         int capacity = array == null ? 0 : array.length;
-        if (array == null || length >= capacity - 1) {
+        if (array == null || length > capacity - 1) {
             // We have an initial capacity of 2 due to legacy golang
             // This is a requirement for golite
             int newLength = newCapacity(capacity);
