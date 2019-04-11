@@ -46,16 +46,16 @@ data ResourceContext_ s = RC
 
 -- | Scope, with its own set of declared variables and offset values
 data ResourceScope s = RS
-  { varTable   :: VarTable s
+  { _varTable   :: VarTable s
   -- | Scope's counter size
   -- Each varCounter starts at the value of the previous scope,
   -- or 0 if the scope is global.
   -- To create a new index, we use the current counter, then increment the value
-  , varCounter :: Int
+  , _varCounter :: Int
   -- | Max varCounter within current scope
   -- This is propagated from all children's varCounters, where only
   -- the max value is kept
-  , varLimit   :: Int
+  , _varLimit   :: Int
   }
 
 newtype VarKey =
@@ -110,11 +110,11 @@ new = do
 newScope :: [ResourceScope s] -> ST s (ResourceScope s)
 newScope scopes = do
   m <- HT.new
-  return $ RS {varTable = m, varCounter = varCounter' scopes, varLimit = 0}
+  return $ RS {_varTable = m, _varCounter = varCounter scopes, _varLimit = 0}
   where
-    varCounter' :: [ResourceScope s] -> Int
-    varCounter' []                  = 0
-    varCounter' (RS {varCounter}:_) = varCounter
+    varCounter :: [ResourceScope s] -> Int
+    varCounter []                  = 0
+    varCounter (RS {_varCounter}:_) = _varCounter
 
 wrap :: ResourceContext s -> ST s a -> ST s a
 wrap rc action = do
@@ -127,7 +127,7 @@ localLimit :: ResourceContext s -> ST s LocalLimit
 localLimit st = do
   rc <- readRef st
   let scope = head $! _varScopes rc
-  return $! LocalLimit $! max (varLimit scope) (varCounter scope)
+  return $! LocalLimit $! max (_varLimit scope) (_varCounter scope)
 
 -- | Create a new scope level
 enterScope :: ResourceContext s -> ST s ()
@@ -150,8 +150,8 @@ exitScope st = do
   where
     exitScope' :: [ResourceScope s] -> [ResourceScope s]
     exitScope' (curr:parent:vars) =
-      let varLimit' = maximum [varLimit curr, varCounter curr, varLimit parent]
-       in parent {varLimit = varLimit'} : vars
+      let varLimit = maximum [_varLimit curr, _varCounter curr, _varLimit parent]
+       in parent {_varLimit = varLimit} : vars
     exitScope' (_:vars) = vars
     -- Note that this should never happen, given that we
     -- don't expose enter and exit for public use.
@@ -188,10 +188,10 @@ varIndexBase requiresNew st si vt = do
   where
     setVarIndex' ::
          ResourceScope s -> VarKey -> ST s (VarIndex, ResourceScope s)
-    setVarIndex' rs@RS {varTable, varCounter} key =
-      let value = VarIndex varCounter
-       in HT.insert varTable key value $>
-          (value, rs {varCounter = varCounter + increment})
+    setVarIndex' rs@RS {_varTable, _varCounter} key =
+      let value = VarIndex _varCounter
+       in HT.insert _varTable key value $>
+          (value, rs {_varCounter = _varCounter + increment})
         -- | Not all types have the same size
       where
         increment :: Int
@@ -201,7 +201,7 @@ varIndexBase requiresNew st si vt = do
             _        -> 1
     -- | Get the index of the provided key, or return the size of the current scope
     varIndex' :: VarKey -> ResourceScope s -> ST s (Maybe VarIndex)
-    varIndex' key RS {varTable} = HT.lookup varTable key
+    varIndex' key RS {_varTable} = HT.lookup _varTable key
 
 data LabelContext = LabelContext
   -- Label used for break statement
