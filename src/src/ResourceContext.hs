@@ -11,8 +11,11 @@ module ResourceContext
   , paramIndex
   , allStructs
   , newLabel
-  , newLoopLabel
-  , currentLoopLabel
+  , newLabel'
+  , breakParent
+  , continueParent
+  , breakParentLabel
+  , continueParentLabel
   , localLimit
   ) where
 
@@ -33,25 +36,26 @@ newtype ResourceContext s =
 -- While we only need to store a counter,
 -- this makes it easier to fetch the ordered struct list
 data ResourceContext_ s = RC
-  { structTypes   :: [StructType]
-  , structMap     :: StructTable s
-  , varScopes     :: [ResourceScope s]
-  , labelCounter  :: Int
-  , lastLoopLabel :: Int
+  { _structTypes          :: [StructType]
+  , _structMap            :: StructTable s
+  , _varScopes            :: [ResourceScope s]
+  , _labelCounter         :: Int
+  , _breakParentLabel    :: Int
+  , _continueParentLabel :: Int
   }
 
 -- | Scope, with its own set of declared variables and offset values
 data ResourceScope s = RS
-  { varTable   :: VarTable s
+  { _varTable   :: VarTable s
   -- | Scope's counter size
   -- Each varCounter starts at the value of the previous scope,
   -- or 0 if the scope is global.
   -- To create a new index, we use the current counter, then increment the value
-  , varCounter :: Int
+  , _varCounter :: Int
   -- | Max varCounter within current scope
   -- This is propagated from all children's varCounters, where only
   -- the max value is kept
-  , varLimit   :: Int
+  , _varLimit   :: Int
   }
 
 newtype VarKey =
@@ -91,25 +95,26 @@ readRef (ResourceContext ref) = readSTRef ref
 
 new :: ST s (ResourceContext s)
 new = do
-  structMap' <- HT.new
+  structMap <- HT.new
   newRef $
     RC
-      { structTypes = []
-      , varScopes = []
-      , structMap = structMap'
-      , labelCounter = 0
-      , lastLoopLabel = 0
+      { _structTypes = []
+      , _varScopes = []
+      , _structMap = structMap
+      , _labelCounter = 0
+      , _breakParentLabel = 0
+      , _continueParentLabel = 0
       }
 
 -- | Create a new resource scope
 newScope :: [ResourceScope s] -> ST s (ResourceScope s)
 newScope scopes = do
   m <- HT.new
-  return $ RS {varTable = m, varCounter = varCounter' scopes, varLimit = 0}
+  return $ RS {_varTable = m, _varCounter = varCounter scopes, _varLimit = 0}
   where
-    varCounter' :: [ResourceScope s] -> Int
-    varCounter' []                  = 0
-    varCounter' (RS {varCounter}:_) = varCounter
+    varCounter :: [ResourceScope s] -> Int
+    varCounter []                  = 0
+    varCounter (RS {_varCounter}:_) = _varCounter
 
 wrap :: ResourceContext s -> ST s a -> ST s a
 wrap rc action = do
@@ -121,16 +126,16 @@ wrap rc action = do
 localLimit :: ResourceContext s -> ST s LocalLimit
 localLimit st = do
   rc <- readRef st
-  let scope = head $! varScopes rc
-  return $! LocalLimit $! max (varLimit scope) (varCounter scope)
+  let scope = head $! _varScopes rc
+  return $! LocalLimit $! max (_varLimit scope) (_varCounter scope)
 
 -- | Create a new scope level
 enterScope :: ResourceContext s -> ST s ()
 enterScope st = do
   rc <- readRef st
-  scope <- newScope $ varScopes rc
-  let vars = scope : varScopes rc
-  writeRef st $! rc {varScopes = vars}
+  scope <- newScope $ _varScopes rc
+  let vars = scope : _varScopes rc
+  writeRef st $! rc {_varScopes = vars}
 
 -- | Exit current scope level
 -- This allows us to reuse offsets for all variables created in the current scope
@@ -138,15 +143,15 @@ enterScope st = do
 exitScope :: ResourceContext s -> ST s ()
 exitScope st = do
   rc <- readRef st
-  let varScopes' = exitScope' $ varScopes rc
-  writeRef st $! rc {varScopes = varScopes'}
+  let varScopes = exitScope' $ _varScopes rc
+  writeRef st $! rc {_varScopes = varScopes}
     -- | Remove current scope, and update parent's limit with current counter
     -- if it exists
   where
     exitScope' :: [ResourceScope s] -> [ResourceScope s]
     exitScope' (curr:parent:vars) =
-      let varLimit' = maximum [varLimit curr, varCounter curr, varLimit parent]
-       in parent {varLimit = varLimit'} : vars
+      let varLimit = maximum [_varLimit curr, _varCounter curr, _varLimit parent]
+       in parent {_varLimit = varLimit} : vars
     exitScope' (_:vars) = vars
     -- Note that this should never happen, given that we
     -- don't expose enter and exit for public use.
@@ -172,21 +177,21 @@ varIndexBase requiresNew st si vt = do
   candidates <-
     if requiresNew
       then pure []
-      else mapM (varIndex' key) $ varScopes rc
+      else mapM (varIndex' key) $ _varScopes rc
   case listToMaybe $ catMaybes candidates of
     Just index -> return index
     Nothing -> do
-      let (v:vars) = varScopes rc
+      let (v:vars) = _varScopes rc
       (value, v') <- setVarIndex' v key
-      writeRef st $! rc {varScopes = v' : vars} -- Replace current scope
+      writeRef st $! rc {_varScopes = v' : vars} -- Replace current scope
       return value
   where
     setVarIndex' ::
          ResourceScope s -> VarKey -> ST s (VarIndex, ResourceScope s)
-    setVarIndex' rs@RS {varTable, varCounter} key =
-      let value = VarIndex varCounter
-       in HT.insert varTable key value $>
-          (value, rs {varCounter = varCounter + increment})
+    setVarIndex' rs@RS {_varTable, _varCounter} key =
+      let value = VarIndex _varCounter
+       in HT.insert _varTable key value $>
+          (value, rs {_varCounter = _varCounter + increment})
         -- | Not all types have the same size
       where
         increment :: Int
@@ -196,29 +201,59 @@ varIndexBase requiresNew st si vt = do
             _        -> 1
     -- | Get the index of the provided key, or return the size of the current scope
     varIndex' :: VarKey -> ResourceScope s -> ST s (Maybe VarIndex)
-    varIndex' key RS {varTable} = HT.lookup varTable key
+    varIndex' key RS {_varTable} = HT.lookup _varTable key
+
+data LabelContext = LabelContext
+  -- Label used for break statement
+  { _breakParent    :: Bool
+  -- Label used for continue statement
+  , _continueParent :: Bool
+  }
+
+defaultLabelContext :: LabelContext
+defaultLabelContext =
+  LabelContext {_breakParent = False, _continueParent = False}
+
+-- | Marks label context as break parent
+breakParent :: LabelContext -> LabelContext
+breakParent c = c {_breakParent = True}
+
+-- | Marks label context as continue parent
+continueParent :: LabelContext -> LabelContext
+continueParent c = c {_continueParent = True}
 
 -- | Returns a label id that is unique across the entire program
+-- Label parents are also updated depending on the context
 newLabel :: ResourceContext s -> ST s LabelIndex
-newLabel st = do
-  rc <- readRef st
-  let i = labelCounter rc
-  writeRef st $! rc {labelCounter = i + 1}
-  return $ LabelIndex i
+newLabel = newLabel' id
 
--- | Returns a label id that is unique across the entire program
--- We will also store it as the last loop label,
--- as it will be used for things like 'break' and 'continue'
-newLoopLabel :: ResourceContext s -> ST s LabelIndex
-newLoopLabel st = do
+newLabel' ::
+     (LabelContext -> LabelContext) -> ResourceContext s -> ST s LabelIndex
+newLabel' context st = do
+  let c = context defaultLabelContext
   rc <- readRef st
-  let i = labelCounter rc
-  writeRef st $! rc {labelCounter = i + 1, lastLoopLabel = i}
-  return $ LabelIndex i
+  let i = _labelCounter rc
+  writeRef st $!
+    rc
+      { _labelCounter = i + 1
+      , _breakParentLabel =
+          if _breakParent c
+            then i
+            else _breakParentLabel rc
+      , _continueParentLabel =
+          if _continueParent c
+            then i
+            else _continueParentLabel rc
+      }
+  return $! LabelIndex i
 
--- | Returns the last label created
-currentLoopLabel :: ResourceContext s -> ST s LabelIndex
-currentLoopLabel st = LabelIndex . lastLoopLabel <$> readRef st
+-- | Return the destination label of a break statement
+breakParentLabel :: ResourceContext s -> ST s LabelIndex
+breakParentLabel st = LabelIndex . _breakParentLabel <$> readRef st
+
+-- | Return the destination label of a break statement
+continueParentLabel :: ResourceContext s -> ST s LabelIndex
+continueParentLabel st = LabelIndex . _continueParentLabel <$> readRef st
 
 -- | Gets the associated struct type from a list of fields
 -- Note that field order matters, though two structs with the same keys and type
@@ -227,7 +262,7 @@ structName :: forall s. ResourceContext s -> [FieldDecl] -> ST s C.Ident
 structName st fields = do
   let key = StructKey fields
   rc <- readRef st
-  let m = structMap rc
+  let m = _structMap rc
   candidate <- HT.lookup m key
   case candidate of
     Just (Struct name _) -> return name
@@ -235,11 +270,11 @@ structName st fields = do
       -- Create the new StructType, save it in the hashmap,
       -- and update our struct list
      -> do
-      let name = structName' $ length (structTypes rc) + 1
+      let name = structName' $ length (_structTypes rc) + 1
           value = Struct name fields
-          structTypes' = value : structTypes rc
+          structTypes = value : _structTypes rc
       _ <- HT.insert m key value
-      writeRef st $! rc {structTypes = structTypes'}
+      writeRef st $! rc {_structTypes = structTypes}
       return $! name
   where
     structName' :: Int -> C.Ident
@@ -247,4 +282,4 @@ structName st fields = do
 
 -- | Returns a list of unique structs, ordered by creation
 allStructs :: ResourceContext s -> ST s [StructType]
-allStructs st = reverse . structTypes <$> readRef st
+allStructs st = reverse . _structTypes <$> readRef st

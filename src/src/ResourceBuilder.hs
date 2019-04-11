@@ -248,17 +248,16 @@ instance Converter T.SimpleStmt SimpleStmt where
       ce :: T.Expr -> ST s Expr
       ce = convert rc
       inc2assn :: Expr -> SimpleStmt
-      inc2assn e =
-        Assign (T.AssignOp $ Just T.Add) ((e, toOne e) :| [])
+      inc2assn e = Assign (T.AssignOp $ Just T.Add) ((e, toOne e) :| [])
       dec2assn :: Expr -> SimpleStmt
-      dec2assn e =
-        Assign (T.AssignOp $ Just T.Subtract) ((e, toOne e) :| [])
+      dec2assn e = Assign (T.AssignOp $ Just T.Subtract) ((e, toOne e) :| [])
       toOne :: Expr -> Expr
-      toOne e = case getType' e of
-        PInt -> Lit $ T.IntLit 1
-        PRune -> Lit $ T.IntLit 1
-        PFloat64 -> Lit $ T.FloatLit 1
-        _ -> undefined
+      toOne e =
+        case getType' e of
+          PInt     -> Lit $ T.IntLit 1
+          PRune    -> Lit $ T.IntLit 1
+          PFloat64 -> Lit $ T.FloatLit 1
+          _        -> undefined
       getType :: Expr -> (Expr, Type)
       getType e = (e, getType' e)
       getType' :: Expr -> Type
@@ -303,9 +302,11 @@ instance Converter T.Stmt Stmt where
           (mapM convertDefaultCase cases)
       T.For clause s ->
         wrap $
-        For <$> RC.newLoopLabel rc <*> convertForClause clause <*> wrap (cs s)
-      T.Break -> Break <$> RC.currentLoopLabel rc
-      T.Continue -> Continue <$> RC.currentLoopLabel rc
+        For <$> RC.newLabel' (RC.breakParent . RC.continueParent) rc <*>
+        convertForClause clause <*>
+        wrap (cs s)
+      T.Break -> Break <$> RC.breakParentLabel rc
+      T.Continue -> Continue <$> RC.continueParentLabel rc
       T.Declare decl -> convert rc decl
       T.Print exprs -> Print <$> mapM ce exprs
       T.Println exprs -> Println <$> mapM ce exprs
@@ -326,7 +327,10 @@ instance Converter T.Stmt Stmt where
         css post
       convertSwitchCase :: T.SwitchCase -> ST s (Maybe SwitchCase)
       convertSwitchCase (T.Case exprs s) =
-        wrap $ Just <$$> Case <$> mapM ce exprs <*> wrap (cs s)
+        wrap $
+        Just <$>
+        (Case <$> RC.newLabel' RC.breakParent rc <*> mapM ce exprs <*>
+         wrap (cs s))
       convertSwitchCase _ = return Nothing
       convertDefaultCase :: T.SwitchCase -> ST s (Maybe Stmt)
       convertDefaultCase (T.Default s) = Just <$> wrap (cs s)
