@@ -157,16 +157,16 @@ type VarIndexFunc s
    = ResourceContext s -> C.ScopedIdent -> Type -> ST s VarIndex
 
 paramIndex :: forall s. VarIndexFunc s
-paramIndex = varIndex' True
+paramIndex = varIndexBase True
 
 varIndex :: forall s. VarIndexFunc s
-varIndex = varIndex' False
+varIndex = varIndexBase False
 
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
 -- Otherwise, we will output 1 greater than the biggest index to date
-varIndex' :: forall s. Bool -> VarIndexFunc s
-varIndex' requiresNew st si vt = do
+varIndexBase :: forall s. Bool -> VarIndexFunc s
+varIndexBase requiresNew st si vt = do
   let key = VarKey si
   rc <- readRef st
   candidates <-
