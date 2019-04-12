@@ -13,7 +13,7 @@ import java.util.Arrays;
  * or a value of the appropriate type in a one dimensional array.
  * You may optionally set the debug flag to true to get some verifications.
  */
-public class GlcArray {
+public class GlcArray implements GlcCopy {
     /**
      * Current length of the array
      */
@@ -78,28 +78,22 @@ public class GlcArray {
         return new GlcArray(clazz, subSizes, debug);
     }
 
+    @Override
     public GlcArray copy() {
-        if (this == null) {
-            return null;
-        }
-        else {
-            Object[] newArray = null;
-            if (this.isSlice) {
-                newArray = this.array;
-            }
-            else if (this.array != null) {
-                newArray = new Object[this.length];
-                if (this.clazz == Integer.class || this.clazz == Double.class || this.clazz == String.class) {
-                    System.arraycopy(this.array, 0, newArray, 0, this.length);
-                }
-                else {
-                    for (int i = 0; i < this.length; i++) {
-                        newArray[i] = this.copy();
-                    }
+        Object[] newArray = null;
+        if (this.isSlice) {
+            newArray = this.array;
+        } else if (this.array != null) {
+            newArray = new Object[this.length];
+            if (this.clazz == Integer.class || this.clazz == Double.class || this.clazz == String.class) {
+                System.arraycopy(this.array, 0, newArray, 0, this.length);
+            } else {
+                for (int i = 0; i < this.length; i++) {
+                    newArray[i] = Utils.copy(this.array[i]);
                 }
             }
-            return new GlcArray(this.clazz, this.isSlice, this.subSizes, this.length, newArray, this.debug);
         }
+        return new GlcArray(this.clazz, this.isSlice, this.subSizes, this.length, newArray, this.debug);
     }
 
     /**

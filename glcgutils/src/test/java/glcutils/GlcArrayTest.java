@@ -79,6 +79,15 @@ public class GlcArrayTest {
     }
 
     @Test
+    public void copyTest() {
+        GlcArray a = new GlcArray(Struct1.class, new int[]{1, 1}, true);
+        // Prompt array initialization
+        a.get(0);
+        a = a.copy();
+        assertEquals(new GlcArray(Struct1.class, new int[]{1}, true), a.get(0));
+    }
+
+    @Test
     public void multiArrayCheck() {
         GlcArray a1 = new GlcArray(Struct1.class, new int[]{3, 5}, true);
         GlcArray a2 = new GlcArray(Struct1.class, new int[]{3, 5}, true);
