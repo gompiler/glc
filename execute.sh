@@ -33,7 +33,7 @@ python3 "$krakatau_abs/assemble.py" $FILENAME 2> /dev/null > /dev/null
 # Note the bash replacement which changes:
 #   programs/3-semantics+codegen/valid/test.min -> programs/3-semantics+codegen/valid/test.go.class
 unset _JAVA_OPTIONS # Suppress picked up _JAVA_OPTIONS ...
-java Main
+java -Xss4M Main
 
 # Lastly, we propagate the exit code
 exit $?
