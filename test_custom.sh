@@ -208,6 +208,7 @@ do
 				STATUS_COLOUR="42"
 			else
 				STATUS_COLOUR="41"
+				RESULT=1
 			fi
 
 			echo -e "\e[${STATUS_COLOUR}m# ${PHASE_NAME} ${TYPE}: ${COUNT_PASSED}/${COUNT}\e[49m"
