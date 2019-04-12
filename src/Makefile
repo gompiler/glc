@@ -24,7 +24,7 @@ build: gen ../Krakatau/assemble.py
 	stack --allow-different-user build $(COMPILE_FLAGS)
 
 ../Krakatau/assemble.py:
-	git submodule update --recursive
+	git submodule update --init --recursive
 
 .PHONY: gen
 gen: src/generated/TokenGen.hs src/generated/ParserGen.hs $(JFILES)
