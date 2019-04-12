@@ -134,8 +134,8 @@ codegenParser =
   info
     (CI Codegen <$> parseFile)
     (fullDesc <>
-     progDesc "Generates equivalent C code in an output file and outputs OK." <>
-     header "codegen - generate C code from a source file")
+     progDesc "Generates equivalent JVM Bytecode in an output file and outputs OK." <>
+     header "codegen - generate JVM Bytecode from a source file")
 
 -- Combine all mode parsers into one
 cmdParser :: ParserInfo CmdI

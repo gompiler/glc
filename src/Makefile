@@ -20,14 +20,17 @@ cleangen:
 	mvn clean -f ../glcgutils
 
 .PHONY: build
-build: gen
+build: gen ../Krakatau/assemble.py
 	stack --allow-different-user build $(COMPILE_FLAGS)
+
+../Krakatau/assemble.py:
+	git submodule update --init --recursive
 
 .PHONY: gen
 gen: src/generated/TokenGen.hs src/generated/ParserGen.hs $(JFILES)
 
 .PHONY: report
-report: 
+report:
 	stack --allow-different-user hpc report glc.tix
 
 $(JFILES): glcutils

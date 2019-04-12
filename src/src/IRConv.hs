@@ -382,11 +382,17 @@ toClasses T.Program { T.structs = scts
         { mname = "set_" ++ fn
         , mstatic = False
         , stackLimit = maxStackSize setBody 0
-        , localsLimit = 2 -- One for this and one for argument
+        , localsLimit = ll -- One for this and one/two for argument
         , spec = MethodSpec ([typeToJType t], JVoid)
         , body = setBody
         }
       where
+        ll :: Int
+        ll =
+          1 +
+          (case t of
+             T.PFloat64 -> 2
+             _          -> 1)
         setBody :: [IRItem]
         setBody =
           let jt = typeToJType t
@@ -401,11 +407,17 @@ toClasses T.Program { T.structs = scts
         { mname = "get_" ++ fn
         , mstatic = False
         , stackLimit = maxStackSize getBody 0
-        , localsLimit = 2 -- One for this and one for copy
+        , localsLimit = ll -- One for this and one/two for copy
         , spec = MethodSpec ([], typeToJType t)
         , body = getBody
         }
       where
+        ll :: Int
+        ll =
+          1 +
+          (case t of
+             T.PFloat64 -> 2
+             _          -> 1)
         getBody :: [IRItem]
         getBody =
           let jt = typeToJType t
@@ -519,9 +531,9 @@ instance IRRep T.Stmt where
     concatMap irCaseHeaders (zip [1 ..] scs) ++
     IRLabel ("default_" ++ show idx) :
     toIR dstmt ++ -- pop off remaining comparison value
-    iri [Goto ("end_sc_" ++ show idx)] ++
+    iri [Goto ("end_breakable_" ++ show idx)] ++
     concatMap irCaseBodies (zip [1 ..] scs) ++
-    [IRLabel ("end_sc_" ++ show idx), IRInst Pop] -- duplicate expression for case statement expressions in lists
+    [IRLabel ("end_breakable_" ++ show idx), IRInst Pop] -- duplicate expression for case statement expressions in lists
     where
       irCaseHeaders :: (Int, T.SwitchCase) -> [IRItem]
       irCaseHeaders (cIdx, T.Case _ exprs _) =
@@ -540,20 +552,20 @@ instance IRRep T.Stmt where
       irCaseBodies :: (Int, T.SwitchCase) -> [IRItem]
       irCaseBodies (cIdx, T.Case _ _ stmt) =
         [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
-        toIR stmt ++ iri [Goto ("end_sc_" ++ show idx)]
+        toIR stmt ++ iri [Goto ("end_breakable_" ++ show idx)]
   toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =
     toIR lstmt ++
     IRLabel ("loop_" ++ show idx) :
     toIR cond ++
-    iri [If IRData.LE ("end_loop_" ++ show idx)] ++
+    iri [If IRData.LE ("end_breakable_" ++ show idx)] ++
     toIR fbody ++
     IRLabel ("post_loop_" ++ show idx) :
     toIR rstmt ++
     [ IRInst (Goto $ "loop_" ++ show idx)
-    , IRLabel ("end_loop_" ++ show idx)
+    , IRLabel ("end_breakable_" ++ show idx)
     , IRInst NOp
     ]
-  toIR (T.Break (T.LabelIndex idx)) = iri [Goto ("end_loop_" ++ show idx)]
+  toIR (T.Break (T.LabelIndex idx)) = iri [Goto ("end_breakable_" ++ show idx)]
   toIR (T.Continue (T.LabelIndex idx)) = iri [Goto ("post_loop_" ++ show idx)]
   toIR (T.VarDecl vdl) = concatMap toIR vdl
   toIR (T.Print el) = concatMap printIR el
@@ -573,29 +585,8 @@ instance IRRep T.VarDecl' where
       _ -- Get default and store
        ->
         case t of
-          (T.ArrayType l at) ->
-            case at -- TODO: Defaults of elements??? or null checks elsewhere?
-                  of
-              T.ArrayType {} -> nestedGlcArrayIR t idx
-              T.SliceType {} -> nestedGlcArrayIR t idx
-              T.PInt -> arrayOrSliceIR jInteger l idx
-              T.PFloat64 -> arrayOrSliceIR jDouble l idx
-              T.PBool -> arrayOrSliceIR jInteger l idx
-              T.PRune -> arrayOrSliceIR jInteger l idx
-              T.PString -> arrayOrSliceIR jString l idx
-              T.StructType sid ->
-                arrayOrSliceIR (ClassRef $ structName sid) l idx -- TODO: FIX THIS FOR NEW STRUCTS
-          (T.SliceType st) ->
-            case st of
-              T.ArrayType {} -> nestedGlcArrayIR t idx
-              T.SliceType {} -> nestedGlcArrayIR t idx
-              T.PInt -> arrayOrSliceIR jInteger (-1) idx
-              T.PFloat64 -> arrayOrSliceIR jDouble (-1) idx
-              T.PRune -> arrayOrSliceIR jInteger (-1) idx
-              T.PBool -> arrayOrSliceIR jInteger (-1) idx
-              T.PString -> arrayOrSliceIR jString (-1) idx
-              T.StructType sid ->
-                arrayOrSliceIR (ClassRef $ structName sid) (-1) idx
+          (T.ArrayType l at) -> glcArrayIR l at
+          (T.SliceType st) -> glcArrayIR (-1) st
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
@@ -612,6 +603,18 @@ instance IRRep T.VarDecl' where
                      emptySpec)
               , Store Object idx
               ]
+        where glcArrayIR :: Int -> T.Type -> [IRItem]
+              glcArrayIR l t' =
+                case t' of
+                  T.ArrayType {} -> nestedGlcArrayIR t idx
+                  T.SliceType {} -> nestedGlcArrayIR t idx
+                  T.PInt -> arrayOrSliceIR jInteger l idx
+                  T.PFloat64 -> arrayOrSliceIR jDouble l idx
+                  T.PRune -> arrayOrSliceIR jInteger l idx
+                  T.PBool -> arrayOrSliceIR jInteger l idx
+                  T.PString -> arrayOrSliceIR jString l idx
+                  T.StructType sid ->
+                    arrayOrSliceIR (ClassRef $ structName sid) l idx
 
 nestedGlcArrayIR :: T.Type -> T.VarIndex -> [IRItem]
 nestedGlcArrayIR t idx =
@@ -706,7 +709,7 @@ printIR e =
       iri [LDC (LDCString "%+e")] ++
       iri [IConst1, ANewArray jObject, Dup, IConst0] ++
       toIR e ++
-      objectRepr JDouble ++
+      doubleObjectRepr ++
       iri
         [ ArrayStore Object
         , InvokeVirtual $
@@ -717,6 +720,10 @@ printIR e =
                ([JClass jString, JArray (JClass jObject)], JClass printStream))
         , Pop
         ]
+      where
+        doubleObjectRepr :: [IRItem]
+        doubleObjectRepr =
+          iri [New jDouble, Dup, Dup2X2, Pop2, InvokeSpecial jDoubleInit]
     stringPrint :: [IRItem]
     stringPrint =
       iri
@@ -824,9 +831,9 @@ instance IRRep T.SimpleStmt where
               (T.BitClear, Prim _) -> iri [IConstM1, IXOr, IAnd]
               _ -> error "Invalid operation on non-primitive"
       setStore :: (T.Expr, T.Expr) -> [IRItem]
-      setStore (e, _) =
-        case e of
-          T.Var t idx -> iri [Store (typeToIRType t) idx]
+      setStore (se, ve) =
+        case se of
+          T.Var _ idx -> iri [Store (exprIRType ve) idx] -- Cannot use var t in the case of holes...
           T.TopVar t tvi ->
             iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
           T.Selector t eo (T.Ident fid) ->
@@ -961,7 +968,8 @@ instance IRRep T.Expr where
   toIR (T.Var t vi) = iri [Load (typeToIRType t) vi]
   toIR (T.TopVar t tvi) =
     iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
-  toIR (T.AppendExpr _ e1 e2) = toIR e1 ++ toIR e2 ++ appendIR
+  toIR (T.AppendExpr _ e1 e2) =
+    toIR e1 ++ toIR e2 ++ cloneIfNeeded e2 ++ appendIR -- clone e2 as if it were an argument
     where
       appendIR :: [IRItem]
       appendIR =
@@ -1050,44 +1058,6 @@ cloneIfNeeded e =
         , CheckCast (ARef jt)
         ]
     _ -> [] -- Primitives and strings are not clonable
-
-objectRepr :: JType -> [IRItem]
-objectRepr t =
-  case t of
-    JClass cr ->
-      iri
-        [ InvokeVirtual $
-          MethodRef (CRef cr) "clone" (MethodSpec ([], JClass jObject))
-        , CheckCast (CRef cr)
-        ]
-    JArray jt ->
-      iri
-        [ InvokeVirtual $
-          MethodRef (ARef jt) "clone" (MethodSpec ([], JClass jObject))
-        , CheckCast (ARef jt)
-        ]
-    JChar ->
-      iri [New jCharacter, DupX1, Swap, InvokeSpecial jCharInit] -- e, o -> o, e, o -> o, o, e -> o
-    JInt ->
-      iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit] -- e, o -> o, e, o -> o, o, e -> o
-    JDouble -- e1, e2, o -> e1, e2, o, o -> o, o, e1, e2, o, o -> o, o, e1, e2 -> o
-     -> iri [New jDouble, Dup, Dup2X2, Pop2, InvokeSpecial jDoubleInit]
-    JBool -> iri [New jInteger, DupX1, Swap, InvokeSpecial jIntInit]
-    JVoid -> error "Cannot have slice of void"
-
-objectDecode :: T.Type -> [IRItem]
-objectDecode t -- TODO: Maybe this should just be IRType
- =
-  case t -- TODO: Might need CheckCast
-        of
-    T.ArrayType {} -> [] -- nothing to do
-    T.SliceType {} -> [] -- nothing to do
-    T.PInt         -> iri [InvokeVirtual jIntValue]
-    T.PFloat64     -> iri [InvokeVirtual jDoubleValue]
-    T.PBool        -> iri [InvokeVirtual jIntValue]
-    T.PRune        -> iri [InvokeVirtual jIntValue]
-    T.PString      -> [] -- nothing to do
-    T.StructType _ -> [] -- nothing to do
 
 equalityNL :: Bool -> String -> Int -> T.Type -> [IRItem]
 equalityNL eq lbl idx t =
@@ -1213,88 +1183,79 @@ typeToJType T.PBool            = JBool
 typeToJType T.PString          = JClass jString
 typeToJType (T.StructType sid) = JClass (ClassRef $ structName sid)
 
-stackDelta :: Instruction -> Int
-stackDelta (Load (Prim IRDouble) _) = 2 -- ... -> ..., v (double-wide)
-stackDelta Load {} = 1 -- ... -> ..., v
-stackDelta (ArrayLoad (Prim IRDouble)) = 0 -- ..., o, i -> v (double-wide)
-stackDelta ArrayLoad {} = -1 -- ..., o, i -> v
-stackDelta (Store (Prim IRDouble) _) = -2 -- ..., v -> ... (double-wide)
-stackDelta Store {} = -1 -- ..., v -> ...
-stackDelta (ArrayStore (Prim IRDouble)) = -4 -- ..., o, i, v2 -> ...
-stackDelta ArrayStore {} = -3 -- ..., o, i, v -> ...
-stackDelta (Return m) =
-  case m of
-    Nothing              -> 0
-    Just (Prim IRDouble) -> -2
-    Just _               -> -1
-stackDelta Dup = 1 -- ..., v -> ..., v, v
-stackDelta Dup2 = 2 -- ..., v, w -> ..., v, w, v, w
-stackDelta DupX1 = 1 -- ..., v, w -> ..., w, v, w
-stackDelta Dup2X2 = 2 -- ..., v, w, x, y -> ..., x, y, v, w, x, y
-stackDelta Goto {} = 0
-stackDelta (Add IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
-stackDelta (Add IRInt) = -1 -- ..., v, w -> ..., r
-stackDelta (Div IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
-stackDelta (Div IRInt) = -1 -- ..., v, w -> ..., r
-stackDelta (Mul IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
-stackDelta (Mul IRInt) = -1 -- ..., v, w -> ..., r
-stackDelta (Sub IRDouble) = -2 -- ..., v, w -> ..., r (double-wide)
-stackDelta (Sub IRInt) = -1 -- ..., v, w -> ..., r
-stackDelta Neg {} = 0 -- ..., v -> ..., r (double-wide or not)
-stackDelta IRem = -1 -- ..., v, w -> ..., r
-stackDelta IShL = -1 -- ..., v, w -> ..., r
-stackDelta IShR = -1 -- ..., v, w -> ..., r
-stackDelta IAnd = -1 -- ..., v, w -> ..., r
-stackDelta IOr = -1 -- ..., v, w -> ..., r
-stackDelta IXOr = -1 -- ..., v, w -> ..., r
-stackDelta IntToDouble = 1 --- ..., i -> ..., d (double-wide)
-stackDelta DoubleToInt = -1 --- ..., d (double-wide) -> ..., i
-stackDelta If {} = -1 -- ..., v -> ...
-stackDelta IfICmp {} = -2 -- ..., v, w -> ...
-stackDelta IfNonNull {} = -1 -- ..., v -> ...
-stackDelta (LDC (LDCDouble _)) = 2 -- ... -> ..., v (double-wide)
-stackDelta LDC {} = 1 -- ... -> ..., v
-stackDelta IConstM1 = 1 -- ... -> ..., -1
-stackDelta IConst0 = 1 -- ... -> ..., 0
-stackDelta IConst1 = 1 -- ... -> ..., 1
-stackDelta AConstNull = 1 -- ... -> ..., null
-stackDelta DCmpG = -3 -- ..., v1, v2 -> ..., r
-stackDelta New {} = 1 -- ... -> ..., o
-stackDelta CheckCast {} = 0 -- ..., o -> ..., o (checked)
-stackDelta ANewArray {} = 0 -- ..., c -> ..., o
-stackDelta (MultiANewArray _ c) = (-c) + 1 -- ..., c1, c2, .. -> ..., o
-stackDelta NewArray {} = 0 -- ..., c -> ..., o
-stackDelta NOp = 0
-stackDelta Pop = -1 -- ..., v -> ...
-stackDelta Pop2 = -2 -- ..., v, w -> ...
-stackDelta Swap = 0 -- ..., v, w -> ..., w, v
-stackDelta (GetStatic _ JDouble) = 2 -- ... -> ..., v (double-wide)
-stackDelta GetStatic {} = 1 -- ... -> ..., v
-stackDelta (GetField _ JDouble) = 1 -- ..., o -> ..., v (double-wide)
-stackDelta GetField {} = 0 -- ..., o -> ..., v
-stackDelta (PutStatic _ JDouble) = -2 -- ..., v -> ... (double-wide)
-stackDelta PutStatic {} = -1 -- ..., v -> ...
-stackDelta (PutField _ JDouble) = -3 -- ..., o, v -> ... (double-wide)
-stackDelta PutField {} = -2 -- ..., o, v -> ...
-stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, rt))))
-  -- ..., o, a1, .., an -> r (or void)
- =
-  case rt of
-    JVoid -> -(length a) - 1
-    _     -> -(length a)
-stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, rt))))
-  -- ..., o, a1, .., an -> r (or void)
- =
-  case rt of
-    JVoid -> -(length a) - 1
-    _     -> -(length a)
-stackDelta (InvokeStatic (MethodRef _ _ (MethodSpec (a, rt))))
-  -- ..., a1, .., an -> r
- =
-  case rt of
-    JVoid -> -(length a)
-    _     -> -(length a) + 1
-stackDelta Debug {} = 0
+class StackHeight a where
+  stackDelta :: a -> Int
+
+instance StackHeight Instruction where
+  stackDelta (Load ir _) = stackDelta ir -- ... -> ..., v
+  stackDelta (ArrayLoad ir) = -1 + stackDelta ir -- ..., o, i -> v (double-wide)
+  stackDelta (Store ir _) = -(stackDelta ir) -- ..., v -> ...
+  stackDelta (ArrayStore ir) = -2 - stackDelta ir -- ..., o, i, v -> ...
+  stackDelta (Return m) = maybe 0 stackDelta m
+  stackDelta Dup = 1 -- ..., v -> ..., v, v
+  stackDelta Dup2 = 2 -- ..., v, w -> ..., v, w, v, w
+  stackDelta DupX1 = 1 -- ..., v, w -> ..., w, v, w
+  stackDelta Dup2X2 = 2 -- ..., v, w, x, y -> ..., x, y, v, w, x, y
+  stackDelta Goto {} = 0
+  stackDelta (Add ir) = -(stackDelta ir) -- ..., v, w -> ..., r
+  stackDelta (Div ir) = -(stackDelta ir) -- ..., v, w -> ..., r
+  stackDelta (Mul ir) = -(stackDelta ir) -- ..., v, w -> ..., r
+  stackDelta (Sub ir) = -(stackDelta ir) -- ..., v, w -> ..., r
+  stackDelta Neg {} = 0 -- ..., v -> ..., r (double-wide or not)
+  stackDelta IRem = -1 -- ..., v, w -> ..., r
+  stackDelta IShL = -1 -- ..., v, w -> ..., r
+  stackDelta IShR = -1 -- ..., v, w -> ..., r
+  stackDelta IAnd = -1 -- ..., v, w -> ..., r
+  stackDelta IOr = -1 -- ..., v, w -> ..., r
+  stackDelta IXOr = -1 -- ..., v, w -> ..., r
+  stackDelta IntToDouble = 1 --- ..., i -> ..., d (double-wide)
+  stackDelta DoubleToInt = -1 --- ..., d (double-wide) -> ..., i
+  stackDelta If {} = -1 -- ..., v -> ...
+  stackDelta IfICmp {} = -2 -- ..., v, w -> ...
+  stackDelta IfNonNull {} = -1 -- ..., v -> ...
+  stackDelta (LDC (LDCDouble _)) = 2 -- ... -> ..., v (double-wide)
+  stackDelta LDC {} = 1 -- ... -> ..., v
+  stackDelta IConstM1 = 1 -- ... -> ..., -1
+  stackDelta IConst0 = 1 -- ... -> ..., 0
+  stackDelta IConst1 = 1 -- ... -> ..., 1
+  stackDelta AConstNull = 1 -- ... -> ..., null
+  stackDelta DCmpG = -3 -- ..., v1, v2 -> ..., r
+  stackDelta New {} = 1 -- ... -> ..., o
+  stackDelta CheckCast {} = 0 -- ..., o -> ..., o (checked)
+  stackDelta ANewArray {} = 0 -- ..., c -> ..., o
+  stackDelta (MultiANewArray _ c) = (-c) + 1 -- ..., c1, c2, .. -> ..., o
+  stackDelta NewArray {} = 0 -- ..., c -> ..., o
+  stackDelta NOp = 0
+  stackDelta Pop = -1 -- ..., v -> ...
+  stackDelta Pop2 = -2 -- ..., v, w -> ...
+  stackDelta Swap = 0 -- ..., v, w -> ..., w, v
+  stackDelta (GetStatic _ jt) = stackDelta jt -- ... -> ..., v
+  stackDelta (GetField _ jt) = -1 + stackDelta jt -- ..., o -> ..., v
+  stackDelta (PutStatic _ jt) = -(stackDelta jt) -- ..., v -> ...
+  stackDelta (PutField _ jt) = -1 - stackDelta jt -- ..., o, v -> ...
+  stackDelta (InvokeSpecial (MethodRef _ _ (MethodSpec (a, rt))))
+    -- ..., o, a1, .., an -> r (or void)
+   = sum (map stackDelta a) - 1 + stackDelta rt
+  stackDelta (InvokeVirtual (MethodRef _ _ (MethodSpec (a, rt))))
+    -- ..., o, a1, .., an -> r (or void)
+   = sum (map stackDelta a) - 1 + stackDelta rt
+  stackDelta (InvokeStatic (MethodRef _ _ (MethodSpec (a, rt))))
+    -- ..., a1, .., an -> r
+   = sum (map stackDelta a) + stackDelta rt
+  stackDelta Debug {} = 0
+
+instance StackHeight JType where
+  stackDelta JDouble = 2
+  stackDelta JVoid   = 0
+  stackDelta _       = 1 -- references, chars, ints, bools
+
+instance StackHeight IRType where
+  stackDelta Object    = 1 -- references are 32-bit
+  stackDelta (Prim ir) = stackDelta ir
+
+instance StackHeight IRPrimitive where
+  stackDelta IRDouble = 2
+  stackDelta IRInt    = 1
 
 maxStackSize :: [IRItem] -> Int -> Int
 maxStackSize irs current =

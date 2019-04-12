@@ -290,7 +290,7 @@ instance Converter T.Stmt Stmt where
         If <$> RC.newLabel rc <*> cse se <*> wrap (cs s1) <*> wrap (cs s2)
       T.Switch s e cases ->
         wrap $
-        Switch <$> RC.newLabel rc <*> css s <*>
+        Switch <$> RC.newLabel' RC.breakParent rc <*> css s <*>
         maybe (return $ Lit $ T.BoolLit True) ce e <*>
         fmap catMaybes (mapM convertSwitchCase cases) <*>
         -- Note that we find a list of all defaults
@@ -328,9 +328,7 @@ instance Converter T.Stmt Stmt where
       convertSwitchCase :: T.SwitchCase -> ST s (Maybe SwitchCase)
       convertSwitchCase (T.Case exprs s) =
         wrap $
-        Just <$>
-        (Case <$> RC.newLabel' RC.breakParent rc <*> mapM ce exprs <*>
-         wrap (cs s))
+        Just <$> (Case <$> RC.newLabel rc <*> mapM ce exprs <*> wrap (cs s))
       convertSwitchCase _ = return Nothing
       convertDefaultCase :: T.SwitchCase -> ST s (Maybe Stmt)
       convertDefaultCase (T.Default s) = Just <$> wrap (cs s)
