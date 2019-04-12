@@ -4,6 +4,11 @@
 //~Min coloring of the graph: 7
 //~One of the optimal colorings: 6 6 6 6 6 6 6
 //~Min coloring of the graph: 1
+//~One of the optimal colorings: 6 5 5 6 6 5 4
+//~Min coloring of the graph: 3
+//~One of the optimal colorings: 6 5 6 5 4 6 6
+//~Min coloring of the graph: 3
+
 //&6 seconds
 
 package main
@@ -127,25 +132,47 @@ func solve(i int, graph colorgraph) res {
 	return res
 }
 
+func addEdge(g colorgraph, i, j int) {
+	g[i].row[j] = true
+	g[j].row[i] = true
+}
+
 func main() {
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 5; i++ {
 		g := initgraph(7)
 		switch i {
 		case 0:
-			g[0].row[1] = true
-			g[0].row[2] = true
-			g[0].row[3] = true
-			g[0].row[4] = true
-			g[1].row[2] = true
+			addEdge(g, 0, 1)
+			addEdge(g, 0, 2)
+			addEdge(g, 0, 3)
+			addEdge(g, 0, 4)
+			addEdge(g, 1, 2)
 		case 1:
 			// complete graph
-			for i2 := 0; i2 < 7; i2++ {
-				for j := 0; j < 7; j++ {
-					g[i2].row[j] = true
+			for i2 := 0; i2 < len(g); i2++ {
+				for j := 0; j < len(g); j++ {
+					addEdge(g, i2, j)
 				}
 			}
 		case 2:
 			// graph with no edges
+		case 3:
+			addEdge(g, 0, 1)
+			addEdge(g, 0, 2)
+			addEdge(g, 1, 3)
+			addEdge(g, 2, 3)
+			addEdge(g, 4, 5)
+			addEdge(g, 4, 6)
+			addEdge(g, 5, 6)
+		case 4:
+			addEdge(g, 0, 1)
+			addEdge(g, 0, 3)
+			addEdge(g, 1, 2)
+			addEdge(g, 3, 2)
+			addEdge(g, 3, 4)
+			addEdge(g, 2, 4)
+			addEdge(g, 4, 6)
+			addEdge(g, 4, 5)
 		}
 
 		r := solve(0, g)
