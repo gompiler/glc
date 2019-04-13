@@ -393,9 +393,9 @@ toClasses T.Program { T.structs = scts
         cpField :: T.FieldDecl -> [IRItem]
         cpField (T.FieldDecl (D.Ident fn) t) =
             case t of
-               T.ArrayType {} -> cpObj
-               T.SliceType {} -> cpObj
-               T.StructType {} -> cpObj
+               T.ArrayType {} -> cpObj cGlcArray
+               T.SliceType {} -> cpObj cGlcArray
+               T.StructType sid' -> cpObj (ClassRef $ structName sid')
                _ -> iri [ Load Object (T.VarIndex 1)
                         , Load Object (T.VarIndex 0)
                         , GetField (FieldRef (ClassRef sn) fn) jt
@@ -404,12 +404,13 @@ toClasses T.Program { T.structs = scts
           where
           jt :: JType
           jt = typeToJType t
-          cpObj :: [IRItem]
-          cpObj =
+          cpObj :: ClassRef -> [IRItem]
+          cpObj cr' =
             iri [ Load Object (T.VarIndex 1)
                 , Load Object (T.VarIndex 0)
+                , GetField (FieldRef (ClassRef sn) fn) jt
                 , InvokeStatic (MethodRef (CRef glcUtils) "copy" (MethodSpec ([JClass jObject], JClass jObject)))
-                , CheckCast cr
+                , CheckCast (CRef cr')
                 ] ++
             iri [PutField (FieldRef (ClassRef sn) fn) jt]
     setter :: String -> T.FieldDecl -> Method
@@ -1064,7 +1065,8 @@ cloneIfNeeded e =
     JClass cr ->
       iri
         [ InvokeVirtual $
-          MethodRef (CRef cr) "copy" (MethodSpec ([], JClass cr))
+          MethodRef (CRef cr) "copy" (MethodSpec ([], JClass jObject))
+        , CheckCast (CRef cr)
         ]
     JArray jt ->
       iri
