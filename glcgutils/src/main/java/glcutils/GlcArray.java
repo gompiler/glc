@@ -13,6 +13,7 @@ import java.util.Arrays;
  * or a value of the appropriate type in a one dimensional array.
  * You may optionally set the debug flag to true to get some verifications.
  */
+@SuppressWarnings({"WeakerAccess", "unchecked"})
 public class GlcArray implements GlcCopy {
     /**
      * Current length of the array
@@ -56,6 +57,11 @@ public class GlcArray implements GlcCopy {
         this.clazz = clazz;
         this.array = array;
         this.debug = debug;
+        if (debug && array != null) {
+            for (Object o : array) {
+                verify(o);
+            }
+        }
     }
 
     /**
@@ -106,7 +112,6 @@ public class GlcArray implements GlcCopy {
         if (array[i] == null) {
             array[i] = supply();
         }
-        // noinspection unchecked
         return (T) array[i];
     }
 
@@ -321,7 +326,7 @@ public class GlcArray implements GlcCopy {
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(array);
+        return Boolean.hashCode(isSlice) + Arrays.hashCode(subSizes) + Arrays.hashCode(array);
     }
 
     @Override

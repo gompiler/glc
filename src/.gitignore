@@ -1,4 +1,5 @@
 !glcutils/*.j
+
 .stack-work/
 glc.cabal
 golite.info

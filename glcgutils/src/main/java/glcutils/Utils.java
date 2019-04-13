@@ -2,6 +2,7 @@ package glcutils;
 
 import java.util.Arrays;
 
+@SuppressWarnings({"WeakerAccess", "unchecked"})
 public class Utils {
     public static String boolStr(int b) {
         if (b == 0) {

@@ -77,7 +77,7 @@ public class Struct1 implements GlcCopy {
         if (!Objects.equals(this.stringField, other.stringField)) {
             return false;
         }
-        // For structs/arrays, check by reference, then check by content.
+        // For objects, check by reference, then check by content.
         // If both are null, we know that they are equal
         // If one is not null, we must compare both by content equality
         // Calling getter will ensure all fields are no longer null,
