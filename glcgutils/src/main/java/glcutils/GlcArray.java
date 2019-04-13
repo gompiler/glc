@@ -85,7 +85,8 @@ public class GlcArray implements GlcCopy {
             newArray = this.array;
         } else if (this.array != null) {
             newArray = new Object[this.length];
-            if (this.clazz == Integer.class || this.clazz == Double.class || this.clazz == String.class) {
+            if (this.clazz == Boolean.class || this.clazz == Character.class || this.clazz == Integer.class
+                    || this.clazz == Float.class || this.clazz == Double.class || this.clazz == String.class) {
                 System.arraycopy(this.array, 0, newArray, 0, this.length);
             } else {
                 for (int i = 0; i < this.length; i++) {
