@@ -27,7 +27,7 @@ instance Bytecode Class where
   toBC' (Class cn strct fls mts) =
     B.concat
       [ bstrM [".class public ", cn, "\n", ".super java/lang/Object", "\n"]
-      , if strct then bstrM [".implements ", glcCopy] else bstr ""
+      , if strct then bstrM [".implements ", glcCopy, "\n"] else bstr ""
       , bstr "\n"
       , B.concat $ map toBC fls
       , B.concat $ map toBC mts
