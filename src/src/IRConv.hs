@@ -362,9 +362,10 @@ toClasses T.Program { T.structs = scts
             primEq = iri [ Load Object (T.VarIndex 0)
                            , GetField fr jt
                            , Load Object (T.VarIndex 2)
-                           , GetField fr jt
-                           , IfICmp IRData.NE label
-                           ]
+                           , GetField fr jt ] ++
+                     iri (if t == T.PFloat64 then [ DCmpG, If IRData.NE label ]
+                           else [ IfICmp IRData.NE label
+                                ])
     copyStc :: T.StructType -> Method
     copyStc (T.Struct sid fdls) =
       Method
