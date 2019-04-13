@@ -79,7 +79,7 @@ public class GlcArray implements GlcCopy {
     }
 
     @Override
-    public GlcArray copy() {
+    public Object copy() {
         Object[] newArray = null;
         if (this.isSlice) {
             newArray = this.array;

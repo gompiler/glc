@@ -79,12 +79,19 @@ public class GlcArrayTest {
     }
 
     @Test
-    public void copyTest() {
+    public void arrayCopy() {
         GlcArray a = new GlcArray(Struct1.class, new int[]{1, 1}, true);
         // Prompt array initialization
         a.get(0);
-        a = a.copy();
+        a = Utils.copy(a);
         assertEquals(new GlcArray(Struct1.class, new int[]{1}, true), a.get(0));
+    }
+
+    @Test
+    public void structCopy() {
+        Struct1 s = Utils.supply(Struct1.class);
+        Struct1 s2 = Utils.copy(s);
+        assertEquals(s, s2);
     }
 
     @Test
