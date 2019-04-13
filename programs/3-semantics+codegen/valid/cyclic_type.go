@@ -18,5 +18,4 @@ func main() {
 	a1.s = append(a1.s, a2)
 	a2.s = append(a2.s, a1)
 	println(a2.s[0].s[0].f)
-	
 }
