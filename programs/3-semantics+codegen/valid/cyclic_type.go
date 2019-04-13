@@ -1,4 +1,4 @@
-//~2
+//~+2.000000e+000
 package main
 
 type s1 struct {
