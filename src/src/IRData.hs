@@ -235,13 +235,16 @@ jObject :: ClassRef
 jObject = ClassRef "java/lang/Object"
 
 jObjects :: ClassRef
-jObjects = ClassRef "java/lang/Objects"
+jObjects = ClassRef "java/util/Objects"
 
 jClass :: ClassRef
 jClass = ClassRef "java/lang/Class"
 
 stringLength :: MethodRef
 stringLength = MethodRef (CRef jString) "length" (MethodSpec ([], JInt))
+
+objectToString :: MethodRef
+objectToString = MethodRef (CRef jObjects) "toString" (MethodSpec ([JClass jObject, JClass jString], JClass jString))
 
 stringEquals :: MethodRef
 stringEquals =

@@ -773,7 +773,9 @@ printIR e =
     stringPrint :: [IRItem]
     stringPrint =
       iri
-        [ InvokeVirtual $
+        [ LDC (LDCString "")
+        , InvokeStatic objectToString
+        , InvokeVirtual $
           MethodRef
             (CRef printStream)
             "print"

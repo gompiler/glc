@@ -23,5 +23,5 @@ func main() {
 	println(3.3)
 	println("hello\tworld")
 	println(`hello\tworld`)
-	println('a')
+	println(string('a'))
 }
