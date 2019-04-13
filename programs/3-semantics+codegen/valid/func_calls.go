@@ -15,6 +15,12 @@
 //~case
 package main
 
+func foo(i int) int {
+	print("foo ")
+	println(i)
+	return 5
+}
+
 func main() {
 	for i := 0; i < foo(i); i++ {
 		println(i)
@@ -25,12 +31,6 @@ func main() {
 			println("case")
 	}
 	if false && foo(9) == 1 {
-	
-	}
-}
 
-func foo(i int) int {
-	print("foo ")
-	println(i)
-	return 5
+	}
 }
