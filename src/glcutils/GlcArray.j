@@ -1064,83 +1064,82 @@ L71:    aload_0
 L72:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
 L75:    aload_2 
 L76:    getfield Field glcutils/GlcArray clazz Ljava/lang/Class; 
-L79:    invokevirtual Method java/lang/Object equals (Ljava/lang/Object;)Z 
-L82:    ifne L87 
-L85:    iconst_0 
-L86:    ireturn 
+L79:    if_acmpeq L84 
+L82:    iconst_0 
+L83:    ireturn 
 
         .stack same 
-L87:    aload_0 
-L88:    invokespecial Method glcutils/GlcArray init ()V 
-L91:    aload_2 
-L92:    invokespecial Method glcutils/GlcArray init ()V 
-L95:    iconst_0 
-L96:    istore_3 
+L84:    aload_0 
+L85:    invokespecial Method glcutils/GlcArray init ()V 
+L88:    aload_2 
+L89:    invokespecial Method glcutils/GlcArray init ()V 
+L92:    iconst_0 
+L93:    istore_3 
 
         .stack append Integer 
-L97:    iload_3 
-L98:    aload_0 
-L99:    getfield Field glcutils/GlcArray length I 
-L102:   if_icmpge L187 
-L105:   aload_0 
-L106:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L109:   iload_3 
-L110:   aaload 
-L111:   aload_2 
-L112:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L115:   iload_3 
-L116:   aaload 
-L117:   if_acmpne L123 
-L120:   goto L181 
+L94:    iload_3 
+L95:    aload_0 
+L96:    getfield Field glcutils/GlcArray length I 
+L99:    if_icmpge L184 
+L102:   aload_0 
+L103:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L106:   iload_3 
+L107:   aaload 
+L108:   aload_2 
+L109:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L112:   iload_3 
+L113:   aaload 
+L114:   if_acmpne L120 
+L117:   goto L178 
 
         .stack same 
-L123:   aload_0 
-L124:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L127:   iload_3 
-L128:   aaload 
-L129:   ifnonnull L142 
-L132:   aload_0 
-L133:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L136:   iload_3 
-L137:   aload_0 
-L138:   invokespecial Method glcutils/GlcArray supply ()Ljava/lang/Object; 
-L141:   aastore 
+L120:   aload_0 
+L121:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L124:   iload_3 
+L125:   aaload 
+L126:   ifnonnull L139 
+L129:   aload_0 
+L130:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L133:   iload_3 
+L134:   aload_0 
+L135:   invokespecial Method glcutils/GlcArray supply ()Ljava/lang/Object; 
+L138:   aastore 
 
         .stack same 
-L142:   aload_2 
-L143:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L146:   iload_3 
-L147:   aaload 
-L148:   ifnonnull L161 
-L151:   aload_2 
-L152:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L155:   iload_3 
-L156:   aload_0 
-L157:   invokespecial Method glcutils/GlcArray supply ()Ljava/lang/Object; 
-L160:   aastore 
+L139:   aload_2 
+L140:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L143:   iload_3 
+L144:   aaload 
+L145:   ifnonnull L158 
+L148:   aload_2 
+L149:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L152:   iload_3 
+L153:   aload_0 
+L154:   invokespecial Method glcutils/GlcArray supply ()Ljava/lang/Object; 
+L157:   aastore 
 
         .stack same 
-L161:   aload_0 
-L162:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L165:   iload_3 
-L166:   aaload 
-L167:   aload_2 
-L168:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
-L171:   iload_3 
-L172:   aaload 
-L173:   invokevirtual Method java/lang/Object equals (Ljava/lang/Object;)Z 
-L176:   ifne L181 
-L179:   iconst_0 
-L180:   ireturn 
+L158:   aload_0 
+L159:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L162:   iload_3 
+L163:   aaload 
+L164:   aload_2 
+L165:   getfield Field glcutils/GlcArray array [Ljava/lang/Object; 
+L168:   iload_3 
+L169:   aaload 
+L170:   invokevirtual Method java/lang/Object equals (Ljava/lang/Object;)Z 
+L173:   ifne L178 
+L176:   iconst_0 
+L177:   ireturn 
 
         .stack same 
-L181:   iinc 3 1 
-L184:   goto L97 
+L178:   iinc 3 1 
+L181:   goto L94 
 
         .stack chop 1 
-L187:   iconst_1 
-L188:   ireturn 
-L189:   
+L184:   iconst_1 
+L185:   ireturn 
+L186:   
         .linenumbertable 
             L0 283 
             L5 284 
@@ -1154,26 +1153,26 @@ L189:
             L55 296 
             L69 297 
             L71 299 
-            L85 300 
-            L87 302 
-            L91 303 
-            L95 304 
-            L105 305 
-            L120 306 
-            L123 308 
-            L132 309 
-            L142 311 
-            L151 312 
-            L161 314 
-            L179 315 
-            L181 304 
-            L187 318 
+            L82 300 
+            L84 302 
+            L88 303 
+            L92 304 
+            L102 305 
+            L117 306 
+            L120 308 
+            L129 309 
+            L139 311 
+            L148 312 
+            L158 314 
+            L176 315 
+            L178 304 
+            L184 318 
         .end linenumbertable 
         .localvariabletable 
-            3 is i I from L97 to L187 
-            0 is this Lglcutils/GlcArray; from L0 to L189 
-            1 is obj Ljava/lang/Object; from L0 to L189 
-            2 is other Lglcutils/GlcArray; from L29 to L189 
+            3 is i I from L94 to L184 
+            0 is this Lglcutils/GlcArray; from L0 to L186 
+            1 is obj Ljava/lang/Object; from L0 to L186 
+            2 is other Lglcutils/GlcArray; from L29 to L186 
         .end localvariabletable 
     .end code 
 .end method 
