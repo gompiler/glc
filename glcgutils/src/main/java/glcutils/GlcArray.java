@@ -85,13 +85,14 @@ public class GlcArray implements GlcCopy {
     }
 
     @Override
-    public GlcArray copy() {
+    public Object copy() {
         Object[] newArray = null;
         if (this.isSlice) {
             newArray = this.array;
         } else if (this.array != null) {
             newArray = new Object[this.length];
-            if (this.clazz == Integer.class || this.clazz == Double.class || this.clazz == String.class) {
+            if (this.clazz == Boolean.class || this.clazz == Character.class || this.clazz == Integer.class
+                    || this.clazz == Float.class || this.clazz == Double.class || this.clazz == String.class) {
                 System.arraycopy(this.array, 0, newArray, 0, this.length);
             } else {
                 for (int i = 0; i < this.length; i++) {
@@ -301,7 +302,7 @@ public class GlcArray implements GlcCopy {
         if (!Arrays.equals(this.subSizes, other.subSizes)) {
             return false;
         }
-        if (!this.clazz.equals(other.clazz)) {
+        if (this.clazz != other.clazz) {
             return false;
         }
         init();
