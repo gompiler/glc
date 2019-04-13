@@ -1,4 +1,5 @@
 //~
+//~bcd
 //~0
 //~1
 //~-1
@@ -13,6 +14,7 @@ package main
 func main() {
 	var a string
 	println(a) // null
+	println(a + "b" + a + "c" + "d")
 	println(0)
 	println(1)
 	println(-1)
