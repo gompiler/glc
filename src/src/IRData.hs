@@ -39,6 +39,7 @@ data Field = Field
 
 data Class = Class
   { cname   :: String
+  , bstruct :: Bool
   , fields  :: [Field]
   , methods :: [Method]
   } deriving (Show, Eq)
@@ -163,6 +164,8 @@ data Instruction
   | IXOr
   | IntToDouble
   | DoubleToInt
+  | IfACmpNE LabelName
+  | IfACmpEQ LabelName
   | IfNonNull LabelName
   | If IRCmp
        LabelName
@@ -172,6 +175,7 @@ data Instruction
   | IConstM1 -- -1
   | IConst0 -- 0
   | IConst1 -- 1
+  | InstanceOf ClassOrArrayRef
   | AConstNull
   | DCmpG -- Same: 0, Second greater: 1, First greater: -1; 1 on NAN
   | New ClassRef -- class
@@ -230,6 +234,9 @@ jDoubleInit = MethodRef (CRef jDouble) "<init>" (MethodSpec ([JDouble], JVoid))
 jObject :: ClassRef
 jObject = ClassRef "java/lang/Object"
 
+jObjects :: ClassRef
+jObjects = ClassRef "java/lang/Objects"
+
 jClass :: ClassRef
 jClass = ClassRef "java/lang/Class"
 
@@ -272,6 +279,9 @@ cMain = ClassRef "Main"
 
 cGlcArray :: ClassRef
 cGlcArray = ClassRef "glcutils/GlcArray"
+
+glcCopy :: String
+glcCopy = "glcutils/GlcCopy"
 
 glcArrayInit :: MethodRef
 glcArrayInit =

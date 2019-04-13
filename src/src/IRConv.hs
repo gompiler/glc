@@ -26,7 +26,7 @@ toClasses T.Program { T.structs = scts
                     , T.main = (T.MainDecl mfb mll)
                     , T.functions = tms
                     } =
-  Class {cname = "Main", fields = cFields, methods = cMethods} :
+  Class {cname = "Main", bstruct = False, fields = cFields, methods = cMethods} :
   map structClass scts -- TODO
   where
     cFields :: [Field]
@@ -235,10 +235,10 @@ toClasses T.Program { T.structs = scts
     structClass strc@(T.Struct sid fdls) =
       Class
         { cname = structName sid
+        , bstruct = True
         , fields = map sfToF fdls
         , methods =
             sinit :
-            eqo sn :
             [checkEq strc, copyStc strc] ++
             map (setter sn) fdls ++ map (getter sn) fdls
         }
@@ -261,10 +261,16 @@ toClasses T.Program { T.structs = scts
         , mstatic = False
         , stackLimit = maxStackSize equalsBody 0
         , localsLimit = 3 -- One for this and one for argument, one for temp
-        , spec = MethodSpec ([JClass (ClassRef sn)], JBool)
+        , spec = MethodSpec ([JClass jObject], JBool)
         , body = equalsBody
         }
       where
+        labelFdls :: [(Int, T.FieldDecl)]
+        labelFdls = labelFdls' fdls 0 []
+        labelFdls' :: [T.FieldDecl] -> Int -> [(Int, T.FieldDecl)] -> [(Int, T.FieldDecl)]
+        labelFdls' [] _ acc = reverse acc
+        labelFdls' [fd] i acc = labelFdls' [] (i + 1) ((i, fd):acc)
+        labelFdls' (fd:t) i acc = labelFdls' t (i + 1) ((i, fd):acc)
         sn :: String
         sn = structName sid
         cr :: ClassOrArrayRef
@@ -272,68 +278,93 @@ toClasses T.Program { T.structs = scts
         equalsBody :: [IRItem]
         equalsBody =
           iri
-            -- Add null checks here
             [ Load Object (T.VarIndex 0)
-            , IfNonNull "LSEQ_NULL"
             , Load Object (T.VarIndex 1)
-            , IfNonNull "LSEQ_NULL"
+            , IfACmpNE "FALSE_STEQ"
             , IConst1
             , Return (Just $ Prim IRInt)
             ] ++
-          [IRLabel "LSEQ_NULL"] ++
+          [IRLabel "FALSE_STEQ"] ++
           iri
-            [ Load Object (T.VarIndex 0)
-            , IfNonNull "LSEQ_NULL2"
-            , New (ClassRef sn)
-            , Dup
-            , InvokeSpecial (MethodRef cr "<init>" (MethodSpec ([], JVoid)))
-            , Store Object (T.VarIndex 2)
-            , Load Object (T.VarIndex 2)
-            , Load Object (T.VarIndex 1)
-            , InvokeVirtual
-                (MethodRef
-                   cr
-                   "equals"
-                   (MethodSpec ([JClass (ClassRef sn)], JBool)))
-            , Return (Just $ Prim IRInt)
-            ] ++
-          [IRLabel "LSEQ_NULL2"] ++
-          iri
-            [ Load Object (T.VarIndex 1)
-            , IfNonNull "LSEQ_NULL3"
-            , New (ClassRef sn)
-            , Dup
-            , InvokeSpecial (MethodRef cr "<init>" (MethodSpec ([], JVoid)))
-            , Store Object (T.VarIndex 1)
-            , Load Object (T.VarIndex 0)
-            , Load Object (T.VarIndex 1)
-            , InvokeVirtual
-                (MethodRef
-                   cr
-                   "equals"
-                   (MethodSpec ([JClass (ClassRef sn)], JBool)))
-            , Return (Just $ Prim IRInt)
-            ] ++
-          [IRLabel "LSEQ_NULL3"] ++
-          concatMap (createNE "LSEQ_false") fdls ++
+          [ Load Object (T.VarIndex 1)
+          , InstanceOf cr
+          , If IRData.NE "ISSTRUCT_STEQ"
+          , IConst0
+          , Return (Just $ Prim IRInt) ] ++
+          [IRLabel "ISSTRUCT_STEQ"] ++
+          iri [ Load Object (T.VarIndex 1)
+              , CheckCast cr
+              , Store Object (T.VarIndex 2)] ++
+          concatMap (createNE "LSEQ_false") labelFdls ++
           iri [IConst1, Goto "LSEQ_return"] ++
-          [ IRLabel "LSEQ_false_true_eq_0"
+          [ IRLabel "LSEQ_false"
           , IRInst IConst0
           , IRLabel "LSEQ_return"
           , IRInst $ Return (Just $ Prim IRInt)
           ]
-        createNE :: String -> T.FieldDecl -> [IRItem]
-        createNE label (T.FieldDecl (D.Ident fid) t) =
-          let jt = typeToJType t
-           in iri
-                [ Load Object (T.VarIndex 0)
-                , InvokeVirtual
-                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
-                , Load Object (T.VarIndex 1)
-                , InvokeVirtual
-                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
-                ] ++
-              equalityNL False label 0 t
+        createNE :: String -> (Int, T.FieldDecl) -> [IRItem]
+        createNE label (i, T.FieldDecl (D.Ident fid) t) =
+          case t of
+            T.ArrayType {} -> arrayEq
+            T.SliceType {} -> arrayEq
+            (T.StructType _) -> structEq
+            T.PString -> stringEq
+            _ -> primEq
+          where
+            jt :: JType
+            jt = typeToJType t
+            fr :: FieldRef
+            fr = (FieldRef (ClassRef sn) fid)
+            arrayEq :: [IRItem]
+            arrayEq = iri [ Load Object (T.VarIndex 0)
+                          , GetField fr jt
+                          , Load Object (T.VarIndex 2)
+                          , GetField fr jt
+                          , IfACmpEQ ("refeq" ++ show i)
+                          , Load Object (T.VarIndex 0)
+                          , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                          , Load Object (T.VarIndex 2)
+                          , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                          , InvokeVirtual glcArrayEquals
+                          , If IRData.EQ label
+                          ] ++
+                      [IRLabel ("refeq" ++ show i)] ++
+                      iri [ IConst1
+                          , Goto "LSEQ_return"
+                          ]
+            structEq :: [IRItem]
+            structEq = iri [ Load Object (T.VarIndex 0)
+                           , GetField fr jt
+                           , Load Object (T.VarIndex 2)
+                           , GetField fr jt
+                           , IfACmpEQ ("refeq" ++ show i)
+                           , Load Object (T.VarIndex 0)
+                           , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                           , Load Object (T.VarIndex 2)
+                           , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                           , CheckCast (CRef jObject)
+                           , InvokeVirtual ((MethodRef $ CRef $ ClassRef sn) "equals" (MethodSpec ([JClass jObject], JBool)))
+                           , If IRData.EQ label
+                           ] ++
+                       [IRLabel ("refeq" ++ show i)] ++
+                       iri [ IConst1
+                           , Goto "LSEQ_return"
+                           ]
+            stringEq :: [IRItem]
+            stringEq = iri [ Load Object (T.VarIndex 0)
+                           , GetField fr jt
+                           , Load Object (T.VarIndex 2)
+                           , GetField fr jt
+                           , InvokeStatic (MethodRef (CRef jObjects) "equals" (MethodSpec ([JClass jObject, JClass jObject], JBool)))
+                           , If IRData.EQ label
+                           ]
+            primEq :: [IRItem]
+            primEq = iri [ Load Object (T.VarIndex 0)
+                           , GetField fr jt
+                           , Load Object (T.VarIndex 2)
+                           , GetField fr jt
+                           , IfICmp IRData.NE label
+                           ]
     copyStc :: T.StructType -> Method
     copyStc (T.Struct sid fdls) =
       Method
@@ -352,13 +383,6 @@ toClasses T.Program { T.structs = scts
         copyBody :: [IRItem]
         copyBody =
           iri
-            [ Load Object (T.VarIndex 0)
-            , IfNonNull "LCP_NULL"
-            , AConstNull
-            , Return (Just Object)
-            ] ++
-          [IRLabel "LCP_NULL"] ++
-          iri
             [ New (ClassRef sn)
             , Dup
             , InvokeSpecial (MethodRef cr "<init>" (MethodSpec ([], JVoid)))
@@ -368,14 +392,22 @@ toClasses T.Program { T.structs = scts
           iri [Load Object (T.VarIndex 1), Return (Just Object)]
         cpField :: T.FieldDecl -> [IRItem]
         cpField (T.FieldDecl (D.Ident fn) t) =
-          let jt = typeToJType t
-           in iri
-                [ Load Object (T.VarIndex 1)
+            case t of
+               T.ArrayType {} -> undefined
+               T.SliceType {} -> undefined
+               T.StructType {} -> undefined
+               _ -> undefined
+          where
+          jt :: JType
+          jt = typeToJType t
+          cpArray :: [IRItem]
+          cpArray =
+            iri [ Load Object (T.VarIndex 1)
                 , Load Object (T.VarIndex 0)
-                , InvokeVirtual
-                    (MethodRef cr ("get_" ++ fn) (MethodSpec ([], jt)))
+                , InvokeStatic (MethodRef (CRef glcUtils) "copy" (MethodSpec ([JClass jObject], JClass jObject)))
+                , CheckCast jt
                 ] ++
-              iri [PutField (FieldRef (ClassRef sn) fn) jt]
+            iri [PutField (FieldRef (ClassRef sn) fn) jt]
     setter :: String -> T.FieldDecl -> Method
     setter sn (T.FieldDecl (D.Ident fn) t) =
       Method
@@ -467,27 +499,6 @@ toClasses T.Program { T.structs = scts
               , InvokeSpecial
                   (MethodRef (CRef jObject) "<init>" (MethodSpec ([], JVoid)))
               , Return Nothing
-              ]
-        }
-    eqo :: String -> Method
-    eqo sn =
-      Method
-        { mname = "equals"
-        , mstatic = False
-        , stackLimit = 2
-        , localsLimit = 2 -- One for this and one for copy
-        , spec = MethodSpec ([JClass jObject], JBool)
-        , body =
-            iri
-              [ Load Object (T.VarIndex 0)
-              , Load Object (T.VarIndex 1)
-              , CheckCast (CRef $ ClassRef sn)
-              , InvokeSpecial
-                  (MethodRef
-                     (CRef $ ClassRef sn)
-                     "equals"
-                     (MethodSpec ([JClass $ ClassRef sn], JBool)))
-              , Return (Just (Prim IRInt))
               ]
         }
 
@@ -1074,11 +1085,12 @@ equalityNL eq lbl idx t =
         ]
     (T.StructType sid) ->
       iri
-        [ InvokeVirtual $
+        [ CheckCast (CRef jObject)
+        , InvokeVirtual $
           MethodRef
             (CRef $ ClassRef $ structName sid)
             "equals"
-            (MethodSpec ([JClass (ClassRef $ structName sid)], JBool))
+            (MethodSpec ([JClass jObject], JBool))
         , If checkBool (lbl ++ "_true_eq_" ++ show idx) -- 1 > 0, i.e. true
         ]
     T.PFloat64 ->
@@ -1208,8 +1220,11 @@ instance StackHeight Instruction where
   stackDelta IAnd = -1 -- ..., v, w -> ..., r
   stackDelta IOr = -1 -- ..., v, w -> ..., r
   stackDelta IXOr = -1 -- ..., v, w -> ..., r
+  stackDelta InstanceOf {} = 0 -- ..., v -> .., r
   stackDelta IntToDouble = 1 --- ..., i -> ..., d (double-wide)
   stackDelta DoubleToInt = -1 --- ..., d (double-wide) -> ..., i
+  stackDelta IfACmpNE {} = -2 --- ..., v1, v2 -> ...
+  stackDelta IfACmpEQ {} = -2 --- ..., v1, v2 -> ...
   stackDelta If {} = -1 -- ..., v -> ...
   stackDelta IfICmp {} = -2 -- ..., v, w -> ...
   stackDelta IfNonNull {} = -1 -- ..., v -> ...
