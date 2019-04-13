@@ -393,8 +393,8 @@ toClasses T.Program { T.structs = scts
         cpField :: T.FieldDecl -> [IRItem]
         cpField (T.FieldDecl (D.Ident fn) t) =
             case t of
-               T.ArrayType {} -> undefined
-               T.SliceType {} -> undefined
+               T.ArrayType {} -> cpArray
+               T.SliceType {} -> cpArray
                T.StructType {} -> undefined
                _ -> undefined
           where
@@ -405,7 +405,7 @@ toClasses T.Program { T.structs = scts
             iri [ Load Object (T.VarIndex 1)
                 , Load Object (T.VarIndex 0)
                 , InvokeStatic (MethodRef (CRef glcUtils) "copy" (MethodSpec ([JClass jObject], JClass jObject)))
-                , CheckCast jt
+                , CheckCast cr
                 ] ++
             iri [PutField (FieldRef (ClassRef sn) fn) jt]
     setter :: String -> T.FieldDecl -> Method
