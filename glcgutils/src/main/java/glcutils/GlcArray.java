@@ -296,7 +296,7 @@ public class GlcArray implements GlcCopy {
         if (!Arrays.equals(this.subSizes, other.subSizes)) {
             return false;
         }
-        if (!this.clazz.equals(other.clazz)) {
+        if (this.clazz != other.clazz) {
             return false;
         }
         init();
