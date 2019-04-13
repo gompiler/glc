@@ -307,7 +307,7 @@ toClasses T.Program { T.structs = scts
           case t of
             T.ArrayType {} -> arrayEq
             T.SliceType {} -> arrayEq
-            (T.StructType _) -> structEq
+            T.StructType sid' -> structEq (ClassRef $ structName sid')
             T.PString -> stringEq
             _ -> primEq
           where
@@ -332,8 +332,8 @@ toClasses T.Program { T.structs = scts
                       iri [ IConst1
                           , Goto "LSEQ_return"
                           ]
-            structEq :: [IRItem]
-            structEq = iri [ Load Object (T.VarIndex 0)
+            structEq :: ClassRef -> [IRItem]
+            structEq cr' = iri [ Load Object (T.VarIndex 0)
                            , GetField fr jt
                            , Load Object (T.VarIndex 2)
                            , GetField fr jt
@@ -343,7 +343,7 @@ toClasses T.Program { T.structs = scts
                            , Load Object (T.VarIndex 2)
                            , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
                            , CheckCast (CRef jObject)
-                           , InvokeVirtual ((MethodRef $ CRef $ ClassRef sn) "equals" (MethodSpec ([JClass jObject], JBool)))
+                           , InvokeVirtual ((MethodRef $ CRef $ cr') "equals" (MethodSpec ([JClass jObject], JBool)))
                            , If IRData.EQ label
                            ] ++
                        [IRLabel ("refeq" ++ show i)] ++
