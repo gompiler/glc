@@ -1,5 +1,4 @@
 //~0
-
 package main
 
 type s struct {

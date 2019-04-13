@@ -10,7 +10,6 @@
 //~0
 //~0
 //~0
-
 package main
 
 type s struct {
