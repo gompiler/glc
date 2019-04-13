@@ -372,7 +372,7 @@ toClasses T.Program { T.structs = scts
         , mstatic = False
         , stackLimit = maxStackSize copyBody 0
         , localsLimit = 2
-        , spec = MethodSpec ([], JClass $ ClassRef sn)
+        , spec = MethodSpec ([], JClass jObject)
         , body = copyBody
         }
       where
@@ -393,15 +393,19 @@ toClasses T.Program { T.structs = scts
         cpField :: T.FieldDecl -> [IRItem]
         cpField (T.FieldDecl (D.Ident fn) t) =
             case t of
-               T.ArrayType {} -> cpArray
-               T.SliceType {} -> cpArray
-               T.StructType {} -> undefined
-               _ -> undefined
+               T.ArrayType {} -> cpObj
+               T.SliceType {} -> cpObj
+               T.StructType {} -> cpObj
+               _ -> iri [ Load Object (T.VarIndex 1)
+                        , Load Object (T.VarIndex 0)
+                        , GetField (FieldRef (ClassRef sn) fn) jt
+                        , PutField (FieldRef (ClassRef sn) fn) jt
+                        ]
           where
           jt :: JType
           jt = typeToJType t
-          cpArray :: [IRItem]
-          cpArray =
+          cpObj :: [IRItem]
+          cpObj =
             iri [ Load Object (T.VarIndex 1)
                 , Load Object (T.VarIndex 0)
                 , InvokeStatic (MethodRef (CRef glcUtils) "copy" (MethodSpec ([JClass jObject], JClass jObject)))
