@@ -267,10 +267,14 @@ toClasses T.Program { T.structs = scts
       where
         labelFdls :: [(Int, T.FieldDecl)]
         labelFdls = labelFdls' fdls 0 []
-        labelFdls' :: [T.FieldDecl] -> Int -> [(Int, T.FieldDecl)] -> [(Int, T.FieldDecl)]
-        labelFdls' [] _ acc = reverse acc
-        labelFdls' [fd] i acc = labelFdls' [] (i + 1) ((i, fd):acc)
-        labelFdls' (fd:t) i acc = labelFdls' t (i + 1) ((i, fd):acc)
+        labelFdls' ::
+             [T.FieldDecl]
+          -> Int
+          -> [(Int, T.FieldDecl)]
+          -> [(Int, T.FieldDecl)]
+        labelFdls' [] _ acc     = reverse acc
+        labelFdls' [fd] i acc   = labelFdls' [] (i + 1) ((i, fd) : acc)
+        labelFdls' (fd:t) i acc = labelFdls' t (i + 1) ((i, fd) : acc)
         sn :: String
         sn = structName sid
         cr :: ClassOrArrayRef
@@ -286,15 +290,18 @@ toClasses T.Program { T.structs = scts
             ] ++
           [IRLabel "FALSE_STEQ"] ++
           iri
-          [ Load Object (T.VarIndex 1)
-          , InstanceOf cr
-          , If IRData.NE "ISSTRUCT_STEQ"
-          , IConst0
-          , Return (Just $ Prim IRInt) ] ++
+            [ Load Object (T.VarIndex 1)
+            , InstanceOf cr
+            , If IRData.NE "ISSTRUCT_STEQ"
+            , IConst0
+            , Return (Just $ Prim IRInt)
+            ] ++
           [IRLabel "ISSTRUCT_STEQ"] ++
-          iri [ Load Object (T.VarIndex 1)
-              , CheckCast cr
-              , Store Object (T.VarIndex 2)] ++
+          iri
+            [ Load Object (T.VarIndex 1)
+            , CheckCast cr
+            , Store Object (T.VarIndex 2)
+            ] ++
           concatMap (createNE "LSEQ_false") labelFdls ++
           iri [IConst1, Goto "LSEQ_return"] ++
           [ IRLabel "LSEQ_false"
@@ -305,67 +312,82 @@ toClasses T.Program { T.structs = scts
         createNE :: String -> (Int, T.FieldDecl) -> [IRItem]
         createNE label (i, T.FieldDecl (D.Ident fid) t) =
           case t of
-            T.ArrayType {} -> arrayEq
-            T.SliceType {} -> arrayEq
+            T.ArrayType {}    -> arrayEq
+            T.SliceType {}    -> arrayEq
             T.StructType sid' -> structEq (ClassRef $ structName sid')
-            T.PString -> stringEq
-            _ -> primEq
+            T.PString         -> stringEq
+            _                 -> primEq
           where
             jt :: JType
             jt = typeToJType t
             fr :: FieldRef
-            fr = (FieldRef (ClassRef sn) fid)
+            fr = FieldRef (ClassRef sn) fid
             arrayEq :: [IRItem]
-            arrayEq = iri [ Load Object (T.VarIndex 0)
-                          , GetField fr jt
-                          , Load Object (T.VarIndex 2)
-                          , GetField fr jt
-                          , IfACmpEQ ("refeq" ++ show i)
-                          , Load Object (T.VarIndex 0)
-                          , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
-                          , Load Object (T.VarIndex 2)
-                          , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
-                          , InvokeVirtual glcArrayEquals
-                          , If IRData.EQ label
-                          ] ++
-                      [IRLabel ("refeq" ++ show i)] ++
-                      iri [ IConst1
-                          , Goto "LSEQ_return"
-                          ]
+            arrayEq =
+              iri
+                [ Load Object (T.VarIndex 0)
+                , GetField fr jt
+                , Load Object (T.VarIndex 2)
+                , GetField fr jt
+                , IfACmpEQ ("refeq" ++ show i)
+                , Load Object (T.VarIndex 0)
+                , InvokeVirtual
+                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                , Load Object (T.VarIndex 2)
+                , InvokeVirtual
+                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                , InvokeVirtual glcArrayEquals
+                , If IRData.EQ label
+                ] ++
+              [IRLabel ("refeq" ++ show i)] ++ iri [IConst1, Goto "LSEQ_return"]
             structEq :: ClassRef -> [IRItem]
-            structEq cr' = iri [ Load Object (T.VarIndex 0)
-                           , GetField fr jt
-                           , Load Object (T.VarIndex 2)
-                           , GetField fr jt
-                           , IfACmpEQ ("refeq" ++ show i)
-                           , Load Object (T.VarIndex 0)
-                           , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
-                           , Load Object (T.VarIndex 2)
-                           , InvokeVirtual (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
-                           , CheckCast (CRef jObject)
-                           , InvokeVirtual ((MethodRef $ CRef $ cr') "equals" (MethodSpec ([JClass jObject], JBool)))
-                           , If IRData.EQ label
-                           ] ++
-                       [IRLabel ("refeq" ++ show i)] ++
-                       iri [ IConst1
-                           , Goto "LSEQ_return"
-                           ]
+            structEq cr' =
+              iri
+                [ Load Object (T.VarIndex 0)
+                , GetField fr jt
+                , Load Object (T.VarIndex 2)
+                , GetField fr jt
+                , IfACmpEQ ("refeq" ++ show i)
+                , Load Object (T.VarIndex 0)
+                , InvokeVirtual
+                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                , Load Object (T.VarIndex 2)
+                , InvokeVirtual
+                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                , CheckCast (CRef jObject)
+                , InvokeVirtual
+                    ((MethodRef $ CRef cr')
+                       "equals"
+                       (MethodSpec ([JClass jObject], JBool)))
+                , If IRData.EQ label
+                ] ++
+              [IRLabel ("refeq" ++ show i)] ++ iri [IConst1, Goto "LSEQ_return"]
             stringEq :: [IRItem]
-            stringEq = iri [ Load Object (T.VarIndex 0)
-                           , GetField fr jt
-                           , Load Object (T.VarIndex 2)
-                           , GetField fr jt
-                           , InvokeStatic (MethodRef (CRef jObjects) "equals" (MethodSpec ([JClass jObject, JClass jObject], JBool)))
-                           , If IRData.EQ label
-                           ]
+            stringEq =
+              iri
+                [ Load Object (T.VarIndex 0)
+                , GetField fr jt
+                , Load Object (T.VarIndex 2)
+                , GetField fr jt
+                , InvokeStatic
+                    (MethodRef
+                       (CRef jObjects)
+                       "equals"
+                       (MethodSpec ([JClass jObject, JClass jObject], JBool)))
+                , If IRData.EQ label
+                ]
             primEq :: [IRItem]
-            primEq = iri [ Load Object (T.VarIndex 0)
-                           , GetField fr jt
-                           , Load Object (T.VarIndex 2)
-                           , GetField fr jt ] ++
-                     iri (if t == T.PFloat64 then [ DCmpG, If IRData.NE label ]
-                           else [ IfICmp IRData.NE label
-                                ])
+            primEq =
+              iri
+                [ Load Object (T.VarIndex 0)
+                , GetField fr jt
+                , Load Object (T.VarIndex 2)
+                , GetField fr jt
+                ] ++
+              iri
+                (if t == T.PFloat64
+                   then [DCmpG, If IRData.NE label]
+                   else [IfICmp IRData.NE label])
     copyStc :: T.StructType -> Method
     copyStc (T.Struct sid fdls) =
       Method
@@ -393,27 +415,34 @@ toClasses T.Program { T.structs = scts
           iri [Load Object (T.VarIndex 1), Return (Just Object)]
         cpField :: T.FieldDecl -> [IRItem]
         cpField (T.FieldDecl (D.Ident fn) t) =
-            case t of
-               T.ArrayType {} -> cpObj cGlcArray
-               T.SliceType {} -> cpObj cGlcArray
-               T.StructType sid' -> cpObj (ClassRef $ structName sid')
-               _ -> iri [ Load Object (T.VarIndex 1)
-                        , Load Object (T.VarIndex 0)
-                        , GetField (FieldRef (ClassRef sn) fn) jt
-                        , PutField (FieldRef (ClassRef sn) fn) jt
-                        ]
-          where
-          jt :: JType
-          jt = typeToJType t
-          cpObj :: ClassRef -> [IRItem]
-          cpObj cr' =
-            iri [ Load Object (T.VarIndex 1)
+          case t of
+            T.ArrayType {} -> cpObj cGlcArray
+            T.SliceType {} -> cpObj cGlcArray
+            T.StructType sid' -> cpObj (ClassRef $ structName sid')
+            _ ->
+              iri
+                [ Load Object (T.VarIndex 1)
                 , Load Object (T.VarIndex 0)
                 , GetField (FieldRef (ClassRef sn) fn) jt
-                , InvokeStatic (MethodRef (CRef glcUtils) "copy" (MethodSpec ([JClass jObject], JClass jObject)))
+                , PutField (FieldRef (ClassRef sn) fn) jt
+                ]
+          where
+            jt :: JType
+            jt = typeToJType t
+            cpObj :: ClassRef -> [IRItem]
+            cpObj cr' =
+              iri
+                [ Load Object (T.VarIndex 1)
+                , Load Object (T.VarIndex 0)
+                , GetField (FieldRef (ClassRef sn) fn) jt
+                , InvokeStatic
+                    (MethodRef
+                       (CRef glcUtils)
+                       "copy"
+                       (MethodSpec ([JClass jObject], JClass jObject)))
                 , CheckCast (CRef cr')
                 ] ++
-            iri [PutField (FieldRef (ClassRef sn) fn) jt]
+              iri [PutField (FieldRef (ClassRef sn) fn) jt]
     setter :: String -> T.FieldDecl -> Method
     setter sn (T.FieldDecl (D.Ident fn) t) =
       Method
