@@ -42,7 +42,8 @@ public class GlcArray implements GlcCopy {
     private final Class clazz;
 
     public GlcArray(Class clazz, int[] sizes) {
-        this(clazz, sizes, false);
+        // TODO disable debug by default?
+        this(clazz, sizes, true);
     }
 
     GlcArray(Class clazz, int[] sizes, boolean debug) {
@@ -56,6 +57,9 @@ public class GlcArray implements GlcCopy {
         this.clazz = clazz;
         this.array = array;
         this.debug = debug;
+        for (Object o : array) {
+            verify(o);
+        }
     }
 
     /**
