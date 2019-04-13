@@ -39,6 +39,47 @@ L10:
     .end code 
 .end method 
 
+.method public static copy : (Ljava/lang/Object;)Ljava/lang/Object; 
+    .code stack 1 locals 1 
+L0:     aload_0 
+L1:     invokestatic Method glcutils/Utils copyObj (Ljava/lang/Object;)Ljava/lang/Object; 
+L4:     areturn 
+L5:     
+        .linenumbertable 
+            L0 15 
+        .end linenumbertable 
+        .localvariabletable 
+            0 is o Ljava/lang/Object; from L0 to L5 
+        .end localvariabletable 
+    .end code 
+    .signature '<T:Ljava/lang/Object;>(Ljava/lang/Object;)TT;' 
+.end method 
+
+.method public static copyObj : (Ljava/lang/Object;)Ljava/lang/Object; 
+    .code stack 1 locals 1 
+L0:     aload_0 
+L1:     instanceof glcutils/GlcCopy 
+L4:     ifeq L17 
+L7:     aload_0 
+L8:     checkcast glcutils/GlcCopy 
+L11:    invokeinterface InterfaceMethod glcutils/GlcCopy copy ()Ljava/lang/Object; 1 
+L16:    areturn 
+
+        .stack same 
+L17:    aload_0 
+L18:    areturn 
+L19:    
+        .linenumbertable 
+            L0 27 
+            L7 28 
+            L17 30 
+        .end linenumbertable 
+        .localvariabletable 
+            0 is o Ljava/lang/Object; from L0 to L19 
+        .end localvariabletable 
+    .end code 
+.end method 
+
 .method public static tail : ([I)[I 
     .code stack 3 locals 1 
 L0:     aload_0 
@@ -49,7 +90,7 @@ L4:     invokestatic Method java/util/Arrays copyOfRange ([III)[I
 L7:     areturn 
 L8:     
         .linenumbertable 
-            L0 15 
+            L0 34 
         .end linenumbertable 
         .localvariabletable 
             0 is array [I from L0 to L8 
@@ -68,7 +109,7 @@ L9:     invokespecial Method glcutils/GlcException <init> (Ljava/lang/String;)V
 L12:    athrow 
 L13:    
         .linenumbertable 
-            L0 19 
+            L0 38 
         .end linenumbertable 
         .localvariabletable 
             0 is s Ljava/lang/String; from L0 to L13 
@@ -101,11 +142,11 @@ L19:    invokespecial Method java/lang/RuntimeException <init> (Ljava/lang/Throw
 L22:    athrow 
 L23:    
         .linenumbertable 
-            L0 28 
-            L6 29 
-            L8 32 
-            L13 33 
-            L14 34 
+            L0 47 
+            L6 48 
+            L8 51 
+            L13 52 
+            L14 53 
         .end linenumbertable 
         .localvariabletable 
             1 is e Ljava/lang/ReflectiveOperationException; from L14 to L23 
@@ -174,19 +215,19 @@ L63:    invokespecial Method glcutils/GlcException <init> (Ljava/lang/Throwable;
 L66:    athrow 
 L67:    
         .linenumbertable 
-            L0 39 
-            L6 40 
-            L8 42 
-            L14 43 
-            L19 45 
-            L25 46 
-            L30 48 
-            L36 49 
-            L41 51 
-            L47 52 
-            L52 55 
-            L57 56 
-            L58 57 
+            L0 58 
+            L6 59 
+            L8 61 
+            L14 62 
+            L19 64 
+            L25 65 
+            L30 67 
+            L36 68 
+            L41 70 
+            L47 71 
+            L52 74 
+            L57 75 
+            L58 76 
         .end linenumbertable 
         .localvariabletable 
             1 is e Ljava/lang/ReflectiveOperationException; from L58 to L67 

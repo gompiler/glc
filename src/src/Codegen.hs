@@ -24,9 +24,11 @@ class Bytecode a
   toBC' :: a -> ByteString
 
 instance Bytecode Class where
-  toBC' (Class cn fls mts) =
+  toBC' (Class cn strct fls mts) =
     B.concat
-      [ bstrM [".class public ", cn, "\n", ".super java/lang/Object", "\n\n"]
+      [ bstrM [".class public ", cn, "\n", ".super java/lang/Object", "\n"]
+      , if strct then bstrM [".implements ", glcCopy, "\n"] else bstr ""
+      , bstr "\n"
       , B.concat $ map toBC fls
       , B.concat $ map toBC mts
       , bstr ".end class"
@@ -109,6 +111,8 @@ instance Bytecode Instruction where
       toBCStr IAnd = ["iand"]
       toBCStr IntToDouble = ["i2d"]
       toBCStr DoubleToInt = ["d2i"]
+      toBCStr (IfACmpNE label) = ["if_acmpne", " L", label]
+      toBCStr (IfACmpEQ label) = ["if_acmpeq", " L", label]
       toBCStr (IfNonNull label) = ["ifnonnull", " L", label]
       toBCStr (If cmp label) = ["if", show cmp, " L", label]
       toBCStr (IfICmp cmp label) = ["if_icmp", show cmp, " L", label]
@@ -127,6 +131,8 @@ instance Bytecode Instruction where
       toBCStr IConst0 = ["iconst_0"]
       toBCStr IConst1 = ["iconst_1"]
       toBCStr AConstNull = ["aconst_null"]
+      toBCStr (InstanceOf (CRef (ClassRef cn))) = ["instanceof", " ", cn]
+      toBCStr (InstanceOf (ARef jt)) = ["instanceof", " [", show jt]
       toBCStr DCmpG = ["dcmpg"]
       toBCStr (MultiANewArray t c) = ["multianewarray ", show t, " ", show c]
       toBCStr (ANewArray (ClassRef cn)) = ["anewarray ", cn]

@@ -11,7 +11,26 @@ public class Utils {
         }
     }
 
-    public static  int[] tail(int[] array) {
+    public static <T> T copy(Object o) {
+        return (T) copyObj(o);
+    }
+
+    /**
+     * Makes a copy of the object
+     * If it implements copy (structs or arrays), it will use a custom copy function
+     * Otherwise (primitive, string, null), return original object
+     *
+     * @param o
+     * @return
+     */
+    public static Object copyObj(Object o) {
+        if (o instanceof GlcCopy) {
+            return ((GlcCopy) o).copy();
+        }
+        return o;
+    }
+
+    public static int[] tail(int[] array) {
         return Arrays.copyOfRange(array, 1, array.length);
     }
 

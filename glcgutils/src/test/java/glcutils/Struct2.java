@@ -4,7 +4,7 @@ package glcutils;
  * The following is an example
  * We need to generate this for each unique class
  */
-public class Struct2 {
+public class Struct2 implements GlcCopy {
     private float floatField = 0f;
 
     /*
@@ -19,13 +19,11 @@ public class Struct2 {
         return this.floatField;
     }
 
-    /*
-     * All fields must supply equality check
-     * (This can be nonstatic. Not sure what's better)
-     */
-
-    public static boolean floatFieldEqual(Struct2 s1, Struct2 s2) {
-        return s1.floatField == s2.floatField;
+    @Override
+    public Object copy() {
+        Struct2 s = new Struct2();
+        s.floatField = floatField;
+        return s;
     }
 
     @Override
@@ -38,6 +36,9 @@ public class Struct2 {
         }
         Struct2 other = (Struct2) obj;
         // Compare all fields
-        return floatFieldEqual(this, other);
+        if (this.floatField != other.floatField) {
+            return false;
+        }
+        return true;
     }
 }
