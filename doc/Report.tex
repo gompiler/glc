@@ -16,7 +16,7 @@
   linktoc=all
 }
 \pagestyle{fancy}
-\lhead{McGill University\\COMP 520 Compiler Design
+\lhead{McGill University\\COMP 520: Compiler Design
   \\\thetitle}
 \chead{\leftmark}
 \rhead{\theauthor}
@@ -289,8 +289,8 @@ Although we don't have type-checking implemented at this milestone, we
 can use this technique to enforce definitions such as `exactly one',
 `one or more', and `zero or one'. This modeling is not always
 perfect. For example, a
-\href{https://golang.org/ref/spec\#IdentifierList}{list} of
-identifiers is `one or more' (in Haskell, \texttt{NonEmpty}). Many
+list of
+identifiers\cite{gospec:idlist} is `one or more' (in Haskell, \texttt{NonEmpty}). Many
 locations make it optional. While a direct translation would be
 \texttt{Maybe (NonEmpty a)}, we choose to make it a possibly empty
 list \texttt{[a]} as it makes more sense.
@@ -331,8 +331,8 @@ enforce all var declarations to be single declarations. In other
 words, \texttt{var ( a = 2; b = 3 )} becomes \texttt{var a = 2; var b = 3}
 and \texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note
 that we cannot further simplify multi declarations \texttt{var a, b
-  = 2, 3} because they happen in one stage; 
-  \texttt{var a, b = b, a} does not always produce the same output as 
+  = 2, 3} because they happen in one stage;
+  \texttt{var a, b = b, a} does not always produce the same output as
   \texttt{var a = b; var b = a}.
 
 \subsubsection{Pretty Printer}
@@ -347,16 +347,16 @@ nested binary op does not always need brackets, if the order of
 precedence matches). To produce the full program, we simply join the
 list of strings in the full program, intercalated with new lines.
 
-\subsection{Testing} 
+\subsection{Testing}
 
 To facilitate testing, we wanted to ensure that each feature can
 be tested separately.
 When building the parser, we expose entry points to each main stage,
-so we can focus on tests for floats, expressions, statements, etc 
+so we can focus on tests for floats, expressions, statements, etc
 on top of the full program.
 Each subsequent stage of the parser, eg typechecking, resource building, and codegen, also exposes a function for string inputs, so we can test them at various levels.
 Stages relating to state, such as the symbol table and resource builder,
-have their own high level module, where we can test event logic without 
+have their own high level module, where we can test event logic without
 needing to parse a program. Together, this helps us develop incrementally,
 and to a large extent independently from one another.
 
@@ -857,7 +857,7 @@ function to be pure (void of errors).
 		\item M2: Worked on expression type-checking and
 		type inference, including tests. Also worked on the weeding pass for
 		return statements.
-		\item M3/M4: \todo 
+		\item M3/M4: \todo
 	\end{itemize}
 	\item \textbf{Allan Wang}
 	\begin{itemize}
