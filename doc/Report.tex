@@ -6,18 +6,18 @@
 \date{\today}
 \title{Final Report}
 \hypersetup{
- pdfauthor={Lore, J., Lougheed D., Wang A.},
- pdftitle={Final Report},
- pdfkeywords={Compiler Design} {GoLite} {Gompiler} {glc} {Final Report},
- pdfsubject={Final Report},
- pdflang={English},
- bookmarks=true,
- unicode=true,
- linktoc=all
+  pdfauthor={Lore, J., Lougheed D., Wang A.},
+  pdftitle={Final Report},
+  pdfkeywords={Compiler Design} {GoLite} {Gompiler} {glc} {Final Report},
+  pdfsubject={Final Report},
+  pdflang={English},
+  bookmarks=true,
+  unicode=true,
+  linktoc=all
 }
 \pagestyle{fancy}
-\lhead{COMP 520 Compiler Design
-\\\thetitle}
+\lhead{McGill University\\COMP 520 Compiler Design
+  \\\thetitle}
 \chead{\leftmark}
 \rhead{\theauthor}
 \cfoot{Page~\thepage~of~\pageref{LastPage}}
@@ -50,21 +50,238 @@
 \subsection{Overview of Go}~%
 \subsection{Overview of GoLite}~%
 \subsection{Structure of Report}~%
-\section{Language and Tool Choices}~%
-\subsection{Choice of Implementation Language and Tools}~%
-\subsection{Choice of Target Language}~%
-\section{Scanner}~%
-\subsection{Overview}~%
-\subsection{Design Decisions}~%
-\subsection{Testing}~%
-\section{Parser}~%
-\subsection{Overview}~%
-\subsection{Design Decisions}~%
-\subsection{Testing}~%
-\section{Weeder}~%
-\subsection{Overview}~%
-\subsection{Design Decisions}~%
-\subsection{Testing}~%
+\section{Language and Tool Choices}
+\subsection{Implementation Language}
+% TODO
+% MENTION CODEGEN TOOLS, i.e. Krakatau
+For our \texttt{GoLite} compiler, we decided to use \texttt{Haskell} as the
+implementation language, as many of the required tasks can be done
+more naturally (i.e.\ tree traversal, recursing over self defined
+structures, enforcing types, etc.).
+\subsection{Tools}
+For scanning, we use the program \texttt{Alex}, which is similar to \texttt{flex}
+but produces \texttt{Haskell} code instead. We use \texttt{Happy} for parsing,
+which resembles \texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be interlinked
+nicely, passing on useful information (encompassed through a state monad)
+such as the line number, column number, character offset in file, and
+error messages.
+\subsection{Miscellaneous}
+We use Travis CI to build our project on every push to GitHub, as well as
+run our tests to make sure that new changes did not break
+existing functionality.
+
+There are several other good Haskell scanning/parsing options, such as
+\texttt{Megaparsec}. We decided on \texttt{Alex/Happy} because of their syntactic
+similarity to \texttt{flex/bison}, which we learned in class.
+
+We use \texttt{stack} to manage our Haskell project and corresponding tests.
+We implemented additional tests using the \texttt{hspec} package.
+
+% TODO
+% Do we need to mention file organization?
+\subsection{Target Language}~%
+\section{Scanner}
+\subsection{Overview}
+% TODO
+% ADAPT TO FINAL REPORT
+The first step of this milestone was to scan user input into
+tokens. Handing of most GoLite tokens was straightforward and
+similar to class assignments. In other cases, we had to deal with
+some of Go/GoLite's quirkiness when compared to something simple
+like \texttt{MiniLang}.
+
+\subsection{Design Decisions}
+\subsubsection{Semicolon Insertion}
+Semicolon insertion was the first scanning hurdle. To solve
+this, we use start codes, a built in feature of \texttt{Alex}, and have
+special rules for certain states.
+
+If the last token we scan is something that can take an optional
+semicolon, we enter the \(nl\) state, where newlines are transformed into
+semicolons after specific tokens. Scanning anything else (that isn't
+whitespace or otherwise ignored) returns the scanner to the default
+state (\(0\)), where newlines are just ignored.
+
+This solution seems elegant, as we don't have to traverse
+the whole stream post-scanning or store context, other than the
+start code. It also makes sense to let the scanner handle these
+situations automatically, rather than trying to deal with them
+in the parsing phase.
+\subsubsection{Block comment support}
+Block comments cannot be easily scanned using only regular
+expressions. One potential solution was to use start codes again
+(changing state upon opening a comment). This was ruled out since
+it would potentially add a lot more start codes (i.e.\ states), as
+we'd have combinatorial possibilities with the newline insertion state
+(since block comments spanning newlines should also insert semicolons
+when they're optional). Using a state approach would also make it
+harder to catch unclosed comment block errors.
+
+Our solution iterates through the scanner's input once we receive an
+open comment block and ignore everything until the comment is closed.
+If the comment never closes, we can easily emit an error.
+
+To account for semicolon insertion with block comments, we set a
+semicolon flag to true if we encounter any new line inside the
+block comment, and we insert a semicolon if we're in the
+aforementioned newline insertion state.
+\paragraph{Adding newlines at the end of the file if they aren't present already}
+\texttt{Go} requires a semicolon or newline at the end of function
+declarations. Sometimes, there may not be a newline at the end of
+a file, so no semicolon insertion occurs, resulting in a parsing error.
+
+In order to correct for this type of file, we enforce a final
+newline by appending one if necessary. To do this, the code string
+is preprocessed prior to scanning. This is the easiest solution,
+as otherwise we would have to try inserting a semicolon if we are in
+the \(nl\) state when we encounter an \texttt{EOF}, while also making sure
+to return an \texttt{EOF}. This would be difficult without additional
+context information.
+\subsubsection{Nicer error messages}
+We decided to use \texttt{ErrorBundle} from \texttt{Megaparsec} in order to
+output nicer error messages, with program context for easier
+debugging from an end-user programming perspective:
+
+\begin{verbatim}
+Error: parsing error, unexpected ) at 5:22:
+  |
+5 | func abstract(a, b, c) {
+  |                      ^
+\end{verbatim}
+
+With \texttt{Alex}' default behaviour, we did not have access to the entire
+source file string, as it is not kept between steps. In order to
+generate the contextual message, we modified the \texttt{monad} wrapper
+provided with \texttt{Alex} (see \texttt{TokensBase.hs}) and changed the \texttt{Alex}
+monad to wrap over a \texttt{Either (String, Int) a} instead of
+\texttt{Either String a}, i.e.\ in addition to storing an error message on
+the left side of the monad we also carry an \texttt{Int} which represents
+the offset of the error. When we want to print the error
+message, we can then append the part in the source file where
+the error occurred.
+
+\subsection{Testing}
+\section{Parser}
+\subsection{Overview}
+% TODO
+% POTENTIALLY ADD SECTION ABOUT PARSER ROLE LIKE IN SCANNER
+\subsection{Design Decisions}
+\subsubsection{Grammar}
+% TODO
+% ACCOUNT FOR COMMENTS IN M1 REPORT
+Many of our difficulties in the grammar were associated with identifier and
+expression lists, used in declarations/signatures and assignment/function
+calls respectively. The grammar was refactored to fix this by allowing
+identifier lists to become expression lists if needed, in a way which
+avoided introducing other conflicts.
+
+The first issue we encountered was with list ordering. LR parsers
+work more intuitively with rules that put the newly-created terminal
+after the recursively-expanding non-terminal. However, since Haskell
+uses recursive lists defined in the opposite way, it is significantly
+more efficient to prepend items. This prepending results in a reversed
+ordering, which must be handled after the list is `complete'.
+
+Adding an extra non terminal to manage reversals for each list would
+needlessly increase our grammar and generated code size, so we decided
+against it as a solution. The solution we use is to differentiate
+lists containing at least one non-identifier expression (i.e.\ using either
+all non-identifiers, identifiers plus one non-identifier, or otherwise mixed
+lists, as grammar base cases) from lists of entirely identifiers. Then,
+the expression list non-terminal is allowed to yield either a mixed list
+or a pure identifier list depending on what is needed.
+
+Another caveat of how lists are handled in the grammar, again a
+compromise to prevent ambiguity, is that the actual grammar constructs
+that represent lists correspond to a list of size two or more, which
+doesn't exactly match the Go spec (where a list may be 0/1 or more,
+depending on the case). The actual single-item non-terminals are allowed
+to represent a list of size one when needed, meaning this disparity
+is resolved in the actual AST construct, which is closer to a direct
+representation of the Go / GoLite specifications.
+\subsubsection{AST}
+% TODO
+% ACCOUNT FOR M1 COMMENTS
+We modeled our AST as close as possible to the actual Go and
+GoLite specs, to try and ensure that impossible states are inherently
+prevented by the Haskell type checker, reducing run-time errors.
+Although we don't have type-checking implemented at this milestone,
+we can use this technique to enforce definitions such as
+`exactly one', `one or more', and `zero or one'. This modeling is
+not always perfect. For example, a \href{https://golang.org/ref/spec\#IdentifierList}{list}
+of identifiers is `one or more' (in Haskell, \texttt{NonEmpty}). Many locations
+make it optional. While a direct translation would be \texttt{Maybe (NonEmpty a)},
+we choose to make it a possibly empty list \texttt{[a]} as it makes more sense.
+\paragraph{Simplified Data Type Categories}
+Some splits, such as \texttt{add\_op} and \texttt{mul\_op} are distinguished
+purely to demonstrate precedence; they are in fact only used once
+in the specs, so we decide to merge them directly in our \texttt{ArithmOp}
+model. Several other instances exist.
+
+Given we are creating an AST, rather than a CST, we can further
+compact parts of the grammar. For instance, an \texttt{if} clause in the
+spec leads to an \texttt{IfStmt} construction, whose \texttt{else} body is either
+a block (with surrounding braces) or another \texttt{if} statement (no
+surrounding braces). In our case, we don't need to model the braces,
+so we can treat the \texttt{else} body exclusively as \texttt{Stmt} rather than
+the more verbose \texttt{Either Block IfStmt}. The grammar enforces that
+this \texttt{Stmt} is not any other type.
+Some splits, such as \texttt{add\_op} and \texttt{mul\_op} are distinguished
+purely to demonstrate precedence; they are in fact only used once
+in the specs, so we decide to merge them directly in our \texttt{ArithmOp}
+model. Several other instances exist.
+
+Given we are creating an AST, rather than a CST, we can further
+compact parts of the grammar. For instance, an \texttt{if} clause in the
+spec leads to an \texttt{IfStmt} construction, whose \texttt{else} body is either
+a block (with surrounding braces) or another \texttt{if} statement (no
+surrounding braces). In our case, we don't need to model the braces,
+so we can treat the \texttt{else} body exclusively as \texttt{Stmt} rather than
+the more verbose \texttt{Either Block IfStmt}. The grammar enforces that
+this \texttt{Stmt} is not any other type.
+\paragraph{Structure Simplification}
+For \texttt{var} and \texttt{type} declaration, we make no distinction between
+single declaration (exactly one) and block declaration (0 or
+more). Unlike types, which produce different formats, we decide to
+enforce all declarations of one var to be single declaration. In
+other words, \texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note that
+we cannot further simplify group declarations \texttt{var ( a, b = 2,
+	3)}, as there is no guarantee at this stage that the number of
+identifiers matches the number of values.
+\subsubsection{Pretty Printer}
+When creating our pretty printer, we chose a top down approach.
+Every node has the ability to output a list of strings, which makes
+it easier to format indentation. Each node is also only concerned
+with its respective subtree, and does not require context from its
+parent. We focused on aesthetics, focusing on proper spacing and
+alignments. In the case of expressions, we tried to add brackets
+sparingly, though further optimizations can be done down the road
+(a nested binary op does not always need brackets, if the order of
+precedence matches). To produce the full program, we simply join
+the list of strings in the full program, intercalated with new lines.
+
+\subsection{Testing}
+\section{Weeder}
+\subsection{Overview}
+\subsection{Design Decisions}
+% TODO
+% M2 WEEDING
+Most of the weeding operations needed are simple and don't rely
+on external context. As a result, we were able to define recursive
+traversal methods to verify relevant statements, and create verifiers
+that validate at a single level. Haskell helped immensely here, as
+we were able to use pattern matching to produce performant and
+independent functions.
+
+For verification where statement context was important (\texttt{break} and
+\texttt{continue}) we made a simple modification to the recursive traversal
+to avoid exploring scopes under \texttt{for} or \texttt{switch} statements
+where applicable.
+
+Each verifier returns an optional error, and we are able to map the
+results and return the first error, if any.
+
+\subsection{Testing}
 \section{Symbol Table}~%
 \subsection{Overview}~%
 \subsection{Design Decisions}~%
@@ -80,5 +297,20 @@
 \section{Conclusion}~%
 \subsection{Experience}~%
 \subsection{What We'd Change}~%
-\section{Contributions}~%
+\section{Contributions}
+% M1 CONTRIBS BELOW
+\begin{itemize}
+	\item \textbf{Julian Lore:} Wrote the majority of the scanner and handled weird
+	      cases, wrote a large amount of valid/invalid programs, implemented
+	      many other tests (\texttt{hspec} or small tests in our program) and looked
+	      over the parser, contributing a few things to it as well.
+	\item \textbf{David Lougheed:} Wrote the bulk of the parser grammar and contributed to
+	      the weeder. Also wrote 3 of the valid programs and 8 of the
+	      invalid ones and had minor contributions to miscellaneous other components.
+	      Contributed to the testing of the parser and pretty printer.
+	\item \textbf{Allan Wang:} Created the AST and helper classes for pretty printing
+	      and error handling.  Wrote the base package for testing as well as
+	      some of the embedded test cases within \texttt{hspec}.  Added integrations
+	      (Travis + Slack), and gave code reviews to the other components.
+\end{itemize}
 \end{document}
