@@ -134,5 +134,5 @@ instance VarIndices SimpleStmt where
   indices stmt =
     case stmt of
       ShortDeclare decls ->
-        concatMap ((either (const []) (\v -> [v])) . fst) $ toList decls
+        concatMap (either (const []) return . fst) $ toList decls
       _ -> []
