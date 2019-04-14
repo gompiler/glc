@@ -75,7 +75,7 @@ as run our tests to make sure that new changes did not break existing
 functionality.
 
 There are several other good Haskell scanning/parsing options, such as
-\texttt{Megaparsec}\cite{github:megaparsec}. We decided on \texttt{Alex/Happy} because of
+\texttt{Megaparsec}. We decided on \texttt{Alex/Happy} because of
 their syntactic similarity to \texttt{flex/bison}, which we learned in
 class.
 
@@ -207,7 +207,7 @@ semicolon flag to true if we encounter any new line inside the block
 comment, and we insert a semicolon if we're in the aforementioned
 newline insertion state.
 \paragraph{Adding newlines at the end of the file if they aren't
-  present already}
+  present already}~\\
 \texttt{Go} requires a semicolon or newline at the end of function
 declarations. Sometimes, there may not be a newline at the end of a
 file, so no semicolon insertion occurs, resulting in a parsing error.
@@ -220,7 +220,7 @@ otherwise we would have to try inserting a semicolon if we are in the
 to return an \texttt{EOF}. This would be difficult without additional
 context information.
 \subsubsection{Nicer error messages}
-We decided to use \texttt{ErrorBundle} from \texttt{Megaparsec} in
+We decided to use \texttt{ErrorBundle} from \texttt{Megaparsec}\cite{github:megaparsec} in
 order to output nicer error messages, with program context for easier
 debugging from an end-user programming perspective:
 
@@ -328,12 +328,13 @@ exclusively as \texttt{Stmt} rather than the more verbose
 For \texttt{var} and \texttt{type} declaration, we make no distinction
 between single declaration (exactly one) and block declaration (0 or
 more). Unlike types, which produce different formats, we decide to
-enforce all declarations of one var to be single declaration. In other
-words, \texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note
-that we cannot further simplify group declarations \texttt{var ( a, b
-  = 2, 3)}, as there is no guarantee at this stage that the number of
-identifiers matches the number of values.
-% TODO ACCOUNT FOR M1 COMMENT "also you can't split multi-assigns"
+enforce all var declarations to be single declarations. In other
+words, \texttt{var ( a = 2; b = 3 )} becomes \texttt{var a = 2; var b = 3}
+and \texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note
+that we cannot further simplify multi declarations \texttt{var a, b
+  = 2, 3} because they happen in one stage; 
+  \texttt{var a, b = b, a} does not always produce the same output as 
+  \texttt{var a = b; var b = a}.
 \subsubsection{Pretty Printer}
 When creating our pretty printer, we chose a top down approach.  Every
 node has the ability to output a list of strings, which makes it
