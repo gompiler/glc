@@ -911,18 +911,27 @@ instance IRRep T.SimpleStmt where
                       T.StructType {} -> iri [InvokeVirtual glcArraySetObj] -- TODO: LOOK AT CLONING
           _ -> error "Cannot assign to non-addressable value"
   toIR (T.ShortDeclare iExps) =
-    exprInsts ++ zipWith (curry expStore) idxs stTypes
+    exprInsts ++ zipWith (curry expStore) ids stTypes
     where
-      idxs :: [T.VarIndex]
-      idxs = reverse $ map fst (NE.toList iExps)
+      ids :: [Either T.Ident T.VarIndex]
+      ids = reverse $ map fst (NE.toList iExps)
       exprs :: [T.Expr]
       exprs = map snd (NE.toList iExps)
       exprInsts :: [IRItem]
       exprInsts = concatMap maybeClone exprs
-      stTypes :: [IRType]
-      stTypes = reverse $ map exprIRType exprs
-      expStore :: (T.VarIndex, IRType) -> IRItem
-      expStore (idx, t) = IRInst (Store t idx)
+      stTypes :: [T.Type]
+      stTypes = reverse $ map exprType exprs
+      expStore :: (Either T.Ident T.VarIndex, T.Type) -> IRItem
+      expStore (vid, t) =
+        either
+          (\i -> expFieldStore (i, t))
+          (\vi -> expIdxStore (vi, t))
+          vid
+      expIdxStore :: (T.VarIndex, T.Type) -> IRItem
+      expIdxStore (idx, t) = IRInst (Store (typeToIRType t) idx)
+      expFieldStore :: (T.Ident, T.Type) -> IRItem
+      expFieldStore (tvi, t) =
+        IRInst (PutStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t))
       maybeClone :: T.Expr -> [IRItem]
       maybeClone e = toIR e ++ cloneIfNeeded e
 
