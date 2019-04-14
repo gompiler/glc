@@ -1,0 +1,84 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1 in]{geometry}
+\usepackage{hyperref, titling, fancyhdr, lastpage}
+
+\author{\textsc{Lore}, J.\\ \textsc{Lougheed} D.\\ \textsc{Wang} A.}
+\date{\today}
+\title{Final Report}
+\hypersetup{
+ pdfauthor={Lore, J., Lougheed D., Wang A.},
+ pdftitle={Final Report},
+ pdfkeywords={Compiler Design} {GoLite} {Gompiler} {glc} {Final Report},
+ pdfsubject={Final Report},
+ pdflang={English},
+ bookmarks=true,
+ unicode=true,
+ linktoc=all
+}
+\pagestyle{fancy}
+\lhead{COMP 520 Compiler Design
+\\\thetitle}
+\chead{\leftmark}
+\rhead{\theauthor}
+\cfoot{Page~\thepage~of~\pageref{LastPage}}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+\begin{document}
+\begin{titlepage}
+	\center%
+
+	\textsc{\LARGE McGill University}\\[1.5cm]
+	\textsc{\Large COMP 520~-~Compiler Design}\\[0.5cm]
+	\textsc{\large Gompiler~-~glc, a GoLite Compiler}\\[0.5cm]
+
+	\HRule~\\[0.4cm]
+	{ \huge \bfseries \thetitle}\\[0.4cm]
+	\HRule~\\[1.5cm]
+
+	% \textsc{Lore}, J.\\ \textsc{Lougheed}, D.\\ \textsc{Wang}, A.\\
+	\theauthor\\%
+	[3cm]
+
+	{\large \thedate}\\[2cm]
+
+	\vfill
+
+\end{titlepage}
+\tableofcontents
+\section{Introduction}~%
+\subsection{Overview of Go}~%
+\subsection{Overview of GoLite}~%
+\subsection{Structure of Report}~%
+\section{Language and Tool Choices}~%
+\subsection{Choice of Implementation Language and Tools}~%
+\subsection{Choice of Target Language}~%
+\section{Scanner}~%
+\subsection{Overview}~%
+\subsection{Design Decisions}~%
+\subsection{Testing}~%
+\section{Parser}~%
+\subsection{Overview}~%
+\subsection{Design Decisions}~%
+\subsection{Testing}~%
+\section{Weeder}~%
+\subsection{Overview}~%
+\subsection{Design Decisions}~%
+\subsection{Testing}~%
+\section{Symbol Table}~%
+\subsection{Overview}~%
+\subsection{Design Decisions}~%
+\subsection{Testing}~%
+\section{Typecheck}~%
+\subsection{Overview}~%
+\subsection{Design Decisions}~%
+\subsection{Testing}~%
+\section{Code Generator}~%
+\subsection{Overview}~%
+\subsection{Design Decisions}~%
+\subsection{Testing}~%
+\section{Conclusion}~%
+\subsection{Experience}~%
+\subsection{What We'd Change}~%
+\section{Contributions}~%
+\end{document}
