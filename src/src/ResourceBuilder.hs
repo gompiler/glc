@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -212,9 +213,7 @@ instance Converter T.Expr Expr where
       T.Binary t op e1 e2 ->
         Binary <$> RC.newLabel rc <*> ct t <*-> op <*> ce e1 <*> ce e2
       T.Lit lit -> return $ Lit lit
-      -- Global vars are accessed by field names vs indices
-      T.Var t (T.ScopedIdent (T.Scope 2) i) -> TopVar <$> ct t <*-> i
-      T.Var t i -> Var <$> ct t <*> (RC.varIndex rc i =<< ct t)
+      T.Var t i -> convert rc (t, i)
       T.AppendExpr t e1 e2 -> AppendExpr <$> ct t <*> ce e1 <*> ce e2
       T.LenExpr e -> LenExpr <$> ce e
       T.CapExpr e -> CapExpr <$> ce e
@@ -226,6 +225,36 @@ instance Converter T.Expr Expr where
       ct = convert rc
       ce :: T.Expr -> ST s Expr
       ce = convert rc
+
+data VarIdent
+  = VarLocal Type
+             VarIndex
+  | VarTop Type
+           Ident
+
+instance Converter (Type, T.ScopedIdent) VarIdent where
+  convert ::
+       forall s. RC.ResourceContext s -> (Type, T.ScopedIdent) -> ST s VarIdent
+  convert rc (t, si) =
+    case si
+      -- Global vars are accessed by field names vs indices
+          of
+      T.ScopedIdent (T.Scope 2) i -> pure $ VarTop t i
+      _                           -> VarLocal <$-> t <*> RC.varIndex rc si t
+
+instance Converter a b => Converter (a, c) (b, c) where
+  convert rc (a, b) = (,) <$> convert rc a <*-> b
+
+instance Converter (T.CType, T.ScopedIdent) Expr where
+  convert ::
+       forall s. RC.ResourceContext s -> (T.CType, T.ScopedIdent) -> ST s Expr
+  convert rc ti = toExpr <$> (convert rc =<< ti')
+    where
+      ti' :: ST s (Type, T.ScopedIdent)
+      ti' = convert rc ti
+      toExpr :: VarIdent -> Expr
+      toExpr (VarLocal t i) = Var t i
+      toExpr (VarTop t i)   = TopVar t i
 
 instance Converter T.SimpleStmt SimpleStmt where
   convert :: forall s. RC.ResourceContext s -> T.SimpleStmt -> ST s SimpleStmt
@@ -241,10 +270,14 @@ instance Converter T.SimpleStmt SimpleStmt where
     where
       convertAssign :: (T.Expr, T.Expr) -> ST s (Expr, Expr)
       convertAssign (e1, e2) = (,) <$> ce e1 <*> ce e2
-      convertShortDecl :: (T.ScopedIdent, T.Expr) -> ST s (VarIndex, Expr)
+      convertShortDecl ::
+           (T.ScopedIdent, T.Expr) -> ST s (Either Ident VarIndex, Expr)
       convertShortDecl (i, e) =
-        (\(e', t) -> (,) <$> RC.varIndex rc i t <*> return e') =<<
+        (\(e', t) -> (,) <$> (varIdentToEither <$> convert rc (t, i)) <*-> e') =<<
         (getType <$> ce e)
+      varIdentToEither :: VarIdent -> Either Ident VarIndex
+      varIdentToEither (VarLocal _ i) = Right i
+      varIdentToEither (VarTop _ i)   = Left i
       ce :: T.Expr -> ST s Expr
       ce = convert rc
       inc2assn :: Expr -> SimpleStmt

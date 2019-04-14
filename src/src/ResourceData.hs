@@ -150,7 +150,7 @@ data SimpleStmt
   | Assign AssignOp
            (NonEmpty (Expr, Expr))
   -- | See https://golang.org/ref/spec#ShortVarDecl
-  | ShortDeclare (NonEmpty (VarIndex, Expr))
+  | ShortDeclare (NonEmpty (Either Ident VarIndex, Expr))
   deriving (Show, Eq)
 
 -- | See https://golang.org/ref/spec#Statement

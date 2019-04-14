@@ -14,3 +14,6 @@ instance (Convert a1 a2, Convert b1 b2) => Convert (a1, b1) (a2, b2) where
 
 instance (Convert a b, Functor f) => Convert (f a) (f b) where
   convert = fmap convert
+
+instance (Convert a c, Convert b c) => Convert (Either a b) c where
+  convert = either convert convert
