@@ -202,10 +202,22 @@ toClasses T.Program { T.structs = scts
     vdToIns'' :: T.TopVarDecl' -> [IRItem]
     vdToIns'' (T.TopVarDecl' fi t me) =
       case me of
-        Nothing -> [] -- Default
+        Nothing ->
+          case t of
+            (T.ArrayType l _) -> glcArrayIR l t (Left fi)
+            (T.SliceType _) -> glcArrayIR (-1) t (Left fi)
+            T.PInt -> iri [LDC (LDCInt 0), primPut]
+            T.PFloat64 -> iri [LDC (LDCDouble 0.0), primPut]
+            T.PBool -> iri [LDC (LDCInt 0), primPut]
+            T.PRune -> iri [LDC (LDCInt 0), primPut]
+            T.PString -> iri [LDC (LDCString ""), primPut]
+            T.StructType sid -> structInitIR sid (Left fi)
       -- Convert declaration to assignments, reuse logic
         Just e ->
           toIR (T.Assign (T.AssignOp Nothing) ((T.TopVar t fi, e) :| []))
+      where
+        primPut :: Instruction
+        primPut = PutStatic (FieldRef cMain (tVarStr fi)) (typeToJType t)
     toMethods :: [T.FuncDecl] -> [Method]
     toMethods = map fdToMethod
       where
@@ -631,39 +643,56 @@ instance IRRep T.VarDecl' where
       _ -- Get default and store
        ->
         case t of
-          (T.ArrayType l at) -> glcArrayIR l at
-          (T.SliceType st) -> glcArrayIR (-1) st
+          (T.ArrayType l _) -> glcArrayIR l t (Right idx)
+          (T.SliceType _) -> glcArrayIR (-1) t (Right idx)
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
           T.PBool -> iri [IConst0, Store (Prim IRInt) idx]
           T.PString -> iri [LDC (LDCString ""), Store Object idx]
-          (T.StructType sid) ->
-            iri
-              [ New (ClassRef $ structName sid)
-              , Dup
-              , InvokeSpecial
-                  (MethodRef
-                     (CRef $ ClassRef $ structName sid)
-                     "<init>"
-                     emptySpec)
-              , Store Object idx
-              ]
-        where glcArrayIR :: Int -> T.Type -> [IRItem]
-              glcArrayIR l t' =
-                case t' of
-                  T.ArrayType {} -> nestedGlcArrayIR t idx
-                  T.SliceType {} -> nestedGlcArrayIR t idx
-                  T.PInt -> arrayOrSliceIR jInteger l idx
-                  T.PFloat64 -> arrayOrSliceIR jDouble l idx
-                  T.PRune -> arrayOrSliceIR jInteger l idx
-                  T.PBool -> arrayOrSliceIR jInteger l idx
-                  T.PString -> arrayOrSliceIR jString l idx
-                  T.StructType sid ->
-                    arrayOrSliceIR (ClassRef $ structName sid) l idx
+          (T.StructType sid) -> structInitIR sid (Right idx)
 
-nestedGlcArrayIR :: T.Type -> T.VarIndex -> [IRItem]
-nestedGlcArrayIR t idx =
+structInitIR :: T.Ident -> Either T.Ident T.VarIndex -> [IRItem]
+structInitIR sid eid =
+  iri
+    [ New structCR
+    , Dup
+    , InvokeSpecial (MethodRef (CRef structCR) "<init>" emptySpec)
+    , storeStruct
+    ]
+  where
+    storeStruct :: Instruction
+    storeStruct =
+      either
+        (\v -> PutStatic (FieldRef cMain (tVarStr v)) (JClass structCR))
+        (\x -> Store Object x)
+        eid
+    structCR :: ClassRef
+    structCR = ClassRef (structName sid)
+
+glcArrayIR ::  Int -> T.Type -> Either T.Ident T.VarIndex -> [IRItem]
+glcArrayIR l t eid =
+  case t' of
+    T.ArrayType {} -> nestedGlcArrayIR t eid
+    T.SliceType {} -> nestedGlcArrayIR t eid
+    T.PInt -> arrayOrSliceIR jInteger l eid
+    T.PFloat64 -> arrayOrSliceIR jDouble l eid
+    T.PRune -> arrayOrSliceIR jInteger l eid
+    T.PBool -> arrayOrSliceIR jInteger l eid
+    T.PString -> arrayOrSliceIR jString l eid
+    T.StructType sid ->
+      arrayOrSliceIR (ClassRef $ structName sid) l eid
+  where
+    t' :: T.Type
+    t' =
+      case t of
+        T.ArrayType _ at -> at
+        T.SliceType st -> st
+        _ ->
+          error "Error: glcArrayIR called on non-array/slice type"
+
+nestedGlcArrayIR :: T.Type -> (Either T.Ident T.VarIndex) -> [IRItem]
+nestedGlcArrayIR t eid =
   iri
     [ New cGlcArray
     , Dup
@@ -671,7 +700,7 @@ nestedGlcArrayIR t idx =
     , LDC (LDCInt $ length sizes) -- Number of dimensions of array
     , NewArray IRInt -- array of dimensions
     ] ++
-  sizeArrayIR ++ iri [InvokeSpecial glcArrayInit, Store Object idx]
+  sizeArrayIR ++ (IRInst $ InvokeSpecial glcArrayInit) : storeArray
   where
     sizeArrayIR :: [IRItem]
     sizeArrayIR =
@@ -699,9 +728,15 @@ nestedGlcArrayIR t idx =
         T.PBool            -> jInteger
         T.PString          -> jString
         T.StructType sid   -> ClassRef (structName sid)
+    storeArray :: [IRItem]
+    storeArray =
+      either
+        (\v -> iri [PutStatic (FieldRef cMain (tVarStr v)) (JClass cGlcArray)])
+        (\x -> iri [Store Object x])
+        eid
 
-arrayOrSliceIR :: ClassRef -> Int -> T.VarIndex -> [IRItem]
-arrayOrSliceIR cr l idx =
+arrayOrSliceIR :: ClassRef -> Int -> Either T.Ident T.VarIndex -> [IRItem]
+arrayOrSliceIR cr l eid =
   iri
     [ New cGlcArray
     , Dup
@@ -713,8 +748,15 @@ arrayOrSliceIR cr l idx =
     , LDC (LDCInt l)
     , ArrayStore (Prim IRInt)
     , InvokeSpecial glcArrayInit
-    , Store Object idx
-    ]
+    ] ++ storeIR
+  where
+    storeIR :: [IRItem]
+    storeIR =
+      either
+        (\v -> iri [PutStatic (FieldRef cMain (tVarStr v)) (JClass cGlcArray)])
+        (\x -> iri [Store Object x])
+        eid
+
 
 newSliceIR :: ClassRef -> T.VarIndex -> [IRItem]
 newSliceIR cr idx =
