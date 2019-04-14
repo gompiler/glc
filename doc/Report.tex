@@ -782,15 +782,20 @@ There are two tricky things about assignments:
 \subsection{Experience}
 \subsection{What We'd Change}
 
-While Haskell has allowed us to easily define types, certain restrictions still allow for invalid AST structures. 
-For instance, we can only get the length of an array or a slice, yet the AST support all expressions.
-To properly restrict all types, we would need to further group data into multiple subsets of constructors.
-While this would catch more problems at compile time, it will also make the code significantly more complex.
-The other approach is to allow errors at all stages of the compiler, 
-even though all valid typechecked code has a code gen counterpart.
-This adds multiple catches of the same error at runtime, but keeps the code short.
-Our current approach is to `throw' errors when they occur, without providing a function signature that indicates errors can occur.
-This allows us to keep our code short, but is problematic with evolution, as users would expect a pure function to be pure (void of errors).
+While Haskell has allowed us to easily define types, certain
+restrictions still allow for invalid AST structures.  For instance, we
+can only get the length of an array or a slice, yet the AST support
+all expressions.  To properly restrict all types, we would need to
+further group data into multiple subsets of constructors.  While this
+would catch more problems at compile time, it will also make the code
+significantly more complex.  The other approach is to allow errors at
+all stages of the compiler, even though all valid typechecked code has
+a code gen counterpart.  This adds multiple catches of the same error
+at runtime, but keeps the code short.  Our current approach is to
+`throw' errors when they occur, without providing a function signature
+that indicates errors can occur.  This allows us to keep our code
+short, but is problematic with evolution, as users would expect a pure
+function to be pure (void of errors).
 
 \section{Contributions}
 % M1 CONTRIBS BELOW
