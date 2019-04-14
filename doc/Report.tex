@@ -443,14 +443,11 @@ re-building the symbol table becomes evident.
 
 As a result of this performance impact, we decided on using a mutable
 symbol table, with mutability supported via Haskell's
-\href{https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html}{ST}
+ST\cite{hackage:st}
 monad. The constraint provides
-\href{https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html\#v:runST}{runST}
+runST\cite{hackage:runst}
 (which removes the \texttt{ST}, i.e.\ mutability, from an interior
-data structure). This is proven to keep functions pure (see
-\href{https://iris-project.org/pdfs/2018-popl-runST-final.pdf}{A
-  Logical Relation for Monadic Encapsulation of State by Amin Timany
-  et al.}). This made the \texttt{ST} monad a better choice than other
+data structure). This is proven\cite{monadicstate} to keep functions pure. This made the \texttt{ST} monad a better choice than other
 monads providing mutability (the main example being \texttt{IO}, which
 if used would have resulted in all our functions after symbol table
 generation being bound by \texttt{IO}, i.e.\ impure and also harder to
