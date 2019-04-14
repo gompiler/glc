@@ -205,13 +205,13 @@ toClasses T.Program { T.structs = scts
         Nothing ->
           case t of
             (T.ArrayType l _) -> glcArrayIR l t (Left fi)
-            (T.SliceType _) -> glcArrayIR (-1) t (Left fi)
-            T.PInt -> iri [LDC (LDCInt 0), primPut]
-            T.PFloat64 -> iri [LDC (LDCDouble 0.0), primPut]
-            T.PBool -> iri [LDC (LDCInt 0), primPut]
-            T.PRune -> iri [LDC (LDCInt 0), primPut]
-            T.PString -> iri [LDC (LDCString ""), primPut]
-            T.StructType sid -> structInitIR sid (Left fi)
+            (T.SliceType _)   -> glcArrayIR (-1) t (Left fi)
+            T.PInt            -> iri [LDC (LDCInt 0), primPut]
+            T.PFloat64        -> iri [LDC (LDCDouble 0.0), primPut]
+            T.PBool           -> iri [LDC (LDCInt 0), primPut]
+            T.PRune           -> iri [LDC (LDCInt 0), primPut]
+            T.PString         -> iri [LDC (LDCString ""), primPut]
+            T.StructType sid  -> structInitIR sid (Left fi)
       -- Convert declaration to assignments, reuse logic
         Just e ->
           toIR (T.Assign (T.AssignOp Nothing) ((T.TopVar t fi, e) :| []))
@@ -262,7 +262,7 @@ toClasses T.Program { T.structs = scts
       Field
         { access = FPrivate
         , static = False
-        , fname = (structField fid)
+        , fname = structField fid
         , descriptor = typeToJType t
         -- , value = Nothing
         }
@@ -344,16 +344,10 @@ toClasses T.Program { T.structs = scts
                 , IfACmpEQ ("refeq" ++ show i)
                 , Load Object (T.VarIndex 0)
                 , InvokeVirtual $
-                    MethodRef
-                      cr
-                      (structGetter fid)
-                      (MethodSpec ([], jt))
+                  MethodRef cr (structGetter fid) (MethodSpec ([], jt))
                 , Load Object (T.VarIndex 2)
                 , InvokeVirtual $
-                    MethodRef
-                      cr
-                      (structGetter fid)
-                      (MethodSpec ([], jt))
+                  MethodRef cr (structGetter fid) (MethodSpec ([], jt))
                 , InvokeVirtual glcArrayEquals
                 , If IRData.EQ label
                 ] ++
@@ -368,16 +362,10 @@ toClasses T.Program { T.structs = scts
                 , IfACmpEQ ("refeq" ++ show i)
                 , Load Object (T.VarIndex 0)
                 , InvokeVirtual $
-                    MethodRef
-                      cr
-                      (structGetter fid)
-                      (MethodSpec ([], jt))
+                  MethodRef cr (structGetter fid) (MethodSpec ([], jt))
                 , Load Object (T.VarIndex 2)
                 , InvokeVirtual $
-                    MethodRef
-                      cr
-                      (structGetter fid)
-                      (MethodSpec ([], jt))
+                  MethodRef cr (structGetter fid) (MethodSpec ([], jt))
                 , CheckCast (CRef jObject)
                 , InvokeVirtual
                     ((MethodRef $ CRef cr')
@@ -493,7 +481,8 @@ toClasses T.Program { T.structs = scts
                 ] ++
               iri
                 [ PutField (FieldRef (ClassRef sn) (structField fid)) jt
-                , Return Nothing]
+                , Return Nothing
+                ]
     getter :: String -> T.FieldDecl -> Method
     getter sn (T.FieldDecl fid t) =
       Method
@@ -679,33 +668,31 @@ structInitIR sid eid =
     storeStruct =
       either
         (\v -> PutStatic (FieldRef cMain (tVarStr v)) (JClass structCR))
-        (\x -> Store Object x)
+        (Store Object)
         eid
     structCR :: ClassRef
     structCR = ClassRef (structName sid)
 
-glcArrayIR ::  Int -> T.Type -> Either T.Ident T.VarIndex -> [IRItem]
+glcArrayIR :: Int -> T.Type -> Either T.Ident T.VarIndex -> [IRItem]
 glcArrayIR l t eid =
   case t' of
-    T.ArrayType {} -> nestedGlcArrayIR t eid
-    T.SliceType {} -> nestedGlcArrayIR t eid
-    T.PInt -> arrayOrSliceIR jInteger l eid
-    T.PFloat64 -> arrayOrSliceIR jDouble l eid
-    T.PRune -> arrayOrSliceIR jInteger l eid
-    T.PBool -> arrayOrSliceIR jInteger l eid
-    T.PString -> arrayOrSliceIR jString l eid
-    T.StructType sid ->
-      arrayOrSliceIR (ClassRef $ structName sid) l eid
+    T.ArrayType {}   -> nestedGlcArrayIR t eid
+    T.SliceType {}   -> nestedGlcArrayIR t eid
+    T.PInt           -> arrayOrSliceIR jInteger l eid
+    T.PFloat64       -> arrayOrSliceIR jDouble l eid
+    T.PRune          -> arrayOrSliceIR jInteger l eid
+    T.PBool          -> arrayOrSliceIR jInteger l eid
+    T.PString        -> arrayOrSliceIR jString l eid
+    T.StructType sid -> arrayOrSliceIR (ClassRef $ structName sid) l eid
   where
     t' :: T.Type
     t' =
       case t of
         T.ArrayType _ at -> at
         T.SliceType st -> st
-        _ ->
-          error "Error: glcArrayIR called on non-array/slice type"
+        _ -> error "Error: glcArrayIR called on non-array/slice type"
 
-nestedGlcArrayIR :: T.Type -> (Either T.Ident T.VarIndex) -> [IRItem]
+nestedGlcArrayIR :: T.Type -> Either T.Ident T.VarIndex -> [IRItem]
 nestedGlcArrayIR t eid =
   iri
     [ New cGlcArray
@@ -762,7 +749,8 @@ arrayOrSliceIR cr l eid =
     , LDC (LDCInt l)
     , ArrayStore (Prim IRInt)
     , InvokeSpecial glcArrayInit
-    ] ++ storeIR
+    ] ++
+  storeIR
   where
     storeIR :: [IRItem]
     storeIR =
@@ -770,7 +758,6 @@ arrayOrSliceIR cr l eid =
         (\v -> iri [PutStatic (FieldRef cMain (tVarStr v)) (JClass cGlcArray)])
         (\x -> iri [Store Object x])
         eid
-
 
 newSliceIR :: ClassRef -> T.VarIndex -> [IRItem]
 newSliceIR cr idx =
@@ -979,10 +966,7 @@ instance IRRep T.SimpleStmt where
       stTypes = reverse $ map exprType exprs
       expStore :: (Either T.Ident T.VarIndex, T.Type) -> IRItem
       expStore (vid, t) =
-        either
-          (\i -> expFieldStore (i, t))
-          (\vi -> expIdxStore (vi, t))
-          vid
+        either (\i -> expFieldStore (i, t)) (\vi -> expIdxStore (vi, t)) vid
       expIdxStore :: (T.VarIndex, T.Type) -> IRItem
       expIdxStore (idx, t) = IRInst (Store (typeToIRType t) idx)
       expFieldStore :: (T.Ident, T.Type) -> IRItem
@@ -1110,10 +1094,7 @@ instance IRRep T.Expr where
     toIR e ++
     iri
       [ InvokeVirtual $
-        MethodRef
-          (CRef cr)
-          (structGetter fid)
-          (MethodSpec ([], typeToJType t))
+        MethodRef (CRef cr) (structGetter fid) (MethodSpec ([], typeToJType t))
       ]
     where
       cr :: ClassRef
