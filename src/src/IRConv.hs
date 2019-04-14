@@ -1,4 +1,8 @@
-module IRConv where
+module IRConv
+  ( displayIR
+  , genIR
+  , toClasses
+  ) where
 
 import           Base                  (Glc)
 import qualified CheckedData           as D
@@ -549,92 +553,80 @@ toClasses T.Program { T.structs = scts
               ]
         }
 
-invokeCp :: T.Type -> [IRItem]
-invokeCp t =
-  iri $
-  case t of
-    T.ArrayType {} ->
-      [ InvokeVirtual
-          (MethodRef (CRef cGlcArray) "copy" (MethodSpec ([], JClass cGlcArray)))
-      ]
-    T.SliceType {} ->
-      [ InvokeVirtual
-          (MethodRef (CRef cGlcArray) "copy" (MethodSpec ([], JClass cGlcArray)))
-      ]
-    T.StructType sid' ->
-      [ InvokeVirtual
-          (MethodRef
-             (CRef (ClassRef $ structName sid'))
-             "copy"
-             (MethodSpec ([], JClass $ ClassRef $ structName sid')))
-      ]
-    _ -> []
-
 class IRRep a where
   toIR :: a -> [IRItem]
 
 instance IRRep T.Stmt where
-  toIR (T.BlockStmt stmts) = concatMap toIR stmts
-  toIR (T.SimpleStmt stmt) = toIR stmt
-  toIR (T.If (T.LabelIndex idx) (sstmt, expr) ifs elses) =
-    toIR sstmt ++
-    toIR expr ++
-    iri [If IRData.EQ ("else_" ++ show idx)] ++
-    toIR ifs ++
-    [IRInst (Goto ("end_if_" ++ show idx)), IRLabel ("else_" ++ show idx)] ++
-    toIR elses ++ [IRLabel ("end_if_" ++ show idx), IRInst NOp]
-  toIR (T.Switch (T.LabelIndex idx) sstmt e scs dstmt) =
-    toIR sstmt ++
-    toIR e ++
-    concatMap irCaseHeaders (zip [1 ..] scs) ++
-    IRLabel ("default_" ++ show idx) :
-    toIR dstmt ++ -- pop off remaining comparison value
-    iri [Goto ("end_breakable_" ++ show idx)] ++
-    concatMap irCaseBodies (zip [1 ..] scs) ++
-    [IRLabel ("end_breakable_" ++ show idx), IRInst Pop] -- duplicate expression for case statement expressions in lists
+  toIR stmts' =
+    case stmts' of
+      T.BlockStmt stmts -> toIR =<< stmts
+      T.SimpleStmt stmt -> toIR stmt
+      T.If (T.LabelIndex idx) (sstmt, expr) ifs elses ->
+        toIR sstmt ++
+        toIR expr ++
+        iri [If IRData.EQ $ elseLabel idx] ++
+        toIR ifs ++
+        [IRInst (Goto $ifLabel idx), IRLabel $ elseLabel idx] ++
+        toIR elses ++ [IRLabel $ ifLabel idx, IRInst NOp]
+      T.Switch (T.LabelIndex idx) sstmt e scs dstmt ->
+        toIR sstmt ++
+        toIR e ++
+        concatMap irCaseHeaders (zip [1 ..] scs) ++
+        IRLabel (defaultLabel idx) :
+        toIR dstmt ++ -- pop off remaining comparison value
+        iri [Goto $breakLabel idx] ++
+        concatMap irCaseBodies (zip [1 ..] scs) ++
+        [IRLabel $ breakLabel idx, IRInst Pop] -- duplicate expression for case statement expressions in lists
+        where irCaseHeaders :: (Int, T.SwitchCase) -> [IRItem]
+              irCaseHeaders (cIdx, T.Case _ exprs _) =
+                concatMap toCaseHeader (zip [1 ..] (NE.toList exprs))
+                where
+                  toCaseHeader :: (Int, T.Expr) -> [IRItem]
+                  toCaseHeader (eIdx, ce) =
+                    IRInst Dup :
+                    toIR ce ++
+                    equality True (caseLabel cIdx eIdx) idx (exprType ce) ++
+                    iri [If IRData.NE $ caseLabel cIdx idx] -- If it's true, make the jump
+              irCaseBodies :: (Int, T.SwitchCase) -> [IRItem]
+              irCaseBodies (cIdx, T.Case _ _ stmt) =
+                [IRLabel $ caseLabel cIdx idx] ++
+                toIR stmt ++ iri [Goto $ breakLabel idx]
+      T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody ->
+        toIR lstmt ++
+        IRLabel (loopLabel idx) :
+        toIR cond ++
+        iri [If IRData.LE $ breakLabel idx] ++
+        toIR fbody ++
+        IRLabel (postLoopLabel idx) :
+        toIR rstmt ++
+        [IRInst (Goto $ loopLabel idx), IRLabel $ breakLabel idx, IRInst NOp]
+      T.Break (T.LabelIndex idx) -> iri [Goto $ breakLabel idx]
+      T.Continue (T.LabelIndex idx) -> iri [Goto $ postLoopLabel idx]
+      T.VarDecl vdl -> concatMap toIR vdl
+      T.Print el -> concatMap printIR el
+      T.Println el ->
+        intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++
+        printIR (T.Lit $ D.StringLit "\n")
+      T.Return me ->
+        maybe
+          (iri [Return Nothing])
+          (\e -> toIR e ++ iri [Return $ Just (exprIRType e)])
+          me
     where
-      irCaseHeaders :: (Int, T.SwitchCase) -> [IRItem]
-      irCaseHeaders (cIdx, T.Case _ exprs _) =
-        concatMap toCaseHeader (zip [1 ..] (NE.toList exprs))
-        where
-          toCaseHeader :: (Int, T.Expr) -> [IRItem]
-          toCaseHeader (eIdx, ce) =
-            IRInst Dup :
-            toIR ce ++
-            equality
-              True
-              ("case_" ++ show cIdx ++ "_" ++ show eIdx)
-              idx
-              (exprType ce) ++
-            iri [If IRData.NE $ "case_" ++ show cIdx ++ "_" ++ show idx] -- If it's true, make the jump
-      irCaseBodies :: (Int, T.SwitchCase) -> [IRItem]
-      irCaseBodies (cIdx, T.Case _ _ stmt) =
-        [IRLabel $ "case_" ++ show cIdx ++ "_" ++ show idx] ++
-        toIR stmt ++ iri [Goto ("end_breakable_" ++ show idx)]
-  toIR (T.For (T.LabelIndex idx) (T.ForClause lstmt cond rstmt) fbody) =
-    toIR lstmt ++
-    IRLabel ("loop_" ++ show idx) :
-    toIR cond ++
-    iri [If IRData.LE ("end_breakable_" ++ show idx)] ++
-    toIR fbody ++
-    IRLabel ("post_loop_" ++ show idx) :
-    toIR rstmt ++
-    [ IRInst (Goto $ "loop_" ++ show idx)
-    , IRLabel ("end_breakable_" ++ show idx)
-    , IRInst NOp
-    ]
-  toIR (T.Break (T.LabelIndex idx)) = iri [Goto ("end_breakable_" ++ show idx)]
-  toIR (T.Continue (T.LabelIndex idx)) = iri [Goto ("post_loop_" ++ show idx)]
-  toIR (T.VarDecl vdl) = concatMap toIR vdl
-  toIR (T.Print el) = concatMap printIR el
-  toIR (T.Println el) =
-    intercalate (printIR (T.Lit $ D.StringLit " ")) (map printIR el) ++
-    printIR (T.Lit $ D.StringLit "\n")
-  toIR (T.Return me) =
-    maybe
-      (iri [Return Nothing])
-      (\e -> toIR e ++ iri [Return $ Just (exprIRType e)])
-      me
+      ifLabel :: Int -> LabelName
+      ifLabel i = "end_if_" ++ show i
+      elseLabel :: Int -> LabelName
+      elseLabel i = "else_" ++ show i
+      loopLabel :: Int -> LabelName
+      loopLabel i = "loop_" ++ show i
+      postLoopLabel :: Int -> LabelName
+      postLoopLabel i = "post_loop_" ++ show i
+      defaultLabel :: Int -> LabelName
+      defaultLabel i = "default_" ++ show i
+      breakLabel :: Int -> LabelName
+      breakLabel i = "end_breakable_" ++ show i
+      caseLabel :: Int -> Int -> LabelName
+      caseLabel i j = "case_" ++ show i ++ "_" ++ show j
 
 instance IRRep T.VarDecl' where
   toIR (T.VarDecl' idx t me) =
@@ -959,12 +951,17 @@ instance IRRep T.Expr where
           D.Add       -> undefined -- handled above
   toIR (T.Binary (T.LabelIndex idx) _ T.Or e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.NE ("true_or_" ++ show idx), Pop] ++
-    toIR e2 ++ [IRLabel ("true_or_" ++ show idx)]
+    iri [Dup, If IRData.NE trueOrLabel, Pop] ++ toIR e2 ++ [IRLabel trueOrLabel]
+      -- Must match trueLabel used elsewhere
+    where
+      trueOrLabel = "true_or_" ++ show idx
   toIR (T.Binary (T.LabelIndex idx) _ T.And e1 e2) =
     toIR e1 ++
-    iri [Dup, If IRData.EQ ("false_and_" ++ show idx), Pop] ++
-    toIR e2 ++ [IRLabel ("false_and_" ++ show idx)]
+    iri [Dup, If IRData.EQ falseAndLabel, Pop] ++
+    toIR e2 ++ [IRLabel falseAndLabel]
+      -- Must match falseLabel used elsewhere
+    where
+      falseAndLabel = "false_and_" ++ show idx
   toIR (T.Binary (T.LabelIndex idx) _ T.EQ e1 e2) =
     toIR e1 ++ toIR e2 ++ equality True "bin" idx (exprType e1)
   toIR (T.Binary idx t T.NEQ e1 e2) =
