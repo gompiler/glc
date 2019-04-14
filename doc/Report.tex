@@ -158,8 +158,7 @@ ahead-of-time compiled language.
 The low level of JVM bytecode is particularly frustrating to deal with
 when it comes to types that are not representable by an integer or
 floating point number and are thus classes which must be instantiated;
-in the JVM, this includes strings and
-\textasciitilde{}struct\textasciitilde{}s. This means that operations
+in the JVM, this includes strings and \texttt{struct}. This means that operations
 such as comparisons and string concatenations go from being a few
 bytecode instructions to signficantly longer patterns.
 \section{Scanner}
@@ -335,7 +334,7 @@ that we cannot further simplify multi declarations \texttt{var a, b
   = 2, 3} because they happen in one stage; 
   \texttt{var a, b = b, a} does not always produce the same output as 
   \texttt{var a = b; var b = a}.
-  
+
 \subsubsection{Pretty Printer}
 When creating our pretty printer, we chose a top down approach.  Every
 node has the ability to output a list of strings, which makes it
@@ -493,7 +492,7 @@ vital information concerning the types we define in the original
   eventually to a base type.
 \item \texttt{PInt, PFloat64, PBool, PRune, PString}: Base types.
 \item \texttt{Infer, Void}: Special
-  \textasciitilde{}SType\textasciitilde{}s for inferred types and void
+  \texttt{SType} for inferred types and void
   return values.
 \end{itemize}
 In this way, all possible GoLite types, including user-defined types,
