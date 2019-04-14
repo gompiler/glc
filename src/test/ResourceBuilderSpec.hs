@@ -133,5 +133,6 @@ instance VarIndices ForClause where
 instance VarIndices SimpleStmt where
   indices stmt =
     case stmt of
-      ShortDeclare decls -> map fst $ toList decls
-      _                  -> []
+      ShortDeclare decls ->
+        concatMap ((either (const []) (\v -> [v])) . fst) $ toList decls
+      _ -> []
