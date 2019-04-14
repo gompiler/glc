@@ -54,7 +54,10 @@
 \subsection{Overview of GoLite}
 % TODO
 \subsection{Structure of Report}
-% TODO
+In this report, we discuss the language and tool choices we made for
+this project, as well as an overview of each compiler step (scanner,
+parser, weeder, symbol table, typecheck and codegen respectively),
+with major design decisions. Testing is also discussed.
 \section{Language and Tool Choices}
 \subsection{Implementation Language: Haskell}
 % TODO MENTION CODEGEN TOOLS, i.e. Krakatau
@@ -63,9 +66,10 @@ as the implementation language, as many of the required tasks can be
 done more naturally (i.e.\ tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 \subsection{Tools}
-For scanning, we use the program \texttt{Alex}\cite{github:alex}, which is similar to
+For scanning, we use the program \texttt{Alex}\cite{github:alex}, a
+lexical analyser generator which is similar to
 \texttt{flex} but produces \texttt{Haskell} code instead. We use
-\texttt{Happy}\cite{github:happy} for parsing, which resembles
+\texttt{Happy}\cite{github:happy} for parsing, a parser generator which resembles
 \texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be
 interlinked nicely, passing on useful information such as the line number, column number, character
 offset in file, and error messages.
