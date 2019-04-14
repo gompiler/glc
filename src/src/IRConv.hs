@@ -639,7 +639,7 @@ instance IRRep T.Stmt where
 instance IRRep T.VarDecl' where
   toIR (T.VarDecl' idx t me) =
     case me of
-      Just e -> toIR e ++ iri [Store (typeToIRType t) idx]
+      Just e -> toIR e ++ cloneIfNeeded e ++ iri [Store (typeToIRType t) idx]
       _ -- Get default and store
        ->
         case t of
