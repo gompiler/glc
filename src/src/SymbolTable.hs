@@ -725,10 +725,11 @@ instance Symbolize VarDecl' [T.VarDecl'] where
           (const $
            either
              (return . Left)
-             (\t' -> do
-                me <- checkIds st (Variable t') "Variable " neIdl
-                maybe (checkDecl t' (toList neIdl) el) (return . Left) me)
-             et)
+             (\t' -> (do
+                         evdl <- checkDecl t' (toList neIdl) el
+                         me <- checkIds st (Variable t') "Variable " neIdl
+                         return $ maybe evdl Left me))
+            et)
           (sequence ets)
       Right nel -> do
         ets <- mapM (infer st) (toList nel) -- Check that everything on RHS can be inferred, otherwise we may be assigning to something on LHS
