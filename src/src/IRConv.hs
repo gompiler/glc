@@ -204,14 +204,14 @@ toClasses T.Program { T.structs = scts
       case me of
         Nothing ->
           case t of
-            (T.ArrayType l _) -> glcArrayIR l t (Left fi)
-            (T.SliceType _) -> glcArrayIR (-1) t (Left fi)
-            T.PInt -> iri [LDC (LDCInt 0), primPut]
-            T.PFloat64 -> iri [LDC (LDCDouble 0.0), primPut]
-            T.PBool -> iri [LDC (LDCInt 0), primPut]
-            T.PRune -> iri [LDC (LDCInt 0), primPut]
-            T.PString -> iri [LDC (LDCString ""), primPut]
-            T.StructType sid -> structInitIR sid (Left fi)
+            (T.ArrayType _ _) -> glcArrayIR t (Left fi)
+            (T.SliceType _)   -> glcArrayIR t (Left fi)
+            T.PInt            -> iri [LDC (LDCInt 0), primPut]
+            T.PFloat64        -> iri [LDC (LDCDouble 0.0), primPut]
+            T.PBool           -> iri [LDC (LDCInt 0), primPut]
+            T.PRune           -> iri [LDC (LDCInt 0), primPut]
+            T.PString         -> iri [LDC (LDCString ""), primPut]
+            T.StructType sid  -> structInitIR sid (Left fi)
       -- Convert declaration to assignments, reuse logic
         Just e ->
           toIR (T.Assign (T.AssignOp Nothing) ((T.TopVar t fi, e) :| []))
@@ -643,8 +643,8 @@ instance IRRep T.VarDecl' where
       _ -- Get default and store
        ->
         case t of
-          (T.ArrayType l _) -> glcArrayIR l t (Right idx)
-          (T.SliceType _) -> glcArrayIR (-1) t (Right idx)
+          (T.ArrayType _ _) -> glcArrayIR t (Right idx)
+          (T.SliceType _) -> glcArrayIR t (Right idx)
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
@@ -665,34 +665,13 @@ structInitIR sid eid =
     storeStruct =
       either
         (\v -> PutStatic (FieldRef cMain (tVarStr v)) (JClass structCR))
-        (\x -> Store Object x)
+        (Store Object)
         eid
     structCR :: ClassRef
     structCR = ClassRef (structName sid)
 
-glcArrayIR ::  Int -> T.Type -> Either T.Ident T.VarIndex -> [IRItem]
-glcArrayIR l t eid =
-  case t' of
-    T.ArrayType {} -> nestedGlcArrayIR t eid
-    T.SliceType {} -> nestedGlcArrayIR t eid
-    T.PInt -> arrayOrSliceIR jInteger l eid
-    T.PFloat64 -> arrayOrSliceIR jDouble l eid
-    T.PRune -> arrayOrSliceIR jInteger l eid
-    T.PBool -> arrayOrSliceIR jInteger l eid
-    T.PString -> arrayOrSliceIR jString l eid
-    T.StructType sid ->
-      arrayOrSliceIR (ClassRef $ structName sid) l eid
-  where
-    t' :: T.Type
-    t' =
-      case t of
-        T.ArrayType _ at -> at
-        T.SliceType st -> st
-        _ ->
-          error "Error: glcArrayIR called on non-array/slice type"
-
-nestedGlcArrayIR :: T.Type -> (Either T.Ident T.VarIndex) -> [IRItem]
-nestedGlcArrayIR t eid =
+glcArrayIR :: T.Type -> Either T.Ident T.VarIndex -> [IRItem]
+glcArrayIR t eid =
   iri
     [ New cGlcArray
     , Dup
@@ -734,45 +713,6 @@ nestedGlcArrayIR t eid =
         (\v -> iri [PutStatic (FieldRef cMain (tVarStr v)) (JClass cGlcArray)])
         (\x -> iri [Store Object x])
         eid
-
-arrayOrSliceIR :: ClassRef -> Int -> Either T.Ident T.VarIndex -> [IRItem]
-arrayOrSliceIR cr l eid =
-  iri
-    [ New cGlcArray
-    , Dup
-    , LDC (LDCClass cr)
-    , IConst1
-    , NewArray IRInt
-    , Dup
-    , IConst0
-    , LDC (LDCInt l)
-    , ArrayStore (Prim IRInt)
-    , InvokeSpecial glcArrayInit
-    ] ++ storeIR
-  where
-    storeIR :: [IRItem]
-    storeIR =
-      either
-        (\v -> iri [PutStatic (FieldRef cMain (tVarStr v)) (JClass cGlcArray)])
-        (\x -> iri [Store Object x])
-        eid
-
-
-newSliceIR :: ClassRef -> T.VarIndex -> [IRItem]
-newSliceIR cr idx =
-  iri
-    [ New cGlcArray
-    , Dup
-    , LDC (LDCClass cr)
-    , IConst1
-    , NewArray IRInt -- dimension array
-    , Dup
-    , IConst0 -- position 0
-    , IConstM1 -- slices have dimension -1 to start
-    , ArrayStore (Prim IRInt)
-    , InvokeSpecial glcArrayInit
-    , Store Object idx
-    ]
 
 printIR :: T.Expr -> [IRItem]
 printIR e =
@@ -965,10 +905,7 @@ instance IRRep T.SimpleStmt where
       stTypes = reverse $ map exprType exprs
       expStore :: (Either T.Ident T.VarIndex, T.Type) -> IRItem
       expStore (vid, t) =
-        either
-          (\i -> expFieldStore (i, t))
-          (\vi -> expIdxStore (vi, t))
-          vid
+        either (\i -> expFieldStore (i, t)) (\vi -> expIdxStore (vi, t)) vid
       expIdxStore :: (T.VarIndex, T.Type) -> IRItem
       expIdxStore (idx, t) = IRInst (Store (typeToIRType t) idx)
       expFieldStore :: (T.Ident, T.Type) -> IRItem
