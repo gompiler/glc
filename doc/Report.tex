@@ -269,6 +269,9 @@ identifiers. Then, the expression list non-terminal is allowed to
 yield either a mixed list or a pure identifier list depending on what
 is needed.
 
+% TODO
+% ACCOUNT FOR M1 COMMENT
+% "yikes"
 Another caveat of how lists are handled in the grammar, again a
 compromise to prevent ambiguity, is that the actual grammar constructs
 that represent lists correspond to a list of size two or more, which
@@ -329,6 +332,9 @@ words, \texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note
 that we cannot further simplify group declarations \texttt{var ( a, b
   = 2, 3)}, as there is no guarantee at this stage that the number of
 identifiers matches the number of values.
+% TODO
+% ACCOUNT FOR M1 COMMENT
+% "also you can't split multi-assigns"
 \subsubsection{Pretty Printer}
 When creating our pretty printer, we chose a top down approach.  Every
 node has the ability to output a list of strings, which makes it
@@ -383,6 +389,8 @@ constraints we use weeding to check for this milestone are:
   typechecking, with two different versions depending on return
   type. This was not deemed worth it compared to a single weeding
   pass.
+  % TODO
+  % ACCOUNT FOR M2 COMMENT, THIS HOLDS FOR ANY VOID FUNC
 \item Ensuring \texttt{init} function declarations do not have any
   non-void return statements. Similar to the above, it is easier to do
   a weeding pass then require context-sensitive (i.e multiple
@@ -500,12 +508,16 @@ assignments don't conflict with the original inferred type).
 % \end{itemize}
 
 \subsection{Testing}
+% TODO
+% ACCOUNT FOR M2 COMMENT
+% Try to describe some of the type rules you use for typecheck
+% specific stmts/exprs if they are interesting
 \section{Typecheck}
 \subsection{Overview}
 % TODO
 \subsection{Design Decisions}
 For type-checking, we decided on a single-pass approach, combining
-combined symbol table generation and statement type-checking. This
+symbol table generation and statement type-checking. This
 improves performance, and is feasible as a product of GoLite's
 declaration rules, which specify that identifiers must be declared
 before they can be used.
@@ -670,6 +682,10 @@ significantly different semantically:
 \item Case statement expressions do not need to be a constant
   expression.
 \end{itemize}
+% TODO
+% ACCOUNT FOR M3 COMMENT IN THIS SEC AND MAPPING STRATEGIES
+% What about assigning arrays and structs ? What about assigning
+% slices ? There are no mentions of the copying mechanisms.
 \subsubsection{Assignments in GoLite}
 In \texttt{GoLite}, assignments are either an assignment operator with
 a single LHS expression and a RHS expression, or two non-empty
