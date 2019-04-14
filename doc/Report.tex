@@ -744,8 +744,11 @@ For the structural differences:
   the value we're comparing to before each comparison (as otherwise
   we'll lose it during the stack operation). In other terms, the value
   we compare to during each \texttt{case} block is stored on the stack
-  until the \texttt{switch} statement is done.  Semantically:
+  until the \texttt{switch} statement is done.
 \end{itemize}
+
+\noindent Semantically:
+
 \begin{itemize}[noitemsep]
 \item After \texttt{case} expression comparisons, we will either jump
   to the case body or keep going to the next \texttt{case} comparison
