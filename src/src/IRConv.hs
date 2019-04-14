@@ -204,8 +204,8 @@ toClasses T.Program { T.structs = scts
       case me of
         Nothing ->
           case t of
-            (T.ArrayType _ _) -> nestedGlcArrayIR t (Left fi)
-            (T.SliceType _)   -> nestedGlcArrayIR t (Left fi)
+            (T.ArrayType _ _) -> glcArrayIR t (Left fi)
+            (T.SliceType _)   -> glcArrayIR t (Left fi)
             T.PInt            -> iri [LDC (LDCInt 0), primPut]
             T.PFloat64        -> iri [LDC (LDCDouble 0.0), primPut]
             T.PBool           -> iri [LDC (LDCInt 0), primPut]
@@ -643,8 +643,8 @@ instance IRRep T.VarDecl' where
       _ -- Get default and store
        ->
         case t of
-          (T.ArrayType _ _) -> nestedGlcArrayIR t (Right idx)
-          (T.SliceType _) -> nestedGlcArrayIR t (Right idx)
+          (T.ArrayType _ _) -> glcArrayIR t (Right idx)
+          (T.SliceType _) -> glcArrayIR t (Right idx)
           T.PInt -> iri [IConst0, Store (Prim IRInt) idx]
           T.PFloat64 -> iri [LDC (LDCDouble 0.0), Store (Prim IRDouble) idx]
           T.PRune -> iri [IConst0, Store (Prim IRInt) idx]
@@ -670,32 +670,8 @@ structInitIR sid eid =
     structCR :: ClassRef
     structCR = ClassRef (structName sid)
 
--- | Creates a one dimensional GlcArray of
---glcArrayIR ::  Int -> T.Type -> Either T.Ident T.VarIndex -> [IRItem]
---glcArrayIR l t eid =
---  case t' of
---    T.ArrayType {} -> nestedGlcArrayIR t eid
---    T.SliceType {} -> nestedGlcArrayIR t eid
---    T.PInt -> arrayOrSliceIR jInteger l eid
---    T.PFloat64 -> arrayOrSliceIR jDouble l eid
---    T.PRune -> arrayOrSliceIR jInteger l eid
---    T.PBool -> arrayOrSliceIR jInteger l eid
---    T.PString -> arrayOrSliceIR jString l eid
---    T.StructType sid ->
---      arrayOrSliceIR (ClassRef $ structName sid) l eid
---  where
---    t' :: T.Type
---    t' =
---      case t of
---        T.ArrayType _ at -> at
---        T.SliceType st -> st
---        _ ->
---          error "Error: glcArrayIR called on non-array/slice type"
--- | Creates a GlcArray for the provided type
--- Type information contains the base class, as well as the dimensions
--- Note that the top level type must be with an array or a slice
-nestedGlcArrayIR :: T.Type -> Either T.Ident T.VarIndex -> [IRItem]
-nestedGlcArrayIR t eid =
+glcArrayIR :: T.Type -> Either T.Ident T.VarIndex -> [IRItem]
+glcArrayIR t eid =
   iri
     [ New cGlcArray
     , Dup
@@ -737,43 +713,6 @@ nestedGlcArrayIR t eid =
         (\v -> iri [PutStatic (FieldRef cMain (tVarStr v)) (JClass cGlcArray)])
         (\x -> iri [Store Object x])
         eid
-
---arrayOrSliceIR :: ClassRef -> Int -> Either T.Ident T.VarIndex -> [IRItem]
---arrayOrSliceIR cr l eid =
---  iri
---    [ New cGlcArray
---    , Dup
---    , LDC (LDCClass cr)
---    , IConst1
---    , NewArray IRInt
---    , Dup
---    , IConst0
---    , LDC (LDCInt l)
---    , ArrayStore (Prim IRInt)
---    , InvokeSpecial glcArrayInit
---    ] ++ storeIR
---  where
---    storeIR :: [IRItem]
---    storeIR =
---      either
---        (\v -> iri [PutStatic (FieldRef cMain (tVarStr v)) (JClass cGlcArray)])
---        (\x -> iri [Store Object x])
---        eid
-newSliceIR :: ClassRef -> T.VarIndex -> [IRItem]
-newSliceIR cr idx =
-  iri
-    [ New cGlcArray
-    , Dup
-    , LDC (LDCClass cr)
-    , IConst1
-    , NewArray IRInt -- dimension array
-    , Dup
-    , IConst0 -- position 0
-    , IConstM1 -- slices have dimension -1 to start
-    , ArrayStore (Prim IRInt)
-    , InvokeSpecial glcArrayInit
-    , Store Object idx
-    ]
 
 printIR :: T.Expr -> [IRItem]
 printIR e =
