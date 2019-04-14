@@ -577,7 +577,7 @@ instance IRRep T.Stmt where
         concatMap irCaseHeaders (zip [1 ..] scs) ++
         IRLabel (defaultLabel idx) :
         toIR dstmt ++ -- pop off remaining comparison value
-        iri [Goto $breakLabel idx] ++
+        iri [Goto $ breakLabel idx] ++
         concatMap irCaseBodies (zip [1 ..] scs) ++
         [IRLabel $ breakLabel idx, IRInst Pop] -- duplicate expression for case statement expressions in lists
         where irCaseHeaders :: (Int, T.SwitchCase) -> [IRItem]
