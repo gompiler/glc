@@ -135,11 +135,14 @@ instance Bytecode Instruction where
               showB' c = case c of
                 '\a' -> "\\u0007"
                 '\v' -> "\\u000B"
-                '"' -> "\\\"" -- show' on this would result in \", need to escape
-                _ -> show'
-                  where
-                    show' :: String
-                    show' = tail $ init $ show c -- Strip '
+                '\b' -> "\\b"
+                '\f' -> "\\f"
+                '\n' -> "\\n"
+                '\r' -> "\\r"
+                '\t' -> "\\t"
+                '\\' -> "\\\\"
+                '"'  -> "\\\""
+                _    -> return c
 
       toBCStr IConstM1 = ["iconst_m1"]
       toBCStr IConst0 = ["iconst_0"]
