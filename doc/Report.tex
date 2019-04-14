@@ -63,25 +63,24 @@ as the implementation language, as many of the required tasks can be
 done more naturally (i.e.\ tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 \subsection{Tools}
-For scanning, we use the program \texttt{Alex}, which is similar to
+For scanning, we use the program \texttt{Alex}\cite{github:alex}, which is similar to
 \texttt{flex} but produces \texttt{Haskell} code instead. We use
-\texttt{Happy} for parsing, which resembles
+\texttt{Happy}\cite{github:happy} for parsing, which resembles
 \texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be
-interlinked nicely, passing on useful information (encompassed through
-a state monad) such as the line number, column number, character
+interlinked nicely, passing on useful information such as the line number, column number, character
 offset in file, and error messages.
 \subsection{Miscellaneous}
-We use Travis CI to build our project on every push to GitHub, as well
+We use Travis CI\cite{travisci} to build our project on every push to GitHub, as well
 as run our tests to make sure that new changes did not break existing
 functionality.
 
 There are several other good Haskell scanning/parsing options, such as
-\texttt{Megaparsec}. We decided on \texttt{Alex/Happy} because of
+\texttt{Megaparsec}\cite{github:megaparsec}. We decided on \texttt{Alex/Happy} because of
 their syntactic similarity to \texttt{flex/bison}, which we learned in
 class.
 
-We use \texttt{stack} to manage our Haskell project and corresponding
-tests.  We implemented additional tests using the \texttt{hspec}
+We use \texttt{stack}\cite{hs:stack} to manage our Haskell project and corresponding
+tests.  We implemented additional tests using the \texttt{hspec}\cite{github:hspec}
 package.
 
 % TODO Do we need to mention file organization?
