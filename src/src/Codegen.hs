@@ -125,8 +125,25 @@ instance Bytecode Instruction where
             case lt' of
               LDCInt i    -> [" ", show i]
               LDCDouble f -> ["2_w ", show f] -- Check if this is in the right format
-              LDCString s -> ["_w ", show s]
+              LDCString s -> ["_w ", showB s]
               LDCClass (ClassRef cr) -> [" Class ", cr]
+            where
+              showB :: String -> String
+              showB s = "\"" ++ concatMap showB' s ++ "\""
+            -- Convert \a and \v to unicode as Java doesn't support them
+              showB' :: Char -> String
+              showB' c = case c of
+                '\a' -> "\\u0007"
+                '\v' -> "\\u000B"
+                '\b' -> "\\b"
+                '\f' -> "\\f"
+                '\n' -> "\\n"
+                '\r' -> "\\r"
+                '\t' -> "\\t"
+                '\\' -> "\\\\"
+                '"'  -> "\\\""
+                _    -> return c
+
       toBCStr IConstM1 = ["iconst_m1"]
       toBCStr IConst0 = ["iconst_0"]
       toBCStr IConst1 = ["iconst_1"]
