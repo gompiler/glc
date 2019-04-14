@@ -5,7 +5,7 @@ package main
 func main() {
 	var a = 8
 	{
-		var int = a
+		var a = a
 		println(a)
 	}
 	{
