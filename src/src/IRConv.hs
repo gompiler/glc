@@ -258,11 +258,11 @@ toClasses T.Program { T.structs = scts
         sn :: String
         sn = structName sid
     sfToF :: T.FieldDecl -> Field
-    sfToF (T.FieldDecl (D.Ident fid) t) =
+    sfToF (T.FieldDecl fid t) =
       Field
         { access = FPrivate
         , static = False
-        , fname = fid
+        , fname = (structField fid)
         , descriptor = typeToJType t
         -- , value = Nothing
         }
@@ -322,7 +322,7 @@ toClasses T.Program { T.structs = scts
           , IRInst $ Return (Just $ Prim IRInt)
           ]
         createNE :: String -> (Int, T.FieldDecl) -> [IRItem]
-        createNE label (i, T.FieldDecl (D.Ident fid) t) =
+        createNE label (i, T.FieldDecl fid t) =
           case t of
             T.ArrayType {}    -> arrayEq
             T.SliceType {}    -> arrayEq
@@ -333,7 +333,7 @@ toClasses T.Program { T.structs = scts
             jt :: JType
             jt = typeToJType t
             fr :: FieldRef
-            fr = FieldRef (ClassRef sn) fid
+            fr = FieldRef (ClassRef sn) (structField fid)
             arrayEq :: [IRItem]
             arrayEq =
               iri
@@ -343,11 +343,17 @@ toClasses T.Program { T.structs = scts
                 , GetField fr jt
                 , IfACmpEQ ("refeq" ++ show i)
                 , Load Object (T.VarIndex 0)
-                , InvokeVirtual
-                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                , InvokeVirtual $
+                    MethodRef
+                      cr
+                      (structGetter fid)
+                      (MethodSpec ([], jt))
                 , Load Object (T.VarIndex 2)
-                , InvokeVirtual
-                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                , InvokeVirtual $
+                    MethodRef
+                      cr
+                      (structGetter fid)
+                      (MethodSpec ([], jt))
                 , InvokeVirtual glcArrayEquals
                 , If IRData.EQ label
                 ] ++
@@ -361,11 +367,17 @@ toClasses T.Program { T.structs = scts
                 , GetField fr jt
                 , IfACmpEQ ("refeq" ++ show i)
                 , Load Object (T.VarIndex 0)
-                , InvokeVirtual
-                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                , InvokeVirtual $
+                    MethodRef
+                      cr
+                      (structGetter fid)
+                      (MethodSpec ([], jt))
                 , Load Object (T.VarIndex 2)
-                , InvokeVirtual
-                    (MethodRef cr ("get_" ++ fid) (MethodSpec ([], jt)))
+                , InvokeVirtual $
+                    MethodRef
+                      cr
+                      (structGetter fid)
+                      (MethodSpec ([], jt))
                 , CheckCast (CRef jObject)
                 , InvokeVirtual
                     ((MethodRef $ CRef cr')
@@ -426,7 +438,7 @@ toClasses T.Program { T.structs = scts
           concatMap cpField fdls ++
           iri [Load Object (T.VarIndex 1), Return (Just Object)]
         cpField :: T.FieldDecl -> [IRItem]
-        cpField (T.FieldDecl (D.Ident fn) t) =
+        cpField (T.FieldDecl fid t) =
           case t of
             T.ArrayType {} -> cpObj cGlcArray
             T.SliceType {} -> cpObj cGlcArray
@@ -435,8 +447,8 @@ toClasses T.Program { T.structs = scts
               iri
                 [ Load Object (T.VarIndex 1)
                 , Load Object (T.VarIndex 0)
-                , GetField (FieldRef (ClassRef sn) fn) jt
-                , PutField (FieldRef (ClassRef sn) fn) jt
+                , GetField (FieldRef (ClassRef sn) (structField fid)) jt
+                , PutField (FieldRef (ClassRef sn) (structField fid)) jt
                 ]
           where
             jt :: JType
@@ -446,7 +458,7 @@ toClasses T.Program { T.structs = scts
               iri
                 [ Load Object (T.VarIndex 1)
                 , Load Object (T.VarIndex 0)
-                , GetField (FieldRef (ClassRef sn) fn) jt
+                , GetField (FieldRef (ClassRef sn) (structField fid)) jt
                 , InvokeStatic
                     (MethodRef
                        (CRef glcUtils)
@@ -454,11 +466,11 @@ toClasses T.Program { T.structs = scts
                        (MethodSpec ([JClass jObject], JClass jObject)))
                 , CheckCast (CRef cr')
                 ] ++
-              iri [PutField (FieldRef (ClassRef sn) fn) jt]
+              iri [PutField (FieldRef (ClassRef sn) (structField fid)) jt]
     setter :: String -> T.FieldDecl -> Method
-    setter sn (T.FieldDecl (D.Ident fn) t) =
+    setter sn (T.FieldDecl fid t) =
       Method
-        { mname = "set_" ++ fn
+        { mname = structSetter fid
         , mstatic = False
         , stackLimit = maxStackSize setBody 0
         , localsLimit = ll -- One for this and one/two for argument
@@ -479,11 +491,13 @@ toClasses T.Program { T.structs = scts
                 [ Load Object (T.VarIndex 0)
                 , Load (typeToIRType t) (T.VarIndex 1)
                 ] ++
-              iri [PutField (FieldRef (ClassRef sn) fn) jt, Return Nothing]
+              iri
+                [ PutField (FieldRef (ClassRef sn) (structField fid)) jt
+                , Return Nothing]
     getter :: String -> T.FieldDecl -> Method
-    getter sn (T.FieldDecl (D.Ident fn) t) =
+    getter sn (T.FieldDecl fid t) =
       Method
-        { mname = "get_" ++ fn
+        { mname = structGetter fid
         , mstatic = False
         , stackLimit = maxStackSize getBody 0
         , localsLimit = ll -- One for this and one/two for copy
@@ -507,29 +521,29 @@ toClasses T.Program { T.structs = scts
                  T.StructType {} -> getObj t
                  _ ->
                    iri
-                     [ GetField (FieldRef (ClassRef sn) fn) jt
+                     [ GetField (FieldRef (ClassRef sn) (structField fid)) jt
                      , Return (Just $ typeToIRType t)
                      ])
         getObj :: T.Type -> [IRItem]
         getObj t' =
           let jt = typeToJType t
            in iri
-                [ GetField (FieldRef (ClassRef sn) fn) jt
+                [ GetField (FieldRef (ClassRef sn) (structField fid)) jt
                 , IfNonNull "LSGET_NULL"
                 , Load Object (T.VarIndex 0)
                 ] ++
               toIR (T.VarDecl' (T.VarIndex 1) t' Nothing) ++
               iri
                 [ Load Object (T.VarIndex 1)
-                , PutField (FieldRef (ClassRef sn) fn) jt
+                , PutField (FieldRef (ClassRef sn) (structField fid)) jt
                 , Load Object (T.VarIndex 0)
-                , GetField (FieldRef (ClassRef sn) fn) jt
+                , GetField (FieldRef (ClassRef sn) (structField fid)) jt
                 , Goto "LSGET_RET"
                 ] ++
               [IRLabel "LSGET_NULL"] ++
               iri
                 [ Load Object (T.VarIndex 0)
-                , GetField (FieldRef (ClassRef sn) fn) jt
+                , GetField (FieldRef (ClassRef sn) (structField fid)) jt
                 ] ++
               [IRLabel "LSGET_RET"] ++ iri [Return (Just Object)]
     sinit :: Method
@@ -865,7 +879,7 @@ instance IRRep T.SimpleStmt where
             setUpOps op ++
             iri [GetStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)] ++
             afterLoadOps op ++ toIR ve ++ finalOps op
-          (Just op, T.Selector t eo (T.Ident fid)) ->
+          (Just op, T.Selector t eo fid) ->
             case exprJType eo of
               JClass cr ->
                 setUpOps op ++
@@ -875,7 +889,7 @@ instance IRRep T.SimpleStmt where
                   , InvokeVirtual $
                     MethodRef
                       (CRef cr)
-                      ("get_" ++ fid)
+                      (structGetter fid)
                       (MethodSpec ([], typeToJType t))
                   ] ++
                 afterLoadOps op ++ toIR ve ++ finalOps op
@@ -926,7 +940,7 @@ instance IRRep T.SimpleStmt where
           T.Var _ idx -> iri [Store (exprIRType ve) idx] -- Cannot use var t in the case of holes...
           T.TopVar t tvi ->
             iri [PutStatic (FieldRef cMain (tVarStr tvi)) (typeToJType t)]
-          T.Selector t eo (T.Ident fid) ->
+          T.Selector t eo fid ->
             case exprJType eo of
               JClass cr ->
                 if cr == cGlcArray
@@ -935,7 +949,7 @@ instance IRRep T.SimpleStmt where
                          [ InvokeVirtual $
                            MethodRef
                              (CRef cr)
-                             ("set_" ++ fid)
+                             (structSetter fid)
                              (MethodSpec ([typeToJType t], JVoid))
                          ]
               _ -> error "Cannot set field of non-struct"
@@ -1092,11 +1106,14 @@ instance IRRep T.Expr where
       T.ArrayType l _ -> iri [LDC (LDCInt l)]
       T.SliceType _   -> toIR e ++ iri [InvokeVirtual glcArrayCap]
       _               -> error "Cannot get capacity of non-array/slice"
-  toIR (T.Selector t e (T.Ident fid)) =
+  toIR (T.Selector t e fid) =
     toIR e ++
     iri
       [ InvokeVirtual $
-        MethodRef (CRef cr) ("get_" ++ fid) (MethodSpec ([], typeToJType t))
+        MethodRef
+          (CRef cr)
+          (structGetter fid)
+          (MethodSpec ([], typeToJType t))
       ]
     where
       cr :: ClassRef
@@ -1139,6 +1156,15 @@ tFnStr (T.Ident tfs) = "__glc$fn__" ++ tfs
 
 structName :: T.Ident -> String
 structName (T.Ident sid) = "__Glc$Struct__" ++ sid
+
+structField :: T.Ident -> String
+structField (T.Ident fid) = "__glc$sf__" ++ fid
+
+structGetter :: T.Ident -> String
+structGetter fid = "get_" ++ structField fid
+
+structSetter :: T.Ident -> String
+structSetter fid = "set_" ++ structField fid
 
 cloneIfNeeded :: T.Expr -> [IRItem]
 cloneIfNeeded e =
