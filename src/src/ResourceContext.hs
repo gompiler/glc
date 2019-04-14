@@ -165,16 +165,17 @@ type VarIndexFunc s
    = ResourceContext s -> C.ScopedIdent -> Type -> ST s VarIndex
 
 paramIndex :: forall s. VarIndexFunc s
-paramIndex = varIndexBase True
+paramIndex = varIndexBase True False
 
 varIndex :: forall s. VarIndexFunc s
-varIndex = varIndexBase False
+varIndex = varIndexBase False True
 
 -- | Get the index of the provided scope ident
 -- If it already exists, output will be existing index
 -- Otherwise, we will output 1 greater than the biggest index to date
-varIndexBase :: forall s. Bool -> VarIndexFunc s
-varIndexBase requiresNew st si vt = do
+-- bigHoles specifies whether blank identifier slots should be double-width
+varIndexBase :: forall s. Bool -> Bool -> VarIndexFunc s
+varIndexBase requiresNew bigHoles st si vt = do
   let key = VarKey si
   rc <- readRef st
   candidates <-
@@ -199,10 +200,13 @@ varIndexBase requiresNew st si vt = do
       where
         increment :: Int
         increment =
+          -- Doubles are width 2
+          -- Holes are re-usable for doubles when not in signature
           case (vt, si) of
-            (PFloat64, _)                    -> 2
-            (_, C.ScopedIdent _ (Ident "_")) -> 2 -- Holes are re-usable, so should always be double-width
-            _                                -> 1
+            (PFloat64, C.ScopedIdent _ (Ident "_")) -> 2
+            (_, C.ScopedIdent _ (Ident "_")) -> if bigHoles then 2 else 1
+            (PFloat64, _) -> 2
+            _ -> 1
     -- | Get the index of the provided key, or return the size of the current scope
     varIndex' :: VarKey -> ResourceScope s -> ST s (Maybe VarIndex)
     varIndex' key RS {_varTable} = HT.lookup _varTable key
