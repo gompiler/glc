@@ -36,7 +36,6 @@
   { \huge \bfseries \thetitle}\\[0.4cm]
   \HRule~\\[1.5cm]
 
-  % \textsc{Lore}, J.\\ \textsc{Lougheed}, D.\\ \textsc{Wang}, A.\\
   \theauthor\\%
   [3cm]
 
@@ -109,21 +108,23 @@ package.
 
 \subsection{Target Language: JVM Bytecode}
 We decided on targeting JVM bytecode for our compiler, through the
-\href{https://github.com/Storyyeller/Krakatau}{Krakatau} bytecode
+Krakatau\cite{krakatau} bytecode
 assembler. Krakatau bytecode syntax is derived from Jasmin, but with a
 more modern codebase (written in Python) and some additional features.
 \subsubsection{Advantages}
 The primary advantages of targeting JVM bytecode are:
-\hyperref[sec:org8296e16]{portability},
-\hyperref[sec:orgd33314c]{execution speed}, and its
-\hyperref[sec:orgec85c24]{focus on stack manipulation, as opposed to a
+\hyperref[sec:portability]{portability},
+\hyperref[sec:execs]{execution speed}, and its
+\hyperref[sec:stack]{focus on stack manipulation, as opposed to a
   higher level language}, which aids in overcoming some of the common
 pain points of GoLite code generation:
-\paragraph{Portability}
+\paragraph{Portability}%
+\label{sec:portability}
 The JVM has been ported to many common platforms, meaning code written
 in GoLite, when compiled with our compiler, will be able to run on any
 platform the JVM can run on.
-\paragraph{Execution Speed}
+\paragraph{Execution Speed}%
+\label{sec:execs}
 Although Java is often considered slow as opposed to ahead-of-time
 compiled languages such as C and C++ due to its garbage collection and
 non-native compiled code, most implementations of the JVM provide JIT
@@ -132,7 +133,8 @@ this, and our generated code will likely be faster than if we
 generated code in an interpreted language such as Python. Sometimes,
 the JVM can be faster than even ahead-of-time compiled programs, since
 run-time information is available for optimization purposes.
-\paragraph{Stack Based/Low Level}
+\paragraph{Stack Based/Low Level}%
+\label{sec:stack}
 The fact that JVM bytecode is fairly low level gives us lots of
 granular control for changing the behavior of constructs, especially
 when dealing with odd \texttt{GoLite} / \texttt{GoLang} behavior that
@@ -836,4 +838,5 @@ function to be pure (void of errors).
   and supported explicit error checking in tests. Created the data
   model for symbol table core. Added hspec tests.
 \end{itemize}
+\bibliographystyle{plain} \bibliography{ref}
 \end{document}
