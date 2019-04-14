@@ -847,8 +847,8 @@ instance IRRep T.SimpleStmt where
       ]
   toIR (T.ExprStmt e) = toIR e ++ iri [Pop] -- Invariant: pop expression result
   toIR (T.Assign (T.AssignOp mAop) pairs) =
-    concatMap getValue (NE.toList pairs) ++
-    concatMap setStore (reverse $ NE.toList pairs)
+    concatMap getValue (reverse $ NE.toList pairs) ++
+    concatMap setStore (NE.toList pairs)
     where
       getValue :: (T.Expr, T.Expr) -> [IRItem]
       getValue (se, ve) =
@@ -956,9 +956,9 @@ instance IRRep T.SimpleStmt where
     exprInsts ++ zipWith (curry expStore) ids stTypes
     where
       ids :: [Either T.Ident T.VarIndex]
-      ids = reverse $ map fst (NE.toList iExps)
+      ids = map fst (NE.toList iExps)
       exprs :: [T.Expr]
-      exprs = map snd (NE.toList iExps)
+      exprs = reverse $ map snd (NE.toList iExps)
       exprInsts :: [IRItem]
       exprInsts = concatMap maybeClone exprs
       stTypes :: [T.Type]
