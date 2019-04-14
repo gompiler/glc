@@ -1,6 +1,6 @@
 \documentclass[11pt]{article}
 \usepackage[margin=1 in]{geometry}
-\usepackage{hyperref, titling, fancyhdr, lastpage, enumitem}
+\usepackage{hyperref, titling, fancyhdr, xcolor, lastpage, enumitem}
 
 \author{\textsc{Lore}, J.\\ \textsc{Lougheed} D.\\ \textsc{Wang} A.}
 \date{\today}
@@ -21,6 +21,8 @@
 \chead{\leftmark}
 \rhead{\theauthor}
 \cfoot{Page~\thepage~of~\pageref{LastPage}}
+
+\newcommand{\todo}[0]{\textcolor{red}{\textbackslash\textbackslash TODO \ }}
 
 \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
 
@@ -796,7 +798,7 @@ While Haskell has allowed us to easily define types, certain
 restrictions still allow for invalid AST structures.  For instance, we
 can only get the length of an array or a slice, yet the AST support
 all expressions.  To properly restrict all types, we would need to
-further group data into multiple subsets of constructors.  While this
+further group data into multiple subsets of constructors\cite{so:pattern/matching/subset}.  While this
 would catch more problems at compile time, it will also make the code
 significantly more complex.  The other approach is to allow errors at
 all stages of the compiler, even though all valid typechecked code has
@@ -810,33 +812,45 @@ function to be pure (void of errors).
 \section{Contributions}
 % TODO COMBINE CONTRIBS TODO M3/M4 CONTRIBS M1 CONTRIBS BELOW
 \begin{itemize}
-\item \textbf{Julian Lore:} Wrote the majority of the scanner and
-  handled weird cases, wrote a large amount of valid/invalid programs,
-  implemented many other tests (\texttt{hspec} or small tests in our
-  program) and looked over the parser, contributing a few things to it
-  as well.
-\item \textbf{David Lougheed:} Wrote the bulk of the parser grammar
-  and contributed to the weeder. Also wrote 3 of the valid programs
-  and 8 of the invalid ones and had minor contributions to
-  miscellaneous other components.  Contributed to the testing of the
-  parser and pretty printer.
-\item \textbf{Allan Wang:} Created the AST and helper classes for
-  pretty printing and error handling.  Wrote the base package for
-  testing as well as some of the embedded test cases within
-  \texttt{hspec}.  Added integrations (Travis + Slack), and gave code
-  reviews to the other components.
+	\item \textbf{Julian Lore}
+	\begin{itemize}
+		\item M1: Wrote the majority of the scanner and
+		handled weird cases, wrote a large amount of valid/invalid programs,
+		implemented many other tests (\texttt{hspec} or small tests in our
+		program) and looked over the parser, contributing a few things to it
+		as well.
+		\item M2: Implemented weeding of blank identifiers,
+		symbol table generation, typecheck (aside from type inference and
+		expression typechecking) and submitted invalid programs.
+		\item M3/M4: \todo
+	\end{itemize}
+	\item \textbf{David Lougheed}
+	\begin{itemize}
+		\item M1: Wrote the bulk of the parser grammar
+		and contributed to the weeder. Also wrote 3 of the valid programs
+		and 8 of the invalid ones and had minor contributions to
+		miscellaneous other components.  Contributed to the testing of the
+		parser and pretty printer.
+		\item M2: Worked on expression type-checking and
+		type inference, including tests. Also worked on the weeding pass for
+		return statements.
+		\item M3/M4: \todo 
+	\end{itemize}
+	\item \textbf{Allan Wang}
+	\begin{itemize}
+		\item M1: Created the AST and helper classes for
+		pretty printing and error handling.  Wrote the base package for
+		testing as well as some of the embedded test cases within
+		\texttt{hspec}.  Added integrations (Travis + Slack), and gave code
+		reviews to the other components.
+		\item M2: Added data structures for error messages,
+		and supported explicit error checking in tests. Created the data
+		model for symbol table core. Added hspec tests.
+		\item M3/M4: Created resource AST, which replaces local identifiers with stack indices, collects struct definitions, and reorganizes init functions. Created GlcArray and struct template in Java. Contributed to tests.
+	\end{itemize}
 \end{itemize}
-% M2 CONTRIBS
-\begin{itemize}
-\item \textbf{Julian Lore:} Implemented weeding of blank identifiers,
-  symbol table generation, typecheck (aside from type inference and
-  expression typechecking) and submitted invalid programs.
-\item \textbf{David Lougheed:} Worked on expression type-checking and
-  type inference, including tests. Also worked on the weeding pass for
-  return statements.
-\item \textbf{Allan Wang:} Added data structures for error messages,
-  and supported explicit error checking in tests. Created the data
-  model for symbol table core. Added hspec tests.
-\end{itemize}
+
+\newpage
+
 \bibliographystyle{plain} \bibliography{ref}
 \end{document}
