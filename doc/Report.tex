@@ -52,16 +52,16 @@
 \tableofcontents
 \newpage
 \section{Introduction}
-\subsection{Overview of Go\cite{goliteinfo}}
-Go is an open source imperative programming language created by Rob Pike, Ken
+\subsection{Overview of Go}
+Go\cite{goliteinfo} is an open source imperative programming language created by Rob Pike, Ken
 Thompson and Robert Griesemer (Google employees). It was designed for
 easier code writing, having built-in concurrency support and speedy
 compilations. It features goroutines (lightweight thread), channels,
 interfaces, methods, closures, defer, maps, slices, multiple return
 values, modules, garbage collection and optional semi-colons. See the
 Golang main page\cite{golang} for more information.
-\subsection{Overview of GoLite\cite{goliteinfo}}
-GoLite is a (slightly modified) subset of Go. It does not support
+\subsection{Overview of GoLite}
+GoLite\cite{goliteinfo} is a (slightly modified) subset of Go. It does not support
 goroutines, channels, interfaces, methods (functions are still
 supported), closures, defer, maps, multiple return values, modules,
 garbage collection and optional semi-colons (insertion
@@ -181,8 +181,8 @@ allocation, this is a very natural way to implement this construct.
 
 \subsubsection{Disadvantages}
 The main disadvantages of generating JVM bytecode are its low-level
-semantics and its (in general) slightly slow speeds versus an
-ahead-of-time compiled language.
+semantics and its slightly slow speeds versus an
+ahead-of-time compiled language (in general).
 
 The low level of JVM bytecode is particularly frustrating to deal with
 when it comes to types that are not representable by an integer or
@@ -237,7 +237,7 @@ semicolon flag to true if we encounter any new line inside the block
 comment, and we insert a semicolon if we're in the aforementioned
 newline insertion state.
 \paragraph{Adding newlines at the end of the file if they aren't
-  present already}~\\
+  present already}
 \texttt{Go} requires a semicolon or newline at the end of function
 declarations. Sometimes, there may not be a newline at the end of a
 file, so no semicolon insertion occurs, resulting in a parsing error.
