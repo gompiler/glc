@@ -772,11 +772,19 @@ There are two tricky things about assignments:
 \end{itemize}
 \subsection{Testing}
 Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
-wrote complete programs as files to test code generation. We adapted a
-script from the previous class assignments so that we could run and check
+wrote complete programs as files to test code generation.
+
+The main reason for changing the testing approach for this phase was the difficulty
+in implementing automatic execution of other scripts (the Krakatau assembler) and
+checking standard output using Haskell. Additionally, the script used to run
+program solutions was already available to us, which made it relatively easy
+to implement automated testing.
+
+We used the script provided for evaluating previous milestones to run and check
 the output of all of these programs at once. All test programs were located
-in specific directories within the repository and were automatically discovered
-by the script.
+in the \texttt{programs/3-semantics+codegen/valid} and
+\texttt{programs/3-benchmarks+codegen/valid} directories within the repository
+in order to be automatically discovered by the script.
 
 We also ran the tests in Travis automatically upon every push to GitHub,
 so we would be alerted if there were any regressions in program compilation
