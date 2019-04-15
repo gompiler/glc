@@ -407,21 +407,6 @@ generate coverage reports, and rerun selective tests if we need to.
 
 To ensure incremental updates, we wanted to make sure that we tested every step of the way. As a result, every build, with the exception of updating documentation, ran through Travis CI.
 
-\todo DELETE
-Each subsequent stage of the parser, eg typechecking, resource building, and codegen, also exposes a function for string inputs, so we can test them at various levels.
-Stages relating to state, such as the symbol table and resource builder,
-have their own high level module, where we can test event logic without
-needing to parse a program. Together, this helps us develop incrementally,
-and to a large extent independently from one another.
-
-On top of the necessary tests with the provided scripts, we wanted as much
-testing within Haskell as we can. Most inputs are embedded to avoid IO operations, and are done with the help of \texttt{hspec} so we can make use of Haskell's testing stack. This allows us to easily run all tests,
-generate coverage reports, and rerun selective tests if we need to.
-
-To ensure incremental updates, we wanted to make sure that we tested every step of the way. As a result, every build, with the exception of updating documentation, ran through Travis CI.
-Towards later stages, we added docker support, since our test environment depended on many languages (Java, Haskell, Python).
-In total, we have had nearly 1500 Travis builds, which helped us be confident with our changes.
-
 \section{Weeder}
 \subsection{Overview}
 Certain language constraints are too complicated to implement in the
@@ -1170,7 +1155,6 @@ strongly-typed functional language for development and a low-level but
 well-documented language like JVM bytecode as a target, especially in terms of
 learning experience, definitely outweigh the negatives.
 We are pleased to have created a functional compiler, while learning new languages in the process.
-\todo
 
 \subsection{What We'd Change}
 
