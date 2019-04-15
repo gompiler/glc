@@ -358,6 +358,18 @@ be tested separately.
 When building the parser, we expose entry points to each main stage,
 so we can focus on tests for floats, expressions, statements, etc
 on top of the full program.
+To facilitate future refactoring, we base our tests on quality checks, vs structural checks.
+In other words, we simply check if a parser succeeds ot fails.
+This was very important, as testing the full ast structure meant that
+it was very difficult to make changes in the future.
+
+On top of the necessary tests with the provided scripts, we wanted as much
+testing within Haskell as we can. Most inputs are embedded to avoid IO operations, and are done with the help of hspec so we can make use of Haskell's testing stack. This allows us to easily run all tests,
+generate coverage reports, and rerun selective tests if we need to.
+
+To ensure incremental updates, we wanted to make sure that we tested every step of the way. As a result, every build, with the exception of updating documentation, ran through Travis CI.
+
+\todo DELETE
 Each subsequent stage of the parser, eg typechecking, resource building, and codegen, also exposes a function for string inputs, so we can test them at various levels.
 Stages relating to state, such as the symbol table and resource builder,
 have their own high level module, where we can test event logic without
@@ -430,8 +442,23 @@ constraints we use weeding to check for this milestone are:
   identifiers in Go (and GoLite) in the global scope.
 \end{itemize}
 
+\subsection{Testing} 
 
-\subsection{Testing} %TODO
+Testing weeding rules is relatively simple.
+We simply provide a program that should parse, verify that it does parse,
+and also verify that it fails the weeding rule.
+
+At this stage, we decided to improve our testing process for invalid programs.
+Given that error messages are unrelated to AST structure, we created a new error type class, where we represent error strings with data structures.
+For instance, each weeding rule will have its own constructor, with optional arguments depending on how much detail we wish to add.
+We then create a function that converts each data type to a string.
+
+When testing for invalid programs, we can now also check that the message contains the string of our desired error.
+Given that we have a unique prefix, we can ensure that there are no accidental matches with other errors.
+This ended up being useful for two reasons: It allowed us to create errors in a more compact way, and avoid the possibility of making typos when pasting error message strings in numerous locations.
+It also ensured that invalid programs were invalid for the reasons we expect.
+After we refactored to the new model, we noticed that some of our old tests were indeed invalid for the wrong reasons.
+
 \section{Symbol Table}
 \subsection{Overview}
 % TODO
@@ -527,6 +554,14 @@ assignments don't conflict with the original inferred type).
 %   top level (simple statements 1 and 2, and condition). The body is
 %   put in a nested scope.
 % \end{itemize}
+
+\subsection{AST}
+
+In general, AST changes pose a linear complexity, since all we need is a converter. 
+After conversion, we don't have to worry about previous data structures, and can instead focus on the new models.
+If we instead didn't write a converter, we would have to consider all of the new restrictions from the initial AST to the current step.
+This is not only harder to manage, since errors are no longer caught at compile time, but poses unnecessary validation duplication.
+As a result, we decided to create a new AST post typecheck, to account for any structural changes.
 
 \subsection{Testing} %TODO
 % TODO ACCOUNT FOR M2 COMMENT Try to describe some of the type rules
