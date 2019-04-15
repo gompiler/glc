@@ -992,23 +992,24 @@ function to be pure (void of errors).
 \item \texttt{len.go}: Length built-in function test on the 3 supported data types (array, slice, and string).
 \item \texttt{multi\_array\_string.go}: Nested array capacity and string printing test.
 \item \texttt{needleman\_wunsch.go}: Implementation of the Needleman-Wunsch algorithm for DNA alignment.
-\item \texttt{nested\_structs.go}: \todo
-\item \texttt{ntuple.go}: \todo
-\item \texttt{print.go}: \todo
-\item \texttt{printfloat.go}: \todo
-\item \texttt{prints.go}: \todo
-\item \texttt{reserved\_java.go}: \todo
-\item \texttt{return.go}: \todo
-\item \texttt{rpn\_calc.go}: \todo
-\item \texttt{rune\_esc.go}: \todo \textbf{(Added for resubmission, post bug-discovery)}
-\item \texttt{scope.go}: \todo
-\item \texttt{scope\_same\_var.go}: \todo
-\item \texttt{shortdecl.go}: \todo
-\item \texttt{slice\_copy.go}: \todo
-\item \texttt{slicebounds.go}: \todo
-\item \texttt{slicebounds2.go}: \todo
-\item \texttt{slicebounds3.go}: \todo
-\item \texttt{structeq.go}: \todo
+\item \texttt{nested\_structs.go}: Nested struct/slice copying and modification behaviour.
+\item \texttt{ntuple.go}: Large program defining a mini-library for n-tuple operations, built on slices.
+\item \texttt{print.go}: Print formatting test.
+\item \texttt{printfloat.go}: Float-printing test.
+\item \texttt{prints.go}: Print formatting test.
+\item \texttt{reserved\_java.go}: Test for function names that might conflict with Java (JVM) keywords, since we were targeting JVM bytecode for code generation.
+\item \texttt{return.go}: Test for return-value behaviour, including copying.
+\item \texttt{rpn\_calc.go}: Reverse-Polish notation calculator which takes in an array representing an expression.
+\item \texttt{rune\_esc.go}: Test for escape characters, including some ones requiring transformation (\texttt{\textbackslash a, \textbackslash v}) that don't exist 
+      verbatim in the JVM. \textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{scope.go}: Miscellaneous scope tests.
+\item \texttt{scope\_same\_var.go}: Scope tests for variables with the same identifier.
+\item \texttt{shortdecl.go}: Small short declaration test, including blank identifiers.
+\item \texttt{slice\_copy.go}: Assignment slice-copying test.
+\item \texttt{slicebounds.go}: Bounds test for empty slices.
+\item \texttt{slicebounds2.go}: Negative-index slice bounds test.
+\item \texttt{slicebounds3.go}: Too-large index slice bounds test.
+\item \texttt{structeq.go}: Struct equality tests.
 \item \texttt{switch.go}: \todo
 \item \texttt{switch2.go}: \todo
 \item \texttt{unary.go}: \todo
