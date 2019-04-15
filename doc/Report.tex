@@ -763,7 +763,7 @@ There are two tricky things about assignments:
     the entire RHS, pushing each result onto the stack and then
     assigning each stack element one by one to their respective LHS
     expression l-value. This way, \texttt{a, b = b, a} will not
-    overwrite or interfere with any values used on the RHS. This is
+    overwrite or interfere with any values used on the RHS.\@ This is
     one of the advantages of using a stack-based language, as values
     on the stack implicitly act like temporary variables, so we don't
     need to allocate other temporary resources for simultaneous
@@ -774,14 +774,16 @@ There are two tricky things about assignments:
 Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
 wrote complete programs as files to test code generation.
 
-The main reason for changing the testing approach for this phase was the difficulty
-in implementing automatic execution of other scripts (the Krakatau assembler) and
-checking standard output using Haskell. Additionally, the script used to run
+The main reason for changing the testing approach for this phase was
+that
+implementing automatic execution of other scripts (the Krakatau assembler) and
+checking standard output using Haskell was undesirable (introducing IO
+and outside programs in the tests). Additionally, the script used to run
 program solutions was already available to us, which made it relatively easy
 to implement automated testing.
 
 We used the script provided for evaluating previous milestones to run and check
-the output of all of these programs at once. All test programs were located
+the output of all of these programs at once. All test programs are located
 in the \texttt{programs/3-semantics+codegen/valid} and
 \texttt{programs/3-benchmarks+codegen/valid} directories within the repository
 in order to be automatically discovered by the script.
@@ -803,7 +805,7 @@ script on the compiler to guide the creation of new test programs, increasing ou
 test coverage of code generation.
 
 For a complete list of code generation test programs and their functions, see
-Appendix 1.
+\hyperref[sec:appendixa]{Appendix A}.
 
 \section{Conclusion}
 \subsection{Experience}
@@ -844,7 +846,7 @@ function to be pure (void of errors).
 		\item M2: Implemented weeding of blank identifiers,
 		symbol table generation, typecheck (aside from type inference and
 		expression typechecking) and submitted invalid programs.
-		\item M3/M4: \todo
+		\item M3/M4: \todo%
 	\end{itemize}
 	\item \textbf{David Lougheed}
 	\begin{itemize}
@@ -881,8 +883,9 @@ function to be pure (void of errors).
 \bibliographystyle{plain} \bibliography{ref}
 
 \newpage
-
-\section*{Appendix 1: \normalfont Test Programs}
+\appendix
+\section{Test Programs}
+\label{sec:appendixa}
 
 The majority of our tests (with the exception of code generation tests) were done in
 Haskell using \texttt{hspec}. However, we also submitted many standalone test programs,
@@ -891,7 +894,7 @@ which are summarized below.
 \subsection*{Scanning and Parsing}
 
 %TODO
-\todo
+\todo%
 
 \subsection*{Type Checking}
 
@@ -963,9 +966,9 @@ Summary of the check in each invalid program:
 \subsection*{Benchmarks and Code Generation}
 
 \begin{enumerate}
-\item \texttt{color.go}: \todo
-\item \texttt{knapsack.go}: \todo
-\item \texttt{sudoku.go}: \todo
+\item \texttt{color.go}: \todo%
+\item \texttt{knapsack.go}: \todo%
+\item \texttt{sudoku.go}: \todo%
 \end{enumerate}
 
 \subsection*{Semantics and Code Generation}
@@ -1011,8 +1014,8 @@ Summary of the check in each invalid program:
 \item \texttt{reserved\_java.go}: Test for function names that might conflict with Java (JVM) keywords, since we were targeting JVM bytecode for code generation.
 \item \texttt{return.go}: Test for return-value behaviour, including copying.
 \item \texttt{rpn\_calc.go}: Reverse-Polish notation calculator which takes in an array representing an expression.
-\item \texttt{rune\_esc.go}: Test for escape characters, including some ones requiring transformation (\texttt{\textbackslash a, \textbackslash v}) that don't exist 
-      verbatim in the JVM. \textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{rune\_esc.go}: Test for escape characters, including some ones requiring transformation (\texttt{\textbackslash\@a, \textbackslash\@v}) that don't exist
+      verbatim in the JVM.~\textbf{(Added for resubmission, post bug-discovery)}
 \item \texttt{scope.go}: Miscellaneous scope tests.
 \item \texttt{scope\_same\_var.go}: Scope tests for variables with the same identifier.
 \item \texttt{shortdecl.go}: Small short declaration test, including blank identifiers.
@@ -1029,5 +1032,4 @@ Summary of the check in each invalid program:
 \item \texttt{vardeclscoping.go}: Variable declaration scoping test.
 \item \texttt{vardeclshadow.go}: Overshadowing test (of GoLite pre-provided values.)
 \end{enumerate}
-
 \end{document}
