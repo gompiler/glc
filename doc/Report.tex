@@ -51,9 +51,28 @@
 \newpage
 \section{Introduction}
 \subsection{Overview of Go\cite{goliteinfo}}
-% TODO
+Go is an open source imperative programming language created by Rob Pike, Ken
+Thompson and Robert Griesemer (Google employees). It was designed for
+easier code writing, having built-in concurrency support and speedy
+compilations. It features goroutines (lightweight thread), channels,
+interfaces, methods, closures, defer, maps, slices, multiple return
+values, modules, garbage collection and optional semi-colons. See the
+Golang main page\cite{golang} for more information.
 \subsection{Overview of GoLite\cite{goliteinfo}}
-% TODO
+GoLite is a (slightly modified) subset of Go. It does not support
+goroutines, channels, interfaces, methods (functions are still
+supported), closures, defer, maps, multiple return values, modules,
+garbage collection and optional semi-colons (insertion
+rule\cite{gospec:semicolon} $1$ is supported, not $2$). Additionally,
+it is restricted to ASCII encoding (instead of UTF-8), has a fixed
+precision, no imaginary numbers and has a few extra keywords
+(\texttt{print}, \texttt{println}, \texttt{append}, \texttt{cap}). The
+base types only include \texttt{int}, \texttt{float64}, \texttt{bool},
+\texttt{rune} and \texttt{string}. Declarations must also come before
+their use (for variables, functions and types) and constant
+declarations are not supported. Function bodies should also not be
+empty. For range loops, labelled breaks/continues and fallthrough are
+not supported as well. GoLite is the source language of our compiler.
 \subsection{Structure of Report}
 In this report, we discuss the language and tool choices we made for
 this project, as well as an overview of each compiler step (scanner,
