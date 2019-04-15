@@ -184,7 +184,7 @@ when it comes to types that are not representable by an integer or
 floating point number and are thus classes which must be instantiated;
 in the JVM, this includes strings and \texttt{struct}. This means that operations
 such as comparisons and string concatenations go from being a few
-bytecode instructions to signficantly longer patterns.
+bytecode instructions to significantly longer patterns.
 \section{Scanner}
 \subsection{Overview}
 % TODO ADAPT TO FINAL REPORT
@@ -378,6 +378,18 @@ be tested separately.
 When building the parser, we expose entry points to each main stage,
 so we can focus on tests for floats, expressions, statements, etc
 on top of the full program.
+To facilitate future refactoring, we base our tests on quality checks, vs structural checks.
+In other words, we simply check if a parser succeeds or fails.
+This was very important, as testing the full ast structure meant that
+it was very difficult to make changes in the future.
+
+On top of the necessary tests with the provided scripts, we wanted as much
+testing within Haskell as we can. Most inputs are embedded to avoid IO operations, and are done with the help of hspec so we can make use of Haskell's testing stack. This allows us to easily run all tests,
+generate coverage reports, and rerun selective tests if we need to.
+
+To ensure incremental updates, we wanted to make sure that we tested every step of the way. As a result, every build, with the exception of updating documentation, ran through Travis CI.
+
+\todo DELETE
 Each subsequent stage of the parser, eg typechecking, resource building, and codegen, also exposes a function for string inputs, so we can test them at various levels.
 Stages relating to state, such as the symbol table and resource builder,
 have their own high level module, where we can test event logic without
@@ -450,12 +462,29 @@ constraints we use weeding to check for this milestone are:
   identifiers in Go (and GoLite) in the global scope.
 \end{itemize}
 
+\subsection{Testing}
 
-\subsection{Testing} %TODO
+Testing weeding rules is relatively simple.
+We simply provide a program that should parse, verify that it does parse,
+and also verify that it fails the weeding rule.
+
+At this stage, we decided to improve our testing process for invalid programs.
+Given that error messages are unrelated to AST structure, we created a new error type class, where we represent error strings with data structures.
+For instance, each weeding rule will have its own constructor, with optional arguments depending on how much detail we wish to add.
+We then create a function that converts each data type to a string.
+
+When testing for invalid programs, we can now also check that the message contains the string of our desired error.
+Given that we have a unique prefix, we can ensure that there are no accidental matches with other errors.
+This ended up being useful for two reasons: It allowed us to create errors in a more compact way, and avoid the possibility of making typos when pasting error message strings in numerous locations.
+It also ensured that invalid programs were invalid for the reasons we expect.
+After we refactored to the new model, we noticed that some of our old tests were indeed invalid for the wrong reasons.
+
 \section{Symbol Table}
 \subsection{Overview}
 % TODO
 \subsection{Design Decisions}
+
+\subsubsection{State Monad}
 In Haskell, data structures are typically immutable, and much of the
 language is designed around this. One of the main design decisions
 made around the symbol table was deciding whether to go with an
@@ -483,9 +512,27 @@ table, our final result (a typechecked/simplified, proven-correct AST)
 is pure and very easy to manipulate for the \texttt{codegen} phase in
 the next milestone.
 
-For symbol table storage, we created a new data type \texttt{Symbol}
+\subsubsection{Core Model}
+
+The symbol table needs to account for a lot of constraints related to typechecking.
+However, the core state model itself is simpler, so we decide to separate the two.
+Our core data structure is simply a list of scopes, where each scope contains an index, hashtable (with key type \texttt{k} and value type \texttt{v}), and optional context (of type \texttt{c}).
+We then provide some general functions, such as retrieving value \texttt{v} given \texttt{k}, which recurses through all tables and finds the first match, if any.
+We also provide a \texttt{wrap} function, which allows us to create a new scope, execute some actions, then exit.
+Note that we do not expose enter and exit, as it should be impossible to do only one of the two operations.
+
+While messages is separate, we add a list of type \texttt{m} to our core model, as well as a functions to add a message or disable messages.
+The need for disabling is because some typecheck errors are not actually symbol table errors.
+In the event that we receive a typecheck error that is valid for the symbol table, we disable message outputs.
+
+This separation of core logic to the symbol table logic helps simplify our constraints, as well as testing (see \ref{sec:test-symbol-table-core}).
+
+\subsubsection{Symbol Data}
+For our first iteration of symbol table storage, we created a new data type \texttt{Symbol}
 to represent each symbol, analogous to the different type of symbols
-(types, constants, functions, and variables). A \texttt{Symbol} can be
+(types, constants, functions, and variables).
+With respect to our core, this represents type \texttt{v} and type \texttt{m}.
+A \texttt{Symbol} can be
 one of:
 \begin{itemize}
 \item \texttt{Base}: Base types (\texttt{int}, \texttt{float64}, etc.)
@@ -548,7 +595,34 @@ assignments don't conflict with the original inferred type).
 %   put in a nested scope.
 % \end{itemize}
 
+\subsubsection{Cyclic Types}
+
+Initially, our model above was sufficient in defining all type variants.
+Even if a type were cyclic, we could create a data structure that references itself.
+Given that haskell is lazy, it will only generate nested types as we needed.
+While this is an elegant solution, it unfortunately makes modifying types difficult, and checking type equality near impossible.
+Our solution is to introduce a new cyclic model (\texttt{Cyclic.hs}).
+For a generic data structure \texttt{T} to be cyclic:
+
+\begin{itemize}
+	\item It must provide \texttt{isRoot :: T -> Bool}, to check if the data is a root type. This is usually an empty constructor, which labels a field as a root type.
+	\item It must provide \texttt{hasRoot :: T -> Bool}, to check if the data contains a root type, and is therefore cyclic.
+\end{itemize}
+
+We can then create a new model for any data structure, which takes in two values: the root data and the current data.
+When we retrieve the current data, we can check if it should be the root, and return either the root data or the current data respectively.
+This allows us to create a recursive type by access, but where the data structure itself is non recursive.
+Creating the data is simple, as we simply set the initial data as both the root and the current values.
+Subsequent changes involve retaining the root, while only modifying the value.
+
+The use of \texttt{hasRoot} is namely to provide valid equality logic.
+If the current type has a root value, we must also check root equality.
+If not, only current data equality is required.
+
 \subsection{Testing} %TODO
+
+\subsubsection{Symbol Table Core}
+\label{sec:test-symbol-table-core}
 % TODO ACCOUNT FOR M2 COMMENT Try to describe some of the type rules
 % you use for typecheck specific stmts/exprs if they are interesting
 \section{Typecheck}
@@ -609,6 +683,17 @@ new AST, which reflects the new constraints we enforce.  Namely:
   information we need can be added back into the AST, with minimal
   changes to models used at previous stages.
 \end{itemize}
+
+An added benefit of adding items to the AST is to support caching.
+Haskell computes data lazily, so having any argument within a
+data type will ensure at most one computation.
+As shown above, providing a way of getting expression types is very important. While we do have all the information we need within the previous AST,
+we felt it was inefficient to require recursion through binary and unary expressions.
+Additionally, recursion for binary expressions may lead to errors in the
+event that the two types do not match. To avoid this possibility,
+we simply offload the verification to the symbol table, and assume that the provided type is valid.
+We add the explicit type to the ast, and now future stages simply require
+a field access to find it.
 
 \subsection{Testing} %TODO
 % TODO Do we need to mention our invalid programs?  Summary of the
