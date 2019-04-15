@@ -821,7 +821,7 @@ These do not exist in the JVM, which uses classes for user-defined data types.
 Transforming structs into classes was, for the most part, a natural mapping,
 although copying and equality proved difficult to get correct.
 
-\subsubsection{Copying Behaviour}
+\subsubsection{Copying Behaviour in GoLite}
 In \texttt{GoLite}, assignments and function calls copy the values used.
 This is in contrast with the JVM, which uses references for object assignment
 and method calls. Overriding this behaviour was difficult, since it involved
