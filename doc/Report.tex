@@ -899,7 +899,7 @@ There are multiple tricky things about assignments:
   \texttt{e = e + e2}, where \texttt{e} is an expression, because
   \texttt{e} might contain a function call with side-effects, which we
   do not want to call twice (note that in some cases, the assignment
-  operator has an equivalent bytecode instruction, i.e. incrementing
+  operator has an equivalent bytecode instruction, i.e.\ incrementing
   and decrementing using \texttt{iinc}. However, we generalize in this
   discussion as most operators do not have an equivalent instruction
   to operate and assign at the same time). There are thus several
