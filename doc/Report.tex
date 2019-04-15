@@ -700,7 +700,25 @@ a field access to find it.
 
 \section{Code Generator}
 \subsection{Overview}
-% TODO
+
+As discussed in the Language and Tool Choices section, we decided on targeting
+JVM bytecode for our compiler's code generation, using the Krakatau bytecode
+dialect and assembler. JVM bytecode posed an interesting challenge due to its
+low-level syntax and semantics, while providing a well-tested and established
+set of libraries (the Java standard library).
+
+In order to generate bytecode, we decided to first create a bytecode-adjacent
+intermediate representation (IR) in Haskell. This allowed us to reduce errors
+in code generation by taking advantage of Haskell's strong type system to
+represent common bytecode constructs, and let us write a common mapping from
+the IR to bytecode in order to reduce the chance of typos.
+
+Two major concepts that had to be handled carefully when converting GoLite to
+JVM bytecode were identifier scoping and assignments. These are two ideas that
+cannot be mapped exactly to bytecode, since bytecode does not have scoping at
+all, with the exception of method locals and classes, and assignments (storing values)
+work completely differently.
+
 \subsubsection{Scoping in GoLite}
 In \texttt{GoLite}, new scopes are opened for block statements,
 \texttt{for} loops, \texttt{if} / \texttt{else} statements and
