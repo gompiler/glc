@@ -359,7 +359,7 @@ When building the parser, we expose entry points to each main stage,
 so we can focus on tests for floats, expressions, statements, etc
 on top of the full program.
 To facilitate future refactoring, we base our tests on quality checks, vs structural checks.
-In other words, we simply check if a parser succeeds ot fails.
+In other words, we simply check if a parser succeeds or fails.
 This was very important, as testing the full ast structure meant that
 it was very difficult to make changes in the future.
 
@@ -442,7 +442,7 @@ constraints we use weeding to check for this milestone are:
   identifiers in Go (and GoLite) in the global scope.
 \end{itemize}
 
-\subsection{Testing} 
+\subsection{Testing}
 
 Testing weeding rules is relatively simple.
 We simply provide a program that should parse, verify that it does parse,
@@ -498,7 +498,7 @@ The symbol table needs to account for a lot of constraints related to typechecki
 However, the core state model itself is simpler, so we decide to separate the two.
 Our core data structure is simply a list of scopes, where each scope contains an index, hashtable (with key type \texttt{k} and value type \texttt{v}), and optional context (of type \texttt{c}).
 We then provide some general functions, such as retrieving value \texttt{v} given \texttt{k}, which recurses through all tables and finds the first match, if any.
-We also provide a \texttt{wrap} function, which allows us to create a new scope, execute some actions, then exit. 
+We also provide a \texttt{wrap} function, which allows us to create a new scope, execute some actions, then exit.
 Note that we do not expose enter and exit, as it should be impossible to do only one of the two operations.
 
 While messages is separate, we add a list of type \texttt{m} to our core model, as well as a functions to add a message or disable messages.
@@ -510,7 +510,7 @@ This separation of core logic to the symbol table logic helps simplify our const
 \subsubsection{Symbol Data}
 For our first iteration of symbol table storage, we created a new data type \texttt{Symbol}
 to represent each symbol, analogous to the different type of symbols
-(types, constants, functions, and variables). 
+(types, constants, functions, and variables).
 With respect to our core, this represents type \texttt{v} and type \texttt{m}.
 A \texttt{Symbol} can be
 one of:
@@ -665,14 +665,14 @@ new AST, which reflects the new constraints we enforce.  Namely:
 \end{itemize}
 
 An added benefit of adding items to the AST is to support caching.
-Haskell computes data lazily, so having any argument within a 
+Haskell computes data lazily, so having any argument within a
 data type will ensure at most one computation.
 As shown above, providing a way of getting expression types is very important. While we do have all the information we need within the previous AST,
 we felt it was inefficient to require recursion through binary and unary expressions.
-Additionally, recursion for binary expressions may lead to errors in the 
+Additionally, recursion for binary expressions may lead to errors in the
 event that the two types do not match. To avoid this possibility,
 we simply offload the verification to the symbol table, and assume that the provided type is valid.
-We add the explicit type to the ast, and now future stages simply require 
+We add the explicit type to the ast, and now future stages simply require
 a field access to find it.
 
 \subsection{Testing} %TODO
