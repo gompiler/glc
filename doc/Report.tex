@@ -719,6 +719,11 @@ cannot be mapped exactly to bytecode, since bytecode does not have scoping at
 all, with the exception of method locals and classes, and assignments (storing values)
 work completely differently.
 
+While we were given the general outline for most bytecode generations in class, we
+did not discuss switch/case statements. Mapping the GoLite form of these constructs
+to bytecode proved interesting, especially considering limitations on execution of
+the switch expressions and laying out labels to provide proper default branch behaviour.
+
 \subsubsection{Scoping in GoLite}
 In \texttt{GoLite}, new scopes are opened for block statements,
 \texttt{for} loops, \texttt{if} / \texttt{else} statements and
