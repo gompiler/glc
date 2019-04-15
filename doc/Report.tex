@@ -27,6 +27,8 @@
 \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
 \usepackage[numbers, super]{natbib}
 
+\setlist{nolistsep}% [noitemsep] by default
+
 \begin{document}
 \begin{titlepage}
   \center%
@@ -651,7 +653,7 @@ If not, only current data equality is required.
 
 When testing symbol table core, we provide a data type containing potential actions. For instance, we can look up, insert, or check messages.
 To make things easier, we can replace the types for keys, values, and messages to integers, since we aren't testing actual symbol table logic.
-Afterwards, we can simply run a chain of actions on a single symbol table, where each action results in an hspec expectation. 
+Afterwards, we can simply run a chain of actions on a single symbol table, where each action results in an hspec expectation.
 If all expectations are met, then the test passes.
 
 % TODO ACCOUNT FOR M2 COMMENT Try to describe some of the type rules
@@ -786,7 +788,7 @@ expressions, or a default case with no additional expression.  Each
 case statement also contains a block statement, containing code to
 execute upon match. This makes them structurally different when
 compared to Java or \texttt{C} / \texttt{C++}, where:
-\begin{itemize}[noitemsep]
+\begin{itemize}
 \item Simple statements don't exist.
 \item Expressions aren't optional.
 \item Case statements don't match on a list of expressions.
@@ -797,7 +799,7 @@ After that, the optional expression is compared with each
 from left to right. The first match enters that case's body,
 automatically breaking at the end of it. This makes cases
 significantly different semantically:
-\begin{itemize}[noitemsep]
+\begin{itemize}
 \item Cases automatically break.
 \item Each \texttt{case} or \texttt{default} block defines its own
   scope for declarations.
@@ -860,7 +862,7 @@ concern about clashing names here.
 
 \subsubsection{Switch Statements}
 For the structural differences:
-\begin{itemize}[noitemsep]
+\begin{itemize}
 \item Simple statements are modeled and executed as the first
   statement in the new ``scope''.
 \item Missing expressions are converted to the constant literal
@@ -875,7 +877,7 @@ For the structural differences:
 
 \noindent Semantically:
 
-\begin{itemize}[noitemsep]
+\begin{itemize}
 \item After \texttt{case} expression comparisons, we either jump
   to the case body or keep going to the next \texttt{case} comparison
   or \texttt{default} block. This separates \texttt{case} `headers'
@@ -900,7 +902,7 @@ For the structural differences:
 
 There are multiple tricky things about assignments:
 
-\begin{itemize}[noitemsep]
+\begin{itemize}
 \item Assignment operators. We cannot just convert \texttt{e += e2} to
   \texttt{e = e + e2}, where \texttt{e} is an expression, because
   \texttt{e} might contain a function call with side-effects, which we
@@ -910,7 +912,7 @@ There are multiple tricky things about assignments:
   discussion as most operators do not have an equivalent instruction
   to operate and assign at the same time). There are thus several
   cases for \texttt{e}:
-  \begin{itemize}[noitemsep]
+  \begin{itemize}
   \item \texttt{e} is just an identifier. Then, we can just convert
     \texttt{e += e2} to \texttt{e = e + e2}, as there will be no side
     effects.
