@@ -949,6 +949,77 @@ To do so, we defined our new AST models, then created another builder that is ve
 As there are no extensive rules, and it is mainly used for hashtables,
 there is only one module, instead of a core and more specific implementation.
 
+\subsection{Java Utils}
+
+To make things simpler, we offload some utility functions and classes to our `glcutils' module. 
+It is written in Java, which means that we don't have to write the bytecode ourselves, and that we can test it using JUnit.
+
+\subsubsection{Utils}
+
+Our core utility provides the following functions:
+
+\paragraph{\texttt{String boolStr(boolean)}}
+
+Helper to convert booleans to strings ``true'' and ``false''
+
+\paragraph{\texttt{<T> T copy(Object)}, \texttt{Object copyObj(Object)}}
+
+Helper to clone objects. If it implements our interface \texttt{GlcCopy} (see \ref{sec:glccopy}), it will call \texttt{copy()}. 
+Otherwise it will return the original object. 
+Given that structs, arrays, and slices implement copy, other types are 
+primitives or strings, which are all immutable already. We supply the generic variant to make it easier to use in other Java utility classes.
+
+\paragraph{\texttt{<T> T supply(Class<? extends T)}, \texttt{Object supply(Class)}}
+
+Helper to create new objects. If the class maps to a primitive or string,
+we return the default object. Otherwise, we call the empty constructor.
+Note that this cannot be used for \texttt{GlcArray}, as we require size information. We supply the generic variant to make it easier to use in other Java utility classes. \\
+
+\noindent We also supply our own runtime exception class, namely for testing and separating our exceptions from generic ones.
+
+\todo
+
+\subsubsection{GlcCopy}
+\label{sec:glccopy}
+
+There were a few options for us to support copying:
+
+\begin{itemize}
+	\item Implement Java's cloneable. All objects already have an unimplemented \texttt{clone()} function, but this becomes unnecessarily complicated to generate for structs. 
+	\item Generating a \texttt{copy()} function for all data types, returning the same class. While this is what the function is meant to do, it will require us to use reflection to call the function.
+	\item Implement our own interface supporting \texttt{Object copy()}.
+	This allows us to avoid reflection in our utilities.
+\end{itemize}
+
+We ended up using the last option, and we implement \texttt{GlcCopy} for all structs and \texttt{GlcArray}.
+
+It is worth noting that while we can override the function and return a superclass (class more specific than \texttt{Object}), 
+the underlying bytecode creates a ``synthetic bridge'' to support it.
+We wanted to avoid that, which is why all implementations still returns 
+\texttt{Object}. We instead rely on unchecked casting to get the appropriate type.
+
+\subsubsection{GlcArray}
+
+For our array and slice implementations, we decided to create them using a common structure.
+`GlcArray' serves as a multi array container, where subsequent dimensions and values are loaded lazily.
+This means that we can support indefinitely large arrays and slices, so long as the number of indices accessed does not exceed our allotted memory.
+
+A \texttt{GlcArray} takes in an \texttt{[]int} depicting sizes, as well as a \texttt{Class} to create values.
+For slices, we simply require that the size value be less than 0.
+For instance, to create \texttt{[3][][5]string}, we'd call \texttt{new GlcArray(String.class, new int[]\{3, -1, 5\})}.
+
+We enable usage of \texttt{append(...)} depending on whether the current dimension is a slice or not.
+When building \texttt{append(...)}, we also consider the conditions for copying arrays; it is only copied if the capacity changes, and we do a deep copy to ensure that the previous slice remains untouched.
+
+To support laziness, we expose getter and setter functions.
+Setter simply sets a value at the appropriate index.
+Getter will initialize the value if it is not yet defined, then return it.
+Only for string arrays and slices will the value be nullable.
+
+\subsubsection{Slice Templates}
+
+
+
 \subsection{Testing}
 Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
 wrote complete programs as files to test code generation.
