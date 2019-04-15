@@ -991,10 +991,10 @@ slices, arrays, and nested structs, a copy method is called.
 
 For slices and arrays, it was noted that there was no existing Java container type
 that provides the behaviour we were looking for. As a result, we defined our own
-class (implemented in Java), called \texttt{GlcArray}, which can represent single-
+class (implemented in Java), called \texttt{GlcArray} (see \ref{sec:glcarray}), which can represent single-
 or multi-dimensional slices or arrays (and any nested combination of those data structures).
 
-\subsubsection{AST}
+\subsection{AST}
 \label{sec:resource-ast}
 
 In the codegen stage, we decided to create yet another AST layer between the previous checked AST and the bytecode IR. The primary reason was that bytecode conversion alone is quite complex, and we want to keep state related changes as simple as possible.
@@ -1070,6 +1070,7 @@ We wanted to avoid that, which is why all implementations still returns
 \texttt{Object}. We instead rely on unchecked casting to get the appropriate type.
 
 \subsubsection{GlcArray}
+\label{sec:glcarray}
 
 For our array and slice implementations, we decided to create them using a common structure.
 `GlcArray' serves as a multi array container, where subsequent dimensions and values are loaded lazily.
@@ -1088,6 +1089,7 @@ Getter will initialize the value if it is not yet defined, then return it.
 Only for string arrays and slices will the value be nullable.
 
 \subsubsection{Slice Templates}
+\label{sec:slice-template}
 
 As a proof of concept, we have Slice implementations in Java under our test folder.
 We again wanted to support lazy initialization, and borrow concepts from \texttt{GlcArray}.
@@ -1095,6 +1097,7 @@ Namely, each field has a getter and setter, where the getter will initialize a v
 Primitive fields remained primitive, so they come preinitialized.
 
 \subsection{Lazy Equality}
+\label{sec:lazy-eq}
 
 To support lazy struct equality, we had to do the following:
 
