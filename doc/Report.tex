@@ -843,7 +843,7 @@ For the structural differences:
   to the case body or keep going to the next \texttt{case} comparison
   or \texttt{default} block. This separates \texttt{case} `headers'
   from \texttt{case} `bodies', allowing all comparisons to be followed
-  in the correct order with only the minimum required jumps. 
+  in the correct order with only the minimum required jumps.
 \item To automatically break, for each case statement, we add a
   \texttt{goto} to a label at the end of the switch statement.
 \item \texttt{default} statement jumps are placed after all
@@ -936,7 +936,7 @@ Mapping changes between adjacent ASTs is also much simpler, as there are few cha
 For our resource AST, we wanted to address the following concerns:
 
 \begin{itemize}
-	\item Local variables are labelled using offsets rather than identifiers. 
+	\item Local variables are labelled using offsets rather than identifiers.
 	\item Stack heights should be minimized; indices should be reused where possible.
 	\item Path splits should have unique label ids.
 	\item All used type declarations should be mapped to a single top level list of structs. Each struct also requires a unique id for the classname.
@@ -951,7 +951,7 @@ there is only one module, instead of a core and more specific implementation.
 
 \subsection{Java Utils}
 
-To make things simpler, we offload some utility functions and classes to our `glcutils' module. 
+To make things simpler, we offload some utility functions and classes to our `glcutils' module.
 It is written in Java, which means that we don't have to write the bytecode ourselves, and that we can test it using JUnit.
 
 \subsubsection{Utils}
@@ -964,12 +964,12 @@ Helper to convert booleans to strings ``true'' and ``false''
 
 \paragraph{\texttt{<T> T copy(Object)}, \texttt{Object copyObj(Object)}}
 
-Helper to clone objects. If it implements our interface \texttt{GlcCopy} (see \ref{sec:glccopy}), it will call \texttt{copy()}. 
-Otherwise it will return the original object. 
-Given that structs, arrays, and slices implement copy, other types are 
+Helper to clone objects. If it implements our interface \texttt{GlcCopy} (see \ref{sec:glccopy}), it will call \texttt{copy()}.
+Otherwise it will return the original object.
+Given that structs, arrays, and slices implement copy, other types are
 primitives or strings, which are all immutable already. We supply the generic variant to make it easier to use in other Java utility classes.
 
-\paragraph{\texttt{<T> T supply(Class<? extends T)}, \texttt{Object supply(Class)}}
+\paragraph{\texttt{<T> T supply(Class<?\ extends T)}, \texttt{Object supply(Class)}}
 
 Helper to create new objects. If the class maps to a primitive or string,
 we return the default object. Otherwise, we call the empty constructor.
@@ -983,7 +983,7 @@ Note that this cannot be used for \texttt{GlcArray}, as we require size informat
 There were a few options for us to support copying:
 
 \begin{itemize}
-	\item Implement Java's cloneable. All objects already have an unimplemented \texttt{clone()} function, but this becomes unnecessarily complicated to generate for structs. 
+	\item Implement Java's cloneable. All objects already have an unimplemented \texttt{clone()} function, but this becomes unnecessarily complicated to generate for structs.
 	\item Generating a \texttt{copy()} function for all data types, returning the same class. While this is what the function is meant to do, it will require us to use reflection to call the function.
 	\item Implement our own interface supporting \texttt{Object copy()}.
 	This allows us to avoid reflection in our utilities.
@@ -991,9 +991,9 @@ There were a few options for us to support copying:
 
 We ended up using the last option, and we implement \texttt{GlcCopy} for all structs and \texttt{GlcArray}.
 
-It is worth noting that while we can override the function and return a superclass (class more specific than \texttt{Object}), 
+It is worth noting that while we can override the function and return a superclass (class more specific than \texttt{Object}),
 the underlying bytecode creates a ``synthetic bridge'' to support it.
-We wanted to avoid that, which is why all implementations still returns 
+We wanted to avoid that, which is why all implementations still returns
 \texttt{Object}. We instead rely on unchecked casting to get the appropriate type.
 
 \subsubsection{GlcArray}
@@ -1026,7 +1026,7 @@ Primitive fields remained primitive, so they come preinitialized.
 To support lazy struct equality, we had to do the following:
 
 \begin{itemize}
-	\item For primitive fields, simply do a comparison 
+	\item For primitive fields, simply do a comparison
 	\item For string fields, call \texttt{Object.equals(s1, s2)}. In other words, the fields are equal if they are both null, or both the same string.
 	\item For other fields, check if they are both null, or compare the values after calling the getter. If both are null, we know that they result in the default, and are equals. We do not initialize to remain lazy. If any are non null, we must now ensure that both are initialized before comparing. We can directly use \texttt{Object.equals(Object)}, since the getter will always return nonnull values.
 \end{itemize}
@@ -1078,7 +1078,7 @@ we have ever worked on. Our tool choices had a large learning curve, which
 affected speed of development at some points, but the benefits of using a
 strongly-typed functional language for development and a low-level but
 well-documented language like JVM bytecode as a target, especially in terms of
-learning experience, definitely outweigh the negatives. 
+learning experience, definitely outweigh the negatives.
 We are pleased to have created a functional compiler, while learning new languages in the process.
 \todo
 
@@ -1099,7 +1099,7 @@ that indicates errors can occur.  This allows us to keep our code
 short, but is problematic with evolution, as users would expect a pure
 function to be pure (void of errors).
 
-Currently, \texttt{GlcArray} is built on top of an object array, 
+Currently, \texttt{GlcArray} is built on top of an object array,
 so all primitives are wrapped and unwrapped.
 We can easily provide variants for each primitive type to avoid this.
 Note that to support multi dimensional content,
