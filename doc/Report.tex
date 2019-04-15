@@ -1,0 +1,1420 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1 in]{geometry}
+\usepackage{hyperref, titling, fancyhdr, xcolor, lastpage, enumitem}
+
+\author{\textsc{Lore}, J.\\ \textsc{Lougheed} D.\\ \textsc{Wang} A.}
+\date{\today}
+\title{Final Report}
+\hypersetup{
+  pdfauthor={Lore, J., Lougheed D., Wang A.},
+  pdftitle={Final Report},
+  pdfkeywords={Compiler Design} {GoLite} {Gompiler} {glc} {Final Report},
+  pdfsubject={Final Report},
+  pdflang={English},
+  bookmarks=true,
+  unicode=true,
+  linktoc=all
+}
+\pagestyle{fancy}
+\lhead{McGill University\\COMP 520: Compiler Design
+  \\\thetitle}
+\chead{\leftmark}
+\rhead{\theauthor}
+\cfoot{Page~\thepage~of~\pageref{LastPage}}
+
+\newcommand{\todo}[0]{\textcolor{red}{\textbackslash\textbackslash TODO \ }}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\usepackage[numbers, super]{natbib}
+
+\setlist{nolistsep}% [noitemsep] by default
+
+\begin{document}
+\begin{titlepage}
+  \center%
+
+  \textsc{\LARGE McGill University}\\[1.5cm]
+  \textsc{\Large COMP 520~-~Compiler Design}\\[0.5cm]
+  \textsc{\large Gompiler~-~glc, a GoLite Compiler}\\[0.5cm]
+
+  \HRule~\\[0.4cm]
+  { \huge \bfseries \thetitle}\\[0.4cm]
+  \HRule~\\[1.5cm]
+
+  \theauthor\\%
+  [3cm]
+
+  {\large \thedate}\\[2cm]
+
+  \vfill
+
+\end{titlepage}
+\tableofcontents
+\newpage
+\section{Introduction}
+\subsection{Overview of Go}
+Go\cite{goliteinfo} is an open source imperative programming language created by Rob Pike, Ken
+Thompson and Robert Griesemer (Google employees). It was designed for
+easier code writing, having built-in concurrency support and speedy
+compilations. It features goroutines (lightweight thread), channels,
+interfaces, methods, closures, defer, maps, slices, multiple return
+values, modules, garbage collection and optional semi-colons. See the
+Golang main page\cite{golang} for more information.
+\subsection{Overview of GoLite}
+GoLite\cite{goliteinfo} is a (slightly modified) subset of Go. It does not support
+goroutines, channels, interfaces, methods (functions are still
+supported), closures, defer, maps, multiple return values, modules,
+garbage collection and optional semi-colons (insertion
+rule\cite{gospec:semicolon} $1$ is supported, not $2$). Additionally,
+it is restricted to ASCII encoding (instead of UTF-8), has a fixed
+precision, no imaginary numbers and has a few extra keywords
+(\texttt{print}, \texttt{println}, \texttt{append}, \texttt{cap}). The
+base types only include \texttt{int}, \texttt{float64}, \texttt{bool},
+\texttt{rune} and \texttt{string}. Declarations must also come before
+their use (for variables, functions and types) and constant
+declarations are not supported. Function bodies should also not be
+empty. For range loops, labelled breaks/continues and fallthrough are
+not supported as well. GoLite is the source language of our compiler.
+\subsection{Structure of Report}
+In this report, we discuss the language and tool choices we made for
+this project, as well as an overview of each compiler step (scanner,
+parser, weeder, symbol table, typecheck and codegen respectively),
+with major design decisions. Testing is also discussed.
+\section{Language and Tool Choices}
+\subsection{Implementation Language: Haskell}
+For our \texttt{GoLite} compiler, we decided to use \texttt{Haskell}
+as the implementation language, as many of the required tasks can be
+done more naturally (i.e.\ tree traversal, recursing over self defined
+structures, enforcing types, etc.).
+\subsection{Tools}
+For scanning, we use the program \texttt{Alex}\cite{github:alex}, a
+lexical analyser generator which is similar to
+\texttt{flex} but produces \texttt{Haskell} code instead. We use
+\texttt{Happy}\cite{github:happy} for parsing, a parser generator which resembles
+\texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be
+interlinked nicely, passing on useful information such as the line number, column number, character
+offset in file, and error messages.
+\subsection{Miscellaneous}
+We use Travis CI\cite{travisci} to build our project on every push to GitHub, as well
+as run our tests to make sure that new changes did not break existing
+functionality.
+
+There are several other good Haskell scanning/parsing options, such as
+\texttt{Megaparsec}. We decided on \texttt{Alex/Happy} because of
+their syntactic similarity to \texttt{flex/bison}, which we learned in
+class.
+
+We use \texttt{stack}\cite{hs:stack} to manage our Haskell project and corresponding
+tests.  We implemented additional tests using the \texttt{hspec}\cite{github:hspec}
+package.
+
+\subsection{Target Language: JVM Bytecode}
+We decided on targeting JVM bytecode for our compiler, through the
+Krakatau\cite{krakatau} bytecode
+assembler. Krakatau bytecode syntax is derived from Jasmin, but with a
+more modern codebase (written in Python) and some additional features.
+
+We chose Krakatau as it is more widely supported, much more popular
+($985$ stars on Github\cite{krakatau}) and has additional features
+when compared to other bytecode assemblers, such as Jasmin.
+\subsubsection{Advantages}
+The primary advantages of targeting JVM bytecode are:
+\hyperref[sec:portability]{portability},
+\hyperref[sec:execs]{execution speed}, and its
+\hyperref[sec:stack]{focus on stack manipulation, as opposed to a
+  higher level language}, which aids in overcoming some of the common
+pain points of GoLite code generation:
+\paragraph{Portability}%
+\label{sec:portability}
+The JVM has been ported to many common platforms, meaning code written
+in GoLite, when compiled with our compiler, will be able to run on any
+platform the JVM can run on.
+\paragraph{Execution Speed}%
+\label{sec:execs}
+Although Java is often considered slow as opposed to ahead-of-time
+compiled languages such as C and C++ due to its garbage collection and
+non-native compiled code, most implementations of the JVM provide JIT
+compilation. By targeting JVM bytecode, we take advantage of
+this, and our generated code is often faster than if we
+generated code in an interpreted language such as Python. Sometimes,
+the JVM can be faster than even ahead-of-time compiled programs, since
+run-time information is available for optimization purposes.
+\paragraph{Stack Based/Low Level}%
+\label{sec:stack}
+The fact that JVM bytecode is fairly low level gives us lots of
+granular control for changing the behavior of constructs, especially
+when dealing with odd \texttt{GoLite} / \texttt{GoLang} behavior that
+doesn't map perfectly to more common programming languages.
+
+Operating on a stack makes some of the operations mentioned in class
+as `difficult to implement' surprisingly easy. In particular, swapping
+variables (e.g. \texttt{a, b = b, a}) is fairly straightforward. The
+right-hand side must be evaluated before assignment, which can be done
+by pushing and evaluating all RHS terms, left to right, onto the
+stack; followed by popping each value in turn and loading them into
+corresponding locals. Compared to temporary variable or register
+allocation, this is a very natural way to implement this construct.
+
+\subsubsection{Disadvantages}
+The main disadvantages of generating JVM bytecode are its low-level
+semantics and its slightly slow speeds versus an
+ahead-of-time compiled language (in general).
+
+The low level of JVM bytecode is particularly frustrating to deal with
+when it comes to types that are not representable by an integer or
+floating point number and are thus classes which must be instantiated;
+in the JVM, this includes strings and \texttt{struct}. This means that operations
+such as comparisons and string concatenations go from being a few
+bytecode instructions to significantly longer patterns.
+\section{Scanner}
+\subsection{Overview}
+The first step of the compiler pipeline is to scan user input into
+tokens, abstract representations of each separate expression in the
+source code. To do this, we use the tool
+\texttt{Alex}\cite{github:alex} and define regular expression rules (\texttt{golite.x}) to
+match certain corresponding tokens. Handing of most GoLite tokens was straightforward and similar
+to class assignments. In other cases, we had to deal with some of
+Go/GoLite's quirkiness when compared to something simple like
+\texttt{MiniLang}.
+
+\subsection{Design Decisions}
+\subsubsection{Semicolon Insertion}
+Semicolon insertion was the first scanning hurdle. To solve this, we
+use start codes, a built in feature of \texttt{Alex}, and have special
+rules for certain states.
+
+If the last token we scan is something that can take an optional
+semicolon, we enter the \(nl\) state, where newlines are transformed
+into semicolons after specific tokens. Scanning anything else (that
+isn't whitespace or otherwise ignored) returns the scanner to the
+default state (\(0\)), where newlines are just ignored.
+
+This solution seems elegant, as we don't have to traverse the whole
+stream post-scanning or store context, other than the start code. It
+also makes sense to let the scanner handle these situations
+automatically, rather than trying to deal with them in the parsing
+phase.
+\subsubsection{Block comment support}
+Block comments cannot be easily scanned using only regular
+expressions. One potential solution was to use start codes again
+(changing state upon opening a comment). This was ruled out since it
+would potentially add a lot more start codes (i.e.\ states), as we'd
+have combinatorial possibilities with the newline insertion state
+(since block comments spanning newlines should also insert semicolons
+when they're optional). Using a state approach would also make it
+harder to catch unclosed comment block errors.
+
+Our solution iterates through the scanner's input once we receive an
+open comment block and ignore everything until the comment is closed.
+If the comment never closes, we can easily emit an error.
+
+To account for semicolon insertion with block comments, we set a
+semicolon flag to true if we encounter any new line inside the block
+comment, and we insert a semicolon if we're in the aforementioned
+newline insertion state.
+\paragraph{Adding newlines at the end of the file if they aren't
+  present already}
+\texttt{Go} requires a semicolon or newline at the end of function
+declarations. Sometimes, there may not be a newline at the end of a
+file, so no semicolon insertion occurs, resulting in a parsing error.
+
+In order to correct for this type of file, we enforce a final newline
+by appending one if necessary. To do this, the code string is
+preprocessed prior to scanning. This is the easiest solution, as
+otherwise we would have to try inserting a semicolon if we are in the
+\(nl\) state when we encounter an \texttt{EOF}, while also making sure
+to return an \texttt{EOF}. This would be difficult without additional
+context information.
+\subsubsection{Nicer error messages}
+We decided to use \texttt{ErrorBundle} from \texttt{Megaparsec}\cite{github:megaparsec} in
+order to output nicer error messages, with program context for easier
+debugging from an end-user programming perspective:
+
+\begin{verbatim}
+Error: parsing error, unexpected ) at 5:22:
+  |
+5 | func abstract(a, b, c) {
+  |                      ^
+\end{verbatim}
+
+With \texttt{Alex}' default behaviour, we did not have access to the
+entire source file string, as it is not kept between steps. In order
+to generate the contextual message, we modified the \texttt{monad}
+wrapper provided with \texttt{Alex} (see \texttt{TokensBase.hs}) and
+changed the \texttt{Alex} monad to wrap over a \texttt{Either (String,
+  Int) a} instead of \texttt{Either String a}, i.e.\ in addition to
+storing an error message on the left side of the monad we also carry
+an \texttt{Int} which represents the offset of the error. When we want
+to print the error message, we can then append the part in the source
+file where the error occurred.
+
+\subsection{Testing}
+To test the scanner, we implemented hspec tests that test the token
+output of scanning certain strings, lots of which was a reverse
+mapping of the scanner rules (to make sure things mapped to what we
+expected). Additionally, we added random generation of hex, octal,
+decimal, float numbers, random characters, strings and identifiers, to
+make sure everything maps as expected.
+\section{Parser}
+\subsection{Overview}
+After having scanned in the source code into tokens, we now need a
+more structured representation of the program, namely an AST or
+abstract syntax tree. In order to accomplish this, we use
+\texttt{Happy}\cite{github:happy} and define the rules of our grammar
+(\texttt{golite.y}) that will transform certain sequences of tokens
+into a corresponding part of the AST.
+\subsection{Design Decisions}
+\subsubsection{Grammar}
+Many of our difficulties in the grammar were associated with
+identifier and expression lists, used in declarations/signatures and
+assignment/function calls respectively. The grammar was refactored to
+fix this by allowing identifier lists to become expression lists if
+needed, in a way which avoided introducing other conflicts.
+
+The first issue we encountered was with list ordering. LR parsers work
+more intuitively with rules that put the newly-created terminal after
+the recursively-expanding non-terminal. However, since Haskell uses
+recursive lists defined in the opposite way, it is significantly more
+efficient to prepend items. This prepending results in a reversed
+ordering, which must be handled after the list is `complete'.
+
+Adding an extra non terminal to manage reversals for each list would
+needlessly increase our grammar and generated code size, so we decided
+against it as a solution. The solution we use is to differentiate
+lists containing at least one non-identifier expression (i.e.\ using
+either all non-identifiers, identifiers plus one non-identifier, or
+otherwise mixed lists, as grammar base cases) from lists of entirely
+identifiers. Then, the expression list non-terminal is allowed to
+yield either a mixed list or a pure identifier list depending on what
+is needed.
+
+Another caveat of how lists are handled in the grammar, again a
+compromise to prevent ambiguity, is that the actual grammar constructs
+that represent lists correspond to a list of size two or more, which
+doesn't exactly match the Go spec (where a list may be 0/1 or more,
+depending on the case). The actual single-item non-terminals are
+allowed to represent a list of size one when needed, meaning this
+disparity is resolved in the actual AST construct, which is closer to
+a direct representation of the Go / GoLite specifications.
+\subsubsection{AST}
+We modeled our AST as close as possible to the actual Go and GoLite
+specs, to try and ensure that impossible states are inherently
+prevented by the Haskell type checker, reducing run-time errors.
+Although we don't have type-checking implemented at this milestone, we
+can use this technique to enforce definitions such as `exactly one',
+`one or more', and `zero or one'. This modeling is not always
+perfect. For example, a
+list of
+identifiers\cite{gospec:idlist} is `one or more' (in Haskell, \texttt{NonEmpty}). Many
+locations make it optional. While a direct translation would be
+\texttt{Maybe (NonEmpty a)}, we choose to make it a possibly empty
+list \texttt{[a]} as it makes more sense.
+\paragraph{Simplified Data Type Categories}
+Some splits, such as \texttt{add\_op} and \texttt{mul\_op} are
+distinguished purely to demonstrate precedence; they are in fact only
+used once in the specs, so we decide to merge them directly in our
+\texttt{ArithmOp} model. Several other instances exist.
+
+Given we are creating an AST, rather than a CST, we can further
+compact parts of the grammar. For instance, an \texttt{if} clause in
+the spec leads to an \texttt{IfStmt} construction, whose \texttt{else}
+body is either a block (with surrounding braces) or another
+\texttt{if} statement (no surrounding braces). In our case, we don't
+need to model the braces, so we can treat the \texttt{else} body
+exclusively as \texttt{Stmt} rather than the more verbose
+\texttt{Either Block IfStmt}. The grammar enforces that this
+\texttt{Stmt} is not any other type.  Some splits, such as
+\texttt{add\_op} and \texttt{mul\_op} are distinguished purely to
+demonstrate precedence; they are in fact only used once in the specs,
+so we decide to merge them directly in our \texttt{ArithmOp}
+model. Several other instances exist.
+
+Given we are creating an AST, rather than a CST, we can further
+compact parts of the grammar. For instance, an \texttt{if} clause in
+the spec leads to an \texttt{IfStmt} construction, whose \texttt{else}
+body is either a block (with surrounding braces) or another
+\texttt{if} statement (no surrounding braces). In our case, we don't
+need to model the braces, so we can treat the \texttt{else} body
+exclusively as \texttt{Stmt} rather than the more verbose
+\texttt{Either Block IfStmt}. The grammar enforces that this
+\texttt{Stmt} is not any other type.
+\paragraph{Structure Simplification}
+For \texttt{var} and \texttt{type} declaration, we make no distinction
+between single declaration (exactly one) and block declaration (0 or
+more). Unlike types, which produce different formats, we decide to
+enforce all var declarations to be single declarations. In other
+words, \texttt{var ( a = 2; b = 3 )} becomes \texttt{var a = 2; var b = 3}
+and \texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note
+that we cannot further simplify multi declarations \texttt{var a, b
+  = 2, 3} because they happen in one stage;
+  \texttt{var a, b = b, a} does not always produce the same output as
+  \texttt{var a = b; var b = a}.
+
+\subsubsection{Pretty Printer}
+When creating our pretty printer, we chose a top down approach.  Every
+node has the ability to output a list of strings, which makes it
+easier to format indentation. Each node is also only concerned with
+its respective subtree, and does not require context from its
+parent. We focused on aesthetics, focusing on proper spacing and
+alignments. In the case of expressions, we tried to add brackets
+sparingly, though further optimizations can be done down the road (a
+nested binary op does not always need brackets, if the order of
+precedence matches). To produce the full program, we simply join the
+list of strings in the full program, intercalated with new lines.
+
+\subsection{Testing}
+
+To facilitate testing, we wanted to ensure that each feature can
+be tested separately.
+When building the parser, we expose entry points to each main stage,
+so we can focus on tests for floats, expressions, statements, etc
+on top of the full program.
+To facilitate future refactoring, we base our tests on quality checks, vs structural checks.
+In other words, we simply check if a parser succeeds or fails.
+This was very important, as testing the full AST structure meant that
+it was very difficult to make changes in the future.
+
+On top of the necessary tests with the provided scripts, we wanted as much
+testing within Haskell as we can. Most inputs are embedded to avoid IO operations, and are done with the help of \texttt{hspec} so we can make use of Haskell's testing stack. This allows us to easily run all tests,
+generate coverage reports, and rerun selective tests if we need to.
+
+To ensure incremental updates, we wanted to make sure that we tested every step of the way. As a result, every build, with the exception of updating documentation, ran through Travis CI.
+
+\section{Weeder}
+\subsection{Overview}
+Certain language constraints are too complicated to implement in the
+parsing stage (or at least without greatly complicating the rules of
+the grammar). Take for example checking if the LHS and RHS of an
+assignment have the same number of expressions. If one wanted to have
+that in a grammar, they'd need specific rules for each length (or
+they'd have to define the LHS and RHS of assignment lists as one
+language construct instead of just being expression lists). Thus, in
+order to get rid of the syntactically invalid parts of our grammar, we
+weed through the results of the parser, checking that certain
+constrains that aren't enforced hold, else we'd error on said
+source. To do this, we recurse over our AST and check the constraints.
+\subsection{Design Decisions}
+\subsubsection{Parser Weeding}
+Most of the weeding operations needed are simple and don't rely on
+external context. As a result, we were able to define recursive
+traversal methods to verify relevant statements, and create verifiers
+that validate at a single level. Haskell helped immensely here, as we
+were able to use pattern matching to produce performant and
+independent functions.
+
+For verification where statement context was important (\texttt{break}
+and \texttt{continue}) we made a simple modification to the recursive
+traversal to avoid exploring scopes under \texttt{for} or
+\texttt{switch} statements where applicable.
+
+Each verifier returns an optional error, and we are able to map the
+results and return the first error, if any.
+\subsubsection{Typecheck Weeding}
+We implemented additional weeding passes for certain constraints that
+could be verified either at the weeding level or the typecheck level,
+since in most cases it was easier to check via weeding. The
+constraints we use weeding to check for this milestone are:
+\begin{itemize}
+\item Checking correct use of the blank identifier. It was much easier
+  to recurse through the AST and gather all identifiers that cannot be
+  blank, and then check this whole list, versus checking usage in the
+  type-checking pass. Additionally, because we have offsets in our
+  AST, we could easily point to the offending blank identifier without
+  having to make error messages for each specific incorrect usage, as
+  it is obvious what the incorrect usage is when we print out the
+  location of the blank identifier.
+\item Ensuring non-void function bodies end in return statements. It
+  was easier to do a single weeding pass; otherwise, we'd have to
+  recurse differently on functions that have a return type versus
+  functions that don't have a return type during
+  typechecking. Essentially, we'd need context-sensitive statement
+  typechecking, with two different versions depending on return
+  type. This was not deemed worth it compared to a single weeding
+  pass.
+\item Ensuring void function declarations do not have any
+  non-void return statements. Similar to the above, it is easier to do
+  a weeding pass then require context-sensitive (i.e multiple
+  different) traversal functions given the context of the current
+  function declaration.
+\item Ensuring any `main' or `init' function declarations do not have
+  any parameters or a return type. This is again a straightforward
+  weeding check.  It could also have been done via typecheck, but it
+  is slightly easier to implement with weeding passes (no symbol table
+  required).
+\item Checking that any top-level declarations with the identifier
+  \texttt{init} or \texttt{main} are functions, since they are special
+  identifiers in Go (and GoLite) in the global scope.
+\end{itemize}
+
+\subsection{Testing}
+
+Testing weeding rules is relatively simple.
+We simply provide a program that should parse, verify that it does parse,
+and also verify that it fails the weeding rule.
+
+At this stage, we decided to improve our testing process for invalid programs.
+Given that error messages are unrelated to AST structure, we created a new error type class, where we represent error strings with data structures.
+For instance, each weeding rule will have its own constructor, with optional arguments depending on how much detail we wish to add.
+We then create a function that converts each data type to a string.
+
+When testing for invalid programs, we can now also check that the message contains the string of our desired error.
+Given that we have a unique prefix, we can ensure that there are no accidental matches with other errors.
+This ended up being useful for two reasons: It allowed us to create errors in a more compact way, and avoid the possibility of making typos when pasting error message strings in numerous locations.
+It also ensured that invalid programs were invalid for the reasons we expect.
+After we refactored to the new model, we noticed that some of our old tests were indeed invalid for the wrong reasons.
+
+\section{Symbol Table}
+\subsection{Overview}
+Before one can typecheck their AST to make sure it is semantically
+valid, they must create a symbol table that keeps track of the type of
+identifiers (variables, type maps, function calls), such that when we
+typecheck we can find out the type of a variable. This is usually done
+using a cactus stack (i.e.\ a stack of hash maps representing
+different scopes), which is the approach we used as well.
+\subsection{Design Decisions}
+
+\subsubsection{State Monad}
+In Haskell, data structures are typically immutable, and much of the
+language is designed around this. One of the main design decisions
+made around the symbol table was deciding whether to go with an
+immutable or mutable symbol table. In an immutable symbol table, a new
+symbol table would have to be made every time a scope is added or
+modified. Right away, despite this being a conceptually better fit for
+the language, the potential performance degradation of constantly
+re-building the symbol table becomes evident.
+
+As a result of this performance impact, we decided on using a mutable
+symbol table, with mutability supported via Haskell's
+ST\cite{hackage:st}
+monad. The constraint provides
+runST\cite{hackage:runst}
+(which removes the \texttt{ST}, i.e.\ mutability, from an interior
+data structure). This is proven\cite{monadicstate} to keep functions pure. This made the \texttt{ST} monad a better choice than other
+monads providing mutability (the main example being \texttt{IO}, which
+if used would have resulted in all our functions after symbol table
+generation being bound by \texttt{IO}, i.e.\ impure and also harder to
+work with, as they are wrapped by an unnecessary monad). The trade-off
+of this decision was a large increase in the difficulty of
+implementing the symbol table, which made up a huge portion of the
+work for this milestone.  However, once we finish using the symbol
+table, our final result (a typechecked/simplified, proven-correct AST)
+is pure and very easy to manipulate for the \texttt{codegen} phase in
+the next milestone.
+
+\subsubsection{Core Model}
+
+The symbol table needs to account for a lot of constraints related to typechecking.
+However, the core state model itself is simpler, so we decide to separate the two.
+Our core data structure is simply a list of scopes, where each scope contains an index, hashtable (with key type \texttt{k} and value type \texttt{v}), and optional context (of type \texttt{c}).
+We then provide some general functions, such as retrieving value \texttt{v} given \texttt{k}, which recurses through all tables and finds the first match, if any.
+We also provide a \texttt{wrap} function, which allows us to create a new scope, execute some actions, then exit.
+Note that we do not expose enter and exit, as it should be impossible to do only one of the two operations.
+
+While messages is separate, we add a list of type \texttt{m} to our core model, as well as a functions to add a message or disable messages.
+The need for disabling is because some typecheck errors are not actually symbol table errors.
+In the event that we receive a typecheck error that is valid for the symbol table, we disable message outputs.
+
+This separation of core logic to the symbol table logic helps simplify our constraints, as well as testing (see \ref{sec:test-symbol-table-core}).
+
+\subsubsection{Symbol Data}
+For our first iteration of symbol table storage, we created a new data type \texttt{Symbol}
+to represent each symbol, analogous to the different type of symbols
+(types, constants, functions, and variables).
+With respect to our core, this represents type \texttt{v} and type \texttt{m}.
+A \texttt{Symbol} can be
+one of:
+\begin{itemize}
+\item \texttt{Base}: Base types (\texttt{int}, \texttt{float64}, etc.)
+\item \texttt{Constant}: Constant values (only used for booleans in
+  GoLite)
+\item \texttt{Func [Param] (Maybe SType)}: Function types, with
+  parameters and an optional return type.
+\item \texttt{Variable SType}: Declared variables, of type SType.
+\item \texttt{SType SType}: Declared types (note: in Haskell, the
+  first \texttt{SType} here is a constructor, and the second
+  \texttt{SType} is a data type attached to the constructor.)  In this
+  way, all possible symbol types are encompassed by a single Haskell
+  data type.
+\end{itemize}
+
+We also created a new data type \texttt{SType}, which is used to store
+vital information concerning the types we define in the original
+\texttt{AST}.  An \texttt{SType} can be one of:
+\begin{itemize}
+\item \texttt{Array Int SType}: An array with a length and a type.
+\item \texttt{Slice SType}: A slice with a type.
+\item \texttt{Struct [Field]}: A struct with a list of fields.
+\item \texttt{TypeMap SIdent SType}: A user-defined type, with an
+  identifier and an underlying type, which may be recursively mapped,
+  eventually to a base type.
+\item \texttt{PInt, PFloat64, PBool, PRune, PString}: Base types.
+\item \texttt{Infer, Void}: Special
+  \texttt{SType} for inferred types and void
+  return values.
+\end{itemize}
+In this way, all possible GoLite types, including user-defined types,
+are accounted for.
+
+All types that are left to be inferred during symbol table generation
+are updated when typechecking (we infer the type of variables and then
+update their value in the symbol table, to make sure things like
+assignments don't conflict with the original inferred type).
+\subsubsection{Cyclic Types}
+
+Initially, our model above was sufficient in defining all type variants.
+Even if a type were cyclic, we could create a data structure that references itself.
+Given that Haskell is lazy, it will only generate nested types as we needed.
+While this is an elegant solution, it unfortunately makes modifying types difficult, and checking type equality near impossible.
+Our solution is to introduce a new cyclic model (\texttt{Cyclic.hs}).
+For a generic data structure \texttt{T} to be cyclic:
+
+\begin{itemize}
+	\item It must provide \texttt{isRoot :: T -> Bool}, to check if the data is a root type. This is usually an empty constructor, which labels a field as a root type.
+	\item It must provide \texttt{hasRoot :: T -> Bool}, to check if the data contains a root type, and is therefore cyclic.
+\end{itemize}
+
+We can then create a new model for any data structure, which takes in two values: the root data and the current data.
+When we retrieve the current data, we can check if it should be the root, and return either the root data or the current data respectively.
+This allows us to create a recursive type by access, but where the data structure itself is non recursive.
+Creating the data is simple, as we simply set the initial data as both the root and the current values.
+Subsequent changes involve retaining the root, while only modifying the value.
+
+The use of \texttt{hasRoot} is namely to provide valid equality logic.
+If the current type has a root value, we must also check root equality.
+If not, only current data equality is required.
+
+\subsection{Testing}
+\subsubsection{Symbol Table Core}
+\label{sec:test-symbol-table-core}
+
+When testing symbol table core, we provide a data type containing potential actions. For instance, we can look up, insert, or check messages.
+To make things easier, we can replace the types for keys, values, and messages to integers, since we aren't testing actual symbol table logic.
+Afterwards, we can simply run a chain of actions on a single symbol table, where each action results in an \texttt{hspec} expectation.
+If all expectations are met, then the test passes.
+
+\subsubsection{Symbol Table}
+
+Since the symbol table is mainly just a string output, it was harder
+to test. We added a few cases to check for success/no error, but as
+for the actual printing, most of that was checked manually by running
+it against programs as we weren't really able to add symbol table
+string checks due to time constraints. Most of our testing of the
+symbol table module were done as typecheck tests (as those were a lot
+more important and core to the actual compilation process).
+
+\section{Typecheck}
+\subsection{Overview}
+Before we can try to convert our AST into our target language (i.e.\
+code generation), we must verify that it is semantically correct such
+that our generated code will also be semantically correct (we don't
+want to assign a string to a variable that is of type float, for
+example). To do this, we recurse over our AST while generating the
+symbol table and check that everything is well-typed using the
+typecheck rules/spec\cite{golite-typecheck}.
+\subsection{Design Decisions}
+For type-checking, we decided on a single-pass approach, combining
+symbol table generation and statement type-checking. This improves
+performance, and is feasible as a product of GoLite's declaration
+rules, which specify that identifiers must be declared before they can
+be used.
+
+The other approach we considered involved generation of a
+type-annotated AST, with types of expressions contained in the AST, so
+that we could get rid of \texttt{ST} mutability from the symbol table
+as soon as possible (some of us did a similar thing for the
+assignment, but this was mainly relevant for print statements in C
+codegen needing to know the type of the expression they're printing).
+
+We decided on doing all typechecking at the same time as symbol table
+generation because type inference has to be done to generate this new
+AST, and type inference requires typechecking (e.g. \texttt{"a" + 5}
+has no inferred type, since the expression is undefined; we only know
+this because of typechecking).
+
+At first, we were going to generate an annotated AST only to typecheck
+things that aren't expressions. However, at that point, since we were
+already doing one in-depth pass of the original AST for symbol table
+generation, we decided that we might as well do the other half of
+typechecking in the same phase, since it seemed odd to split
+typechecking between the symbol table and a separate pass. The
+alternate approach may have been more feasible if type inference did
+not require typechecking, but in GoLite it did not seem to make
+sense. Therefore, after the one pass of our original AST, the final
+result is a typechecked AST, with extremely limited type annotation.
+
+Additionally, we decided to resolve all type mappings (except for
+structs) to their base types when generating this new AST:~all the
+casts/equality checks/new type usages are already validated in
+typechecking, so we don't need them anymore, nor do we need the
+mappings. Thus, our new AST was also able to get rid of type
+declarations (except for structs).
+\subsubsection{Functions}
+Because the name of a function should overshadow all names in earlier
+scopes (i.e.\ base types), we add the
+function to the symbol table without any arguments before
+typechecking. We then typecheck the parameters (if we didn't add the
+function yet the parameters could incorrectly refer to a mapping of
+the function name in a previous scope) and update the function's entry
+in the symbol table.
+\subsubsection{New AST}
+As mentioned above, dependency on the SymbolTable results in a
+dependency on the \texttt{ST} monad, which adds complexity to each
+operation.  As a result, after typechecking we create a
+new AST, which reflects the new constraints we enforce.  Namely:
+\begin{itemize}
+\item Typecheck errors are caught beforehand, so we no longer need
+  offsets, or error breakpoints.
+\item All variables are properly typechecked, and therefore
+  reference an explicit type. Each type is composed of potential user-defined
+  parent types, which eventually map to a GoLite data type.
+  This includes cases like function signatures,
+  where we can associate each parameter with a type rather than
+  allowing lists of identifiers to map to a single type, syntax sugar
+  present in GoLite and in the first AST.  In
+  preparation for code generation, we use our new AST exclusively,
+  without any other mutable data structures. Any additional
+  information we need for code generation is added to a third AST downstream,
+  called the resource AST, which has minimal changes to models used at this and
+  previous previous stages.
+\end{itemize}
+
+An added benefit of adding items to the AST is to support caching.
+Haskell computes data lazily, so having any argument within a
+data type will ensure at most one computation.
+As shown above, providing a way of getting expression types is very important. While we do have all the information we need within the previous AST,
+we felt it was inefficient to require recursion through binary and unary expressions.
+Additionally, recursion for binary expressions may lead to errors in the
+event that the two types do not match. To avoid this possibility,
+we simply offload the verification to the symbol table, and assume that the provided type is valid.
+We add the explicit type to the ast, and now future stages simply require
+a field access to find it.
+
+\subsection{Testing}
+
+To test typecheck rules, we provide a program that should either pass
+or fail the typecheck phase. Most of our tests were implemented as
+hspec tests, but we added a few invalid typecheck programs as files
+for submission (see the \hyperref[sec:atypecheck]{appendix}).
+
+\section{Code Generator}
+\subsection{Overview}
+
+As discussed in the Language and Tool Choices section, we decided on targeting
+JVM bytecode for our compiler's code generation, using the Krakatau bytecode
+dialect and assembler. JVM bytecode posed an interesting challenge due to its
+low-level syntax and semantics, while providing a well-tested and established
+set of libraries (the Java standard library).
+
+In order to generate bytecode, we decided to first create a bytecode-adjacent
+intermediate representation (IR) in Haskell. This allowed us to reduce errors
+in code generation by taking advantage of Haskell's strong type system to
+represent common bytecode constructs, and let us write a common mapping from
+the IR to bytecode in order to reduce the chance of typos.
+
+Four major concepts that had to be handled carefully when converting GoLite to
+JVM bytecode were identifier scoping, assignments, struct generation, and copying
+behaviours. These are ideas that do not map exactly to bytecode, since bytecode
+does not have scoping at all, with the exception of method locals and classes,
+assignments (storing values) work completely differently, and the JVM is
+pass-by-reference for assignments and method calls.
+
+While we were given the general outline for most bytecode generations in class, we
+did not discuss switch/case statements. Mapping the GoLite form of these constructs
+to bytecode proved interesting, especially considering limitations on execution of
+the switch expressions and laying out labels to provide proper default branch behaviour.
+
+\subsubsection{Scoping in GoLite}
+In \texttt{GoLite}, new scopes are opened for block statements,
+\texttt{for} loops, \texttt{if} / \texttt{else} statements and
+function declarations (for the parameters and the function body). A
+new scope separates identifiers (which are associated with type maps,
+variables, functions and the constants \texttt{true} and
+\texttt{false}) from the other scopes' identifiers. Whenever we refer
+to an identifier, it references the identifier declared in the closest
+scope.
+
+There is nothing very special about scoping in \texttt{GoLite}. The
+main notable thing is that something like \texttt{var a = a} will
+refer to \texttt{a} in a previous scope, not the current \texttt{a}
+that was just declared, unlike languages like \texttt{C}.  On the
+other hand, recursive types such as \texttt{type b b} fail as
+expected, and do not reference a type from higher scopes.
+\subsubsection{Switch Statements in GoLite}
+In \texttt{GoLite}, \texttt{switch} statements consist of an optional
+simple statement, an optional expression and a list of case
+statements. Case statements are either a case with a non-empty list of
+expressions, or a default case with no additional expression.  Each
+case statement also contains a block statement, containing code to
+execute upon match. This makes them structurally different when
+compared to Java or \texttt{C} / \texttt{C++}, where:
+\begin{itemize}
+\item Simple statements don't exist.
+\item Expressions aren't optional.
+\item Case statements don't match on a list of expressions.
+\end{itemize}
+The simple statement is executed before the \texttt{case} checking.
+After that, the optional expression is compared with each
+\texttt{case} statement, evaluating and comparing expression lists
+from left to right. The first match enters that case's body,
+automatically breaking at the end of it. This makes cases
+significantly different semantically:
+\begin{itemize}
+\item Cases automatically break.
+\item Each \texttt{case} or \texttt{default} block defines its own
+  scope for declarations.
+\item Case statement expressions do not need to be a constant
+  expression.
+\end{itemize}
+
+\subsubsection{Assignments in GoLite}
+In \texttt{GoLite}, assignments are either an assignment operator with
+a single LHS expression and a RHS expression, or two non-empty
+expression lists (LHS and RHS) of equal length. This makes them
+structurally different (for the two non-empty list case) from
+`classic' assignments, which typically only allow one l-value.  This
+structural difference is a lot more significant than it seems at first
+glance, because the assignments are done in a ``simultaneous'' way,
+that is \texttt{a, b = b, a} will swap the values of \texttt{a} and
+\texttt{b}. If the assignments were done sequentially, \texttt{a} and
+\texttt{b} would be the original value of \texttt{b} and wouldn't be
+swapped.
+
+\subsubsection{Structs in GoLite}
+\texttt{GoLite} provides structs as a way of defining custom data structures.
+These do not exist in the JVM, which uses classes for user-defined data types.
+Transforming structs into classes was, for the most part, a natural mapping,
+although copying and equality proved difficult to get correct.
+
+\subsubsection{Copying Behaviour in GoLite}
+In \texttt{GoLite}, assignments and function calls copy the values used.
+This is in contrast with the JVM, which uses references for object assignment
+and method calls. Overriding this behaviour was difficult, since it involved
+writing custom methods for structs, arrays, and slices.
+
+\subsection{Mapping Strategies}
+\subsubsection{Scoping}
+JVM bytecode only has ``scoping'' for \texttt{methods}, as they have
+their own locals and stack. Block statements do not exist per se, and
+statements except called method bodies are scope-less. In higher level
+languages, we could just append the scope depth to all identifier
+names to keep them unique, also eliminating the need for separate
+scopes, as we already typecheck the correct use of identifiers. In our
+case, we have scoped identifiers in our newly generated typechecked
+AST which we convert to offsets (for locals) in the resource AST (see \ref{sec:resource-ast}).
+
+These offsets are in our intermediate representation, where
+the offsets are unique for each local variable declaration. Variables with
+the same scoped identifier will be given the same offset, and we can
+optimize our stack limit by reusing offsets when two variables can
+never occur at the same time due to branching.
+
+Globals are a special case in JVM bytecode generation, since they are
+equivalent to fields on the main class. To generate these, the identifiers
+are kept and a prefix is prepended to the name: \texttt{\_\_glc\$fd\_\_}. This
+ensures that the field names will not conflict with any reserved word in
+the JVM. Since only top-level variables retain identifiers, there is no
+concern about clashing names here.
+
+\subsubsection{Switch Statements}
+\label{sec:switch-stmts-codegen}
+For the structural differences:
+\begin{itemize}
+\item Simple statements are modeled and executed as the first
+  statement in the new ``scope''.
+\item Missing expressions are converted to the constant literal
+  `true` in the resource AST, prior to IR and code generation.
+\item For a list of expressions that is of length greater than one, we
+  compare each element from the list one at a time, duplicating
+  the value we're comparing to before each comparison (as otherwise
+  we'll lose it during the stack operation). In other terms, the value
+  we compare to during each \texttt{case} block is stored on the stack
+  until the \texttt{switch} statement is done.
+\end{itemize}
+
+\noindent Semantically:
+
+\begin{itemize}
+\item After \texttt{case} expression comparisons, we either jump
+  to the case body or keep going to the next \texttt{case} comparison
+  or \texttt{default} block. This separates \texttt{case} `headers'
+  from \texttt{case} `bodies', allowing all comparisons to be followed
+  in the correct order with only the minimum required jumps.
+\item To automatically break, for each case statement, we add a
+  \texttt{goto} to a label at the end of the switch statement.
+\item \texttt{default} statement jumps are placed after all
+  jumps to case bodies as the fall-through case, when no other jumps
+  are followed.
+\item Simulating new scopes is easy because of how our scoping works;
+  the variable names are already resolved to their correct local's
+  index in the resource AST and will not conflict during code generation.
+\item Expressions in \texttt{case} blocks not being constants does not
+  matter too much for us (versus a target language like C), as we compare
+  each expression normally (we are simulating switch statements using
+  \texttt{goto} and comparisons, and aren't limited by any language-native
+  \texttt{switch} statement definitions).
+\end{itemize}
+
+\subsubsection{Assignments}
+
+There are multiple tricky things about assignments:
+
+\begin{itemize}
+\item Assignment operators. We cannot just convert \texttt{e += e2} to
+  \texttt{e = e + e2}, where \texttt{e} is an expression, because
+  \texttt{e} might contain a function call with side-effects, which we
+  do not want to call twice (note that in some cases, the assignment
+  operator has an equivalent bytecode instruction, i.e.\ incrementing
+  and decrementing using \texttt{iinc}. However, we generalize in this
+  discussion as most operators do not have an equivalent instruction
+  to operate and assign at the same time). There are thus several
+  cases for \texttt{e}:
+  \begin{itemize}
+  \item \texttt{e} is just an identifier. Then, we can just convert
+    \texttt{e += e2} to \texttt{e = e + e2}, as there will be no side
+    effects.
+  \item \texttt{e} is a selector. If \texttt{e} is an addressable
+    selector, then it is not operating on the direct/anonymous return
+    value of a function call and so re-evaluating \texttt{e} will not
+    produce any side effects. Thus we can do \texttt{e = e + e2}
+    again.
+  \item \texttt{e} is an index, say \texttt{e3[e4]}. In this case,
+    \texttt{e3} can be an anonymous \texttt{slice} from a function
+    return, and \texttt{e4} could also be an anonymous \texttt{int}
+    from a function return. In order to avoid duplicate side effects,
+    we resolve \texttt{e3[e4]} first, including any function calls,
+    to a value, storing the result on the stack. Then, we can operat
+    on the stack, adding \texttt{e2} and assigning the result to whatever
+    addressable is referenced by the assignment using the pre-calculated
+    stack value.
+  \item The other cases for \texttt{e} are not \texttt{l-values}, and
+    shouldn't happen in the type-checked AST.\@
+  \end{itemize}
+  \item Assignment of multiple expressions. As mentioned earlier, we
+    cannot do the assignments sequentially. Thus, we should evaluate
+    the entire RHS, pushing each result onto the stack and then
+    assigning each stack element one by one to their respective LHS
+    expression l-value. This way, \texttt{a, b = b, a} will not
+    overwrite or interfere with any values used on the RHS.\@ This is
+    one of the advantages of using a stack-based language, as values
+    on the stack implicitly act like temporary variables, so we don't
+    need to allocate other temporary resources for simultaneous
+    assignment.
+  \item Copying of slice headers, arrays, and structs. This proved
+    exceptionally difficult to get correct, since we needed to ensure
+    correct behaviour for slices and arrays, and generate copy methods
+    on the fly for structs. See the section below for more on copying and
+    struct generation.
+\end{itemize}
+
+\subsubsection{Struct Generation}
+
+Struct definitions are collected and de-duplicated in the resource AST.
+To represent them in the JVM, we convert them to classes, renaming fields
+to avoid naming conflicts with reserved bytecode keywords. This mapping
+works well, but we also need equality and copying mechanisms, which proved
+more difficult to create.
+
+To handle equality, we define an \texttt{s.equals(s2)} method on each struct
+\texttt{s} to compare it to another struct of the same type, returning a boolean.
+This compares each field of the two structs, using other \texttt{equals()} methods
+defined by us in order to compare arrays and slices (which do their own recursive
+comparisons internally).
+
+\subsubsection{Copying Behaviour}
+
+As mentioned, GoLite requires pass-by-value execution of methods and copying upon
+assignment, which differs from the default behaviour of the JVM. For primitives and
+strings, this is straightforward, since primitives are pass-by-value within the JVM,
+and strings are immutable in both languages.
+
+Where it gets more complex is with arrays, slices, and structs. For structs, we defined
+a custom copy method on the classes generated for each struct definition. This method
+returns a new struct object, containing values copied from the current instance. For
+slices, arrays, and nested structs, a copy method is called.
+
+For slices and arrays, it was noted that there was no existing Java container type
+that provides the behaviour we were looking for. As a result, we defined our own
+class (implemented in Java), called \texttt{GlcArray} (see \ref{sec:glcarray}), which can represent single-
+or multi-dimensional slices or arrays (and any nested combination of those data structures).
+
+\subsection{AST}
+\label{sec:resource-ast}
+
+In the codegen stage, we decided to create yet another AST layer between the previous checked AST and the bytecode IR. The primary reason was that bytecode conversion alone is quite complex, and we want to keep state related changes as simple as possible.
+
+With the addition of pretty printing, it will also be a lot easier for us to debug changes in go code than in bytecode.
+Implementing pretty printing involved creating a converter from each AST to the previous iteration.
+Once we get to the original AST, we can call its prettify function.
+We use this method to avoid duplicate prettify rules.
+As we print more complex code, we can update the base implementation, and have it fixed for all AST levels.
+Mapping changes between adjacent ASTs is also much simpler, as there are few changes between each stage.
+
+For our resource AST, we wanted to address the following concerns:
+
+\begin{itemize}
+	\item Local variables are labelled using offsets rather than identifiers.
+	\item Stack heights should be minimized; indices should be reused where possible.
+	\item Path splits should have unique label ids.
+	\item All used type declarations should be mapped to a single top level list of structs. Each struct also requires a unique id for the classname.
+	\item Within type definitions for expressions, structs require the unique id instead of the actual content information.
+	\item All init functions need to be renamed into unique function names, then called in the same order from a parent init function.
+	\item Empty for loop conditions and switch conditions should instead provide default fallbacks (see \ref{sec:switch-stmts-codegen}).
+\end{itemize}
+
+To do so, we defined our new AST models, then created another builder that is very similar to the symbol table.
+As there are no extensive rules, and it is mainly used for hashtables,
+there is only one module, instead of a core and more specific implementation.
+
+\subsection{Java Utils}
+
+To make things simpler, we offload some utility functions and classes to our `glcutils' module.
+It is written in Java, which means that we don't have to write the bytecode ourselves, and that we can test it using JUnit.
+
+\subsubsection{Utils}
+
+Our core utility provides the following functions:
+
+\paragraph{\texttt{String boolStr(boolean)}}
+
+Helper to convert booleans to strings ``true'' and ``false''
+
+\paragraph{\texttt{<T> T copy(Object)}, \texttt{Object copyObj(Object)}}
+
+Helper to clone objects. If it implements our interface \texttt{GlcCopy} (see \ref{sec:glccopy}), it will call \texttt{copy()}.
+Otherwise it will return the original object.
+Given that structs, arrays, and slices implement copy, other types are
+primitives or strings, which are all immutable already. We supply the generic variant to make it easier to use in other Java utility classes.
+
+\paragraph{\texttt{<T> T supply(Class<?\ extends T)}, \texttt{Object supply(Class)}}
+
+Helper to create new objects. If the class maps to a primitive or string,
+we return the default object. Otherwise, we call the empty constructor.
+Note that this cannot be used for \texttt{GlcArray}, as we require size information. We supply the generic variant to make it easier to use in other Java utility classes. \\
+
+\noindent We also supply our own runtime exception class, namely for testing and separating our exceptions from generic ones.
+
+\subsubsection{GlcCopy}
+\label{sec:glccopy}
+
+There were a few options for us to support copying:
+
+\begin{itemize}
+	\item Implement Java's cloneable. All objects already have an unimplemented \texttt{clone()} function, but this becomes unnecessarily complicated to generate for structs.
+	\item Generating a \texttt{copy()} function for all data types, returning the same class. While this is what the function is meant to do, it will require us to use reflection to call the function.
+	\item Implement our own interface supporting \texttt{Object copy()}.
+	This allows us to avoid reflection in our utilities.
+\end{itemize}
+
+We ended up using the last option, and we implement \texttt{GlcCopy} for all structs and \texttt{GlcArray}.
+
+It is worth noting that while we can override the function and return a superclass (class more specific than \texttt{Object}),
+the underlying bytecode creates a ``synthetic bridge'' to support it.
+We wanted to avoid that, which is why all implementations still returns
+\texttt{Object}. We instead rely on unchecked casting to get the appropriate type.
+
+\subsubsection{GlcArray}
+\label{sec:glcarray}
+
+For our array and slice implementations, we decided to create them using a common structure.
+`GlcArray' serves as a multi array container, where subsequent dimensions and values are loaded lazily.
+This means that we can support indefinitely large arrays and slices, so long as the number of indices accessed does not exceed our allotted memory.
+
+A \texttt{GlcArray} takes in an \texttt{[]int} depicting sizes, as well as a \texttt{Class} to create values.
+For slices, we simply require that the size value be less than 0.
+For instance, to create \texttt{[3][][5]string}, we'd call \texttt{new GlcArray(String.class, new int[]\{3, -1, 5\})}.
+
+We enable usage of \texttt{append(...)} depending on whether the current dimension is a slice or not.
+When building \texttt{append(...)}, we also consider the conditions for copying arrays; it is only copied if the capacity changes, and we do a deep copy to ensure that the previous slice remains untouched.
+
+To support laziness, we expose getter and setter functions.
+Setter simply sets a value at the appropriate index.
+Getter will initialize the value if it is not yet defined, then return it.
+Only for string arrays and slices will the value be nullable.
+
+\subsubsection{Slice Templates}
+\label{sec:slice-template}
+
+As a proof of concept, we have Slice implementations in Java under our test folder.
+We again wanted to support lazy initialization, and borrow concepts from \texttt{GlcArray}.
+Namely, each field has a getter and setter, where the getter will initialize a value if it isn't initialized already.
+Primitive fields remained primitive, so they come preinitialized.
+
+\subsection{Lazy Equality}
+\label{sec:lazy-eq}
+
+To support lazy struct equality, we had to do the following:
+
+\begin{itemize}
+	\item For primitive fields, simply do a comparison
+	\item For string fields, call \texttt{Object.equals(s1, s2)}. In other words, the fields are equal if they are both null, or both the same string.
+	\item For other fields, check if they are both null, or compare the values after calling the getter. If both are null, we know that they result in the default, and are equals. We do not initialize to remain lazy. If any are non null, we must now ensure that both are initialized before comparing. We can directly use \texttt{Object.equals(Object)}, since the getter will always return nonnull values.
+\end{itemize}
+
+For \texttt{GlcArray}, it is very similar, but we do a comparison of the size definition, the class type, and then the underlying array data.
+If the underlying array itself is null, we know that the \texttt{GlcArray}s are equal.
+
+\subsection{Testing}
+Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
+wrote complete programs as files to test code generation.
+
+The main reason for changing the testing approach for this phase was
+that
+implementing automatic execution of other scripts (the Krakatau assembler) and
+checking standard output using Haskell was undesirable (introducing IO
+and outside programs in the tests). Additionally, the script used to run
+program solutions was already available to us, which made it relatively easy
+to implement automated testing.
+
+We used the script provided for evaluating previous milestones to run and check
+the output of all of these programs at once. All test programs are located
+in the \texttt{programs/3-semantics+codegen/valid} and
+\texttt{programs/3-benchmarks+codegen/valid} directories within the repository
+in order to be automatically discovered by the script.
+
+We also ran the tests in Travis automatically upon every push to GitHub,
+so we would be alerted if there were any regressions in program compilation
+or output as a result of a change.
+
+We tried to comprehensively cover all aspects of GoLite mentioned in the
+lecture given on GoLite code generation. We also added standard functionality
+tests (such as function execution, variable assignment, etc.) and added tests
+to cover any bugs discovered during the development of Milestone 4.
+
+Unfortunately, our tests did not completely cover all aspects of our code
+generation, as multiple bugs were discovered when the evaluation solutions
+were released. For the final submission of the compiler, concurrent with the
+submission of this report, we used the bugs discovered by running the evaluation
+script on the compiler to guide the creation of new test programs, increasing our
+test coverage of code generation.
+
+For a complete list of code generation test programs and their functions, see
+\hyperref[sec:appendixa]{Appendix A}.
+
+\section{Conclusion}
+\subsection{Experience}
+Overall, this was a valuable project and one of the biggest programming projects
+we have ever worked on. Our tool choices had a large learning curve, which
+affected speed of development at some points, but the benefits of using a
+strongly-typed functional language for development and a low-level but
+well-documented language like JVM bytecode as a target, especially in terms of
+learning experience, definitely outweigh the negatives.
+We are pleased to have created a functional compiler, while learning new languages in the process.
+
+\subsection{What We'd Change}
+
+While Haskell has allowed us to easily define types, certain
+restrictions still allow for invalid AST structures.  For instance, we
+can only get the length of an array or a slice, yet the AST support
+all expressions.  To properly restrict all types, we would need to
+further group data into multiple subsets of constructors\cite{so:pattern/matching/subset}.  While this
+would catch more problems at compile time, it will also make the code
+significantly more complex.  The other approach is to allow errors at
+all stages of the compiler, even though all valid typechecked code has
+a code generation counterpart.  This adds multiple catches of the same error
+at runtime, but keeps the code short.  Our current approach is to
+`throw' errors when they occur, without providing a function signature
+that indicates errors can occur.  This allows us to keep our code
+short, but is problematic with evolution, as users would expect a pure
+function to be pure (void of errors).
+
+Currently, \texttt{GlcArray} is built on top of an object array,
+so all primitives are wrapped and unwrapped.
+We can easily provide variants for each primitive type to avoid this.
+Note that to support multi dimensional content,
+each primitive \texttt{GlcArray} requires both an object array and a primitive array. Only one will be initialized, depending on its depth.
+This added complexity was the primary reason why we didn't support it in our first iteration.
+
+\section{Contributions}
+\begin{itemize}
+	\item \textbf{Julian Lore}
+	\begin{itemize}
+		\item M1: Wrote the majority of the scanner and
+		handled weird cases, wrote a large amount of valid/invalid programs,
+		implemented many other tests (\texttt{hspec} or small tests in our
+		program) and looked over the parser, contributing a few things to it
+		as well.
+		\item M2: Implemented weeding of blank identifiers,
+		symbol table generation, typecheck (aside from type inference and
+		expression typechecking) and submitted invalid programs.
+		\item M3/M4: Implemented the conversion from our
+                  bytecode intermediate representation to
+                  Krakatau\cite{krakatau} compatible bytecode using
+                  \texttt{ByteString}s for increased efficiency of
+                  string manipulation. Wrote the dynamic creation of
+                  IR bytecode classes with equality checks, getters
+                  and setters for structs based off Allan's
+                  struct template and some other bytecode functions
+                  corresponding to each generated file (like
+                  \texttt{<clinit>}). Add basic implementation of
+                  slice in Java that was built upon and vastly
+                  improved by Allan. Created the M3 submitted tests,
+                  most of (44/56) of the codegen tests and all the
+                  submitted benchmark tests. Helped debug why tests
+                  weren't codegenning properly. Added Docker to the
+                  continuous integration so that it could assemble our
+                  generated programs with Krakatau\cite{krakatau}
+                  (required Python) and then run assembled classes
+                  (required Java).
+	\end{itemize}
+	\item \textbf{David Lougheed}
+	\begin{itemize}
+		\item M1: Wrote the bulk of the parser grammar
+		and contributed to the weeder. Also wrote 3 of the valid programs
+		and 8 of the invalid ones and had minor contributions to
+		miscellaneous other components.  Contributed to the testing of the
+		parser and pretty printer.
+		\item M2: Worked on expression type-checking and
+		type inference, including tests. Also worked on the weeding pass for
+		return statements.
+		\item M3/M4: Created most of the intermediate representation used to
+		model JVM bytecode in Haskell. Wrote many of the patterns used for IR
+		(and thus bytecode) generation, especially base patterns such as
+		statements, expressions, and control structures. These were generated
+		from the resource AST described.
+	\end{itemize}
+	\item \textbf{Allan Wang}
+	\begin{itemize}
+		\item M1: Created the AST and helper classes for
+		pretty printing and error handling.  Wrote the base package for
+		testing as well as some of the embedded test cases within
+		\texttt{hspec}.  Added integrations (Travis + Slack), and gave code
+		reviews to the other components.
+		\item M2: Added data structures for error messages,
+		and supported explicit error checking in tests. Created the data
+		model for symbol table core. Added hspec tests.
+		\item M3/M4: Created resource AST, which replaces local identifiers with stack indices, collects struct definitions, and reorganizes init functions. Created GlcArray and struct template in Java, supporting lazy loading and equality checking. Added maven dependencies, and created junit tests. Contributed to go tests.
+	\end{itemize}
+\end{itemize}
+
+\newpage
+
+\bibliographystyle{plain} \bibliography{ref}
+
+\newpage
+\appendix
+\section{Test Programs}
+\label{sec:appendixa}
+
+The majority of our tests (with the exception of code generation tests) were done in
+Haskell using \texttt{hspec}. However, we also submitted many standalone test programs,
+which are summarized below.
+
+\subsection{Scanning and Parsing}
+
+Invalid programs:
+\paragraph{Scanner}
+\begin{enumerate}
+\item \texttt{unclosed-string.go}: Literal string that does not have a
+  closing quotation.
+\item \texttt{unclosed-block-cmt.go}: Block comment with no end.
+\item \texttt{string-no-char-esc.go}: Trying to escape a single quote
+  inside of an interpreted string.
+\end{enumerate}
+\paragraph{Parser}
+\begin{enumerate}
+\item \texttt{type-alias.go}: Trying to define a type alias, which is
+  not supported by \texttt{GoLite}.
+\item \texttt{no-semi.go}: Statement without a semicolon or newline.
+\item \texttt{no-prefix.go}: Prefix increment, not a Go construct.
+\item \texttt{no-package.go}: Program without a package declaration.
+\item \texttt{no-nest-blk-cmt.go}: Trying to nest block comments. This
+  fails at the parser because \texttt{*/} are valid tokens, but their
+  usage will not make sense at the parser phase.
+\item \texttt{no-main-parens.go}: Trying to declare a function (main)
+  without arguments/parentheses for arguments (or lack thereof).
+\item \texttt{no-comma.go}: Multiple variable declaration with
+  assignment with no commas.
+\item \texttt{nested-func.go}: Trying to declare a function inside
+  another.
+\item \texttt{multiple-pks.go}: Attempt to declare multiple packages.
+\item \texttt{multiple-defaults.go}: Multiple default case statements.
+\item \texttt{len-args.go}: Multiple arguments to \texttt{len}
+  function (remember that len is a keyword and it can only take in one
+  argument as per the grammar).
+\item \texttt{invalid-var-decl.go}: Trying to declare a variable
+  without the \texttt{var} keyword.
+\item \texttt{invalid-unary.go}: Trying to use \texttt{/} as a unary
+  operator.
+\item \texttt{invalid-short-decl.go}: Short declaration outside of a
+  function.
+\item \texttt{invalid-fallthrough.go}: \texttt{fallthrough} not
+  supported by GoLite.
+\item \texttt{invalid-continue.go}: \texttt{continue} used outside of
+  a loop.
+\item \texttt{invalid-break.go}: \texttt{break} used outside of a for loop
+  or switch statement.
+\item \texttt{incr-expr.go}: Trying to use an increment as an
+  expression.
+\item \texttt{func-decl.go}: Function declaration without the types
+  for the arguments.
+\item \texttt{for-no-block.go}: For loop with no block/braces.
+\item \texttt{double-semicolon.go}: Two semicolons at the end of a
+  statement.
+\item \texttt{complex-stmt-in-if.go}: Non simple statement as a
+  pre-statement of an if.
+\item \texttt{bad-rune-escape.go}: Invalid escape sequence.
+\item \texttt{bad-raw-string.go}: Trying to escape a backtick in a raw
+  string.
+\item \texttt{bad-expr-stmt.go}: Expression statement that isn't a
+  function call.
+\item \texttt{bad-assign-list.go}: Assigning one value to two
+  variables (different size expression lists).
+\item \texttt{append-args.go}: Only one argument to \texttt{append},
+  grammar requires two (\texttt{append} is a keyword).
+\end{enumerate}
+Valid programs:
+\begin{enumerate}
+\item \texttt{matrix\_mult.go}: A valid program that multiplies a $1000
+  \times 1000$ pseudo-randomly generated matrix by itself $10$ times
+  using the naive $O(n^3)$ algorithm.
+\end{enumerate}
+The other valid programs were copied to the
+\texttt{3-semantics+typecheck} as they output information that could
+be verified after running what was code generated.
+
+\subsection{Type Checking}
+\label{sec:atypecheck}
+
+Summary of the check in each invalid program:
+
+\begin{enumerate}
+\item \texttt{append-diff-type.go}: Append an expression of a
+  different type than the type of the expressions of the
+  \texttt{slice}.
+\item \texttt{append-no-slice.go}: Append to something that isn't a
+  slice.
+\item \texttt{assign-no-decl.go}: Assign to a variable that hasn't
+  been declared.
+\item \texttt{assign-non-addressable.go}: Assign to a LHS that is a
+  non-addressable field.
+\item \texttt{cast-not-base.go}: Cast to a type that isn't a base
+  type.
+\item \texttt{dec-non-lval.go}: Decrement something that isn't an
+  \texttt{lvalue}.
+\item \texttt{decl-type-mismatch.go}: Declare and assign variable of
+  explicit type to an expression of a different type.
+\item \texttt{float-to-string.go}: Try to cast a \texttt{float} to a
+  \texttt{string}.
+\item \texttt{for-no-bool.go}: While variant of for loop with a
+  condition that isn't a bool.
+\item \texttt{func-call.go}: Function call with arguments of
+  different type than function declaration arguments.
+\item \texttt{func-no-decl.go}: Calling a function that hasn't been
+  declared.
+\item \texttt{function-already-declared.go}: Trying to declare a
+  function that has already been declared.
+\item \texttt{function-duplicate-param.go}: Trying to declare
+  function with two params with same name.
+\item \texttt{if-bad-init.go}: If with an init statement that does
+  not typecheck (assignment of different type).
+\item \texttt{inc-non-numeric.go}: Increment an expression that
+  doesn't resolve to a numeric base type.
+\item \texttt{index-not-list.go}: Index into something that isn't a
+  slice.
+\item \texttt{index.go}: Index that does not resolve to an int.
+\item \texttt{invalid-type-decl.go}: Declare a type mapping to a
+  type that doesn't exist.
+\item \texttt{no-field.go}: Using selector operator on struct that
+  doesn't have the field requested.
+\item \texttt{non-existent-assign.go}: Assigning a variable to a non
+  existent variable.
+\item \texttt{non-existent-decl.go}: Trying to declare a variable of
+  a type that doesn't exist.
+\item \texttt{op-assign.go}: Op-assignment where variable and
+  expression are not compatible with operator (i.e. \texttt{int +
+  string})
+\item \texttt{print-non-base.go}: Trying to print a non base type.
+\item \texttt{return-expr.go}: Returning an expression of different
+  type than the return type of the function.
+\item \texttt{return.go}: Return nothing from non-void function.
+\item \texttt{short-decl-all-decl.go}: Short declaration where all
+  variables on LHS are already declared.
+\item \texttt{short-decl-diff-type.go}: Short declaration where
+  already defined variables on LHS are not the same type as assigned
+  expression.
+\item \texttt{switch-diff-type.go}: Type of expression of case is
+  different from switch expression type.
+\item \texttt{type-already-declared.go}: Trying to define a type
+  mapping to a type that already exists.
+\item \texttt{var-already-declared.go}: Trying to declare a variable
+  that is already declared.
+\end{enumerate}
+
+\subsection{Benchmarks and Code Generation}
+
+\begin{enumerate}
+\item \texttt{color.go}: Get the optimal minimum number of colors to
+color certain graphs using the brute force $O(n^n)$ optimal solution
+(in order to take a long time without using a
+heuristic/approximation).
+\item \texttt{knapsack.go}: Optimally solve the knapsack problem using
+  dynamic programming, $O(nW)$, with $W = 12983$ and $n = 4361$.
+\item \texttt{sudoku.go}: Solve a $16 \times 16$ sudoku grid using
+  brute force with backtracking. Certain rows are left empty, allowing
+  multiple solutions (as a problem with only one optimal solution
+  would take too long to solve for a $16 \times 16$ and too short to
+  solve for a $9 \times 9$).
+\end{enumerate}
+
+\subsection{Semantics and Code Generation}
+
+\begin{enumerate}
+\item \texttt{append.go}: Appending to slices.
+\item \texttt{append\_multi.go}: Slices' underlying array-copying behaviour.
+\item \texttt{append\_multi2.go}: Same as above.
+\item \texttt{appendbounds.go}: Bounds test for slices after appending.
+\item \texttt{array.go}: Miscellaneous array behaviour and operation tests.
+\item \texttt{arraybounds.go}: Array bounds test (negative index).
+\item \texttt{arraybounds2.go}: Array bounds test (too-large index).
+\item \texttt{assign.go}: Assignment test, including multiple assignments and operator-based assignments.
+\item \texttt{assign2.go}: Array, slice, and struct assignments.
+\item \texttt{basic.go}: Basic program which prints a number.
+\item \texttt{binary.go}: Test for most binary expressions, with different operand types.
+\item \texttt{binary\_search.go}: Binary search on a size-10 array.
+\item \texttt{blank\_identifiers.go}: Miscellaneous basic blank identifier tests.
+\item \texttt{cast.go}: Casting and print-formatting tests.
+\item \texttt{closest\_pair.go}: Large program to pseudo-randomly generate points and find the closest pair.
+\item \texttt{for.go}: Different for-loop formats and behaviours.
+\item \texttt{func\_calls.go}: Function calls, including tests for correct execution count in case statements and short-circuiting of boolean logic.
+\item \texttt{funccalls.go}: Function call tests with data structures (arrays, slices, and structs).
+\item \texttt{funcret.go}: Function call returns, casting, blank identifiers, and print formatting.
+\item \texttt{global\_fields.go}: Default values for global variables (fields). \textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{global\_var\_assignment.go}: Assignment of a local variable to a global variables with the same name. \textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{ifscoping.go}: Scoping of variables within if/else statements, including short statement declarations.
+\item \texttt{increment.go}: Increment and decrement operators on various addressable values.
+\item \texttt{init.go}: \texttt{init} function tests.
+\item \texttt{init2.go}: Same as above.
+\item \texttt{init3.go}: Same as above.
+\item \texttt{init4.go}: Same as above.
+\item \texttt{init5.go}: Same as above.
+\item \texttt{init\_order.go}: \texttt{init} function execution order test.
+\item \texttt{len.go}: Length built-in function test on the 3 supported data types (array, slice, and string).
+\item \texttt{multi\_array\_string.go}: Nested array capacity and string printing test.
+\item \texttt{needleman\_wunsch.go}: Implementation of the Needleman-Wunsch algorithm for DNA alignment.
+\item \texttt{nested\_structs.go}: Nested struct/slice copying and modification behaviour.
+\item \texttt{ntuple.go}: Large program defining a mini-library for n-tuple operations, built on slices.
+\item \texttt{print.go}: Print formatting test.
+\item \texttt{printfloat.go}: Float-printing test.
+\item \texttt{prints.go}: Print formatting test.
+\item \texttt{reserved\_java.go}: Test for function names that might conflict with Java (JVM) keywords, since we were targeting JVM bytecode for code generation.
+\item \texttt{return.go}: Test for return-value behaviour, including copying.
+\item \texttt{rpn\_calc.go}: Reverse-Polish notation calculator which takes in an array representing an expression.
+\item \texttt{rune\_esc.go}: Test for escape characters, including some ones requiring transformation (\texttt{\textbackslash\@a, \textbackslash\@v}) that don't exist
+      verbatim in the JVM.~\textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{scope.go}: Miscellaneous scope tests.
+\item \texttt{scope\_same\_var.go}: Scope tests for variables with the same identifier.
+\item \texttt{shortdecl.go}: Small short declaration test, including blank identifiers.
+\item \texttt{slice\_copy.go}: Assignment slice-copying test.
+\item \texttt{slicebounds.go}: Bounds test for empty slices.
+\item \texttt{slicebounds2.go}: Negative-index slice bounds test.
+\item \texttt{slicebounds3.go}: Too-large index slice bounds test.
+\item \texttt{structeq.go}: Struct equality tests.
+\item \texttt{switch.go}: Switch behaviour tests.
+\item \texttt{switch2.go}: Switch behaviour tests with function-call expressions.
+\item \texttt{unary.go}: Comprehensive unary operator usage test.
+\item \texttt{vardecl.go}: Test of new variable declaration from function returns.
+\item \texttt{vardeclblank.go}: Blank identifier variable declaration test.
+\item \texttt{vardeclscoping.go}: Variable declaration scoping test.
+\item \texttt{vardeclshadow.go}: Overshadowing test (of GoLite pre-provided values.)
+\end{enumerate}
+\end{document}
