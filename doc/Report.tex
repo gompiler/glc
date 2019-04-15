@@ -962,7 +962,25 @@ function to be pure (void of errors).
 		\item M2: Implemented weeding of blank identifiers,
 		symbol table generation, typecheck (aside from type inference and
 		expression typechecking) and submitted invalid programs.
-		\item M3/M4: \todo%
+		\item M3/M4: Implemented the conversion from our
+                  bytecode intermediate representation to
+                  Krakatau\cite{krakatau} compatible bytecode using
+                  \texttt{ByteString}s for increased efficiency of
+                  string manipulation. Wrote the dynamic creation of
+                  IR bytecode classes with equality checks, getters
+                  and setters for structs based off Allan's
+                  struct template and some other bytecode functions
+                  corresponding to each generated file (like
+                  \texttt{<clinit>}). Add basic implementation of
+                  slice in Java that was built upon and vastly
+                  improved by Allan. Created the M3 submitted tests,
+                  most of (44/56) of the codegen tests and all the
+                  submitted benchmark tests. Helped debug why tests
+                  weren't codegenning properly. Added docker to the
+                  continuous integration so that it could assemble our
+                  generated programs with Krakatau\cite{krakatau}
+                  (required Python) and then run assembled classes
+                  (required Java).
 	\end{itemize}
 	\item \textbf{David Lougheed}
 	\begin{itemize}
@@ -1011,6 +1029,76 @@ which are summarized below.
 
 %TODO
 \todo%
+Invalid programs:
+\paragraph{Scanner}
+\begin{enumerate}
+\item \texttt{unclosed-string.go}: Literal string that does not have a
+  closing quotation.
+\item \texttt{unclosed-block-cmt.go}: Block comment with no end.
+\item \texttt{string-no-char-esc.go}: Trying to escape a single quote
+  inside of an interpreted string.
+\end{enumerate}
+\paragraph{Parser}
+\begin{enumerate}
+\item \texttt{type-alias.go}: Trying to define a type alias, which is
+  not supported by \texttt{GoLite}.
+\item \texttt{no-semi.go}: Statement without a semicolon or newline.
+\item \texttt{no-prefix.go}: Prefix increment, not a Go construct.
+\item \texttt{no-package.go}: Program without a package declaration.
+\item \texttt{no-nest-blk-cmt.go}: Trying to nest block comments. This
+  fails at the parser because \texttt{*/} are valid tokens, but their
+  usage will not make sense at the parser phase.
+\item \texttt{no-main-parens.go}: Trying to declare a function (main)
+  without arguments/parentheses for arguments (or lack thereof).
+\item \texttt{no-comma.go}: Multiple variable declaration with
+  assignment with no commas.
+\item \texttt{nested-func.go}: Trying to declare a function inside
+  another.
+\item \texttt{multiple-pks.go}: Attempt to declare multiple packages.
+\item \texttt{multiple-defaults.go}: Multiple default case statements.
+\item \texttt{len-args.go}: Multiple arguments to \texttt{len}
+  function (remember that len is a keyword and it can only take in one
+  argument as per the grammar).
+\item \texttt{invalid-var-decl.go}: Trying to declare a variable
+  without the \texttt{var} keyword.
+\item \texttt{invalid-unary.go}: Trying to use \texttt{/} as a unary
+  operator.
+\item \texttt{invalid-short-decl.go}: Short declaration outside of a
+  function.
+\item \texttt{invalid-fallthrough.go}: \texttt{fallthrough} not
+  supported by GoLite.
+\item \texttt{invalid-continue.go}: \texttt{continue} used outside of
+  a loop.
+\item \texttt{invalid-break.go}: \texttt{break} used outside of a for loop
+  or switch statement.
+\item \texttt{incr-expr.go}: Trying to use an increment as an
+  expression.
+\item \texttt{func-decl.go}: Function declaration without the types
+  for the arguments.
+\item \texttt{for-no-block.go}: For loop with no block/braces.
+\item \texttt{double-semicolon.go}: Two semicolons at the end of a
+  statement.
+\item \texttt{complex-stmt-in-if.go}: Non simple statement as a
+  pre-statement of an if.
+\item \texttt{bad-rune-escape.go}: Invalid escape sequence.
+\item \texttt{bad-raw-string.go}: Trying to escape a backtick in a raw
+  string.
+\item \texttt{bad-expr-stmt.go}: Expression statement that isn't a
+  function call.
+\item \texttt{bad-assign-list.go}: Assigning one value to two
+  variables (different size expression lists).
+\item \texttt{append-args.go}: Only one argument to \texttt{append},
+  grammar requires two (\texttt{append} is a keyword).
+\end{enumerate}
+Valid programs:
+\begin{enumerate}
+\item \texttt{matrix\_mult.go}: A valid program that multiplies a $1000
+  \times 1000$ pseudo-randomly generated matrix by itself $10$ times
+  using the naive $O(n^3)$ algorithm.
+\end{enumerate}
+The other valid programs were copied to the
+\texttt{3-semantics+typecheck} as they output information that could
+be verified after running what was code generated.
 
 \subsection*{Type Checking}
 
