@@ -951,15 +951,15 @@ function to be pure (void of errors).
 
 \subsection*{Benchmarks and Code Generation}
 
-\begin{itemize}
+\begin{enumerate}
 \item \texttt{color.go}: \todo
 \item \texttt{knapsack.go}: \todo
 \item \texttt{sudoku.go}: \todo
-\end{itemize}
+\end{enumerate}
 
 \subsection*{Semantics and Code Generation}
 
-\begin{itemize}
+\begin{enumerate}
 \item \texttt{append.go}: Appending to slices.
 \item \texttt{append\_multi.go}: Slices' underlying array-copying behaviour.
 \item \texttt{append\_multi2.go}: Same as above.
@@ -1010,13 +1010,13 @@ function to be pure (void of errors).
 \item \texttt{slicebounds2.go}: Negative-index slice bounds test.
 \item \texttt{slicebounds3.go}: Too-large index slice bounds test.
 \item \texttt{structeq.go}: Struct equality tests.
-\item \texttt{switch.go}: \todo
-\item \texttt{switch2.go}: \todo
-\item \texttt{unary.go}: \todo
-\item \texttt{vardecl.go}: \todo
-\item \texttt{vardeclblank.go}: \todo
-\item \texttt{vardeclscoping.go}: \todo
-\item \texttt{vardeclshadow.go}: \todo
-\end{itemize}
+\item \texttt{switch.go}: Switch behaviour tests.
+\item \texttt{switch2.go}: Switch behaviour tests with function-call expressions.
+\item \texttt{unary.go}: Comprehensive unary operator usage test.
+\item \texttt{vardecl.go}: Test of new variable declaration from function returns.
+\item \texttt{vardeclblank.go}: Blank identifier variable declaration test.
+\item \texttt{vardeclscoping.go}: Variable declaration scoping test.
+\item \texttt{vardeclshadow.go}: Overshadowing test (of GoLite pre-provided values.)
+\end{enumerate}
 
 \end{document}
