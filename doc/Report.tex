@@ -648,6 +648,12 @@ If not, only current data equality is required.
 
 \subsubsection{Symbol Table Core}
 \label{sec:test-symbol-table-core}
+
+When testing symbol table core, we provide a data type containing potential actions. For instance, we can look up, insert, or check messages.
+To make things easier, we can replace the types for keys, values, and messages to integers, since we aren't testing actual symbol table logic.
+Afterwards, we can simply run a chain of actions on a single symbol table, where each action results in an hspec expectation. 
+If all expectations are met, then the test passes.
+
 % TODO ACCOUNT FOR M2 COMMENT Try to describe some of the type rules
 % you use for typecheck specific stmts/exprs if they are interesting
 \section{Typecheck}
