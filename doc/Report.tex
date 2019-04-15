@@ -831,7 +831,14 @@ to cover any bugs discovered during the development of Milestone 4.
 \todo
 
 \section{Conclusion}
-\subsection{Experience} %TODO
+\subsection{Experience}
+Overall, this was a valuable project and one of the biggest programming projects
+we have every worked on. Our tool choices had a large learning curve, which
+affected speed of development at some points, but the benefits of using a
+strongly-typed functional language for development and a low-level but
+well-documented language like JVM bytecode as a target, especially in terms of
+learning experience, definitely outweigh the negatives. \todo
+
 \subsection{What We'd Change}
 
 While Haskell has allowed us to easily define types, certain
@@ -842,7 +849,7 @@ further group data into multiple subsets of constructors\cite{so:pattern/matchin
 would catch more problems at compile time, it will also make the code
 significantly more complex.  The other approach is to allow errors at
 all stages of the compiler, even though all valid typechecked code has
-a code gen counterpart.  This adds multiple catches of the same error
+a code generation counterpart.  This adds multiple catches of the same error
 at runtime, but keeps the code short.  Our current approach is to
 `throw' errors when they occur, without providing a function signature
 that indicates errors can occur.  This allows us to keep our code
