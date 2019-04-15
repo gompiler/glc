@@ -844,8 +844,7 @@ languages, we could just append the scope depth to all identifier
 names to keep them unique, also eliminating the need for separate
 scopes, as we already typecheck the correct use of identifiers. In our
 case, we have scoped identifiers in our newly generated typechecked
-AST which we convert to offsets (for locals) in the resource AST, a
-third iteration of the AST created partially for this purpose.
+AST which we convert to offsets (for locals) in the resource AST (see \ref{sec:resource-ast}).
 
 These offsets are in our intermediate representation, where
 the offsets are unique for each local variable declaration. Variables with
@@ -861,6 +860,7 @@ the JVM. Since only top-level variables retain identifiers, there is no
 concern about clashing names here.
 
 \subsubsection{Switch Statements}
+\label{sec:switch-stmts-codegen}
 For the structural differences:
 \begin{itemize}
 \item Simple statements are modeled and executed as the first
@@ -982,6 +982,118 @@ class (implemented in Java), called \texttt{GlcArray}, which can represent singl
 or multi-dimensional slices or arrays (and any nested combination of those data structures).
 More on this is described \todo % TODO: WHERE IS IT DESCRIBED?
 
+\subsubsection{AST}
+\label{sec:resource-ast}
+
+In the codegen stage, we decided to create yet another AST layer between the previous checked AST and the bytecode IR. The primary reason was that bytecode conversion alone is quite complex, and we want to keep state related changes as simple as possible.
+
+With the addition of pretty printing, it will also be a lot easier for us to debug changes in go code than in bytecode.
+Implementing pretty printing involved creating a converter from each AST to the previous iteration.
+Once we get to the original AST, we can call its prettify function.
+We use this method to avoid duplicate prettify rules.
+As we print more complex code, we can update the base implementation, and have it fixed for all AST levels.
+Mapping changes between adjacent ASTs is also much simpler, as there are few changes between each stage.
+
+For our resource AST, we wanted to address the following concerns:
+
+\begin{itemize}
+	\item Local variables are labelled using offsets rather than identifiers.
+	\item Stack heights should be minimized; indices should be reused where possible.
+	\item Path splits should have unique label ids.
+	\item All used type declarations should be mapped to a single top level list of structs. Each struct also requires a unique id for the classname.
+	\item Within type definitions for expressions, structs require the unique id instead of the actual content information.
+	\item All init functions need to be renamed into unique function names, then called in the same order from a parent init function.
+	\item Empty for loop conditions and switch conditions should instead provide default fallbacks (see \ref{sec:switch-stmts-codegen}).
+\end{itemize}
+
+To do so, we defined our new AST models, then created another builder that is very similar to the symbol table.
+As there are no extensive rules, and it is mainly used for hashtables,
+there is only one module, instead of a core and more specific implementation.
+
+\subsection{Java Utils}
+
+To make things simpler, we offload some utility functions and classes to our `glcutils' module.
+It is written in Java, which means that we don't have to write the bytecode ourselves, and that we can test it using JUnit.
+
+\subsubsection{Utils}
+
+Our core utility provides the following functions:
+
+\paragraph{\texttt{String boolStr(boolean)}}
+
+Helper to convert booleans to strings ``true'' and ``false''
+
+\paragraph{\texttt{<T> T copy(Object)}, \texttt{Object copyObj(Object)}}
+
+Helper to clone objects. If it implements our interface \texttt{GlcCopy} (see \ref{sec:glccopy}), it will call \texttt{copy()}.
+Otherwise it will return the original object.
+Given that structs, arrays, and slices implement copy, other types are
+primitives or strings, which are all immutable already. We supply the generic variant to make it easier to use in other Java utility classes.
+
+\paragraph{\texttt{<T> T supply(Class<?\ extends T)}, \texttt{Object supply(Class)}}
+
+Helper to create new objects. If the class maps to a primitive or string,
+we return the default object. Otherwise, we call the empty constructor.
+Note that this cannot be used for \texttt{GlcArray}, as we require size information. We supply the generic variant to make it easier to use in other Java utility classes. \\
+
+\noindent We also supply our own runtime exception class, namely for testing and separating our exceptions from generic ones.
+
+\subsubsection{GlcCopy}
+\label{sec:glccopy}
+
+There were a few options for us to support copying:
+
+\begin{itemize}
+	\item Implement Java's cloneable. All objects already have an unimplemented \texttt{clone()} function, but this becomes unnecessarily complicated to generate for structs.
+	\item Generating a \texttt{copy()} function for all data types, returning the same class. While this is what the function is meant to do, it will require us to use reflection to call the function.
+	\item Implement our own interface supporting \texttt{Object copy()}.
+	This allows us to avoid reflection in our utilities.
+\end{itemize}
+
+We ended up using the last option, and we implement \texttt{GlcCopy} for all structs and \texttt{GlcArray}.
+
+It is worth noting that while we can override the function and return a superclass (class more specific than \texttt{Object}),
+the underlying bytecode creates a ``synthetic bridge'' to support it.
+We wanted to avoid that, which is why all implementations still returns
+\texttt{Object}. We instead rely on unchecked casting to get the appropriate type.
+
+\subsubsection{GlcArray}
+
+For our array and slice implementations, we decided to create them using a common structure.
+`GlcArray' serves as a multi array container, where subsequent dimensions and values are loaded lazily.
+This means that we can support indefinitely large arrays and slices, so long as the number of indices accessed does not exceed our allotted memory.
+
+A \texttt{GlcArray} takes in an \texttt{[]int} depicting sizes, as well as a \texttt{Class} to create values.
+For slices, we simply require that the size value be less than 0.
+For instance, to create \texttt{[3][][5]string}, we'd call \texttt{new GlcArray(String.class, new int[]\{3, -1, 5\})}.
+
+We enable usage of \texttt{append(...)} depending on whether the current dimension is a slice or not.
+When building \texttt{append(...)}, we also consider the conditions for copying arrays; it is only copied if the capacity changes, and we do a deep copy to ensure that the previous slice remains untouched.
+
+To support laziness, we expose getter and setter functions.
+Setter simply sets a value at the appropriate index.
+Getter will initialize the value if it is not yet defined, then return it.
+Only for string arrays and slices will the value be nullable.
+
+\subsubsection{Slice Templates}
+
+As a proof of concept, we have Slice implementations in Java under our test folder.
+We again wanted to support lazy initialization, and borrow concepts from \texttt{GlcArray}.
+Namely, each field has a getter and setter, where the getter will initialize a value if it isn't initialized already.
+Primitive fields remained primitive, so they come preinitialized.
+
+\subsection{Lazy Equality}
+
+To support lazy struct equality, we had to do the following:
+
+\begin{itemize}
+	\item For primitive fields, simply do a comparison
+	\item For string fields, call \texttt{Object.equals(s1, s2)}. In other words, the fields are equal if they are both null, or both the same string.
+	\item For other fields, check if they are both null, or compare the values after calling the getter. If both are null, we know that they result in the default, and are equals. We do not initialize to remain lazy. If any are non null, we must now ensure that both are initialized before comparing. We can directly use \texttt{Object.equals(Object)}, since the getter will always return nonnull values.
+\end{itemize}
+
+For \texttt{GlcArray}, it is very similar, but we do a comparison of the size definition, the class type, and then the underlying array data.
+If the underlying array itself is null, we know that the \texttt{GlcArray}s are equal.
 
 \subsection{Testing}
 Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
@@ -1027,7 +1139,9 @@ we have ever worked on. Our tool choices had a large learning curve, which
 affected speed of development at some points, but the benefits of using a
 strongly-typed functional language for development and a low-level but
 well-documented language like JVM bytecode as a target, especially in terms of
-learning experience, definitely outweigh the negatives. \todo
+learning experience, definitely outweigh the negatives.
+We are pleased to have created a functional compiler, while learning new languages in the process.
+\todo
 
 \subsection{What We'd Change}
 
@@ -1045,6 +1159,13 @@ at runtime, but keeps the code short.  Our current approach is to
 that indicates errors can occur.  This allows us to keep our code
 short, but is problematic with evolution, as users would expect a pure
 function to be pure (void of errors).
+
+Currently, \texttt{GlcArray} is built on top of an object array,
+so all primitives are wrapped and unwrapped.
+We can easily provide variants for each primitive type to avoid this.
+Note that to support multi dimensional content,
+each primitive \texttt{GlcArray} requires both an object array and a primitive array. Only one will be initialized, depending on its depth.
+This added complexity was the primary reason why we didn't support it in our first iteration.
 
 \section{Contributions}
 % TODO COMBINE CONTRIBS TODO M3/M4 CONTRIBS M1 CONTRIBS BELOW
@@ -1105,7 +1226,7 @@ function to be pure (void of errors).
 		\item M2: Added data structures for error messages,
 		and supported explicit error checking in tests. Created the data
 		model for symbol table core. Added hspec tests.
-		\item M3/M4: Created resource AST, which replaces local identifiers with stack indices, collects struct definitions, and reorganizes init functions. Created GlcArray and struct template in Java. Contributed to tests.
+		\item M3/M4: Created resource AST, which replaces local identifiers with stack indices, collects struct definitions, and reorganizes init functions. Created GlcArray and struct template in Java, supporting lazy loading and equality checking. Added maven dependencies, and created junit tests. Contributed to go tests.
 	\end{itemize}
 \end{itemize}
 
