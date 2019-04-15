@@ -825,21 +825,23 @@ For the structural differences:
 \noindent Semantically:
 
 \begin{itemize}[noitemsep]
-\item After \texttt{case} expression comparisons, we will either jump
+\item After \texttt{case} expression comparisons, we either jump
   to the case body or keep going to the next \texttt{case} comparison
-  or \texttt{default} block.
+  or \texttt{default} block. This separates \texttt{case} `headers'
+  from \texttt{case} `bodies', allowing all comparisons to be followed
+  in the correct order with only the minimum required jumps. 
 \item To automatically break, for each case statement, we add a
   \texttt{goto} to a label at the end of the switch statement.
-\item \texttt{default} statement jumps should be placed after all
+\item \texttt{default} statement jumps are placed after all
   jumps to case bodies as the fall-through case, when no other jumps
   are followed.
 \item Simulating new scopes is easy because of how our scoping works;
-  the variable names will already be resolved to their correct local's
-  index.
+  the variable names are already resolved to their correct local's
+  index in the resource AST and will not conflict during code generation.
 \item Expressions in \texttt{case} blocks not being constants does not
-  matter too much for us, as we will compare each expression normally
-  (we are simulating switch statements using \texttt{goto} and
-  comparisons, and aren't limited by any language-native
+  matter too much for us (versus a target language like C), as we compare
+  each expression normally (we are simulating switch statements using
+  \texttt{goto} and comparisons, and aren't limited by any language-native
   \texttt{switch} statement definitions).
 \end{itemize}
 \subsubsection{Assignments}
