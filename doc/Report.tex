@@ -927,8 +927,21 @@ comparisons internally).
 
 \subsubsection{Copying Behaviour}
 
-%TODO
-\todo
+As mentioned, GoLite requires pass-by-value execution of methods and copying upon
+assignment, which differs from the default behaviour of the JVM. For primitives and
+strings, this is straightforward, since primitives are pass-by-value within the JVM,
+and strings are immutable in both languages.
+
+Where it gets more complex is with arrays, slices, and structs. For structs, we defined
+a custom copy method on the classes generated for each struct definition. This method
+returns a new struct object, containing values copied from the current instance. For
+slices, arrays, and nested structs, a copy method is called.
+
+For slices and arrays, it was noted that there was no existing Java container type
+that provides the behaviour we were looking for. As a result, we defined our own
+class (implemented in Java), called \texttt{GlcArray}, which can represent single-
+or multi-dimensional slices or arrays (and any nested combination of those data structures).
+More on this is described \todo % TODO: WHERE IS IT DESCRIBED?
 
 
 \subsection{Testing}
