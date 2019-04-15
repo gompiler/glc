@@ -812,23 +812,32 @@ There are two tricky things about assignments:
     assignment.
   \end{itemize}
 \end{itemize}
-\subsection{Testing} %TODO
+\subsection{Testing}
 Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
 wrote complete programs as files to test code generation. We adapted a
 script from the previous class assignments so that we could run and check
-the output of all of these programs at once. We also ran the tests in
-Travis automatically upon every push to GitHub, so we would be alerted if
-there were any regressions in program compilation or output as a result of
-a change.
+the output of all of these programs at once. All test programs were located
+in specific directories within the repository and were automatically discovered
+by the script.
+
+We also ran the tests in Travis automatically upon every push to GitHub,
+so we would be alerted if there were any regressions in program compilation
+or output as a result of a change.
 
 We tried to comprehensively cover all aspects of GoLite mentioned in the
 lecture given on GoLite code generation. We also added standard functionality
 tests (such as function execution, variable assignment, etc.) and added tests
 to cover any bugs discovered during the development of Milestone 4.
 
-%TODO
-%TODO: Programs created?
-\todo
+Unfortunately, our tests did not completely cover all aspects of our code
+generation, as multiple bugs were discovered when the evaluation solutions
+were released. For the final submission of the compiler, concurrent with the
+submission of this report, we used the bugs discovered by running the evaluation
+script on the compiler to guide the creation of new test programs, increasing our
+test coverage of code generation.
+
+For a complete list of code generation test programs and their functions, see
+Appendix 1.
 
 \section{Conclusion}
 \subsection{Experience}
@@ -904,4 +913,87 @@ function to be pure (void of errors).
 \newpage
 
 \bibliographystyle{plain} \bibliography{ref}
+
+\newpage
+
+\section*{Appendix 1: \normalfont Test Programs}
+
+\subsection*{Scanning and Parsing}
+
+%TODO
+\todo
+
+\subsection*{Type Checking}
+
+%TODO
+\todo
+
+\subsection*{Benchmarks and Code Generation}
+
+\begin{itemize}
+\item \texttt{color.go}: \todo
+\item \texttt{knapsack.go}: \todo
+\item \texttt{sudoku.go}: \todo
+\end{itemize}
+
+\subsection*{Semantics and Code Generation}
+
+\begin{itemize}
+\item \texttt{append.go}: \todo
+\item \texttt{append\_multi.go}: \todo
+\item \texttt{append\_multi2.go}: \todo
+\item \texttt{appendbounds.go}: \todo
+\item \texttt{array.go}: \todo
+\item \texttt{arraybounds.go}: \todo
+\item \texttt{arraybounds2.go}: \todo
+\item \texttt{assign.go}: \todo
+\item \texttt{assign2.go}: \todo
+\item \texttt{basic.go}: \todo
+\item \texttt{binary.go}: \todo
+\item \texttt{binary\_search.go}: \todo
+\item \texttt{blank\_identifiers.go}: \todo
+\item \texttt{cast.go}: \todo
+\item \texttt{closest\_pair.go}: \todo
+\item \texttt{for.go}: \todo
+\item \texttt{func\_calls.go}: \todo
+\item \texttt{funccalls.go}: \todo
+\item \texttt{funcret.go}: \todo
+\item \texttt{global\_fields.go}: \todo \textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{global\_var\_assignment.go}: \todo \textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{ifscoping.go}: \todo
+\item \texttt{increment.go}: \todo
+\item \texttt{init.go}: \todo
+\item \texttt{init2.go}: \todo
+\item \texttt{init3.go}: \todo
+\item \texttt{init4.go}: \todo
+\item \texttt{init5.go}: \todo
+\item \texttt{init\_order.go}: \todo
+\item \texttt{multi\_array\_string.go}: \todo
+\item \texttt{needleman\_wunsch.go}: \todo
+\item \texttt{nested\_structs.go}: \todo
+\item \texttt{ntuple.go}: \todo
+\item \texttt{print.go}: \todo
+\item \texttt{printfloat.go}: \todo
+\item \texttt{prints.go}: \todo
+\item \texttt{reserved\_java.go}: \todo
+\item \texttt{return.go}: \todo
+\item \texttt{rpn\_calc.go}: \todo
+\item \texttt{rune\_esc.go}: \todo \textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{scope.go}: \todo
+\item \texttt{scope\_same\_var.go}: \todo
+\item \texttt{shortdecl.go}: \todo
+\item \texttt{slice\_copy.go}: \todo
+\item \texttt{slicebounds.go}: \todo
+\item \texttt{slicebounds2.go}: \todo
+\item \texttt{slicebounds3.go}: \todo
+\item \texttt{structeq.go}: \todo
+\item \texttt{switch.go}: \todo
+\item \texttt{switch2.go}: \todo
+\item \texttt{unary.go}: \todo
+\item \texttt{vardecl.go}: \todo
+\item \texttt{vardeclblank.go}: \todo
+\item \texttt{vardeclscoping.go}: \todo
+\item \texttt{vardeclshadow.go}: \todo
+\end{itemize}
+
 \end{document}
