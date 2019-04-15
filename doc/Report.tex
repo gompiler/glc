@@ -273,6 +273,12 @@ to print the error message, we can then append the part in the source
 file where the error occurred.
 
 \subsection{Testing}
+To test the scanner, we implemented hspec tests that test the token
+output of scanning certain strings, lots of which was a reverse
+mapping of the scanner rules (to make sure things mapped to what we
+expected). Additionally, we added random generation of hex, octal,
+decimal, float numbers, random characters, strings and identifiers, to
+make sure everything maps as expected.
 \section{Parser}
 \subsection{Overview}
 After having scanned in the source code into tokens, we now need a
@@ -731,7 +737,7 @@ new AST, which reflects the new constraints we enforce.  Namely:
   offsets, or error breakpoints.
 \item All variables are properly typechecked, and therefore
   reference an explicit type. Each type is composed of potential user-defined
-  parent types, which eventually map to a GoLite data type. 
+  parent types, which eventually map to a GoLite data type.
   This includes cases like function signatures,
   where we can associate each parameter with a type rather than
   allowing lists of identifiers to map to a single type, syntax sugar
