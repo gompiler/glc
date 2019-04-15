@@ -80,7 +80,6 @@ parser, weeder, symbol table, typecheck and codegen respectively),
 with major design decisions. Testing is also discussed.
 \section{Language and Tool Choices}
 \subsection{Implementation Language: Haskell}
-% TODO MENTION CODEGEN TOOLS, i.e. Krakatau
 For our \texttt{GoLite} compiler, we decided to use \texttt{Haskell}
 as the implementation language, as many of the required tasks can be
 done more naturally (i.e.\ tree traversal, recursing over self defined
@@ -136,6 +135,10 @@ We decided on targeting JVM bytecode for our compiler, through the
 Krakatau\cite{krakatau} bytecode
 assembler. Krakatau bytecode syntax is derived from Jasmin, but with a
 more modern codebase (written in Python) and some additional features.
+
+We chose Krakatau as it is more widely supported, much more popular
+($985$ stars on Github\cite{krakatau}) and has additional features
+when compared to other bytecode assemblers, such as Jasmin.
 \subsubsection{Advantages}
 The primary advantages of targeting JVM bytecode are:
 \hyperref[sec:portability]{portability},
