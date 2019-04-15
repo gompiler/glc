@@ -646,8 +646,7 @@ The use of \texttt{hasRoot} is namely to provide valid equality logic.
 If the current type has a root value, we must also check root equality.
 If not, only current data equality is required.
 
-\subsection{Testing} %TODO
-
+\subsection{Testing}
 \subsubsection{Symbol Table Core}
 \label{sec:test-symbol-table-core}
 
@@ -655,6 +654,16 @@ When testing symbol table core, we provide a data type containing potential acti
 To make things easier, we can replace the types for keys, values, and messages to integers, since we aren't testing actual symbol table logic.
 Afterwards, we can simply run a chain of actions on a single symbol table, where each action results in an hspec expectation.
 If all expectations are met, then the test passes.
+
+\subsubsection{Symbol Table}
+
+Since the symbol table is mainly just a string output, it was harder
+to test. We added a few cases to check for success/no error, but as
+for the actual printing, most of that was checked manually by running
+it against programs as we weren't really able to add symbol table
+string checks due to time constraints. Most of our testing of the
+symbol table module were done as typecheck tests (as those were a lot
+more important and core to the actual compilation process).
 
 % TODO ACCOUNT FOR M2 COMMENT Try to describe some of the type rules
 % you use for typecheck specific stmts/exprs if they are interesting
@@ -734,8 +743,12 @@ we simply offload the verification to the symbol table, and assume that the prov
 We add the explicit type to the ast, and now future stages simply require
 a field access to find it.
 
-\subsection{Testing} %TODO
-% TODO Do we need to mention our invalid programs?
+\subsection{Testing}
+
+To test typecheck rules, we provide a program that should either pass
+or fail the typecheck phase. Most of our tests were implemented as
+hspec tests, but we added a few invalid typecheck programs as files
+for submission (see the \hyperref[sec:atypecheck]{appendix}).
 
 \section{Code Generator}
 \subsection{Overview}
@@ -1122,7 +1135,7 @@ The majority of our tests (with the exception of code generation tests) were don
 Haskell using \texttt{hspec}. However, we also submitted many standalone test programs,
 which are summarized below.
 
-\subsection*{Scanning and Parsing}
+\subsection{Scanning and Parsing}
 
 %TODO
 \todo%
@@ -1197,7 +1210,8 @@ The other valid programs were copied to the
 \texttt{3-semantics+typecheck} as they output information that could
 be verified after running what was code generated.
 
-\subsection*{Type Checking}
+\subsection{Type Checking}
+\label{sec:atypecheck}
 
 Summary of the check in each invalid program:
 
