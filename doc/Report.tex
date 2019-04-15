@@ -696,70 +696,7 @@ We add the explicit type to the ast, and now future stages simply require
 a field access to find it.
 
 \subsection{Testing} %TODO
-% TODO Do we need to mention our invalid programs?  Summary of the
-% check in each invalid program:
-% \begin{itemize}
-% \item \texttt{append-diff-type.go}: Append an expression of a
-%   different type than the type of the expressions of the
-%   \texttt{slice}.
-% \item \texttt{append-no-slice.go}: Append to something that isn't a
-%   slice.
-% \item \texttt{assign-no-decl.go}: Assign to a variable that hasn't
-%   been declared.
-% \item \texttt{assign-non-addressable.go}: Assign to a LHS that is a
-%   non-addressable field.
-% \item \texttt{cast-not-base.go}: Cast to a type that isn't a base
-%   type.
-% \item \texttt{dec-non-lval.go}: Decrement something that isn't an
-%   \texttt{lvalue}.
-% \item \texttt{decl-type-mismatch.go}: Declare and assign variable of
-%   explicit type to an expression of a different type.
-% \item \texttt{float-to-string.go}: Try to cast a \texttt{float} to a
-%   \texttt{string}.
-% \item \texttt{for-no-bool.go}: While variant of for loop with a
-%   condition that isn't a bool.
-% \item \texttt{func-call.go}: Function call with arguments of
-%   different type than function declaration arguments.
-% \item \texttt{func-no-decl.go}: Calling a function that hasn't been
-%   declared.
-% \item \texttt{function-already-declared.go}: Trying to declare a
-%   function that has already been declared.
-% \item \texttt{function-duplicate-param.go}: Trying to declare
-%   function with two params with same name.
-% \item \texttt{if-bad-init.go}: If with an init statement that does
-%   not typecheck (assignment of different type).
-% \item \texttt{inc-non-numeric.go}: Increment an expression that
-%   doesn't resolve to a numeric base type.
-% \item \texttt{index-not-list.go}: Index into something that isn't a
-%   slice.
-% \item \texttt{index.go}: Index that does not resolve to an int.
-% \item \texttt{invalid-type-decl.go}: Declare a type mapping to a
-%   type that doesn't exist.
-% \item \texttt{no-field.go}: Using selector operator on struct that
-%   doesn't have the field requested.
-% \item \texttt{non-existent-assign.go}: Assigning a variable to a non
-%   existent variable.
-% \item \texttt{non-existent-decl.go}: Trying to declare a variable of
-%   a type that doesn't exist.
-% \item \texttt{op-assign.go}: Op-assignment where variable and
-%   expression are not compatible with operator (i.e. \texttt{int +
-%   string})
-% \item \texttt{print-non-base.go}: Trying to print a non base type.
-% \item \texttt{return-expr.go}: Returning an expression of different
-%   type than the return type of the function.
-% \item \texttt{return.go}: Return nothing from non-void function.
-% \item \texttt{short-decl-all-decl.go}: Short declaration where all
-%   variables on LHS are already declared.
-% \item \texttt{short-decl-diff-type.go}: Short declaration where
-%   already defined variables on LHS are not the same type as assigned
-%   expression.
-% \item \texttt{switch-diff-type.go}: Type of expression of case is
-%   different from switch expression type.
-% \item \texttt{type-already-declared.go}: Trying to define a type
-%   mapping to a type that already exists.
-% \item \texttt{var-already-declared.go}: Trying to declare a variable
-%   that is already declared.
-% \end{itemize}
+% TODO Do we need to mention our invalid programs?
 
 \section{Code Generator}
 \subsection{Overview}
@@ -911,16 +848,59 @@ There are two tricky things about assignments:
     the entire RHS, pushing each result onto the stack and then
     assigning each stack element one by one to their respective LHS
     expression l-value. This way, \texttt{a, b = b, a} will not
-    overwrite or interfere with any values used on the RHS. This is
+    overwrite or interfere with any values used on the RHS.\@ This is
     one of the advantages of using a stack-based language, as values
     on the stack implicitly act like temporary variables, so we don't
     need to allocate other temporary resources for simultaneous
     assignment.
   \end{itemize}
 \end{itemize}
-\subsection{Testing} %TODO
+\subsection{Testing}
+Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
+wrote complete programs as files to test code generation.
+
+The main reason for changing the testing approach for this phase was
+that
+implementing automatic execution of other scripts (the Krakatau assembler) and
+checking standard output using Haskell was undesirable (introducing IO
+and outside programs in the tests). Additionally, the script used to run
+program solutions was already available to us, which made it relatively easy
+to implement automated testing.
+
+We used the script provided for evaluating previous milestones to run and check
+the output of all of these programs at once. All test programs are located
+in the \texttt{programs/3-semantics+codegen/valid} and
+\texttt{programs/3-benchmarks+codegen/valid} directories within the repository
+in order to be automatically discovered by the script.
+
+We also ran the tests in Travis automatically upon every push to GitHub,
+so we would be alerted if there were any regressions in program compilation
+or output as a result of a change.
+
+We tried to comprehensively cover all aspects of GoLite mentioned in the
+lecture given on GoLite code generation. We also added standard functionality
+tests (such as function execution, variable assignment, etc.) and added tests
+to cover any bugs discovered during the development of Milestone 4.
+
+Unfortunately, our tests did not completely cover all aspects of our code
+generation, as multiple bugs were discovered when the evaluation solutions
+were released. For the final submission of the compiler, concurrent with the
+submission of this report, we used the bugs discovered by running the evaluation
+script on the compiler to guide the creation of new test programs, increasing our
+test coverage of code generation.
+
+For a complete list of code generation test programs and their functions, see
+\hyperref[sec:appendixa]{Appendix A}.
+
 \section{Conclusion}
-\subsection{Experience} %TODO
+\subsection{Experience}
+Overall, this was a valuable project and one of the biggest programming projects
+we have ever worked on. Our tool choices had a large learning curve, which
+affected speed of development at some points, but the benefits of using a
+strongly-typed functional language for development and a low-level but
+well-documented language like JVM bytecode as a target, especially in terms of
+learning experience, definitely outweigh the negatives. \todo
+
 \subsection{What We'd Change}
 
 While Haskell has allowed us to easily define types, certain
@@ -931,7 +911,7 @@ further group data into multiple subsets of constructors\cite{so:pattern/matchin
 would catch more problems at compile time, it will also make the code
 significantly more complex.  The other approach is to allow errors at
 all stages of the compiler, even though all valid typechecked code has
-a code gen counterpart.  This adds multiple catches of the same error
+a code generation counterpart.  This adds multiple catches of the same error
 at runtime, but keeps the code short.  Our current approach is to
 `throw' errors when they occur, without providing a function signature
 that indicates errors can occur.  This allows us to keep our code
@@ -951,7 +931,7 @@ function to be pure (void of errors).
 		\item M2: Implemented weeding of blank identifiers,
 		symbol table generation, typecheck (aside from type inference and
 		expression typechecking) and submitted invalid programs.
-		\item M3/M4: \todo
+		\item M3/M4: \todo%
 	\end{itemize}
 	\item \textbf{David Lougheed}
 	\begin{itemize}
@@ -963,7 +943,11 @@ function to be pure (void of errors).
 		\item M2: Worked on expression type-checking and
 		type inference, including tests. Also worked on the weeding pass for
 		return statements.
-		\item M3/M4: \todo
+		\item M3/M4: Created most of the intermediate representation used to
+		model JVM bytecode in Haskell. Wrote many of the patterns used for IR
+		(and thus bytecode) generation, especially base patterns such as
+		statements, expressions, and control structures. These were generated
+		from the resource AST described.
 	\end{itemize}
 	\item \textbf{Allan Wang}
 	\begin{itemize}
@@ -982,4 +966,155 @@ function to be pure (void of errors).
 \newpage
 
 \bibliographystyle{plain} \bibliography{ref}
+
+\newpage
+\appendix
+\section{Test Programs}
+\label{sec:appendixa}
+
+The majority of our tests (with the exception of code generation tests) were done in
+Haskell using \texttt{hspec}. However, we also submitted many standalone test programs,
+which are summarized below.
+
+\subsection*{Scanning and Parsing}
+
+%TODO
+\todo%
+
+\subsection*{Type Checking}
+
+Summary of the check in each invalid program:
+
+\begin{enumerate}
+\item \texttt{append-diff-type.go}: Append an expression of a
+  different type than the type of the expressions of the
+  \texttt{slice}.
+\item \texttt{append-no-slice.go}: Append to something that isn't a
+  slice.
+\item \texttt{assign-no-decl.go}: Assign to a variable that hasn't
+  been declared.
+\item \texttt{assign-non-addressable.go}: Assign to a LHS that is a
+  non-addressable field.
+\item \texttt{cast-not-base.go}: Cast to a type that isn't a base
+  type.
+\item \texttt{dec-non-lval.go}: Decrement something that isn't an
+  \texttt{lvalue}.
+\item \texttt{decl-type-mismatch.go}: Declare and assign variable of
+  explicit type to an expression of a different type.
+\item \texttt{float-to-string.go}: Try to cast a \texttt{float} to a
+  \texttt{string}.
+\item \texttt{for-no-bool.go}: While variant of for loop with a
+  condition that isn't a bool.
+\item \texttt{func-call.go}: Function call with arguments of
+  different type than function declaration arguments.
+\item \texttt{func-no-decl.go}: Calling a function that hasn't been
+  declared.
+\item \texttt{function-already-declared.go}: Trying to declare a
+  function that has already been declared.
+\item \texttt{function-duplicate-param.go}: Trying to declare
+  function with two params with same name.
+\item \texttt{if-bad-init.go}: If with an init statement that does
+  not typecheck (assignment of different type).
+\item \texttt{inc-non-numeric.go}: Increment an expression that
+  doesn't resolve to a numeric base type.
+\item \texttt{index-not-list.go}: Index into something that isn't a
+  slice.
+\item \texttt{index.go}: Index that does not resolve to an int.
+\item \texttt{invalid-type-decl.go}: Declare a type mapping to a
+  type that doesn't exist.
+\item \texttt{no-field.go}: Using selector operator on struct that
+  doesn't have the field requested.
+\item \texttt{non-existent-assign.go}: Assigning a variable to a non
+  existent variable.
+\item \texttt{non-existent-decl.go}: Trying to declare a variable of
+  a type that doesn't exist.
+\item \texttt{op-assign.go}: Op-assignment where variable and
+  expression are not compatible with operator (i.e. \texttt{int +
+  string})
+\item \texttt{print-non-base.go}: Trying to print a non base type.
+\item \texttt{return-expr.go}: Returning an expression of different
+  type than the return type of the function.
+\item \texttt{return.go}: Return nothing from non-void function.
+\item \texttt{short-decl-all-decl.go}: Short declaration where all
+  variables on LHS are already declared.
+\item \texttt{short-decl-diff-type.go}: Short declaration where
+  already defined variables on LHS are not the same type as assigned
+  expression.
+\item \texttt{switch-diff-type.go}: Type of expression of case is
+  different from switch expression type.
+\item \texttt{type-already-declared.go}: Trying to define a type
+  mapping to a type that already exists.
+\item \texttt{var-already-declared.go}: Trying to declare a variable
+  that is already declared.
+\end{enumerate}
+
+\subsection*{Benchmarks and Code Generation}
+
+\begin{enumerate}
+\item \texttt{color.go}: \todo%
+\item \texttt{knapsack.go}: \todo%
+\item \texttt{sudoku.go}: \todo%
+\end{enumerate}
+
+\subsection*{Semantics and Code Generation}
+
+\begin{enumerate}
+\item \texttt{append.go}: Appending to slices.
+\item \texttt{append\_multi.go}: Slices' underlying array-copying behaviour.
+\item \texttt{append\_multi2.go}: Same as above.
+\item \texttt{appendbounds.go}: Bounds test for slices after appending.
+\item \texttt{array.go}: Miscellaneous array behaviour and operation tests.
+\item \texttt{arraybounds.go}: Array bounds test (negative index).
+\item \texttt{arraybounds2.go}: Array bounds test (too-large index).
+\item \texttt{assign.go}: Assignment test, including multiple assignments and operator-based assignments.
+\item \texttt{assign2.go}: Array, slice, and struct assignments.
+\item \texttt{basic.go}: Basic program which prints a number.
+\item \texttt{binary.go}: Test for most binary expressions, with different operand types.
+\item \texttt{binary\_search.go}: Binary search on a size-10 array.
+\item \texttt{blank\_identifiers.go}: Miscellaneous basic blank identifier tests.
+\item \texttt{cast.go}: Casting and print-formatting tests.
+\item \texttt{closest\_pair.go}: Large program to pseudo-randomly generate points and find the closest pair.
+\item \texttt{for.go}: Different for-loop formats and behaviours.
+\item \texttt{func\_calls.go}: Function calls, including tests for correct execution count in case statements and short-circuiting of boolean logic.
+\item \texttt{funccalls.go}: Function call tests with data structures (arrays, slices, and structs).
+\item \texttt{funcret.go}: Function call returns, casting, blank identifiers, and print formatting.
+\item \texttt{global\_fields.go}: Default values for global variables (fields). \textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{global\_var\_assignment.go}: Assignment of a local variable to a global variables with the same name. \textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{ifscoping.go}: Scoping of variables within if/else statements, including short statement declarations.
+\item \texttt{increment.go}: Increment and decrement operators on various addressable values.
+\item \texttt{init.go}: \texttt{init} function tests.
+\item \texttt{init2.go}: Same as above.
+\item \texttt{init3.go}: Same as above.
+\item \texttt{init4.go}: Same as above.
+\item \texttt{init5.go}: Same as above.
+\item \texttt{init\_order.go}: \texttt{init} function execution order test.
+\item \texttt{len.go}: Length built-in function test on the 3 supported data types (array, slice, and string).
+\item \texttt{multi\_array\_string.go}: Nested array capacity and string printing test.
+\item \texttt{needleman\_wunsch.go}: Implementation of the Needleman-Wunsch algorithm for DNA alignment.
+\item \texttt{nested\_structs.go}: Nested struct/slice copying and modification behaviour.
+\item \texttt{ntuple.go}: Large program defining a mini-library for n-tuple operations, built on slices.
+\item \texttt{print.go}: Print formatting test.
+\item \texttt{printfloat.go}: Float-printing test.
+\item \texttt{prints.go}: Print formatting test.
+\item \texttt{reserved\_java.go}: Test for function names that might conflict with Java (JVM) keywords, since we were targeting JVM bytecode for code generation.
+\item \texttt{return.go}: Test for return-value behaviour, including copying.
+\item \texttt{rpn\_calc.go}: Reverse-Polish notation calculator which takes in an array representing an expression.
+\item \texttt{rune\_esc.go}: Test for escape characters, including some ones requiring transformation (\texttt{\textbackslash\@a, \textbackslash\@v}) that don't exist
+      verbatim in the JVM.~\textbf{(Added for resubmission, post bug-discovery)}
+\item \texttt{scope.go}: Miscellaneous scope tests.
+\item \texttt{scope\_same\_var.go}: Scope tests for variables with the same identifier.
+\item \texttt{shortdecl.go}: Small short declaration test, including blank identifiers.
+\item \texttt{slice\_copy.go}: Assignment slice-copying test.
+\item \texttt{slicebounds.go}: Bounds test for empty slices.
+\item \texttt{slicebounds2.go}: Negative-index slice bounds test.
+\item \texttt{slicebounds3.go}: Too-large index slice bounds test.
+\item \texttt{structeq.go}: Struct equality tests.
+\item \texttt{switch.go}: Switch behaviour tests.
+\item \texttt{switch2.go}: Switch behaviour tests with function-call expressions.
+\item \texttt{unary.go}: Comprehensive unary operator usage test.
+\item \texttt{vardecl.go}: Test of new variable declaration from function returns.
+\item \texttt{vardeclblank.go}: Blank identifier variable declaration test.
+\item \texttt{vardeclscoping.go}: Variable declaration scoping test.
+\item \texttt{vardeclshadow.go}: Overshadowing test (of GoLite pre-provided values.)
+\end{enumerate}
 \end{document}
