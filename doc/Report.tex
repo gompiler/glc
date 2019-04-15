@@ -52,16 +52,16 @@
 \tableofcontents
 \newpage
 \section{Introduction}
-\subsection{Overview of Go\cite{goliteinfo}}
-Go is an open source imperative programming language created by Rob Pike, Ken
+\subsection{Overview of Go}
+Go\cite{goliteinfo} is an open source imperative programming language created by Rob Pike, Ken
 Thompson and Robert Griesemer (Google employees). It was designed for
 easier code writing, having built-in concurrency support and speedy
 compilations. It features goroutines (lightweight thread), channels,
 interfaces, methods, closures, defer, maps, slices, multiple return
 values, modules, garbage collection and optional semi-colons. See the
 Golang main page\cite{golang} for more information.
-\subsection{Overview of GoLite\cite{goliteinfo}}
-GoLite is a (slightly modified) subset of Go. It does not support
+\subsection{Overview of GoLite}
+GoLite\cite{goliteinfo} is a (slightly modified) subset of Go. It does not support
 goroutines, channels, interfaces, methods (functions are still
 supported), closures, defer, maps, multiple return values, modules,
 garbage collection and optional semi-colons (insertion
@@ -181,8 +181,8 @@ allocation, this is a very natural way to implement this construct.
 
 \subsubsection{Disadvantages}
 The main disadvantages of generating JVM bytecode are its low-level
-semantics and its (in general) slightly slow speeds versus an
-ahead-of-time compiled language.
+semantics and its slightly slow speeds versus an
+ahead-of-time compiled language (in general).
 
 The low level of JVM bytecode is particularly frustrating to deal with
 when it comes to types that are not representable by an integer or
@@ -237,7 +237,7 @@ semicolon flag to true if we encounter any new line inside the block
 comment, and we insert a semicolon if we're in the aforementioned
 newline insertion state.
 \paragraph{Adding newlines at the end of the file if they aren't
-  present already}~\\
+  present already}
 \texttt{Go} requires a semicolon or newline at the end of function
 declarations. Sometimes, there may not be a newline at the end of a
 file, so no semicolon insertion occurs, resulting in a parsing error.
@@ -392,11 +392,11 @@ so we can focus on tests for floats, expressions, statements, etc
 on top of the full program.
 To facilitate future refactoring, we base our tests on quality checks, vs structural checks.
 In other words, we simply check if a parser succeeds or fails.
-This was very important, as testing the full ast structure meant that
+This was very important, as testing the full AST structure meant that
 it was very difficult to make changes in the future.
 
 On top of the necessary tests with the provided scripts, we wanted as much
-testing within Haskell as we can. Most inputs are embedded to avoid IO operations, and are done with the help of hspec so we can make use of Haskell's testing stack. This allows us to easily run all tests,
+testing within Haskell as we can. Most inputs are embedded to avoid IO operations, and are done with the help of \texttt{hspec} so we can make use of Haskell's testing stack. This allows us to easily run all tests,
 generate coverage reports, and rerun selective tests if we need to.
 
 To ensure incremental updates, we wanted to make sure that we tested every step of the way. As a result, every build, with the exception of updating documentation, ran through Travis CI.
@@ -409,7 +409,7 @@ needing to parse a program. Together, this helps us develop incrementally,
 and to a large extent independently from one another.
 
 On top of the necessary tests with the provided scripts, we wanted as much
-testing within Haskell as we can. Most inputs are embedded to avoid IO operations, and are done with the help of hspec so we can make use of Haskell's testing stack. This allows us to easily run all tests,
+testing within Haskell as we can. Most inputs are embedded to avoid IO operations, and are done with the help of \texttt{hspec} so we can make use of Haskell's testing stack. This allows us to easily run all tests,
 generate coverage reports, and rerun selective tests if we need to.
 
 To ensure incremental updates, we wanted to make sure that we tested every step of the way. As a result, every build, with the exception of updating documentation, ran through Travis CI.
@@ -626,7 +626,7 @@ assignments don't conflict with the original inferred type).
 
 Initially, our model above was sufficient in defining all type variants.
 Even if a type were cyclic, we could create a data structure that references itself.
-Given that haskell is lazy, it will only generate nested types as we needed.
+Given that Haskell is lazy, it will only generate nested types as we needed.
 While this is an elegant solution, it unfortunately makes modifying types difficult, and checking type equality near impossible.
 Our solution is to introduce a new cyclic model (\texttt{Cyclic.hs}).
 For a generic data structure \texttt{T} to be cyclic:
@@ -652,7 +652,7 @@ If not, only current data equality is required.
 
 When testing symbol table core, we provide a data type containing potential actions. For instance, we can look up, insert, or check messages.
 To make things easier, we can replace the types for keys, values, and messages to integers, since we aren't testing actual symbol table logic.
-Afterwards, we can simply run a chain of actions on a single symbol table, where each action results in an hspec expectation.
+Afterwards, we can simply run a chain of actions on a single symbol table, where each action results in an \texttt{hspec} expectation.
 If all expectations are met, then the test passes.
 
 \subsubsection{Symbol Table}
@@ -724,20 +724,23 @@ in the symbol table.
 \subsubsection{New AST}
 As mentioned above, dependency on the SymbolTable results in a
 dependency on the \texttt{ST} monad, which adds complexity to each
-operation.  As a result, our goal after typechecking is to create a
+operation.  As a result, after typechecking we create a
 new AST, which reflects the new constraints we enforce.  Namely:
 \begin{itemize}
 \item Typecheck errors are caught beforehand, so we no longer need
   offsets, or error breakpoints.
-\item All variables are properly typechecked, and can therefore
-  reference an explicit type. Each type is composed of parent types up
-  until the primitives.  This includes cases like function signatures,
-  where we can associate each parameter with a type instead of
-  allowing lists of identifiers to map to a single type.  In
-  preparation for codegen, we can then use our new AST exclusively,
+\item All variables are properly typechecked, and therefore
+  reference an explicit type. Each type is composed of potential user-defined
+  parent types, which eventually map to a GoLite data type. 
+  This includes cases like function signatures,
+  where we can associate each parameter with a type rather than
+  allowing lists of identifiers to map to a single type, syntax sugar
+  present in GoLite and in the first AST.  In
+  preparation for code generation, we use our new AST exclusively,
   without any other mutable data structures. Any additional
-  information we need can be added back into the AST, with minimal
-  changes to models used at previous stages.
+  information we need for code generation is added to a third AST downstream,
+  called the resource AST, which has minimal changes to models used at this and
+  previous previous stages.
 \end{itemize}
 
 An added benefit of adding items to the AST is to support caching.
@@ -1001,7 +1004,6 @@ For slices and arrays, it was noted that there was no existing Java container ty
 that provides the behaviour we were looking for. As a result, we defined our own
 class (implemented in Java), called \texttt{GlcArray}, which can represent single-
 or multi-dimensional slices or arrays (and any nested combination of those data structures).
-More on this is described \todo % TODO: WHERE IS IT DESCRIBED?
 
 \subsubsection{AST}
 \label{sec:resource-ast}
@@ -1215,7 +1217,7 @@ This added complexity was the primary reason why we didn't support it in our fir
                   improved by Allan. Created the M3 submitted tests,
                   most of (44/56) of the codegen tests and all the
                   submitted benchmark tests. Helped debug why tests
-                  weren't codegenning properly. Added docker to the
+                  weren't codegenning properly. Added Docker to the
                   continuous integration so that it could assemble our
                   generated programs with Krakatau\cite{krakatau}
                   (required Python) and then run assembled classes
@@ -1266,8 +1268,6 @@ which are summarized below.
 
 \subsection{Scanning and Parsing}
 
-%TODO
-\todo%
 Invalid programs:
 \paragraph{Scanner}
 \begin{enumerate}
