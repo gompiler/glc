@@ -555,14 +555,6 @@ assignments don't conflict with the original inferred type).
 %   put in a nested scope.
 % \end{itemize}
 
-\subsection{AST}
-
-In general, AST changes pose a linear complexity, since all we need is a converter. 
-After conversion, we don't have to worry about previous data structures, and can instead focus on the new models.
-If we instead didn't write a converter, we would have to consider all of the new restrictions from the initial AST to the current step.
-This is not only harder to manage, since errors are no longer caught at compile time, but poses unnecessary validation duplication.
-As a result, we decided to create a new AST post typecheck, to account for any structural changes.
-
 \subsection{Testing} %TODO
 % TODO ACCOUNT FOR M2 COMMENT Try to describe some of the type rules
 % you use for typecheck specific stmts/exprs if they are interesting
@@ -624,6 +616,17 @@ new AST, which reflects the new constraints we enforce.  Namely:
   information we need can be added back into the AST, with minimal
   changes to models used at previous stages.
 \end{itemize}
+
+An added benefit of adding items to the AST is to support caching.
+Haskell computes data lazily, so having any argument within a 
+data type will ensure at most one computation.
+As shown above, providing a way of getting expression types is very important. While we do have all the information we need within the previous AST,
+we felt it was inefficient to require recursion through binary and unary expressions.
+Additionally, recursion for binary expressions may lead to errors in the 
+event that the two types do not match. To avoid this possibility,
+we simply offload the verification to the symbol table, and assume that the provided type is valid.
+We add the explicit type to the ast, and now future stages simply require 
+a field access to find it.
 
 \subsection{Testing} %TODO
 % TODO Do we need to mention our invalid programs?  Summary of the
