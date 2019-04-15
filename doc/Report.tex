@@ -190,9 +190,11 @@ such as comparisons and string concatenations go from being a few
 bytecode instructions to significantly longer patterns.
 \section{Scanner}
 \subsection{Overview}
-% TODO ADAPT TO FINAL REPORT
-The first step of this milestone was to scan user input into
-tokens. Handing of most GoLite tokens was straightforward and similar
+The first step of the compiler pipeline is to scan user input into
+tokens, abstract representations of each separate expression in the
+source code. To do this, we use the tool
+\texttt{Alex}\cite{github:alex} and define regular expression rules (\texttt{golite.x}) to
+match certain corresponding tokens. Handing of most GoLite tokens was straightforward and similar
 to class assignments. In other cases, we had to deal with some of
 Go/GoLite's quirkiness when compared to something simple like
 \texttt{MiniLang}.
@@ -271,7 +273,12 @@ file where the error occurred.
 \subsection{Testing}
 \section{Parser}
 \subsection{Overview}
-% TODO POTENTIALLY ADD SECTION ABOUT PARSER ROLE LIKE IN SCANNER
+After having scanned in the source code into tokens, we now need a
+more structured representation of the program, namely an AST or
+abstract syntax tree. In order to accomplish this, we use
+\texttt{Happy}\cite{github:happy} and define the rules of our grammar
+(\texttt{golite.y}) that will transform certain sequences of tokens
+into a corresponding part of the AST.
 \subsection{Design Decisions}
 \subsubsection{Grammar}
 % TODO ACCOUNT FOR COMMENTS IN M1 REPORT
@@ -408,9 +415,19 @@ Towards later stages, we added docker support, since our test environment depend
 In total, we have had nearly 1500 Travis builds, which helped us be confident with our changes.
 
 \section{Weeder}
-\subsection{Overview} %TODO
+\subsection{Overview}
+Certain language constraints are too complicated to implement in the
+parsing stage (or at least without greatly complicating the rules of
+the grammar). Take for example checking if the LHS and RHS of an
+assignment have the same number of expressions. If one wanted to have
+that in a grammar, they'd need specific rules for each length (or
+they'd have to define the LHS and RHS of assignment lists as one
+language construct instead of just being expression lists). Thus, in
+order to get rid of the syntactically invalid parts of our grammar, we
+weed through the results of the parser, checking that certain
+constrains that aren't enforced hold, else we'd error on said
+source. To do this, we recurse over our AST and check the constraints.
 \subsection{Design Decisions}
-% TODO M2 WEEDING
 \subsubsection{Parser Weeding}
 Most of the weeding operations needed are simple and don't rely on
 external context. As a result, we were able to define recursive
@@ -484,7 +501,12 @@ After we refactored to the new model, we noticed that some of our old tests were
 
 \section{Symbol Table}
 \subsection{Overview}
-% TODO
+Before one can typecheck their AST to make sure it is semantically
+valid, they must create a symbol table that keeps track of the type of
+identifiers (variables, type maps, function calls), such that when we
+typecheck we can find out the type of a variable. This is usually done
+using a cactus stack (i.e.\ a stack of hash maps representing
+different scopes), which is the approach we used as well.
 \subsection{Design Decisions}
 
 \subsubsection{State Monad}
@@ -630,7 +652,13 @@ If not, only current data equality is required.
 % you use for typecheck specific stmts/exprs if they are interesting
 \section{Typecheck}
 \subsection{Overview}
-% TODO
+Before we can try to convert our AST into our target language (i.e.\
+code generation), we must verify that it is semantically correct such
+that our generated code will also be semantically correct (we don't
+want to assign a string to a variable that is of type float, for
+example). To do this, we recurse over our AST while generating the
+symbol table and check that everything is well-typed using the
+typecheck rules/spec\cite{golite-typecheck}.
 \subsection{Design Decisions}
 For type-checking, we decided on a single-pass approach, combining
 symbol table generation and statement type-checking. This improves
