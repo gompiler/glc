@@ -156,8 +156,8 @@ platform the JVM can run on.
 Although Java is often considered slow as opposed to ahead-of-time
 compiled languages such as C and C++ due to its garbage collection and
 non-native compiled code, most implementations of the JVM provide JIT
-compilation.  By targeting JVM bytecode, we can take advantage of
-this, and our generated code will likely be faster than if we
+compilation. By targeting JVM bytecode, we take advantage of
+this, and our generated code is often faster than if we
 generated code in an interpreted language such as Python. Sometimes,
 the JVM can be faster than even ahead-of-time compiled programs, since
 run-time information is available for optimization purposes.
@@ -737,7 +737,31 @@ a field access to find it.
 
 \section{Code Generator}
 \subsection{Overview}
-% TODO
+
+As discussed in the Language and Tool Choices section, we decided on targeting
+JVM bytecode for our compiler's code generation, using the Krakatau bytecode
+dialect and assembler. JVM bytecode posed an interesting challenge due to its
+low-level syntax and semantics, while providing a well-tested and established
+set of libraries (the Java standard library).
+
+In order to generate bytecode, we decided to first create a bytecode-adjacent
+intermediate representation (IR) in Haskell. This allowed us to reduce errors
+in code generation by taking advantage of Haskell's strong type system to
+represent common bytecode constructs, and let us write a common mapping from
+the IR to bytecode in order to reduce the chance of typos.
+
+Four major concepts that had to be handled carefully when converting GoLite to
+JVM bytecode were identifier scoping, assignments, struct generation, and copying
+behaviours. These are ideas that do not map exactly to bytecode, since bytecode
+does not have scoping at all, with the exception of method locals and classes,
+assignments (storing values) work completely differently, and the JVM is
+pass-by-reference for assignments and method calls.
+
+While we were given the general outline for most bytecode generations in class, we
+did not discuss switch/case statements. Mapping the GoLite form of these constructs
+to bytecode proved interesting, especially considering limitations on execution of
+the switch expressions and laying out labels to provide proper default branch behaviour.
+
 \subsubsection{Scoping in GoLite}
 In \texttt{GoLite}, new scopes are opened for block statements,
 \texttt{for} loops, \texttt{if} / \texttt{else} statements and
@@ -783,6 +807,7 @@ significantly different semantically:
 % TODO ACCOUNT FOR M3 COMMENT IN THIS SEC AND MAPPING STRATEGIES What
 % about assigning arrays and structs ? What about assigning slices ?
 % There are no mentions of the copying mechanisms.
+
 \subsubsection{Assignments in GoLite}
 In \texttt{GoLite}, assignments are either an assignment operator with
 a single LHS expression and a RHS expression, or two non-empty
@@ -796,6 +821,18 @@ that is \texttt{a, b = b, a} will swap the values of \texttt{a} and
 \texttt{b} would be the original value of \texttt{b} and wouldn't be
 swapped.
 
+\subsubsection{Structs in GoLite}
+\texttt{GoLite} provides structs as a way of defining custom data structures.
+These do not exist in the JVM, which uses classes for user-defined data types.
+Transforming structs into classes was, for the most part, a natural mapping,
+although copying and equality proved difficult to get correct.
+
+\subsubsection{Copying Behaviour in GoLite}
+In \texttt{GoLite}, assignments and function calls copy the values used.
+This is in contrast with the JVM, which uses references for object assignment
+and method calls. Overriding this behaviour was difficult, since it involved
+writing custom methods for structs, arrays, and slices.
+
 \subsection{Mapping Strategies}
 \subsubsection{Scoping}
 JVM bytecode only has ``scoping'' for \texttt{methods}, as they have
@@ -805,22 +842,31 @@ languages, we could just append the scope depth to all identifier
 names to keep them unique, also eliminating the need for separate
 scopes, as we already typecheck the correct use of identifiers. In our
 case, we have scoped identifiers in our newly generated typechecked
-AST which we convert to offsets (for locals).
+AST which we convert to offsets (for locals) in the resource AST, a
+third iteration of the AST created partially for this purpose.
 
-These offsets can be used in our intermediate representation, where
-the offsets are unique for each variable declaration. Variables with
+These offsets are in our intermediate representation, where
+the offsets are unique for each local variable declaration. Variables with
 the same scoped identifier will be given the same offset, and we can
 optimize our stack limit by reusing offsets when two variables can
 never occur at the same time due to branching.
+
+Globals are a special case in JVM bytecode generation, since they are
+equivalent to fields on the main class. To generate these, the identifiers
+are kept and a prefix is prepended to the name: \texttt{\_\_glc\$fd\_\_}. This
+ensures that the field names will not conflict with any reserved word in
+the JVM. Since only top-level variables retain identifiers, there is no
+concern about clashing names here.
+
 \subsubsection{Switch Statements}
 For the structural differences:
 \begin{itemize}[noitemsep]
-\item Simple statements can be modeled and executed as the first
+\item Simple statements are modeled and executed as the first
   statement in the new ``scope''.
-\item Missing expressions can be converted to the constant literal
-  `true`.
+\item Missing expressions are converted to the constant literal
+  `true` in the resource AST, prior to IR and code generation.
 \item For a list of expressions that is of length greater than one, we
-  can compare each element from the list one at a time, duplicating
+  compare each element from the list one at a time, duplicating
   the value we're comparing to before each comparison (as otherwise
   we'll lose it during the stack operation). In other terms, the value
   we compare to during each \texttt{case} block is stored on the stack
@@ -830,25 +876,30 @@ For the structural differences:
 \noindent Semantically:
 
 \begin{itemize}[noitemsep]
-\item After \texttt{case} expression comparisons, we will either jump
+\item After \texttt{case} expression comparisons, we either jump
   to the case body or keep going to the next \texttt{case} comparison
-  or \texttt{default} block.
+  or \texttt{default} block. This separates \texttt{case} `headers'
+  from \texttt{case} `bodies', allowing all comparisons to be followed
+  in the correct order with only the minimum required jumps.
 \item To automatically break, for each case statement, we add a
   \texttt{goto} to a label at the end of the switch statement.
-\item \texttt{default} statement jumps should be placed after all
+\item \texttt{default} statement jumps are placed after all
   jumps to case bodies as the fall-through case, when no other jumps
   are followed.
 \item Simulating new scopes is easy because of how our scoping works;
-  the variable names will already be resolved to their correct local's
-  index.
+  the variable names are already resolved to their correct local's
+  index in the resource AST and will not conflict during code generation.
 \item Expressions in \texttt{case} blocks not being constants does not
-  matter too much for us, as we will compare each expression normally
-  (we are simulating switch statements using \texttt{goto} and
-  comparisons, and aren't limited by any language-native
+  matter too much for us (versus a target language like C), as we compare
+  each expression normally (we are simulating switch statements using
+  \texttt{goto} and comparisons, and aren't limited by any language-native
   \texttt{switch} statement definitions).
 \end{itemize}
+
 \subsubsection{Assignments}
-There are two tricky things about assignments:
+
+There are multiple tricky things about assignments:
+
 \begin{itemize}[noitemsep]
 \item Assignment operators. We cannot just convert \texttt{e += e2} to
   \texttt{e = e + e2}, where \texttt{e} is an expression, because
@@ -872,14 +923,14 @@ There are two tricky things about assignments:
     \texttt{e3} can be an anonymous \texttt{slice} from a function
     return, and \texttt{e4} could also be an anonymous \texttt{int}
     from a function return. In order to avoid duplicate side effects,
-    we should resolve \texttt{e3[e4]}, including any function calls,
-    to some base addressable expression, storing the result on the
-    stack. Then, we can operate on the stack, adding \texttt{e2} and
-    assigning the result to whatever the stack value references.
+    we resolve \texttt{e3[e4]} first, including any function calls,
+    to a value, storing the result on the stack. Then, we can operat
+    on the stack, adding \texttt{e2} and assigning the result to whatever
+    addressable is referenced by the assignment using the pre-calculated
+    stack value.
   \item The other cases for \texttt{e} are not \texttt{l-values}, and
     shouldn't happen in the type-checked AST.\@
   \end{itemize}
-  \begin{itemize}
   \item Assignment of multiple expressions. As mentioned earlier, we
     cannot do the assignments sequentially. Thus, we should evaluate
     the entire RHS, pushing each result onto the stack and then
@@ -890,8 +941,46 @@ There are two tricky things about assignments:
     on the stack implicitly act like temporary variables, so we don't
     need to allocate other temporary resources for simultaneous
     assignment.
-  \end{itemize}
+  \item Copying of slice headers, arrays, and structs. This proved
+    exceptionally difficult to get correct, since we needed to ensure
+    correct behaviour for slices and arrays, and generate copy methods
+    on the fly for structs. See the section below for more on copying and
+    struct generation.
 \end{itemize}
+
+\subsubsection{Struct Generation}
+
+Struct definitions are collected and de-duplicated in the resource AST.
+To represent them in the JVM, we convert them to classes, renaming fields
+to avoid naming conflicts with reserved bytecode keywords. This mapping
+works well, but we also need equality and copying mechanisms, which proved
+more difficult to create.
+
+To handle equality, we define an \texttt{s.equals(s2)} method on each struct
+\texttt{s} to compare it to another struct of the same type, returning a boolean.
+This compares each field of the two structs, using other \texttt{equals()} methods
+defined by us in order to compare arrays and slices (which do their own recursive
+comparisons internally).
+
+\subsubsection{Copying Behaviour}
+
+As mentioned, GoLite requires pass-by-value execution of methods and copying upon
+assignment, which differs from the default behaviour of the JVM. For primitives and
+strings, this is straightforward, since primitives are pass-by-value within the JVM,
+and strings are immutable in both languages.
+
+Where it gets more complex is with arrays, slices, and structs. For structs, we defined
+a custom copy method on the classes generated for each struct definition. This method
+returns a new struct object, containing values copied from the current instance. For
+slices, arrays, and nested structs, a copy method is called.
+
+For slices and arrays, it was noted that there was no existing Java container type
+that provides the behaviour we were looking for. As a result, we defined our own
+class (implemented in Java), called \texttt{GlcArray}, which can represent single-
+or multi-dimensional slices or arrays (and any nested combination of those data structures).
+More on this is described \todo % TODO: WHERE IS IT DESCRIBED?
+
+
 \subsection{Testing}
 Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
 wrote complete programs as files to test code generation.
