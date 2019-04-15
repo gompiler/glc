@@ -1051,9 +1051,17 @@ Summary of the check in each invalid program:
 \subsection{Benchmarks and Code Generation}
 
 \begin{enumerate}
-\item \texttt{color.go}: \todo%
-\item \texttt{knapsack.go}: \todo%
-\item \texttt{sudoku.go}: \todo%
+\item \texttt{color.go}: Get the optimal minimum number of colors to
+color certain graphs using the brute force $O(n^n)$ optimal solution
+(in order to take a long time without using a
+heuristic/approximation).
+\item \texttt{knapsack.go}: Optimally solve the knapsack problem using
+  dynamic programming, $O(nW)$, with $W = 12983$ and $n = 4361$.
+\item \texttt{sudoku.go}: Solve a $16 \times 16$ sudoku grid using
+  brute force with backtracking. Certain rows are left empty, allowing
+  multiple solutions (as a problem with only one optimal solution
+  would take too long to solve for a $16 \times 16$ and too short to
+  solve for a $9 \times 9$).
 \end{enumerate}
 
 \subsection{Semantics and Code Generation}
