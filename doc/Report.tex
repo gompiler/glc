@@ -16,7 +16,7 @@
   linktoc=all
 }
 \pagestyle{fancy}
-\lhead{McGill University\\COMP 520 Compiler Design
+\lhead{McGill University\\COMP 520: Compiler Design
   \\\thetitle}
 \chead{\leftmark}
 \rhead{\theauthor}
@@ -25,6 +25,7 @@
 \newcommand{\todo}[0]{\textcolor{red}{\textbackslash\textbackslash TODO \ }}
 
 \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+\usepackage[numbers, super]{natbib}
 
 \begin{document}
 \begin{titlepage}
@@ -49,12 +50,34 @@
 \tableofcontents
 \newpage
 \section{Introduction}
-\subsection{Overview of Go}
-% TODO
-\subsection{Overview of GoLite}
-% TODO
+\subsection{Overview of Go\cite{goliteinfo}}
+Go is an open source imperative programming language created by Rob Pike, Ken
+Thompson and Robert Griesemer (Google employees). It was designed for
+easier code writing, having built-in concurrency support and speedy
+compilations. It features goroutines (lightweight thread), channels,
+interfaces, methods, closures, defer, maps, slices, multiple return
+values, modules, garbage collection and optional semi-colons. See the
+Golang main page\cite{golang} for more information.
+\subsection{Overview of GoLite\cite{goliteinfo}}
+GoLite is a (slightly modified) subset of Go. It does not support
+goroutines, channels, interfaces, methods (functions are still
+supported), closures, defer, maps, multiple return values, modules,
+garbage collection and optional semi-colons (insertion
+rule\cite{gospec:semicolon} $1$ is supported, not $2$). Additionally,
+it is restricted to ASCII encoding (instead of UTF-8), has a fixed
+precision, no imaginary numbers and has a few extra keywords
+(\texttt{print}, \texttt{println}, \texttt{append}, \texttt{cap}). The
+base types only include \texttt{int}, \texttt{float64}, \texttt{bool},
+\texttt{rune} and \texttt{string}. Declarations must also come before
+their use (for variables, functions and types) and constant
+declarations are not supported. Function bodies should also not be
+empty. For range loops, labelled breaks/continues and fallthrough are
+not supported as well. GoLite is the source language of our compiler.
 \subsection{Structure of Report}
-% TODO
+In this report, we discuss the language and tool choices we made for
+this project, as well as an overview of each compiler step (scanner,
+parser, weeder, symbol table, typecheck and codegen respectively),
+with major design decisions. Testing is also discussed.
 \section{Language and Tool Choices}
 \subsection{Implementation Language: Haskell}
 % TODO MENTION CODEGEN TOOLS, i.e. Krakatau
@@ -63,9 +86,10 @@ as the implementation language, as many of the required tasks can be
 done more naturally (i.e.\ tree traversal, recursing over self defined
 structures, enforcing types, etc.).
 \subsection{Tools}
-For scanning, we use the program \texttt{Alex}\cite{github:alex}, which is similar to
+For scanning, we use the program \texttt{Alex}\cite{github:alex}, a
+lexical analyser generator which is similar to
 \texttt{flex} but produces \texttt{Haskell} code instead. We use
-\texttt{Happy}\cite{github:happy} for parsing, which resembles
+\texttt{Happy}\cite{github:happy} for parsing, a parser generator which resembles
 \texttt{bison/yacc}. \texttt{Alex} and \texttt{Happy} can be
 interlinked nicely, passing on useful information such as the line number, column number, character
 offset in file, and error messages.
@@ -289,8 +313,8 @@ Although we don't have type-checking implemented at this milestone, we
 can use this technique to enforce definitions such as `exactly one',
 `one or more', and `zero or one'. This modeling is not always
 perfect. For example, a
-\href{https://golang.org/ref/spec\#IdentifierList}{list} of
-identifiers is `one or more' (in Haskell, \texttt{NonEmpty}). Many
+list of
+identifiers\cite{gospec:idlist} is `one or more' (in Haskell, \texttt{NonEmpty}). Many
 locations make it optional. While a direct translation would be
 \texttt{Maybe (NonEmpty a)}, we choose to make it a possibly empty
 list \texttt{[a]} as it makes more sense.
@@ -331,8 +355,8 @@ enforce all var declarations to be single declarations. In other
 words, \texttt{var ( a = 2; b = 3 )} becomes \texttt{var a = 2; var b = 3}
 and \texttt{var ( a = 2 )} would become \texttt{var a = 2}. Note
 that we cannot further simplify multi declarations \texttt{var a, b
-  = 2, 3} because they happen in one stage; 
-  \texttt{var a, b = b, a} does not always produce the same output as 
+  = 2, 3} because they happen in one stage;
+  \texttt{var a, b = b, a} does not always produce the same output as
   \texttt{var a = b; var b = a}.
 
 \subsubsection{Pretty Printer}
@@ -347,16 +371,16 @@ nested binary op does not always need brackets, if the order of
 precedence matches). To produce the full program, we simply join the
 list of strings in the full program, intercalated with new lines.
 
-\subsection{Testing} 
+\subsection{Testing}
 
 To facilitate testing, we wanted to ensure that each feature can
 be tested separately.
 When building the parser, we expose entry points to each main stage,
-so we can focus on tests for floats, expressions, statements, etc 
+so we can focus on tests for floats, expressions, statements, etc
 on top of the full program.
 Each subsequent stage of the parser, eg typechecking, resource building, and codegen, also exposes a function for string inputs, so we can test them at various levels.
 Stages relating to state, such as the symbol table and resource builder,
-have their own high level module, where we can test event logic without 
+have their own high level module, where we can test event logic without
 needing to parse a program. Together, this helps us develop incrementally,
 and to a large extent independently from one another.
 
@@ -443,14 +467,11 @@ re-building the symbol table becomes evident.
 
 As a result of this performance impact, we decided on using a mutable
 symbol table, with mutability supported via Haskell's
-\href{https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html}{ST}
+ST\cite{hackage:st}
 monad. The constraint provides
-\href{https://hackage.haskell.org/package/base-4.12.0.0/docs/Control-Monad-ST.html\#v:runST}{runST}
+runST\cite{hackage:runst}
 (which removes the \texttt{ST}, i.e.\ mutability, from an interior
-data structure). This is proven to keep functions pure (see
-\href{https://iris-project.org/pdfs/2018-popl-runST-final.pdf}{A
-  Logical Relation for Monadic Encapsulation of State by Amin Timany
-  et al.}). This made the \texttt{ST} monad a better choice than other
+data structure). This is proven\cite{monadicstate} to keep functions pure. This made the \texttt{ST} monad a better choice than other
 monads providing mutability (the main example being \texttt{IO}, which
 if used would have resulted in all our functions after symbol table
 generation being bound by \texttt{IO}, i.e.\ impure and also harder to
