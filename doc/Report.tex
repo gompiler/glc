@@ -458,9 +458,7 @@ constraints we use weeding to check for this milestone are:
   typechecking, with two different versions depending on return
   type. This was not deemed worth it compared to a single weeding
   pass.
-  % TODO
-  % ACCOUNT FOR M2 COMMENT, THIS HOLDS FOR ANY VOID FUNC
-\item Ensuring \texttt{init} function declarations do not have any
+\item Ensuring void function declarations do not have any
   non-void return statements. Similar to the above, it is easier to do
   a weeding pass then require context-sensitive (i.e multiple
   different) traversal functions given the context of the current
