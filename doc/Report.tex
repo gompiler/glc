@@ -1101,6 +1101,13 @@ that indicates errors can occur.  This allows us to keep our code
 short, but is problematic with evolution, as users would expect a pure
 function to be pure (void of errors).
 
+Currently, \texttt{GlcArray} is built on top of an object array, 
+so all primitives are wrapped and unwrapped.
+We can easily provide variants for each primitive type to avoid this.
+Note that to support multi dimensional content,
+each primitive \texttt{GlcArray} requires both an object array and a primitive array. Only one will be initialized, depending on its depth.
+This added complexity was the primary reason why we didn't support it in our first iteration.
+
 \section{Contributions}
 % TODO COMBINE CONTRIBS TODO M3/M4 CONTRIBS M1 CONTRIBS BELOW
 \begin{itemize}
