@@ -1018,7 +1018,23 @@ Only for string arrays and slices will the value be nullable.
 
 \subsubsection{Slice Templates}
 
+As a proof of concept, we have Slice implementations in Java under our test folder.
+We again wanted to support lazy initialization, and borrow concepts from \texttt{GlcArray}.
+Namely, each field has a getter and setter, where the getter will initialize a value if it isn't initialized already.
+Primitive fields remained primitive, so they come preinitialized.
 
+\subsection{Lazy Equality}
+
+To support lazy struct equality, we had to do the following:
+
+\begin{itemize}
+	\item For primitive fields, simply do a comparison 
+	\item For string fields, call \texttt{Object.equals(s1, s2)}. In other words, the fields are equal if they are both null, or both the same string.
+	\item For other fields, check if they are both null, or compare the values after calling the getter. If both are null, we know that they result in the default, and are equals. We do not initialize to remain lazy. If any are non null, we must now ensure that both are initialized before comparing. We can directly use \texttt{Object.equals(Object)}, since the getter will always return nonnull values.
+\end{itemize}
+
+For \texttt{GlcArray}, it is very similar, but we do a comparison of the size definition, the class type, and then the underlying array data.
+If the underlying array itself is null, we know that the \texttt{GlcArray}s are equal.
 
 \subsection{Testing}
 Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
