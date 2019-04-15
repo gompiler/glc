@@ -713,6 +713,14 @@ casts/equality checks/new type usages are already validated in
 typechecking, so we don't need them anymore, nor do we need the
 mappings. Thus, our new AST was also able to get rid of type
 declarations (except for structs).
+\subsubsection{Functions}
+Because the name of a function should overshadow all names in earlier
+scopes (i.e.\ base types), we add the
+function to the symbol table without any arguments before
+typechecking. We then typecheck the parameters (if we didn't add the
+function yet the parameters could incorrectly refer to a mapping of
+the function name in a previous scope) and update the function's entry
+in the symbol table.
 \subsubsection{New AST}
 As mentioned above, dependency on the SymbolTable results in a
 dependency on the \texttt{ST} monad, which adds complexity to each
