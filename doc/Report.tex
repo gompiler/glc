@@ -813,6 +813,23 @@ There are two tricky things about assignments:
   \end{itemize}
 \end{itemize}
 \subsection{Testing} %TODO
+Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
+wrote complete programs as files to test code generation. We adapted a
+script from the previous class assignments so that we could run and check
+the output of all of these programs at once. We also ran the tests in
+Travis automatically upon every push to GitHub, so we would be alerted if
+there were any regressions in program compilation or output as a result of
+a change.
+
+We tried to comprehensively cover all aspects of GoLite mentioned in the
+lecture given on GoLite code generation. We also added standard functionality
+tests (such as function execution, variable assignment, etc.) and added tests
+to cover any bugs discovered during the development of Milestone 4.
+
+%TODO
+%TODO: Programs created?
+\todo
+
 \section{Conclusion}
 \subsection{Experience} %TODO
 \subsection{What We'd Change}
@@ -857,7 +874,11 @@ function to be pure (void of errors).
 		\item M2: Worked on expression type-checking and
 		type inference, including tests. Also worked on the weeding pass for
 		return statements.
-		\item M3/M4: \todo 
+		\item M3/M4: Created most of the intermediate representation used to
+		model JVM bytecode in Haskell. Wrote many of the patterns used for IR
+		(and thus bytecode) generation, especially base patterns such as
+		statements, expressions, and control structures. These were generated
+		from the resource AST described.
 	\end{itemize}
 	\item \textbf{Allan Wang}
 	\begin{itemize}
