@@ -805,8 +805,7 @@ languages, we could just append the scope depth to all identifier
 names to keep them unique, also eliminating the need for separate
 scopes, as we already typecheck the correct use of identifiers. In our
 case, we have scoped identifiers in our newly generated typechecked
-AST which we convert to offsets (for locals) in the resource AST, a
-third iteration of the AST created partially for this purpose.
+AST which we convert to offsets (for locals) in the resource AST (see \ref{sec:resource-ast}).
 
 These offsets are in our intermediate representation, where
 the offsets are unique for each local variable declaration. Variables with
@@ -822,6 +821,7 @@ the JVM. Since only top-level variables retain identifiers, there is no
 concern about clashing names here.
 
 \subsubsection{Switch Statements}
+\label{sec:switch-stmts-codegen}
 For the structural differences:
 \begin{itemize}[noitemsep]
 \item Simple statements are be modeled and executed as the first
@@ -921,6 +921,33 @@ There are multiple tricky things about assignments:
 %TODO
 \todo
 
+\subsubsection{AST}
+\label{sec:resource-ast}
+
+In the codegen stage, we decided to create yet another AST layer between the previous checked AST and the bytecode IR. The primary reason was that bytecode conversion alone is quite complex, and we want to keep state related changes as simple as possible.
+
+With the addition of pretty printing, it will also be a lot easier for us to debug changes in go code than in bytecode.
+Implementing pretty printing involved creating a converter from each AST to the previous iteration.
+Once we get to the original AST, we can call its prettify function.
+We use this method to avoid duplicate prettify rules.
+As we print more complex code, we can update the base implementation, and have it fixed for all AST levels.
+Mapping changes between adjacent ASTs is also much simpler, as there are few changes between each stage.
+
+For our resource AST, we wanted to address the following concerns:
+
+\begin{itemize}
+	\item Local variables are labelled using offsets rather than identifiers. 
+	\item Stack heights should be minimized; indices should be reused where possible.
+	\item Path splits should have unique label ids.
+	\item All used type declarations should be mapped to a single top level list of structs. Each struct also requires a unique id for the classname.
+	\item Within type definitions for expressions, structs require the unique id instead of the actual content information.
+	\item All init functions need to be renamed into unique function names, then called in the same order from a parent init function.
+	\item Empty for loop conditions and switch conditions should instead provide default fallbacks (see \ref{sec:switch-stmts-codegen}).
+\end{itemize}
+
+To do so, we defined our new AST models, then created another builder that is very similar to the symbol table.
+As there are no extensive rules, and it is mainly used for hashtables,
+there is only one module, instead of a core and more specific implementation.
 
 \subsection{Testing}
 Unlike previous testing, which was done in Haskell using \texttt{hspec}, we
