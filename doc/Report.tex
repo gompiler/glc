@@ -908,13 +908,22 @@ There are multiple tricky things about assignments:
     exceptionally difficult to get correct, since we needed to ensure
     correct behaviour for slices and arrays, and generate copy methods
     on the fly for structs. See the section below for more on copying and
-    struct generation. \todo AAAAAAA
+    struct generation.
 \end{itemize}
 
 \subsubsection{Struct Generation}
 
-%TODO
-\todo
+Struct definitions are collected and de-duplicated in the resource AST.
+To represent them in the JVM, we convert them to classes, renaming fields
+to avoid naming conflicts with reserved bytecode keywords. This mapping
+works well, but we also need equality and copying mechanisms, which proved
+more difficult to create.
+
+To handle equality, we define an \texttt{s.equals(s2)} method on each struct
+\texttt{s} to compare it to another struct of the same type, returning a boolean.
+This compares each field of the two structs, using other \texttt{equals()} methods
+defined by us in order to compare arrays and slices (which do their own recursive
+comparisons internally).
 
 \subsubsection{Copying Behaviour}
 
