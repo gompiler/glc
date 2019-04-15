@@ -855,7 +855,7 @@ concern about clashing names here.
 \subsubsection{Switch Statements}
 For the structural differences:
 \begin{itemize}[noitemsep]
-\item Simple statements are be modeled and executed as the first
+\item Simple statements are modeled and executed as the first
   statement in the new ``scope''.
 \item Missing expressions are converted to the constant literal
   `true` in the resource AST, prior to IR and code generation.
@@ -874,7 +874,7 @@ For the structural differences:
   to the case body or keep going to the next \texttt{case} comparison
   or \texttt{default} block. This separates \texttt{case} `headers'
   from \texttt{case} `bodies', allowing all comparisons to be followed
-  in the correct order with only the minimum required jumps. 
+  in the correct order with only the minimum required jumps.
 \item To automatically break, for each case statement, we add a
   \texttt{goto} to a label at the end of the switch statement.
 \item \texttt{default} statement jumps are placed after all
